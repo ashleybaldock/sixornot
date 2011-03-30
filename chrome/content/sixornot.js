@@ -650,8 +650,8 @@ function newIconInstance(window)
             return null;
         var tldCode = tld.toUpperCase();  // Country code for this TLD
 
-        /* The nationality of the server location and the domain registration are not necissarily the same.
-           This case is checked for and a notificaion is sent up for the user to attempt to reduce user confusion on the matter. */
+        // The nationality of the server location and the domain registration are not necissarily the same.
+        // This case is checked for and a notificaion is sent up for the user to attempt to reduce user confusion on the matter.
         var doCheck = true;
         switch (tldCode)         // Special TLD cases:
         {
