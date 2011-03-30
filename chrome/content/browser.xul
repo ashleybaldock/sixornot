@@ -15,7 +15,7 @@
             window.removeEventListener("load", sixornot_loadForThisWindow, false);
             let scope = {};
             Components.utils.import("chrome://sixornot/content/sixornot.js", scope);
-            /*scope.Flagfox.init(window);*/
+            scope.Sixornot.init(window);
         }
     </script> -->
 

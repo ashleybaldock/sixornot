@@ -1,10 +1,13 @@
 /* This is a JavaScript module (JSM) to be imported via Components.utils.import() and acts as a singleton.
    Only the following listed symbols will exposed on import, and only when and where imported. */
-const EXPORTED_SYMBOLS = ["Flagfox"];
+
+/* This library is heavily based on the excellent Flagfox addon */
+
+const EXPORTED_SYMBOLS = ["Sixornot"];
 
 /* Components.utils.import("resource://flagfox/ipdb.jsm");  // Access IPDB here */
 
-var FlagfoxVersion = "4.1.x";  // Fetched on startup; value here is a fallback
+var SixornotVersion = "4.1.x";  // Fetched on startup; value here is a fallback
 
 var mainPrefListener = null;
 var warningsThisSession = [];
@@ -31,7 +34,7 @@ function startup()
     function handleStartupError(e)
     {
         ready = null;
-        Flagfox.error("Fatal Flagfox startup error!",e);
+        Sixornot.error("Fatal Sixornot startup error!",e);
         shutdown();
     }
 
@@ -43,23 +46,23 @@ function startup()
             return;  // No-go
         }
 
-        const id = "{1018e4d6-728f-4b20-ad56-37578a4de76b}";  // Flagfox ID
-        const IPv4DBfilename = "ip4.db";                      // IPv4 DB filename
-        const IPv6DBfilename = "ip6.db";                      // IPv6 DB filename
+        const id = "{e280e272-603e-4e3b-a28e-eba418962c2e}";  // Sixornot ID
+//        const IPv4DBfilename = "ip4.db";                      // IPv4 DB filename
+//        const IPv6DBfilename = "ip6.db";                      // IPv6 DB filename
 
         if ("@mozilla.org/extensions/manager;1" in Components.classes)  // Gecko 1.9.x
         {
             var ExtensionManager = Components.classes["@mozilla.org/extensions/manager;1"]
                                              .getService(Components.interfaces.nsIExtensionManager);
-            FlagfoxVersion = ExtensionManager.getItemForID(id)
+            SixornotVersion = ExtensionManager.getItemForID(id)
                                              .version;
-            var ip4db = ExtensionManager.getInstallLocation(id)
-                                        .getItemLocation(id);
-            var ip6db = ip4db.clone();
-            ip4db.append(IPv4DBfilename);
-            ip6db.append(IPv6DBfilename);
-            ipdb.init(ip4db,ip6db);
-            checkIPDBage();
+//            var ip4db = ExtensionManager.getInstallLocation(id)
+//                                        .getItemLocation(id);
+//            var ip6db = ip4db.clone();
+//            ip4db.append(IPv4DBfilename);
+//            ip6db.append(IPv6DBfilename);
+//            ipdb.init(ip4db,ip6db);
+//            checkIPDBage();
             ready = true;
         }
         else  // Gecko 2.0+
@@ -67,26 +70,26 @@ function startup()
             Components.utils.import("resource://gre/modules/AddonManager.jsm");
             AddonManager.getAddonByID(id, function(addon) {
                 try {
-                    FlagfoxVersion = addon.version;
-                    var ip4db = addon.getResourceURI(IPv4DBfilename)
-                                     .QueryInterface(Components.interfaces.nsIFileURL)
-                                     .file;
-                    var ip6db = addon.getResourceURI(IPv6DBfilename)
-                                     .QueryInterface(Components.interfaces.nsIFileURL)
-                                     .file;
-                    ipdb.init(ip4db,ip6db);
-                    checkIPDBage();
+                    SixornotVersion = addon.version;
+//                    var ip4db = addon.getResourceURI(IPv4DBfilename)
+//                                     .QueryInterface(Components.interfaces.nsIFileURL)
+//                                     .file;
+//                    var ip6db = addon.getResourceURI(IPv6DBfilename)
+//                                     .QueryInterface(Components.interfaces.nsIFileURL)
+//                                     .file;
+//                    ipdb.init(ip4db,ip6db);
+//                    checkIPDBage();
                     ready = true;
                 } catch (e) { handleStartupError(e); }  // This callback is outside of the exception catching for startup()
             });
         }
 
-        Flagfox.actions.load();
+//        Sixornot.actions.load();
 
-        migrateOldPrefs();
-        mergeDefaultActionUpdates();
+//        migrateOldPrefs();
+//        mergeDefaultActionUpdates();
 
-        mainPrefListener = new PrefListener("flagfox.",onGlobalPrefChange);
+        mainPrefListener = new PrefListener("sixornot.",onGlobalPrefChange);
 
         // Queue up final shutdown sequence; each window has its own unload sequence as well
         doOnShutdown(shutdown);
@@ -101,11 +104,11 @@ function shutdown()
         mainPrefListener.unregister();
 }
 
-function checkIPDBage()  // Check if the IPDB version is getting old and results are beginning to get particularly stale (3 months or more old)
+/* function checkIPDBage()  // Check if the IPDB version is getting old and results are beginning to get particularly stale (3 months or more old)
 {
     if (ipdb.lastModifiedTime && Date.now() - ipdb.lastModifiedTime >= 7776000000)
         Flagfox.warning(getCurrentWindow(), "flagfox.warn.stale", strings.GetStringFromName("stalewarnmessage"));
-}
+} */
 
 function onGlobalPrefChange(branch,prefName)
 {
@@ -114,7 +117,7 @@ function onGlobalPrefChange(branch,prefName)
         case "actions":
             if (!actionsSaveIsInProgress)  // Reload if this wasn't our doing (manual pref edit/reset or Mozilla Weave Sync)
             {
-                Flagfox.actions.load();
+                Sixornot.actions.load();
                 mergeDefaultActionUpdates();  // Make sure changes to defaults list are handled correctly
             }
             return;
@@ -131,8 +134,8 @@ function onGlobalPrefChange(branch,prefName)
     }
 }
 
-//// Main Flagfox object (only variable exported out of this file) //////////////////////////////////////////////////////////////////////////////////////////////////////
-var Flagfox =
+//// Main Sixornot object (only variable exported out of this file) //////////////////////////////////////////////////////////////////////////////////////////////////////
+var Sixornot =
 {
     init : function(window)
     {
@@ -143,11 +146,11 @@ var Flagfox =
             return;
 
         // Load the flag icon for this window
-        try { newFlagInstance(window); }
-        catch (e) { Flagfox.error("Error loading icon for window",e); }
+        try { newIconInstance(window); }
+        catch (e) { Sixornot.error("Error loading icon for window",e); }
     },
 
-    actions :
+/*    actions :
     {
         load : function()
         {
@@ -255,9 +258,9 @@ var Flagfox =
         append : function(newactions) { actionsList = actionsList.concat(newactions); },  // Append an array of new actions onto the end of the existing array
 
         get length() { return actionsList.length; }
-    },
+    }, */ // End Actions
 
-    getFaviconForTemplate : function(template)
+/*    getFaviconForTemplate : function(template)
     {
         try
         {
@@ -290,7 +293,7 @@ var Flagfox =
         {
             return "";  // Given template probably isn't a valid URL
         }
-    },
+    }, */
 
     warning : function(window,pref,message)  // Shows a slide-down info bar (max once per session for each unique message)
     {
@@ -309,7 +312,7 @@ var Flagfox =
         notification.setAttribute("type","warning");
         notification.setAttribute("priority",notificationBox.PRIORITY_WARNING_MEDIUM);
         notification.setAttribute("value",pref);
-        notification.setAttribute("image","chrome://flagfox/content/icons/help.png");
+        notification.setAttribute("image","chrome://sixornot/content/icons/help.png");
         notification.setAttribute("label",message);
 
         var checkbox = window.document.createElementNS(XULNS,"checkbox");
@@ -344,16 +347,16 @@ var Flagfox =
         if (!message)
             message = "Unknown error!";
 
-        logErrorMessage("Flagfox ERROR: " + message + " \n" + parseException(exception));
+        logErrorMessage("Sixornot ERROR: " + message + " \n" + parseException(exception));
 
         try
         {
             // No L10N: We only speak English (well) and thus our forums and the problems reported on them need to be in English. Sorry.
-            var outputMsg = "Sorry, the Flagfox extension has encountered a problem. " +
-                            "The following error output and a Flagfox preferences dump has been sent to Tools -> Error Console.\n" +
+            var outputMsg = "Sorry, the Sixornot extension has encountered a problem. " +
+                            "The following error output and a Sixornot preferences dump has been sent to Tools -> Error Console.\n" +
                             "\n------------------------------------------------------------\n";
 
-            outputMsg += "FLAGFOX VERSION: " + Flagfox.version + " (" + Flagfox.getIPDBversion() + ")\n";
+            outputMsg += "FLAGFOX VERSION: " + Sixornot.version + " (" + Sixornot.getIPDBversion() + ")\n";
 
             outputMsg += "\nERROR MESSAGE: " + message + "\n";
             if (exception)
@@ -363,34 +366,34 @@ var Flagfox =
                     outputMsg += "\nSTACK TRACE:\n" + cleanExceptionStack(exception.stack);  // ends with "\n"
             }
 
-            try { logErrorMessage("Flagfox PREFERENCES DUMP:\n" + getPrefsDump("flagfox.")); }
+            try { logErrorMessage("Sixornot PREFERENCES DUMP:\n" + getPrefsDump("sixornot.")); }
             catch (prefsDumpError) { outputMsg += "\nEXCEPTION THROWN on preferences dump: " + parseException(prefsDumpError) + "\n"; }
 
             outputMsg += "\nBROWSER: " + appInfo.vendor + " " + appInfo.name + " " + appInfo.version +
                          " (Gecko " + appInfo.platformVersion + " / " + appInfo.platformBuildID + ")";
             outputMsg += "\nOS: " + httpService.oscpu + " (" + appInfo.OS + " " + appInfo.XPCOMABI + " " + appInfo.widgetToolkit + ")";
-            outputMsg += "\nLOCALE: " + Flagfox.locale.content + " content / " + Flagfox.locale.UI + " UI / " + Flagfox.locale.OS + " OS";
+            outputMsg += "\nLOCALE: " + Sixornot.locale.content + " content / " + Sixornot.locale.UI + " UI / " + Sixornot.locale.OS + " OS";
 
             outputMsg += "\n------------------------------------------------------------\n" +
                          "\nSelect and copy the error report above. In order to fix this problem for you and others, please read and follow the " +
-                         "troubleshooting and bug reporting instructions on the Flagfox support forums. Please post an abundance of information with any " +
+                         "troubleshooting and bug reporting instructions on the Sixornot support forums. Please post an abundance of information with any " +
                          "error reports, namely what you were doing at the time that may have triggered this. (English please)\n";
 
             var flags = promptService.BUTTON_POS_0 * promptService.BUTTON_TITLE_IS_STRING +
                         promptService.BUTTON_POS_1 * promptService.BUTTON_TITLE_IS_STRING +
                         promptService.BUTTON_POS_0_DEFAULT;
-            var button = promptService.confirmEx( null, "Flagfox Error!", outputMsg, flags, "Go To Support Forums", "Ignore", "", null, {} );
+            var button = promptService.confirmEx( null, "Sixornot Error!", outputMsg, flags, "Go To Support Forums", "Ignore", "", null, {} );
 
             if (button == 0)  // "Forums" button
             {
                 // Open forum in new tab (can't open new window; if error is on startup, we could hit another error)
-                Flagfox.addTabInCurrentBrowser("http://flagfox.net/reportingbugs");
+                Sixornot.addTabInCurrentBrowser("http://sixornot.net/reportingbugs");
             }
         }
         catch (e) { Components.utils.reportError("EXCEPTION DURING FLAGFOX ERROR REPORTING: " + parseException(e)); }
     },
 
-    openURL : function(window,url)  // Open URL in a window based on the user's pref
+/*    openURL : function(window,url)  // Open URL in a window based on the user's pref
     {
         try
         {
@@ -420,23 +423,23 @@ var Flagfox =
                 }
             }
         } catch (e) { Flagfox.error("Failed to open URL: "+url,e); }
-    },
+    }, */
 
-    addTabInCurrentBrowser : function(url)  // Add tab to most recent window, regardless of where this function was called from
+/*    addTabInCurrentBrowser : function(url)  // Add tab to most recent window, regardless of where this function was called from
     {
         var currentWindow = getCurrentWindow();
         currentWindow.focus();
         var currentBrowser = currentWindow.getBrowser();
         currentBrowser.selectedTab = currentBrowser.addTab(url,null,null);
-    },
+    }, */
 
-    getIPDBversion : function()  // Returns current Flagfox IPDB file modification date as YYYY-M
+/*    getIPDBversion : function()  // Returns current Flagfox IPDB file modification date as YYYY-M
     {
         if (!ipdb.lastModifiedTime)
             return "missing IPDB!";
         var date = new Date(ipdb.lastModifiedTime);
         return date.getUTCFullYear() + "-" + (date.getUTCMonth()+1);  // JS months are 0-11, just to be confusing
-    },
+    }, */
 
     locale :
     {
@@ -449,11 +452,11 @@ var Flagfox =
                 return cleanLocaleCode( /^[^\s,;]{2,}/.exec(accept_languages)[0] );  // Extract first locale code in pref (space/comma/semicolon delimited list)
             } catch (e) { return "en"; }
         },
-        get UI()  // Flagfox UI locale
+        get UI()  // Sixornot UI locale
         {
             return cleanLocaleCode( Components.classes["@mozilla.org/chrome/chrome-registry;1"]
                                               .getService(Components.interfaces.nsIXULChromeRegistry)
-                                              .getSelectedLocale("flagfox") );
+                                              .getSelectedLocale("sixornot") );
         },
         get OS()  // Main OS locale
         {
@@ -468,44 +471,45 @@ var Flagfox =
     get helpstrings() { return helpstrings; },
     get countrynames() { return countrynames; },
 
-    get version() { return FlagfoxVersion; }
+    get version() { return SixornotVersion; }
 };
 
 //// Flag icon instance closure (one per window) ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-function newFlagInstance(window)
+function newIconInstance(window)
 {
     var contentDoc = null;     // Reference to the current page document object
     var url = "";              // The URL of the current page
     var urlIsPortable = true;  // Is the URL not on this computer?
     var host = "";             // The host name of the current URL
     var ip = "";               // The IP address of the current host
-    var countryCode = null;    // The country code of the current IP address
-    var tldCountryCode = null; // The country code of the current domain name
-    var metaTags = null;       // The meta tags in the current page
+//    var countryCode = null;    // The country code of the current IP address
+//    var tldCountryCode = null; // The country code of the current domain name
+//    var metaTags = null;       // The meta tags in the current page
 
-    var icon = window.document.getElementById("flagfox-icon");
-    var menu = window.document.getElementById("flagfox-menu");
-    var tooltip = window.document.getElementById("flagfox-tooltip");
-    if (!icon || !menu || !tooltip)
+    var icon = window.document.getElementById("sixornot-icon");
+//    var menu = window.document.getElementById("sixornot-menu");
+    var tooltip = window.document.getElementById("sixornot-tooltip");
+//    if (!icon || !menu || !tooltip)
+    if (!icon || !tooltip)
     {
-        logErrorMessage("Flagfox warning: attempted to load into an invalid window");
+        logErrorMessage("Sixornot warning: attempted to load into an invalid window");
         return;
     }
 
-    var menuContentAge = 0;
+//    var menuContentAge = 0;
     var specialLocation = null;
     var DNSrequest = null;
-    var prefListener = new PrefListener("flagfox.",onPrefChange);
+    var prefListener = new PrefListener("sixornot.",onPrefChange);
     var pollLoopID = window.setInterval(pollForContentChange,250);
 
     // Go-go gadget events
-    icon.addEventListener("click",onIconClick,false);
-    icon.addEventListener("mousedown",onIconMouseDown,false);
-    icon.addEventListener("mouseover",onIconHover,false);
-    menu.addEventListener("command",onMenuCommand,false);
-    menu.addEventListener("popupshowing",onMenuShowing,false);
+//    icon.addEventListener("click",onIconClick,false);
+//    icon.addEventListener("mousedown",onIconMouseDown,false);
+//    icon.addEventListener("mouseover",onIconHover,false);
+//    menu.addEventListener("command",onMenuCommand,false);
+//    menu.addEventListener("popupshowing",onMenuShowing,false);
     tooltip.addEventListener("popupshowing",updateTooltipContent,false);
-    window.addEventListener("keypress",onKeyPressed,false);
+//    window.addEventListener("keypress",onKeyPressed,false);
     window.addEventListener("online",onChangedOnlineStatus,false);
     window.addEventListener("offline",onChangedOnlineStatus,false);
     window.addEventListener("unload",unload,false);
@@ -515,20 +519,20 @@ function newFlagInstance(window)
         window.removeEventListener("unload",unload,false);
         window.removeEventListener("offline",onChangedOnlineStatus,false);
         window.removeEventListener("online",onChangedOnlineStatus,false);
-        window.removeEventListener("keypress",onKeyPressed,false);
+//        window.removeEventListener("keypress",onKeyPressed,false);
         tooltip.removeEventListener("popupshowing",updateTooltipContent,false);
-        menu.removeEventListener("popupshowing",onMenuShowing,false);
-        menu.removeEventListener("command",onMenuCommand,false);
-        icon.removeEventListener("mouseover",onIconHover,false);
-        icon.removeEventListener("mousedown",onIconMouseDown,false);
-        icon.removeEventListener("click",onIconClick,false);
+//        menu.removeEventListener("popupshowing",onMenuShowing,false);
+//        menu.removeEventListener("command",onMenuCommand,false);
+//        icon.removeEventListener("mouseover",onIconHover,false);
+//        icon.removeEventListener("mousedown",onIconMouseDown,false);
+//        icon.removeEventListener("click",onIconClick,false);
         window.clearInterval(pollLoopID);
         DnsHandler.cancelRequest(DNSrequest);
         prefListener.unregister();
         tooltip = null;
-        menu = null;
+//        menu = null;
         icon = null;
-        metaTags = null;
+//        metaTags = null;
         contentDoc = null;
     }
 
@@ -541,8 +545,8 @@ function newFlagInstance(window)
         }
         catch (e)
         {
-            Components.utils.reportError("Flagfox EXCEPTION: " + parseException(e));
-            //Flagfox.error("Error during poll loop!",e);
+            Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
+            //Sixornot.error("Error during poll loop!",e);
         }
     }
 
@@ -560,14 +564,16 @@ function newFlagInstance(window)
         urlIsPortable = true;
         host = "";
         ip = "";
-        countryCode = null;
-        tldCountryCode = null;
-        metaTags = null;
+//        countryCode = null;
+//        tldCountryCode = null;
+//        metaTags = null;
 
         // If we've changed pages before completing a lookup, then abort the old request first
         DnsHandler.cancelRequest(DNSrequest);
         DNSrequest = null;
 
+        // Tries to update icon based on protocol type (e.g. for local pages which don't need to be looked up)
+        // If this fails returns false and we need to do lookup
         if (updateIcon())
             return;
 
@@ -577,7 +583,7 @@ function newFlagInstance(window)
         {
             icon.src = getIconPath("special/unknown");
             specialLocation = ["unknownsite"];
-            logErrorMessage("Flagfox warning: no host returned for \"" + url + "\"");
+            logErrorMessage("Sixornot warning: no host returned for \"" + url + "\"");
             return;
         }
 
@@ -585,7 +591,7 @@ function newFlagInstance(window)
         {
             icon.src = getIconPath("special/offline");
             specialLocation = ["offlinemode"];
-            consoleService.logStringMessage("Flagfox is in offline mode");
+            consoleService.logStringMessage("Sixornot is in offline mode");
             return;  // Offline mode or otherwise not connected
         }
 
@@ -593,34 +599,48 @@ function newFlagInstance(window)
         {
             icon.src = getIconPath("special/anonymous");
             specialLocation = ["nodnserror"];
-            consoleService.logStringMessage("Flagfox is in proxied mode");
-            Flagfox.warning(window, "flagfox.warn.proxy", strings.GetStringFromName("proxywarnmessage"));
+            consoleService.logStringMessage("Sixornot is in proxied mode");
+            Sixornot.warning(window, "sixornot.warn.proxy", strings.GetStringFromName("proxywarnmessage"));
             return;  // Proxy in use for DNS; can't do a DNS lookup
         }
 
         // Ideally just hitting the DNS cache here
-        DNSrequest = DnsHandler.resolveHost(host, onReturnedIP);
+//        DNSrequest = DnsHandler.resolveHost(host, onReturnedIP);
+        DNSrequest = DnsHandler.resolveHost(host, onReturnedIPs);
 
-        function onReturnedIP(returnedIP)
+//        function onReturnedIP(returnedIP)
+        function onReturnedIPs(returnedIPs)
         {
             DNSrequest = null;  // Request complete
 
-            if (returnedIP == "FAIL")
+            // This needs to iterate over the set of IP addresses to check whether each one is IPv4 or IPv6
+            // Icon colour depends only on whether the site has:
+            // a) IPv4 only - Red
+            // b) IPv4 and IPv6 - Green
+            // c) IPv6 only - Blue
+            // Additionally, if we are connecting over IPv6 to the end site (need some way to determine this!)
+            // then case b is split:
+            // b.1) IPv4 and IPv6, connecting over IPv6 - Green
+            // b.2) IPv4 and IPv6, connecting over IPv4 - Orange 
+            // Everything else will display a grey icon of some kind to indicate no IP addresses are involved
+
+            if (returnedIPs[0] == "FAIL")
             {
                 icon.src = getIconPath("special/error");
                 specialLocation = ["lookuperror"];
                 return;  // DNS lookup failed (ip/countryCode/tldCountryCode stay empty)
             }
 
-            ip = returnedIP;
-            countryCode = ipdb.lookupIP(ip);
-            tldCountryCode = lookupTLD();
+            ip = returnedIPs[0];
+//            countryCode = ipdb.lookupIP(ip);
+//            tldCountryCode = lookupTLD();
 
+            // This must now work as we have a valid IP address
             updateIcon();
         }
     }
 
-    function lookupTLD()
+/*    function lookupTLD()
     {
         if (!countryCode)
             return null;  // If no country code then no host and no TLD
@@ -664,7 +684,7 @@ function newFlagInstance(window)
                 if (tldCountry.length && countryCode != tldCode)
                 {
                     var ipCountry = countrynames.GetStringFromName(countryCode);
-                    Flagfox.warning(window, "flagfox.warn.tld", strings.formatStringFromName("tldwarnmessage", [ipCountry, "."+tld, tldCountry], 3));
+                    Sixornot.warning(window, "sixornot.warn.tld", strings.formatStringFromName("tldwarnmessage", [ipCountry, "."+tld, tldCountry], 3));
                 }
             } catch (e) {
                 return null;  // If the code isn't in the list then it's not a country (or not one we have the code for)
@@ -672,7 +692,7 @@ function newFlagInstance(window)
         }
 
         return tldCode;  // Return the country code for the domain registration
-    }
+    } */
 
     /* Update the flag icon state (icon & tooltip)
        Returns true if it's done and false if unknown */
@@ -716,12 +736,12 @@ function newFlagInstance(window)
             default:
                 if (host == "")
                     return false;  // Unknown host -> still need to look up
-                if (!countryCode)
+/*                if (!countryCode)
                 {
                     icon.src = getIconPath("special/unknown");  // Have a host (and ip) but no country -> unknown site
                     specialLocation = ["unknownsite"];
                     return true;  // Done
-                }
+                } */
                 switch (countryCode)  // IP has been looked up
                 {
                     case "-A":  case "-B":  case "-C":
@@ -736,7 +756,7 @@ function newFlagInstance(window)
                         icon.src = getIconPath("special/anonymous");
                         break;
                     default:
-                        icon.src = getIconPath((safeGetBoolPref("flagfox.usealticons") ? "flagset2/" : "flagset1/") + countryCode.toLowerCase());
+                        icon.src = getIconPath((safeGetBoolPref("sixornot.usealticons") ? "flagset2/" : "flagset1/") + countryCode.toLowerCase());
                         break;
                 }
                 specialLocation = null;
@@ -765,20 +785,20 @@ function newFlagInstance(window)
             rows.appendChild(row);
         }
 
-        function safeGetCountryName(code)
+/*        function safeGetCountryName(code)
         {
             try { return countrynames.GetStringFromName(code); }
             catch (e) { return "?????"; }
-        }
+        } */
 
         if (host != "" && host != ip)
             addLabeledLine("domainname", host);
         if (ip != "")
             addLabeledLine("ipaddress", ip);
-        if (countryCode)
-            addLabeledLine("serverlocation", safeGetCountryName(countryCode));
-        if (tldCountryCode && tldCountryCode != countryCode)
-            addLabeledLine("domainnationality", safeGetCountryName(tldCountryCode));
+//        if (countryCode)
+//            addLabeledLine("serverlocation", safeGetCountryName(countryCode));
+//        if (tldCountryCode && tldCountryCode != countryCode)
+//            addLabeledLine("domainnationality", safeGetCountryName(tldCountryCode));
 
         if (specialLocation)
         {
@@ -796,7 +816,7 @@ function newFlagInstance(window)
         tooltip.appendChild(grid);
     }
 
-    function updateMenuContent()  // Update actions in context menu based on current prefs
+/*    function updateMenuContent()  // Update actions in context menu based on current prefs
     {
         if (menuContentAge == actionsListAge)  // Only generate if this window's menu is stale
             return;
@@ -848,9 +868,9 @@ function newFlagInstance(window)
             menuContentAge = 0;  // All were shown; reset for next open
         else
             menuContentAge = actionsListAge;  // Menu content synced to actions list
-    }
+    } */
 
-    function isActionAllowed(id)  // Is the given action allowed for this current state?
+/*    function isActionAllowed(id)  // Is the given action allowed for this current state?
     {
         if (id === undefined || id === null)  // The id may be 0
             return false;
@@ -898,9 +918,9 @@ function newFlagInstance(window)
             return false;
 
         return true;
-    }
+    } */
 
-    function doAction(id)
+/*    function doAction(id)
     {
         if (!isActionAllowed(id))
             return;
@@ -971,26 +991,26 @@ function newFlagInstance(window)
                 }
                 return;
         }
-    }
+    } */
 
-    function parseTemplate(template,encoding)  // Placeholders in templates are case-insensitive and may be used multiple times
+/*    function parseTemplate(template,encoding)  // Placeholders in templates are case-insensitive and may be used multiple times
     {
         function getReplacement(token) { return getParameterValue(token,template,encoding); }
 
         if (encoding == "url")
         {
-            /* Both the full template and parameters need encoding but I can't do encodeURI() with the parameters as that
-               ignores certain characters that might cause problems with searches. The parameters need encodeURIComponent().
-               To prevent double encoding I do encodeURI() first and simply search using encoded placeholders. */
+            // Both the full template and parameters need encoding but I can't do encodeURI() with the parameters as that
+            // ignores certain characters that might cause problems with searches. The parameters need encodeURIComponent().
+            // To prevent double encoding I do encodeURI() first and simply search using encoded placeholders. 
             return encodeURI(template).replace(/%7B[^%\s]+%7D/g, getReplacement);
         }
         else
         {
             return template.replace(/\{[^{}\s]+\}/g, getReplacement);
         }
-    }
+    } */
 
-    function getParameterValue(token,template,encoding)
+/*    function getParameterValue(token,template,encoding)
     {
         var parameter, maybeEncode;
         switch (encoding)
@@ -1071,7 +1091,7 @@ function newFlagInstance(window)
             default:
                 return token;  // Don't know what it is; leave it alone
         }
-    }
+    } */
 
     function onPrefChange(branch,prefName)
     {
@@ -1124,7 +1144,7 @@ function newFlagInstance(window)
         icon.style.cursor = isActionAllowed(hotClicks["click"]) ? "pointer" : "default" ;
     }
 
-    function onMenuCommand(event)
+/*    function onMenuCommand(event)
     {
         var actionID = event.target.value;
         doAction(actionID);
@@ -1137,7 +1157,7 @@ function newFlagInstance(window)
         var menuItems = menu.getElementsByTagName("menuitem");
         for (var i=0; i < menuItems.length; i++)  // Decide which menu items to grey out if they aren't available
             menuItems[i].setAttribute("disabled", !isActionAllowed( menuItems[i].getAttribute("value") ));  // Need to use attributes here
-    }
+    } */
 
     /* Listening to every keypress here because dynamically adding to a <keyset> with <keys> being listened to doesn't seem to work well.
        This function only takes around a microsecond or less to run so it shouldn't affect performance.
@@ -1182,8 +1202,8 @@ var DnsHandler =
     {
         function fail(reason)
         {
-            logErrorMessage("Flagfox warning: DNS lookup failure for \"" + host + "\": " + reason);
-            returnIP("FAIL");
+            logErrorMessage("Sixornot warning: DNS lookup failure for \"" + host + "\": " + reason);
+            returnIP(["FAIL"]);
         }
 
         var callback =
@@ -1199,7 +1219,15 @@ var DnsHandler =
                     return;  // IP not found in DNS
                 }
 
-                returnIP(nsrecord.getNextAddrAsString());
+                var IPAddresses = [];
+                while (nsrecord.hasMore())
+                {
+                    IPAddresses.push(nsrecord.getNextAddrAsString());
+                }
+
+                // Needs to be changed to return all the IPs, not just one of them (as an array? how does that affect returnIP?)
+//                returnIP(nsrecord.getNextAddrAsString());
+                returnIP(IPAddresses)
             }
         };
 
@@ -1221,7 +1249,7 @@ var DnsHandler =
      1) Imports old custom action from Flagfox 3.3.x
      2) Imports old middle click option
      3) Wipes all obsolete Flagfox preferences (prefs that don't have defaults) */
-function migrateOldPrefs()
+/*function migrateOldPrefs()
 {
     Flagfox.actions.assertLoaded();
 
@@ -1256,8 +1284,8 @@ function migrateOldPrefs()
     }
     catch (e) {}  // Throw -> pref doesn't exist (was default or already imported)
 
-    /* Both the user and default branches contain the exact same list of pref names,
-       even if any default values don't exist or any user values equal the default. */
+    // Both the user and default branches contain the exact same list of pref names,
+    // even if any default values don't exist or any user values equal the default.
     var defaultBranch = prefService.getDefaultBranch("flagfox.");
     var userBranch = prefService.getBranch("flagfox.");
     var prefsList = userBranch.getChildList("",{});
@@ -1268,14 +1296,14 @@ function migrateOldPrefs()
         try { getGenericPref(defaultBranch,prefsList[i]); }
         catch (e) { userBranch.clearUserPref(prefsList[i]); }
     }
-}
+} */
 
 /* If the default actions list was updated recently, then those changes should be applied to the users' settings.
    There are three possibilities:
       a) Default action changed -> update it
       b) Default action removed -> delete it
       c) Default action added   -> add it */
-function mergeDefaultActionUpdates()
+/*function mergeDefaultActionUpdates()
 {
     try
     {
@@ -1337,7 +1365,7 @@ function mergeDefaultActionUpdates()
     {
         Flagfox.error("Error applying default actions list updates",e);
     }
-}
+} */
 
 /* The install.rdf file contains the listed application compatibility ranges which each addon supports. Remote support version bumps can be done via AMO.
    As newly developed versions of applications get released, some users disable compatibility checking and force installation before the support is updated.
@@ -1346,7 +1374,7 @@ function mergeDefaultActionUpdates()
    "I told you so" if it's completely incompatible. This is preferable to an error message that they won't understand. */
 function checkForAbsoluteIncompatability()
 {
-    const MAJOR_FLAGFOX_VER = "4.1+";
+    const MAJOR_SIXORNOT_VER = "4.1+";
     const MIN_GECKO_VER = "1.9.1";  // Hard minimum for Flagfox 4.1+; dropped all Gecko 1.9.0 support -> would error on lack of native JSON on startup
     const MAX_GECKO_VER = null;     // No hard max; if compatibility breaks, errors will ensue
 
@@ -1355,26 +1383,26 @@ function checkForAbsoluteIncompatability()
 
     if ( tooOLD || tooNEW )
     {
-        logErrorMessage("Flagfox INCOMPATIBILITY ERROR: Gecko version " + appInfo.platformVersion + " NOT supported!");
+        logErrorMessage("Sixornot INCOMPATIBILITY ERROR: Gecko version " + appInfo.platformVersion + " NOT supported!");
 
-        var title = "Flagfox " + MAJOR_FLAGFOX_VER + " is NOT compatible with " + appInfo.vendor + " " + appInfo.name + " " + appInfo.version + "!";
-        var msg = "You have forced the installation/running of Flagfox " + MAJOR_FLAGFOX_VER + " by overriding normal compatibility checking. " +
-                  "This doesn't always work well and this time it didn't. Flagfox " + MAJOR_FLAGFOX_VER + " is NOT compatible with the Mozilla code-base " +
+        var title = "Sixornot " + MAJOR_SIXORNOT_VER + " is NOT compatible with " + appInfo.vendor + " " + appInfo.name + " " + appInfo.version + "!";
+        var msg = "You have forced the installation/running of Sixornot " + MAJOR_SIXORNOT_VER + " by overriding normal compatibility checking. " +
+                  "This doesn't always work well and this time it didn't. Sixornot " + MAJOR_SIXORNOT_VER + " is NOT compatible with the Mozilla code-base " +
                   "this application is running: Gecko " + appInfo.platformVersion + "\n\n" +
                   "You would have a probably confusing error message right here if it weren't for this dialog. Instead, I'm going to point you in the right " +
-                  "direction. You need to install " + (tooOLD?"an OLDER":"a NEWER") + " Flagfox version that supports your application.\n\n";
+                  "direction. You need to install " + (tooOLD?"an OLDER":"a NEWER") + " Sixornot version that supports your application.\n\n";
         if (tooNEW)
             msg += "If you're running a development (alpha, beta, or Minefield/Trunk) version of your application, " +
                    "you should probably check for development versions of your other addons too.\n\n";
         else if (tooOLD)
             msg += "If you're running a version of your application old enough that Mozilla has dropped support for it, " +
                    "that means you probably should have upgraded by now. Please do so as soon as possible for security reasons, if not addon support.\n\n";
-        msg += "Close this dialog to go to the Flagfox versions list page on Mozilla's Add-ons site and install the applicable Flagfox version.";
+        msg += "Close this dialog to go to the Sixornot versions list page on Mozilla's Add-ons site and install the applicable Sixornot version.";
 
         promptService.alert(null,title,msg);
-        Flagfox.addTabInCurrentBrowser("https://addons.mozilla.org/addon/5791/versions/");  // URL redirects to application and locale specific version
+        Sixornot.addTabInCurrentBrowser("https://addons.mozilla.org/addon/5791/versions/");  // URL redirects to application and locale specific version
         if (tooOLD)
-            Flagfox.addTabInCurrentBrowser("http://www.mozilla.com/en-US/firefox/3.0/firstrun/");  // Too old -> Firefox 3.0.x (only en-US page has warning)
+            Sixornot.addTabInCurrentBrowser("http://www.mozilla.com/en-US/firefox/3.0/firstrun/");  // Too old -> Firefox 3.0.x (only en-US page has warning)
         return true;  // Ain't gonna work
     }
 
@@ -1385,20 +1413,20 @@ function checkForAbsoluteIncompatability()
 
 function getIconPath(filename)
 {
-    return "chrome://flagfox/content/icons/" + filename + ".png";
+    return "chrome://sixornot/skin/icons/" + filename + ".png";
 }
 
 // Automatically generate and cache IPDB hash on-demand
-defineLazyGetter("IPDBhash", function() {
+/* defineLazyGetter("IPDBhash", function() {
     return ipdb.generateQuickHash(3);
-});
+}); */
 
 /* Set secret decoder ring for Geotool to try to reduce crippling server abuse from other sources.
    This gives up-to-date Flagfox users an all-access pass and restricts everyone else via a captcha at certain times.
    This does not, however, allow for infinite requests. Geotool will still auto-block after many excessive requests.
    This only identifies the Flagfox version. All users on all systems will get the same cookie for the same Flagfox version.
    No information that would identify this computer, profile, or user is sent and it is only sent to the Geotool server. */
-function setGeotoolCookie()
+/* function setGeotoolCookie()
 {
     const expiry = (Date.now()/1000) + 600;  // Set 10 minute expiration time (automatically reset as needed on each call)
     const values = [
@@ -1409,7 +1437,7 @@ function setGeotoolCookie()
     values.forEach(function(value) {
         cookieManager.add("geo.flagfox.net","/",value[0],value[1],false,true,false,expiry);  // HttpOnly mode on: only accessible by Geotool server, not client scripts
     });
-}
+} */
 
 /* Generic pref listener class
     Usage:
@@ -1519,7 +1547,7 @@ function cleanExceptionStack(stack)
 {
     try
     {
-        const shortPath = "resource://flagfox/";
+        const shortPath = "resource://sixornot/";
         const longPath = ioService.newChannel(shortPath,null,null).URI.spec;
         return stack.replace(new RegExp(longPath,"ig"), shortPath);
     }
@@ -1682,11 +1710,11 @@ function loadPropertiesFile(path)
 }
 
 defineLazyGetter("strings", function() {
-    return loadPropertiesFile("chrome://flagfox/locale/flagfox.properties");
+    return loadPropertiesFile("chrome://sixornot/locale/sixornot.properties");
 });
 defineLazyGetter("helpstrings", function() {
-    return loadPropertiesFile("chrome://flagfox/locale/help.properties");
+    return loadPropertiesFile("chrome://sixornot/locale/help.properties");
 });
 defineLazyGetter("countrynames", function() {
-    return loadPropertiesFile("chrome://flagfox/locale/countrynames.properties");
+    return loadPropertiesFile("chrome://sixornot/locale/countrynames.properties");
 });
