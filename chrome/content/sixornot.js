@@ -2,7 +2,7 @@
    Only the following listed symbols will exposed on import, and only when and where imported. */
 const EXPORTED_SYMBOLS = ["Flagfox"];
 
-Components.utils.import("resource://flagfox/ipdb.jsm");  // Access IPDB here
+/* Components.utils.import("resource://flagfox/ipdb.jsm");  // Access IPDB here */
 
 var FlagfoxVersion = "4.1.x";  // Fetched on startup; value here is a fallback
 

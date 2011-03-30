@@ -1,4 +1,5 @@
 content sixornot chrome/content/ contentaccessible=yes
+
 overlay chrome://browser/content/browser.xul chrome://sixornot/content/browser.xul
 
 locale sixornot en-UK locale/en-UK/
