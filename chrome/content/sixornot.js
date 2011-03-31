@@ -46,7 +46,7 @@ function startup()
             return;  // No-go
         }
 
-        const id = "{e280e272-603e-4e3b-a28e-eba418962c2e}";  // Sixornot ID
+        const id = "sixornot@entropy.me.uk";  // Sixornot ID
 //        const IPv4DBfilename = "ip4.db";                      // IPv4 DB filename
 //        const IPv6DBfilename = "ip6.db";                      // IPv6 DB filename
 
@@ -99,7 +99,7 @@ function startup()
 
 function shutdown()
 {
-    ipdb.close();
+//    ipdb.close();
     if (mainPrefListener)
         mainPrefListener.unregister();
 }
@@ -356,7 +356,7 @@ var Sixornot =
                             "The following error output and a Sixornot preferences dump has been sent to Tools -> Error Console.\n" +
                             "\n------------------------------------------------------------\n";
 
-            outputMsg += "FLAGFOX VERSION: " + Sixornot.version + " (" + Sixornot.getIPDBversion() + ")\n";
+//            outputMsg += "FLAGFOX VERSION: " + Sixornot.version + " (" + Sixornot.getIPDBversion() + ")\n";
 
             outputMsg += "\nERROR MESSAGE: " + message + "\n";
             if (exception)
@@ -581,7 +581,7 @@ function newIconInstance(window)
         try { host = contentDoc.location.hostname.cropTrailingChar("."); } catch (e) {}
         if (host == "")
         {
-            icon.src = getIconPath("special/unknown");
+            icon.src = getIconPath("green");
             specialLocation = ["unknownsite"];
             logErrorMessage("Sixornot warning: no host returned for \"" + url + "\"");
             return;
@@ -589,7 +589,7 @@ function newIconInstance(window)
 
         if (!window.navigator.onLine)
         {
-            icon.src = getIconPath("special/offline");
+            icon.src = getIconPath("green");
             specialLocation = ["offlinemode"];
             consoleService.logStringMessage("Sixornot is in offline mode");
             return;  // Offline mode or otherwise not connected
@@ -597,7 +597,7 @@ function newIconInstance(window)
 
         if (DnsHandler.isProxiedDNS(url))
         {
-            icon.src = getIconPath("special/anonymous");
+            icon.src = getIconPath("green");
             specialLocation = ["nodnserror"];
             consoleService.logStringMessage("Sixornot is in proxied mode");
             Sixornot.warning(window, "sixornot.warn.proxy", strings.GetStringFromName("proxywarnmessage"));
@@ -626,7 +626,7 @@ function newIconInstance(window)
 
             if (returnedIPs[0] == "FAIL")
             {
-                icon.src = getIconPath("special/error");
+                icon.src = getIconPath("blue");
                 specialLocation = ["lookuperror"];
                 return;  // DNS lookup failed (ip/countryCode/tldCountryCode stay empty)
             }
@@ -634,6 +634,7 @@ function newIconInstance(window)
             ip = returnedIPs[0];
 //            countryCode = ipdb.lookupIP(ip);
 //            tldCountryCode = lookupTLD();
+            consoleService.logStringMessage("Sixornot - found IP addresses");
 
             // This must now work as we have a valid IP address
             updateIcon();
@@ -702,12 +703,12 @@ function newIconInstance(window)
         {
             case "file:":
                 urlIsPortable = false;
-                icon.src = getIconPath("special/localfile");
+                icon.src = getIconPath("orange");
                 specialLocation = ["localfile"];
                 return true;  // Done
 
             case "data:":
-                icon.src = getIconPath("special/script");
+                icon.src = getIconPath("orange");
                 specialLocation = ["datauri", url.truncateBeforeFirstChar(",")];
                 return true;  // Done
 
@@ -715,19 +716,19 @@ function newIconInstance(window)
                 urlIsPortable = false;
                 if (url == "about:blank")  // Blank page gets its own icon and tooltip
                 {
-                    icon.src = getIconPath("special/blank");
+                    icon.src = getIconPath("orange");
                     specialLocation = ["blankpage"];
                 }
                 else  // Note: about:addons gets the normal about icon, not the puzzle piece, because it already has that as its own icon
                 {
-                    icon.src = getIconPath("special/about");
+                    icon.src = getIconPath("orange");
                     specialLocation = ["internalfile", url.truncateBeforeFirstChar("?")];
                 }
                 return true;  // Done
 
             case "chrome:":  case "resource:":
                 urlIsPortable = false;
-                icon.src = getIconPath("special/resource");
+                icon.src = getIconPath("orange");
                 specialLocation = ["internalfile", contentDoc.location.protocol + "//"];
                 return true;  // Done
 
@@ -736,12 +737,14 @@ function newIconInstance(window)
             default:
                 if (host == "")
                     return false;  // Unknown host -> still need to look up
+                
+                icon.src = getIconPath("red");
 /*                if (!countryCode)
                 {
                     icon.src = getIconPath("special/unknown");  // Have a host (and ip) but no country -> unknown site
                     specialLocation = ["unknownsite"];
                     return true;  // Done
-                } */
+                } 
                 switch (countryCode)  // IP has been looked up
                 {
                     case "-A":  case "-B":  case "-C":
@@ -758,7 +761,7 @@ function newIconInstance(window)
                     default:
                         icon.src = getIconPath((safeGetBoolPref("sixornot.usealticons") ? "flagset2/" : "flagset1/") + countryCode.toLowerCase());
                         break;
-                }
+                } */
                 specialLocation = null;
                 return true;  // Done
         }
