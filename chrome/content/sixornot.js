@@ -738,7 +738,7 @@ function newIconInstance(window)
                 if (host == "")
                     return false;  // Unknown host -> still need to look up
                 
-                icon.src = getIconPath("red");
+                icon.src = getIconPath("sixornot_button_ipv4_256");
 /*                if (!countryCode)
                 {
                     icon.src = getIconPath("special/unknown");  // Have a host (and ip) but no country -> unknown site

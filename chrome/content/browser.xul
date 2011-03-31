@@ -22,7 +22,7 @@
     <hbox id="urlbar-icons"> <!-- overlay into the urlbar-icons hbox inside the address bar -->
 
         <box id="sixornot-button" width="16" height="16" align="center" pack="center" insertbefore="star-button">
-            <image id="sixornot-icon" tooltip="sixornot-tooltip" src="chrome://sixornot/skin/icons/sixornot_button_v6only_16.png"/>
+            <image id="sixornot-icon" tooltip="sixornot-tooltip" width="16" height="16" src="chrome://sixornot/skin/icons/sixornot_button_v6only_16.png"/>
             <tooltip id="sixornot-tooltip"/>
 <!--            <image id="sixornot-icon" context="sixornot-menu" tooltip="sixornot-tooltip" src="chrome://sixornot/skin/icons/red.png"/>
             <menupopup id="sixornot-menu" style="direction: &locale.dir;;"/>
