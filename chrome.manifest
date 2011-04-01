@@ -2,7 +2,7 @@ content sixornot chrome/content/ contentaccessible=yes
 
 overlay chrome://browser/content/browser.xul chrome://sixornot/content/browser.xul
 
-locale sixornot en-UK locale/en-UK/
+locale sixornot en-GB locale/en-GB/
 
 skin sixornot classic/1.0 skin/
 style chrome://global/content/customizeToolbar.xul chrome://sixornot/skin/skin.css

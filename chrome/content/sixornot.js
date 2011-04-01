@@ -481,7 +481,9 @@ function newIconInstance(window)
     var url = "";              // The URL of the current page
     var urlIsPortable = true;  // Is the URL not on this computer?
     var host = "";             // The host name of the current URL
-    var ip = "";               // The IP address of the current host
+//    var ip = "";               // The IP address of the current host
+    var ipv4s = [];               // The IP addresses of the current host
+    var ipv6s = [];               // The IP addresses of the current host
 //    var countryCode = null;    // The country code of the current IP address
 //    var tldCountryCode = null; // The country code of the current domain name
 //    var metaTags = null;       // The meta tags in the current page
@@ -563,7 +565,9 @@ function newIconInstance(window)
         url = contentDoc.location.href;
         urlIsPortable = true;
         host = "";
-        ip = "";
+//        ip = "";
+        ipv6s = [];
+        ipv4s = [];
 //        countryCode = null;
 //        tldCountryCode = null;
 //        metaTags = null;
@@ -581,7 +585,7 @@ function newIconInstance(window)
         try { host = contentDoc.location.hostname.cropTrailingChar("."); } catch (e) {}
         if (host == "")
         {
-            icon.src = getIconPath("green");
+            icon.src = getIconPath("sixornot_button_none_256");
             specialLocation = ["unknownsite"];
             logErrorMessage("Sixornot warning: no host returned for \"" + url + "\"");
             return;
@@ -589,7 +593,7 @@ function newIconInstance(window)
 
         if (!window.navigator.onLine)
         {
-            icon.src = getIconPath("green");
+            icon.src = getIconPath("sixornot_button_none_256");
             specialLocation = ["offlinemode"];
             consoleService.logStringMessage("Sixornot is in offline mode");
             return;  // Offline mode or otherwise not connected
@@ -597,7 +601,7 @@ function newIconInstance(window)
 
         if (DnsHandler.isProxiedDNS(url))
         {
-            icon.src = getIconPath("green");
+            icon.src = getIconPath("sixornot_button_none_256");
             specialLocation = ["nodnserror"];
             consoleService.logStringMessage("Sixornot is in proxied mode");
             Sixornot.warning(window, "sixornot.warn.proxy", strings.GetStringFromName("proxywarnmessage"));
@@ -631,7 +635,8 @@ function newIconInstance(window)
                 return;  // DNS lookup failed (ip/countryCode/tldCountryCode stay empty)
             }
 
-            ip = returnedIPs[0];
+            ipv4s = returnedIPs;
+            ipv6s = returnedIPs;
 //            countryCode = ipdb.lookupIP(ip);
 //            tldCountryCode = lookupTLD();
             consoleService.logStringMessage("Sixornot - found IP addresses");
@@ -703,12 +708,12 @@ function newIconInstance(window)
         {
             case "file:":
                 urlIsPortable = false;
-                icon.src = getIconPath("orange");
+                icon.src = getIconPath("sixornot_button_none_256");
                 specialLocation = ["localfile"];
                 return true;  // Done
 
             case "data:":
-                icon.src = getIconPath("orange");
+                icon.src = getIconPath("sixornot_button_none_256");
                 specialLocation = ["datauri", url.truncateBeforeFirstChar(",")];
                 return true;  // Done
 
@@ -716,19 +721,19 @@ function newIconInstance(window)
                 urlIsPortable = false;
                 if (url == "about:blank")  // Blank page gets its own icon and tooltip
                 {
-                    icon.src = getIconPath("orange");
+                    icon.src = getIconPath("sixornot_button_none_256");
                     specialLocation = ["blankpage"];
                 }
-                else  // Note: about:addons gets the normal about icon, not the puzzle piece, because it already has that as its own icon
+                else
                 {
-                    icon.src = getIconPath("orange");
+                    icon.src = getIconPath("sixornot_button_none_256");
                     specialLocation = ["internalfile", url.truncateBeforeFirstChar("?")];
                 }
                 return true;  // Done
 
             case "chrome:":  case "resource:":
                 urlIsPortable = false;
-                icon.src = getIconPath("orange");
+                icon.src = getIconPath("sizornot_button_none_256");
                 specialLocation = ["internalfile", contentDoc.location.protocol + "//"];
                 return true;  // Done
 
@@ -794,10 +799,22 @@ function newIconInstance(window)
             catch (e) { return "?????"; }
         } */
 
-        if (host != "" && host != ip)
+        function ip4element(element, index, array) {
+            addLabeledLine("ipv4address", element);
+        }
+        function ip6element(element, index, array) {
+            addLabeledLine("ipv6address", element);
+        }
+
+//        if (host != "" && host != ip)
+        if (host != "")
             addLabeledLine("domainname", host);
-        if (ip != "")
-            addLabeledLine("ipaddress", ip);
+        if (ipv4s != [])
+            ipv4s.forEach(ip4element);
+//            addLabeledLine("IPv4address", ip);
+        if (ipv6s != [])
+            ipv6s.forEach(ip6element);
+//            addLabeledLine("IPv6address", ip);
 //        if (countryCode)
 //            addLabeledLine("serverlocation", safeGetCountryName(countryCode));
 //        if (tldCountryCode && tldCountryCode != countryCode)
@@ -1165,7 +1182,7 @@ function newIconInstance(window)
     /* Listening to every keypress here because dynamically adding to a <keyset> with <keys> being listened to doesn't seem to work well.
        This function only takes around a microsecond or less to run so it shouldn't affect performance.
        event.charCode is case-sensitive so I don't need to check for shift separately. */
-    function onKeyPressed(event)
+/*    function onKeyPressed(event)
     {
         if (event.ctrlKey || event.altKey || event.metaKey)
         {
@@ -1173,7 +1190,7 @@ function newIconInstance(window)
             if (boundKey)
                 doAction( boundKey[getModsCode(event.ctrlKey,event.altKey,event.metaKey)] );
         }
-    }
+    } */
 
     /* The "online" and "offline" events fire many times at once on the window object.
        To avoid redundant updates I just reset things and let it update on the next poll.
@@ -1668,10 +1685,10 @@ defineLazyGetter("proxyService", function() {
     return Components.classes["@mozilla.org/network/protocol-proxy-service;1"]
                      .getService(Components.interfaces.nsIProtocolProxyService);
 });
-defineLazyGetter("tldService", function() {
-    return Components.classes["@mozilla.org/network/effective-tld-service;1"]
-                     .getService(Components.interfaces.nsIEffectiveTLDService);
-});
+//defineLazyGetter("tldService", function() {
+//    return Components.classes["@mozilla.org/network/effective-tld-service;1"]
+//                     .getService(Components.interfaces.nsIEffectiveTLDService);
+//});
 defineLazyGetter("consoleService", function() {
     return Components.classes["@mozilla.org/consoleservice;1"]
                      .getService(Components.interfaces.nsIConsoleService);
@@ -1680,14 +1697,14 @@ defineLazyGetter("promptService", function() {
     return Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
                      .getService(Components.interfaces.nsIPromptService);
 });
-defineLazyGetter("clipboardHelper", function() {
-    return Components.classes["@mozilla.org/widget/clipboardhelper;1"]
-                     .getService(Components.interfaces.nsIClipboardHelper);
-});
-defineLazyGetter("cookieManager", function() {
-    return Components.classes["@mozilla.org/cookiemanager;1"]
-                     .getService(Components.interfaces.nsICookieManager2);
-});
+//defineLazyGetter("clipboardHelper", function() {
+//    return Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+//                     .getService(Components.interfaces.nsIClipboardHelper);
+//});
+//defineLazyGetter("cookieManager", function() {
+//    return Components.classes["@mozilla.org/cookiemanager;1"]
+//                     .getService(Components.interfaces.nsICookieManager2);
+//});
 defineLazyGetter("httpService", function() {
     return Components.classes["@mozilla.org/network/protocol;1?name=http"]
                      .getService(Components.interfaces.nsIHttpProtocolHandler);
@@ -1718,6 +1735,6 @@ defineLazyGetter("strings", function() {
 defineLazyGetter("helpstrings", function() {
     return loadPropertiesFile("chrome://sixornot/locale/help.properties");
 });
-defineLazyGetter("countrynames", function() {
-    return loadPropertiesFile("chrome://sixornot/locale/countrynames.properties");
-});
+//defineLazyGetter("countrynames", function() {
+//    return loadPropertiesFile("chrome://sixornot/locale/countrynames.properties");
+//});
