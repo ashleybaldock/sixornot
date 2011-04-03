@@ -481,12 +481,9 @@ function newIconInstance(window)
     var url = "";              // The URL of the current page
     var urlIsPortable = true;  // Is the URL not on this computer?
     var host = "";             // The host name of the current URL
-//    var ip = "";               // The IP address of the current host
     var ipv4s = [];               // The IP addresses of the current host
     var ipv6s = [];               // The IP addresses of the current host
-//    var countryCode = null;    // The country code of the current IP address
-//    var tldCountryCode = null; // The country code of the current domain name
-//    var metaTags = null;       // The meta tags in the current page
+    var usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
 
     var icon = window.document.getElementById("sixornot-icon");
 //    var menu = window.document.getElementById("sixornot-menu");
@@ -565,12 +562,8 @@ function newIconInstance(window)
         url = contentDoc.location.href;
         urlIsPortable = true;
         host = "";
-//        ip = "";
         ipv6s = [];
         ipv4s = [];
-//        countryCode = null;
-//        tldCountryCode = null;
-//        metaTags = null;
 
         // If we've changed pages before completing a lookup, then abort the old request first
         DnsHandler.cancelRequest(DNSrequest);
@@ -609,10 +602,8 @@ function newIconInstance(window)
         }
 
         // Ideally just hitting the DNS cache here
-//        DNSrequest = DnsHandler.resolveHost(host, onReturnedIP);
         DNSrequest = DnsHandler.resolveHost(host, onReturnedIPs);
 
-//        function onReturnedIP(returnedIP)
         function onReturnedIPs(returnedIPs)
         {
             DNSrequest = null;  // Request complete
@@ -635,10 +626,20 @@ function newIconInstance(window)
                 return;  // DNS lookup failed (ip/countryCode/tldCountryCode stay empty)
             }
 
-            ipv4s = returnedIPs;
-            ipv6s = returnedIPs;
-//            countryCode = ipdb.lookupIP(ip);
-//            tldCountryCode = lookupTLD();
+
+            function sixorfour(element, index, array) {
+                if (element.indexOf(":") != -1)
+                {
+                    ipv6s.push(element);
+                }
+                else
+                {
+                    ipv4s.push(element);
+                }
+            }
+
+            returnedIPs.forEach(sixorfour);
+
             consoleService.logStringMessage("Sixornot - found IP addresses");
 
             // This must now work as we have a valid IP address
@@ -743,7 +744,37 @@ function newIconInstance(window)
                 if (host == "")
                     return false;  // Unknown host -> still need to look up
                 
-                icon.src = getIconPath("sixornot_button_ipv4_256");
+                if (ipv6s.length == 0)
+                {
+                    // We only have IPv4 addresses for the website
+                    if (ipv4s.length == 0)
+                    {
+                        // No addresses at all, question mark icon
+                        icon.src = getIconPath("sixornot_button_none_256");
+                    }
+                    else
+                    {
+                        // v4 only icon
+                        icon.src = getIconPath("sixornot_button_ipv4_256");
+                    }
+                }
+                else
+                {
+                    // We have at least one IPv6 address
+                    if (ipv4s.length == 0)
+                    {
+                        // We only have IPv6 addresses, v6 only icon
+                        icon.src = getIconPath("sixornot_button_v6only_256");
+                    }
+                    else
+                    {
+                        // v6 and v4 addresses, display green icon (or orange when connection check implemented)
+                        // If we can connect to this site using IPv6, display green
+                        // If we cannot, display orange
+                        icon.src = getIconPath("sixornot_button_using6_256");
+                    }
+                }
+//                icon.src = getIconPath("sixornot_button_ipv4_256");
 /*                if (!countryCode)
                 {
                     icon.src = getIconPath("special/unknown");  // Have a host (and ip) but no country -> unknown site
