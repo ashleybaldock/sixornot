@@ -1,13 +1,12 @@
 /* This is a JavaScript module (JSM) to be imported via Components.utils.import() and acts as a singleton.
    Only the following listed symbols will exposed on import, and only when and where imported. */
 
-/* This library is heavily based on the excellent Flagfox addon */
+/* This library is heavily based on the excellent Flagfox addon by Dave Garrett
+See flagfox.net for more information */
 
 const EXPORTED_SYMBOLS = ["Sixornot"];
 
-/* Components.utils.import("resource://flagfox/ipdb.jsm");  // Access IPDB here */
-
-var SixornotVersion = "4.1.x";  // Fetched on startup; value here is a fallback
+var SixornotVersion = "1";  // Fetched on startup; value here is a fallback
 
 var mainPrefListener = null;
 var warningsThisSession = [];
@@ -47,8 +46,6 @@ function startup()
         }
 
         const id = "sixornot@entropy.me.uk";  // Sixornot ID
-//        const IPv4DBfilename = "ip4.db";                      // IPv4 DB filename
-//        const IPv6DBfilename = "ip6.db";                      // IPv6 DB filename
 
         if ("@mozilla.org/extensions/manager;1" in Components.classes)  // Gecko 1.9.x
         {
@@ -56,13 +53,6 @@ function startup()
                                              .getService(Components.interfaces.nsIExtensionManager);
             SixornotVersion = ExtensionManager.getItemForID(id)
                                              .version;
-//            var ip4db = ExtensionManager.getInstallLocation(id)
-//                                        .getItemLocation(id);
-//            var ip6db = ip4db.clone();
-//            ip4db.append(IPv4DBfilename);
-//            ip6db.append(IPv6DBfilename);
-//            ipdb.init(ip4db,ip6db);
-//            checkIPDBage();
             ready = true;
         }
         else  // Gecko 2.0+
@@ -71,14 +61,6 @@ function startup()
             AddonManager.getAddonByID(id, function(addon) {
                 try {
                     SixornotVersion = addon.version;
-//                    var ip4db = addon.getResourceURI(IPv4DBfilename)
-//                                     .QueryInterface(Components.interfaces.nsIFileURL)
-//                                     .file;
-//                    var ip6db = addon.getResourceURI(IPv6DBfilename)
-//                                     .QueryInterface(Components.interfaces.nsIFileURL)
-//                                     .file;
-//                    ipdb.init(ip4db,ip6db);
-//                    checkIPDBage();
                     ready = true;
                 } catch (e) { handleStartupError(e); }  // This callback is outside of the exception catching for startup()
             });
@@ -99,16 +81,9 @@ function startup()
 
 function shutdown()
 {
-//    ipdb.close();
     if (mainPrefListener)
         mainPrefListener.unregister();
 }
-
-/* function checkIPDBage()  // Check if the IPDB version is getting old and results are beginning to get particularly stale (3 months or more old)
-{
-    if (ipdb.lastModifiedTime && Date.now() - ipdb.lastModifiedTime >= 7776000000)
-        Flagfox.warning(getCurrentWindow(), "flagfox.warn.stale", strings.GetStringFromName("stalewarnmessage"));
-} */
 
 function onGlobalPrefChange(branch,prefName)
 {
@@ -433,14 +408,6 @@ var Sixornot =
         currentBrowser.selectedTab = currentBrowser.addTab(url,null,null);
     }, */
 
-/*    getIPDBversion : function()  // Returns current Flagfox IPDB file modification date as YYYY-M
-    {
-        if (!ipdb.lastModifiedTime)
-            return "missing IPDB!";
-        var date = new Date(ipdb.lastModifiedTime);
-        return date.getUTCFullYear() + "-" + (date.getUTCMonth()+1);  // JS months are 0-11, just to be confusing
-    }, */
-
     locale :
     {
         get content()  // Firefox primary content locale (user set)
@@ -545,7 +512,6 @@ function newIconInstance(window)
         catch (e)
         {
             Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
-            //Sixornot.error("Error during poll loop!",e);
         }
     }
 
@@ -621,7 +587,7 @@ function newIconInstance(window)
 
             if (returnedIPs[0] == "FAIL")
             {
-                icon.src = getIconPath("blue");
+                icon.src = getIconPath("sixornot_button_none_256");
                 specialLocation = ["lookuperror"];
                 return;  // DNS lookup failed (ip/countryCode/tldCountryCode stay empty)
             }
@@ -647,61 +613,7 @@ function newIconInstance(window)
         }
     }
 
-/*    function lookupTLD()
-    {
-        if (!countryCode)
-            return null;  // If no country code then no host and no TLD
-
-        var tld = host.truncateAfterLastChar(".");
-        if (tld.length != 2)
-            return null;
-        var tldCode = tld.toUpperCase();  // Country code for this TLD
-
-        // The nationality of the server location and the domain registration are not necissarily the same.
-        // This case is checked for and a notificaion is sent up for the user to attempt to reduce user confusion on the matter.
-        var doCheck = true;
-        switch (tldCode)         // Special TLD cases:
-        {
-            case "UK":
-                tldCode = "GB";  // List uses country code for Great Britan instead of United Kingdom
-                break;
-            case "EU":           // Don't tell users European Union TLDs aren't in European countries
-                doCheck = false;
-                break;
-            case "FM":           // Some countries have TLDs that are frequently sold for other uses as abbreviations or words
-            case "TV":
-            case "TO":
-            case "ME":
-            case "LY":
-                doCheck = false;
-                break;
-        }
-        switch (countryCode)     // Special IP range cases:
-        {
-            case "EU":           // Don't tell users European Union IPs aren't in European countries
-            case "AP":           // Don't tell users Asia/Pacific IPs aren't in Asian countries
-                doCheck = false;
-                break;
-        }
-
-        if (doCheck)  // Do the check if the TLD and country codes aren't in the exception lists
-        {
-            try {
-                var tldCountry = countrynames.GetStringFromName(tldCode);  // Throws an exception if not found
-                if (tldCountry.length && countryCode != tldCode)
-                {
-                    var ipCountry = countrynames.GetStringFromName(countryCode);
-                    Sixornot.warning(window, "sixornot.warn.tld", strings.formatStringFromName("tldwarnmessage", [ipCountry, "."+tld, tldCountry], 3));
-                }
-            } catch (e) {
-                return null;  // If the code isn't in the list then it's not a country (or not one we have the code for)
-            }
-        }
-
-        return tldCode;  // Return the country code for the domain registration
-    } */
-
-    /* Update the flag icon state (icon & tooltip)
+    /* Update the status icon state (icon & tooltip)
        Returns true if it's done and false if unknown */
     function updateIcon()
     {
@@ -711,12 +623,12 @@ function newIconInstance(window)
                 urlIsPortable = false;
                 icon.src = getIconPath("sixornot_button_none_256");
                 specialLocation = ["localfile"];
-                return true;  // Done
+                return true;
 
             case "data:":
                 icon.src = getIconPath("sixornot_button_none_256");
                 specialLocation = ["datauri", url.truncateBeforeFirstChar(",")];
-                return true;  // Done
+                return true;
 
             case "about:":
                 urlIsPortable = false;
@@ -730,13 +642,13 @@ function newIconInstance(window)
                     icon.src = getIconPath("sixornot_button_none_256");
                     specialLocation = ["internalfile", url.truncateBeforeFirstChar("?")];
                 }
-                return true;  // Done
+                return true;
 
             case "chrome:":  case "resource:":
                 urlIsPortable = false;
                 icon.src = getIconPath("sizornot_button_none_256");
                 specialLocation = ["internalfile", contentDoc.location.protocol + "//"];
-                return true;  // Done
+                return true;
 
             case "view-source:":  // TODO: handle better
                 urlIsPortable = false;
@@ -774,32 +686,8 @@ function newIconInstance(window)
                         icon.src = getIconPath("sixornot_button_using6_256");
                     }
                 }
-//                icon.src = getIconPath("sixornot_button_ipv4_256");
-/*                if (!countryCode)
-                {
-                    icon.src = getIconPath("special/unknown");  // Have a host (and ip) but no country -> unknown site
-                    specialLocation = ["unknownsite"];
-                    return true;  // Done
-                } 
-                switch (countryCode)  // IP has been looked up
-                {
-                    case "-A":  case "-B":  case "-C":
-                        urlIsPortable = false;
-                        icon.src = getIconPath("special/privateip");
-                        break;
-                    case "-L":
-                        urlIsPortable = false;
-                        icon.src = getIconPath("special/localhost");
-                        break;
-                    case "A1":  case "A2":
-                        icon.src = getIconPath("special/anonymous");
-                        break;
-                    default:
-                        icon.src = getIconPath((safeGetBoolPref("sixornot.usealticons") ? "flagset2/" : "flagset1/") + countryCode.toLowerCase());
-                        break;
-                } */
                 specialLocation = null;
-                return true;  // Done
+                return true;
         }
     }
 
@@ -811,7 +699,10 @@ function newIconInstance(window)
         var grid = window.document.createElement("grid");
         var rows = window.document.createElement("rows");
 
-        function addLabeledLine(labelID,lineValue)
+        var first4 = true;
+        var first6 = true;
+
+        function addLabeledLine(labelID, lineValue)
         {
             var row = window.document.createElement("row");
             var label = window.document.createElement("label");
@@ -824,32 +715,61 @@ function newIconInstance(window)
             rows.appendChild(row);
         }
 
-/*        function safeGetCountryName(code)
+        function addUnLabeledLine(lineValue)
         {
-            try { return countrynames.GetStringFromName(code); }
-            catch (e) { return "?????"; }
-        } */
+            var row = window.document.createElement("row");
+            var label = window.document.createElement("label");
+//            label.setAttribute("value", "");
+            var value = window.document.createElement("label");
+            value.setAttribute("value", lineValue);
+            row.appendChild(label);
+            row.appendChild(value);
+            rows.appendChild(row);
+        }
 
         function ip4element(element, index, array) {
-            addLabeledLine("ipv4address", element);
+            if (first4)
+            {
+                if (ipv4s.length == 1)
+                {
+                    addLabeledLine("ipv4address", element);
+                }
+                else
+                {
+                    addLabeledLine("ipv4addresses", element);
+                }
+                first4 = false;
+            }
+            else
+            {
+                addUnLabeledLine(element);
+            }
         }
         function ip6element(element, index, array) {
-            addLabeledLine("ipv6address", element);
+            if (first6)
+            {
+                if (ipv6s.length == 1)
+                {
+                    addLabeledLine("ipv6address", element);
+                }
+                else
+                {
+                    addLabeledLine("ipv6addresses", element);
+                }
+                first6 = false;
+            }
+            else
+            {
+                addUnLabeledLine(element);
+            }
         }
 
-//        if (host != "" && host != ip)
         if (host != "")
             addLabeledLine("domainname", host);
         if (ipv4s != [])
             ipv4s.forEach(ip4element);
-//            addLabeledLine("IPv4address", ip);
         if (ipv6s != [])
             ipv6s.forEach(ip6element);
-//            addLabeledLine("IPv6address", ip);
-//        if (countryCode)
-//            addLabeledLine("serverlocation", safeGetCountryName(countryCode));
-//        if (tldCountryCode && tldCountryCode != countryCode)
-//            addLabeledLine("domainnationality", safeGetCountryName(tldCountryCode));
 
         if (specialLocation)
         {
