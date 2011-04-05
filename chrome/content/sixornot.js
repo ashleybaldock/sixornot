@@ -461,6 +461,7 @@ function newIconInstance(window)
         logErrorMessage("Sixornot warning: attempted to load into an invalid window");
         return;
     }
+    logErrorMessage("Sixornot, valid window");
 
 //    var menuContentAge = 0;
     var specialLocation = null;

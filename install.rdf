@@ -7,6 +7,8 @@
         <em:id>sixornot@entropy.me.uk</em:id>
         <em:version>1.0</em:version>
         <em:type>2</em:type>
+
+        <em:bootstrap>true</em:bootstrap>
    
         <!-- Target Application this extension can install into, 
              with minimum and maximum supported versions. --> 
@@ -23,6 +25,6 @@
         <em:description>IPv6 status indicator</em:description>
         <em:creator>Timothy Baldock</em:creator>
         <em:homepageURL>http://www.entropy.me.uk/sixornot/</em:homepageURL>
-        <em:optionsURL>chrome://sixornot/content/options.xul</em:optionsURL>
+        <em:optionsURL>resource://sixornot/content/options.xul</em:optionsURL>
     </Description>      
 </RDF>
