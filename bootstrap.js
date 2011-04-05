@@ -71,14 +71,16 @@ function startup(aData, aReason) {
     }
     resource.setSubstitution("sixornot", alias);
 
+    Components.utils.import("resource://sixornot/chrome/content/sixornot.js");
+
     // Load into any existing windows
     let enumerator = wm.getEnumerator("navigator:browser");
     while (enumerator.hasMoreElements()) {
         let win = enumerator.getNext().QueryInterface(Ci.nsIDOMWindow);
         loadIntoWindow(win);
-        let scope = {};
-        Components.utils.import("resource://sixornot/chrome/content/sixornot.js", scope);
-        scope.Sixornot.init(win);
+//        let scope = {};
+//        Components.utils.import("resource://sixornot/chrome/content/sixornot.js", scope);
+        Sixornot.init(win);
     }
 
     // Load into any new windows
@@ -89,9 +91,9 @@ function startup(aData, aReason) {
             domWindow.addEventListener("load", function() {
                 domWindow.removeEventListener("load", arguments.callee, false);
                 loadIntoWindow(domWindow);
-                let scope = {};
-                Components.utils.import("resource://sixornot/chrome/content/sixornot.js", scope);
-                scope.Sixornot.init(domWindow);
+//                let scope = {};
+//                Components.utils.import("resource://sixornot/chrome/content/sixornot.js", scope);
+                Sixornot.init(domWindow);
             }, false);
         },
         onCloseWindow: function(aWindow) { },
