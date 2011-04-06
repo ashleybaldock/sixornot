@@ -11,6 +11,7 @@ var SixornotVersion = "1";  // Fetched on startup; value here is a fallback
 var mainPrefListener = null;
 var warningsThisSession = [];
 
+var iconsThisSession = [];
 
 var hotKeys;
 var hotClicks;
@@ -110,26 +111,57 @@ var Sixornot =
 {
     init : function(window)
     {
-        if (ready === undefined)  // Startup if not done yet
+        // Startup if this is the first time the module has been imported
+        if (ready === undefined)
+        {
             consoleService.logStringMessage("Sixornot - startup requested");
             startup();
+        }
 
-        if (ready === null)  // Halt if startup was aborted
+        // If startup was aborted before for some reason don't try again this session
+        if (ready === null)
+        {
             return;
+        }
 
-        // Load the icon for this window
-        try { newIconInstance(window); }
-        catch (e) { Sixornot.error("Error loading icon for window",e); }
+        // Load the icon for this window, add created icon to the list we need to clean up on shutdown
+        try
+        {
+            consoleService.logStringMessage("Sixornot - loading icon for new window");
+            iconsThisSession.push(newIconInstance(window));
+        }
+        catch (e)
+        {
+            Sixornot.error("Error loading icon for window", e);
+        }
     },
 
     shutdown : function(window)
     {
+        function removeicon(element, index, array) {
+            consoleService.logStringMessage("Sixornot - unloading icon");
+            try
+            {
+                // This calls the unload() method of each icon, if element is already unloaded this does nothing
+                element();
+            }
+            catch (e)
+            {
+                consoleService.logStringMessage(e);
+            }
+        }
         if (ready)
+        {
             consoleService.logStringMessage("Sixornot - shutdown requested");
+            consoleService.logStringMessage("Number of icons created this session: " + iconsThisSession.length);
+            iconsThisSession.forEach(removeicon);
+            // Clear list of icons as they are now all unloaded - I think they will be freed from memory at this point?
+            iconsThisSession = [];
             shutdown();
+        }
     },
 
-    warning : function(window,pref,message)  // Shows a slide-down info bar (max once per session for each unique message)
+    warning : function(window, pref, message)  // Shows a slide-down info bar (max once per session for each unique message)
     {
         if (prefService.getCharPref(pref) == "disabled")  // Valid states are: "enabled", "once", & "disabled"
             return;  // Disabled by user
@@ -303,6 +335,56 @@ var Sixornot =
 //// Flag icon instance closure (one per window) ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 function newIconInstance(window)
 {
+    var loaded = false;
+    if (!window) return;
+
+    // Init UI
+    // Get the anchor for "overlaying" but make sure the UI is loaded
+    let urlbaricons = window.document.getElementById("urlbar-icons");
+    if (!urlbaricons)
+    {
+        logErrorMessage("Sixornot warning: attempted to load into an invalid window");
+        return;
+    }
+
+    // By this point we will need uninit
+    loaded = true;
+
+    let starbutton = window.document.getElementById("star-button");
+
+    // Place the new button after the last button in the top set
+    let anchor = urlbaricons.nextSibling;
+
+    var box = window.document.createElement("box");
+    box.setAttribute("id", "sixornot-button");
+    box.setAttribute("width", "16");
+    box.setAttribute("height", "16");
+    box.setAttribute("align", "center");
+    box.setAttribute("pack", "center");
+
+    var icon = window.document.createElement("image");
+    icon.setAttribute("id", "sixornot-icon");
+    icon.setAttribute("tooltip", "sixornot-tooltip");
+    icon.setAttribute("width", "16");
+    icon.setAttribute("height", "16");
+    icon.setAttribute("src", "resource://sixornot/skin/icons/sixornot_button_v6only_16.png");
+
+    var tooltip = window.document.createElement("tooltip");
+    tooltip.setAttribute("id", "sixornot-tooltip");
+
+    box.appendChild(icon);
+    box.appendChild(tooltip);
+    // If star icon visible, insert before it, otherwise just append to urlbaricons
+    if (!starbutton)
+    {
+        urlbaricons.appendChild(box);
+    }
+    else
+    {
+        urlbaricons.insertBefore(box, starbutton);
+    }
+
+    // UI init success, init variables
     var contentDoc = null;     // Reference to the current page document object
     var url = "";              // The URL of the current page
     var urlIsPortable = true;  // Is the URL not on this computer?
@@ -311,15 +393,15 @@ function newIconInstance(window)
     var ipv6s = [];               // The IP addresses of the current host
     var usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
 
-    var icon = window.document.getElementById("sixornot-icon");
+//    var icon = window.document.getElementById("sixornot-icon");
 //    var menu = window.document.getElementById("sixornot-menu");
-    var tooltip = window.document.getElementById("sixornot-tooltip");
+//    var tooltip = window.document.getElementById("sixornot-tooltip");
 //    if (!icon || !menu || !tooltip)
-    if (!icon || !tooltip)
+/*    if (!icon || !tooltip)
     {
         logErrorMessage("Sixornot warning: attempted to load into an invalid window");
         return;
-    }
+    } */
     consoleService.logStringMessage("Sixornot - loading into valid window");
 
 //    var menuContentAge = 0;
@@ -340,26 +422,48 @@ function newIconInstance(window)
     window.addEventListener("offline",onChangedOnlineStatus,false);
     window.addEventListener("unload",unload,false);
 
+    // Return unload method which is then used during extension shutdown
+    return unload;
+
     function unload()
     {
-        window.removeEventListener("unload",unload,false);
-        window.removeEventListener("offline",onChangedOnlineStatus,false);
-        window.removeEventListener("online",onChangedOnlineStatus,false);
-//        window.removeEventListener("keypress",onKeyPressed,false);
-        tooltip.removeEventListener("popupshowing",updateTooltipContent,false);
-//        menu.removeEventListener("popupshowing",onMenuShowing,false);
-//        menu.removeEventListener("command",onMenuCommand,false);
-//        icon.removeEventListener("mouseover",onIconHover,false);
-//        icon.removeEventListener("mousedown",onIconMouseDown,false);
-//        icon.removeEventListener("click",onIconClick,false);
-        window.clearInterval(pollLoopID);
-        DnsHandler.cancelRequest(DNSrequest);
-        prefListener.unregister();
-        tooltip = null;
-//        menu = null;
-        icon = null;
-//        metaTags = null;
-        contentDoc = null;
+        // Unload method marks this icon as unloaded and useless
+        if (loaded)
+        {
+            consoleService.logStringMessage("Sixornot - unload method called while loaded");
+            window.removeEventListener("unload",unload,false);
+            window.removeEventListener("offline",onChangedOnlineStatus,false);
+            window.removeEventListener("online",onChangedOnlineStatus,false);
+//            window.removeEventListener("keypress",onKeyPressed,false);
+            tooltip.removeEventListener("popupshowing",updateTooltipContent,false);
+//            menu.removeEventListener("popupshowing",onMenuShowing,false);
+//            menu.removeEventListener("command",onMenuCommand,false);
+//            icon.removeEventListener("mouseover",onIconHover,false);
+//            icon.removeEventListener("mousedown",onIconMouseDown,false);
+//            icon.removeEventListener("click",onIconClick,false);
+            window.clearInterval(pollLoopID);
+            DnsHandler.cancelRequest(DNSrequest);
+            prefListener.unregister();
+
+            // Remove UI
+            tooltip.parentNode.removeChild(tooltip);
+            icon.parentNode.removeChild(icon);
+            box.parentNode.removeChild(box);
+
+            tooltip = null;
+//            menu = null;
+            icon = null;
+            box = null;
+//            metaTags = null;
+            contentDoc = null;
+
+            loaded = false;
+        }
+        else
+        {
+            consoleService.logStringMessage("Sixornot - unload method called while not loaded");
+        }
+
     }
 
     function pollForContentChange()  // Polling instead of event based to make sure it updates on every page (including error pages)
