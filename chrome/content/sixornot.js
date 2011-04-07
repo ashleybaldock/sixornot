@@ -39,12 +39,6 @@ function startup()
 
     try
     {
-        if (checkForAbsoluteIncompatability())  // Check if compatibility checking is overridden past its known breaking point
-        {
-            ready = null;
-            return;  // No-go
-        }
-
         const id = "sixornot@entropy.me.uk";  // Sixornot ID
 
         if ("@mozilla.org/extensions/manager;1" in Components.classes)  // Gecko 1.9.x
@@ -982,89 +976,6 @@ function newIconInstance(window)
         }
     } */
 
-/*    function getParameterValue(token,template,encoding)
-    {
-        var parameter, maybeEncode;
-        switch (encoding)
-        {
-            default:
-            case "none":
-                parameter = token.slice(1,-1);  // Cut off { & }
-                maybeEncode = function(a) { return a; };
-                break;
-
-            case "url":
-                parameter = token.slice(3,-3);  // Cut off %7B & %7D
-                maybeEncode = encodeURIComponent;
-                break;
-
-            case "escapequotes":
-                parameter = token.slice(1,-1);
-                maybeEncode = function(str) { return String(str).replace(/\\/g,"\\\\").replace(/\'/g,"\\\'").replace(/\"/g,"\\\""); };
-                break;
-        }
-        parameter = parameter.toLowerCase().split('-');  // Split into components if available (left/right side of '-')
-        switch (parameter[0])
-        {
-            case "fullurl":
-                if (encoding == "url")  // Some templates will need the URL variable to be encoded and others will need it to not be
-                {
-                    var charBeforeURL = template[ template.search(/\{fullURL\}/i) - 1 ];
-                    if (charBeforeURL == '=' || charBeforeURL == ':')
-                        return encodeURIComponent(url);
-                }
-                return url;
-
-            case "basedomainname":
-                try { return maybeEncode(tldService.getBaseDomainFromHost(host)); }
-                catch (e) {}  // Throws if something is wrong with host name or is IP address; fall-through and use full host name
-
-            case "domainname":
-                return maybeEncode(host);
-
-            case "tld":
-                try { return maybeEncode(tldService.getPublicSuffixFromHost(host)); }
-                catch (e) { return maybeEncode(host.truncateAfterLastChar(".")); }
-
-            case "ipaddress":
-                return maybeEncode(ip);
-
-            case "countrycode":
-                return countryCode;  // Always two ASCII characters; never needs encoding
-
-            case "countryname":
-                return maybeEncode(countrynames.GetStringFromName(countryCode));
-
-            case "title":
-                return maybeEncode(contentDoc.title);
-
-            case "baselocale":
-                var base = true;  // language-dialect -> language
-            case "locale":
-                var locale;
-                switch (parameter[1])
-                {
-                    default:      locale = Flagfox.locale.content;           break;  // {locale}      -> primary user requested content locale
-                    case "ui":    locale = Flagfox.locale.UI;                break;  // {locale-ui}   -> Flagfox UI strings locale (e.g. country names)
-                    case "os":    locale = Flagfox.locale.OS;                break;  // {locale-os}   -> native operating system locale
-                    case "page":  locale = contentDoc.documentElement.lang;  break;  // {locale-page} -> locale stated for the current page (empty string if none)
-                }
-                return maybeEncode( base ? locale.split('-')[0] : locale );  // Shouldn't need encoding, but do so if needed just in case of a bogus value in content
-
-            case "meta":
-                // Unfortunately contentDoc.querySelector is case-sensitive and HTML in the wild is messy, so search manually
-                if (!metaTags)  // Cached?
-                    metaTags = contentDoc.getElementsByTagName("meta");  // case-insensitive tag search
-                for (var i=0; i < metaTags.length; i++)
-                    if (parameter[1] == metaTags[i].name.toLowerCase())  // case-insensitive name search
-                        return maybeEncode(metaTags[i].content);
-                return "";  // Meta tags are optional and vary, thus they're always allowed placeholders; return empty string if no matched name
-
-            default:
-                return token;  // Don't know what it is; leave it alone
-        }
-    } */
-
     function onPrefChange(branch,prefName)
     {
         switch (prefName)
@@ -1096,24 +1007,12 @@ function newIconInstance(window)
             doAction(hotClicks[binding]);
         }
 
-        /* There is a dblclick event, but I can't use that because it's sent out in addition to two click events,
-           not instead of. As a result, I just use the click event and detect multiple clicks within a short timeframe.
-           (which also allows for triple click detection) The time has to be very short, otherwise when a user does a
-           single click action it will still have to wait a while to see if there's going to be a second click. */
-        window.clearTimeout(this.clicktimer);
-        this.clicktimer = window.setTimeout(doClickAction, 250);
-        // Double click = two clicks within 250ms; Triple click = three clicks within 500ms
     }
 
     function onIconMouseDown(event)  // Handle keyboard modifiers when right-clicking on the icon
     {
         if (event.button == 2 && event.ctrlKey)  // Right+Ctrl
             menuContentAge = -1;  // Show all items at once
-    }
-
-    function onIconHover(event)  // Changes mouseover cursor to a hand when there is a click action
-    {
-        icon.style.cursor = isActionAllowed(hotClicks["click"]) ? "pointer" : "default" ;
     }
 
 /*    function onMenuCommand(event)
@@ -1129,19 +1028,6 @@ function newIconInstance(window)
         var menuItems = menu.getElementsByTagName("menuitem");
         for (var i=0; i < menuItems.length; i++)  // Decide which menu items to grey out if they aren't available
             menuItems[i].setAttribute("disabled", !isActionAllowed( menuItems[i].getAttribute("value") ));  // Need to use attributes here
-    } */
-
-    /* Listening to every keypress here because dynamically adding to a <keyset> with <keys> being listened to doesn't seem to work well.
-       This function only takes around a microsecond or less to run so it shouldn't affect performance.
-       event.charCode is case-sensitive so I don't need to check for shift separately. */
-/*    function onKeyPressed(event)
-    {
-        if (event.ctrlKey || event.altKey || event.metaKey)
-        {
-            var boundKey = hotKeys[event.charCode];
-            if (boundKey)
-                doAction( boundKey[getModsCode(event.ctrlKey,event.altKey,event.metaKey)] );
-        }
     } */
 
     /* The "online" and "offline" events fire many times at once on the window object.
@@ -1197,8 +1083,7 @@ var DnsHandler =
                     IPAddresses.push(nsrecord.getNextAddrAsString());
                 }
 
-                // Needs to be changed to return all the IPs, not just one of them (as an array? how does that affect returnIP?)
-//                returnIP(nsrecord.getNextAddrAsString());
+                // Return array of all IP addresses found for this domain
                 returnIP(IPAddresses)
             }
         };
@@ -1215,201 +1100,12 @@ var DnsHandler =
     }
 };
 
-//// Update handling functions //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/* Migration from old Flagfox versions:
-     1) Imports old custom action from Flagfox 3.3.x
-     2) Imports old middle click option
-     3) Wipes all obsolete Flagfox preferences (prefs that don't have defaults) */
-/*function migrateOldPrefs()
-{
-    Flagfox.actions.assertLoaded();
-
-    try  // Import flagfox.customlookup.* from Flagfox 3.3.x
-    {
-        var oldCustomAction = new Object();
-        oldCustomAction.name = getUCharPref(prefService, "flagfox.customlookup.name");
-        oldCustomAction.template = getUCharPref(prefService, "flagfox.customlookup.url");
-        oldCustomAction.show = safeGetBoolPref("flagfox.customlookup.enabled") ? true : undefined;
-        oldCustomAction.custom = true;
-        actionsList.push(oldCustomAction);
-        Flagfox.actions.save();
-        consoleService.logStringMessage("Flagfox 3 custom action imported");
-    }
-    catch (e) {}  // Throw -> pref doesn't exist (was default or already imported)
-
-    try  // Import flagfox.middleclick
-    {
-        var oldClickPref = prefService.getCharPref("flagfox.middleclick");
-        if (oldClickPref == "CopyIP")
-            oldClickPref = "Copy IP";
-        else if (oldClickPref == "Custom")
-            oldClickPref = oldCustomAction.name;
-        for (var i in actionsList)
-            if (actionsList[i].name == oldClickPref)
-            {
-                Flagfox.actions.setBindings(i, "middleclick", null);
-                Flagfox.actions.save();
-                consoleService.logStringMessage("Flagfox 3 middleclick option imported");
-                break;
-            }
-    }
-    catch (e) {}  // Throw -> pref doesn't exist (was default or already imported)
-
-    // Both the user and default branches contain the exact same list of pref names,
-    // even if any default values don't exist or any user values equal the default.
-    var defaultBranch = prefService.getDefaultBranch("flagfox.");
-    var userBranch = prefService.getBranch("flagfox.");
-    var prefsList = userBranch.getChildList("",{});
-    if (!prefsList.length)
-        throw "Could not load Flagfox preferences list";
-    for (var i in prefsList)
-    {   // Exception means no default exists and this pref is not in use
-        try { getGenericPref(defaultBranch,prefsList[i]); }
-        catch (e) { userBranch.clearUserPref(prefsList[i]); }
-    }
-} */
-
-/* If the default actions list was updated recently, then those changes should be applied to the users' settings.
-   There are three possibilities:
-      a) Default action changed -> update it
-      b) Default action removed -> delete it
-      c) Default action added   -> add it */
-/*function mergeDefaultActionUpdates()
-{
-    try
-    {
-        Flagfox.actions.assertLoaded();
-
-        if (!prefService.prefHasUserValue("flagfox.actions"))  // If already using defaults then the new defaults will be used automatically
-            return;
-
-        var updatesDone = [];
-        var defaultActionsList = JSON.parse(getUCharPref(prefService.getDefaultBranch(""), "flagfox.actions"));
-
-        function findDefaultActionByName(actionsListToSearch,name)
-        {
-            for (var i in actionsListToSearch)
-                if (!actionsListToSearch[i].custom && actionsListToSearch[i].name == name)
-                    return actionsListToSearch[i];
-            return null;
-        }
-
-        for (var i=actionsList.length-1; i>=0; i--)  // Need to scan backwards in case of deletion and index change
-            if (!actionsList[i].custom)
-            {
-                if (actionsList[i].show && actionsList[i].name == "tr.im URL")  // tr.im died; replace with bit.ly as new default
-                {
-                    updatesDone.push("default action \"bit.ly URL\" replaces now defunct \"tr.im URL\" in default menu");
-                    try { findDefaultActionByName(actionsList,"bit.ly URL").show = true; } catch (e) {}
-                }  // tr.im will be deleted down below
-
-                var action = findDefaultActionByName(defaultActionsList, actionsList[i].name);
-                if (action)
-                {
-                    if (actionsList[i].template != action.template)  // Update to template
-                    {
-                        updatesDone.push("default action template update: " + actionsList[i].name);
-                        actionsList[i].template = action.template;
-                    }
-                }
-                else  // Old default action
-                {
-                    updatesDone.push("action is no longer a default: " + actionsList[i].name);
-                    Flagfox.actions.remove(i);
-                }
-            }
-
-        for (var i in defaultActionsList)
-            if (!findDefaultActionByName(actionsList, defaultActionsList[i].name))  // New default action
-            {
-                updatesDone.push("new default action added: " + defaultActionsList[i].name);
-                Flagfox.actions.insert(i,defaultActionsList[i]);  // TODO: Check existing shortcuts if I ever add a new default with a shortcut
-            }
-
-        if (updatesDone.length)
-        {
-            consoleService.logStringMessage("Flagfox default action list updates applied for version " + Flagfox.version + ":\n" + updatesDone.join("\n"));
-            Flagfox.actions.save();
-        }
-    }
-    catch (e)
-    {
-        Flagfox.error("Error applying default actions list updates",e);
-    }
-} */
-
-/* The install.rdf file contains the listed application compatibility ranges which each addon supports. Remote support version bumps can be done via AMO.
-   As newly developed versions of applications get released, some users disable compatibility checking and force installation before the support is updated.
-   Often that works fine; sometimes it'll cause errors. Sadly, not all users can figure this out anymore, even many Minefield users.
-   This function checks to make sure we're running inside the hard known compatibility range and tells the user essentially
-   "I told you so" if it's completely incompatible. This is preferable to an error message that they won't understand. */
-function checkForAbsoluteIncompatability()
-{
-    const MAJOR_SIXORNOT_VER = "4.1+";
-    const MIN_GECKO_VER = "1.9.1";  // Hard minimum for Flagfox 4.1+; dropped all Gecko 1.9.0 support -> would error on lack of native JSON on startup
-    const MAX_GECKO_VER = null;     // No hard max; if compatibility breaks, errors will ensue
-
-    var tooOLD = (MIN_GECKO_VER && versionComparator.compare(appInfo.platformVersion,MIN_GECKO_VER) < 0);
-    var tooNEW = (MAX_GECKO_VER && versionComparator.compare(appInfo.platformVersion,MAX_GECKO_VER) > 0);
-
-    if ( tooOLD || tooNEW )
-    {
-        logErrorMessage("Sixornot INCOMPATIBILITY ERROR: Gecko version " + appInfo.platformVersion + " NOT supported!");
-
-        var title = "Sixornot " + MAJOR_SIXORNOT_VER + " is NOT compatible with " + appInfo.vendor + " " + appInfo.name + " " + appInfo.version + "!";
-        var msg = "You have forced the installation/running of Sixornot " + MAJOR_SIXORNOT_VER + " by overriding normal compatibility checking. " +
-                  "This doesn't always work well and this time it didn't. Sixornot " + MAJOR_SIXORNOT_VER + " is NOT compatible with the Mozilla code-base " +
-                  "this application is running: Gecko " + appInfo.platformVersion + "\n\n" +
-                  "You would have a probably confusing error message right here if it weren't for this dialog. Instead, I'm going to point you in the right " +
-                  "direction. You need to install " + (tooOLD?"an OLDER":"a NEWER") + " Sixornot version that supports your application.\n\n";
-        if (tooNEW)
-            msg += "If you're running a development (alpha, beta, or Minefield/Trunk) version of your application, " +
-                   "you should probably check for development versions of your other addons too.\n\n";
-        else if (tooOLD)
-            msg += "If you're running a version of your application old enough that Mozilla has dropped support for it, " +
-                   "that means you probably should have upgraded by now. Please do so as soon as possible for security reasons, if not addon support.\n\n";
-        msg += "Close this dialog to go to the Sixornot versions list page on Mozilla's Add-ons site and install the applicable Sixornot version.";
-
-        promptService.alert(null,title,msg);
-        Sixornot.addTabInCurrentBrowser("https://addons.mozilla.org/addon/5791/versions/");  // URL redirects to application and locale specific version
-        if (tooOLD)
-            Sixornot.addTabInCurrentBrowser("http://www.mozilla.com/en-US/firefox/3.0/firstrun/");  // Too old -> Firefox 3.0.x (only en-US page has warning)
-        return true;  // Ain't gonna work
-    }
-
-    return false;  // Normal compatibility checking will be used; proceed as normal
-}
-
 //// Utility functions //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function getIconPath(filename)
 {
     return "chrome://sixornot/skin/icons/" + filename + ".png";
 }
-
-// Automatically generate and cache IPDB hash on-demand
-/* defineLazyGetter("IPDBhash", function() {
-    return ipdb.generateQuickHash(3);
-}); */
-
-/* Set secret decoder ring for Geotool to try to reduce crippling server abuse from other sources.
-   This gives up-to-date Flagfox users an all-access pass and restricts everyone else via a captcha at certain times.
-   This does not, however, allow for infinite requests. Geotool will still auto-block after many excessive requests.
-   This only identifies the Flagfox version. All users on all systems will get the same cookie for the same Flagfox version.
-   No information that would identify this computer, profile, or user is sent and it is only sent to the Geotool server. */
-/* function setGeotoolCookie()
-{
-    const expiry = (Date.now()/1000) + 600;  // Set 10 minute expiration time (automatically reset as needed on each call)
-    const values = [
-        ["Flagfox-version", FlagfoxVersion],                // Flagfox extension version string
-        ["Flagfox-IPDBversion", Flagfox.getIPDBversion()],  // Flagfox IP location database version string (year and month)
-        ["Flagfox-IPDBhash", IPDBhash]                      // 6 char base-36 quick hash of this version's IP location database file (used to verify versions)
-    ];
-    values.forEach(function(value) {
-        cookieManager.add("geo.flagfox.net","/",value[0],value[1],false,true,false,expiry);  // HttpOnly mode on: only accessible by Geotool server, not client scripts
-    });
-} */
 
 /* Generic pref listener class
     Usage:
@@ -1462,6 +1158,7 @@ function doOnShutdown(onShutdown)
     observerService.addObserver(quitEventObserver, "quit-application", false);
 }
 
+// Used for slide-down info bar
 function hashString(string)  // Returns a base-64 encoded MD5 hash of a Unicode string
 {
     var converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
@@ -1475,7 +1172,8 @@ function hashString(string)  // Returns a base-64 encoded MD5 hash of a Unicode 
     return cryptoHash.finish(true);
 }
 
-function getModsCode(ctrl,alt,meta)  // Convert boolean triplet into an integer
+// Needed for actions code
+/* function getModsCode(ctrl,alt,meta)  // Convert boolean triplet into an integer
 {
     var code = 0;
     if (ctrl)
@@ -1485,14 +1183,14 @@ function getModsCode(ctrl,alt,meta)  // Convert boolean triplet into an integer
     if (meta)
         code |= 4;
     return code;
-}
+} */
 
-function getCurrentWindow()
+/* function getCurrentWindow()
 {
     return Components.classes["@mozilla.org/appshell/window-mediator;1"]
                      .getService(Components.interfaces.nsIWindowMediator)
                      .getMostRecentWindow("navigator:browser");
-}
+} */
 
 function logErrorMessage(message)  // Logs a string message to the error console with no file link, similar to consoleService.logStringMessage(), but with "error" status
 {

@@ -41,7 +41,6 @@ function startup()
 
     try
     {
-
         const id = "sixornot@entropy.me.uk";  // Sixornot ID
 
         if ("@mozilla.org/extensions/manager;1" in Components.classes)  // Gecko 1.9.x
@@ -367,7 +366,7 @@ function newIconInstance(window)
     icon.setAttribute("tooltip", "sixornot-tooltip");
     icon.setAttribute("width", "16");
     icon.setAttribute("height", "16");
-    icon.setAttribute("src", "resource://sixornot/skin/icons/sixornot_button_v6only_16.png");
+    icon.setAttribute("src", "resource://sixornot/skin/icons/sixornot_button_none_16.png");
 
     var tooltip = window.document.createElement("tooltip");
     tooltip.setAttribute("id", "sixornot-tooltip");
@@ -508,7 +507,7 @@ function newIconInstance(window)
         try { host = contentDoc.location.hostname.cropTrailingChar("."); } catch (e) {}
         if (host == "")
         {
-            icon.src = getIconPath("sixornot_button_none_256");
+            icon.src = getIconPath("sixornot_button_none_16");
             specialLocation = ["unknownsite"];
             logErrorMessage("Sixornot warning: no host returned for \"" + url + "\"");
             return;
@@ -516,7 +515,7 @@ function newIconInstance(window)
 
         if (!window.navigator.onLine)
         {
-            icon.src = getIconPath("sixornot_button_none_256");
+            icon.src = getIconPath("sixornot_button_none_16");
             specialLocation = ["offlinemode"];
             consoleService.logStringMessage("Sixornot is in offline mode");
             return;  // Offline mode or otherwise not connected
@@ -524,7 +523,7 @@ function newIconInstance(window)
 
         if (DnsHandler.isProxiedDNS(url))
         {
-            icon.src = getIconPath("sixornot_button_none_256");
+            icon.src = getIconPath("sixornot_button_none_16");
             specialLocation = ["nodnserror"];
             consoleService.logStringMessage("Sixornot is in proxied mode");
             Sixornot.warning(window, "sixornot.warn.proxy", strings.GetStringFromName("proxywarnmessage"));
@@ -551,7 +550,7 @@ function newIconInstance(window)
 
             if (returnedIPs[0] == "FAIL")
             {
-                icon.src = getIconPath("sixornot_button_none_256");
+                icon.src = getIconPath("sixornot_button_none_16");
                 specialLocation = ["lookuperror"];
                 return;  // DNS lookup failed (ip/countryCode/tldCountryCode stay empty)
             }
@@ -585,12 +584,12 @@ function newIconInstance(window)
         {
             case "file:":
                 urlIsPortable = false;
-                icon.src = getIconPath("sixornot_button_none_256");
+                icon.src = getIconPath("sixornot_button_none_16");
                 specialLocation = ["localfile"];
                 return true;
 
             case "data:":
-                icon.src = getIconPath("sixornot_button_none_256");
+                icon.src = getIconPath("sixornot_button_none_16");
                 specialLocation = ["datauri", url.truncateBeforeFirstChar(",")];
                 return true;
 
@@ -598,19 +597,19 @@ function newIconInstance(window)
                 urlIsPortable = false;
                 if (url == "about:blank")  // Blank page gets its own icon and tooltip
                 {
-                    icon.src = getIconPath("sixornot_button_none_256");
+                    icon.src = getIconPath("sixornot_button_none_16");
                     specialLocation = ["blankpage"];
                 }
                 else
                 {
-                    icon.src = getIconPath("sixornot_button_none_256");
+                    icon.src = getIconPath("sixornot_button_none_16");
                     specialLocation = ["internalfile", url.truncateBeforeFirstChar("?")];
                 }
                 return true;
 
             case "chrome:":  case "resource:":
                 urlIsPortable = false;
-                icon.src = getIconPath("sizornot_button_none_256");
+                icon.src = getIconPath("sizornot_button_none_16");
                 specialLocation = ["internalfile", contentDoc.location.protocol + "//"];
                 return true;
 
@@ -626,12 +625,12 @@ function newIconInstance(window)
                     if (ipv4s.length == 0)
                     {
                         // No addresses at all, question mark icon
-                        icon.src = getIconPath("sixornot_button_none_256");
+                        icon.src = getIconPath("sixornot_button_none_16");
                     }
                     else
                     {
                         // v4 only icon
-                        icon.src = getIconPath("sixornot_button_ipv4_256");
+                        icon.src = getIconPath("sixornot_button_ipv4_16");
                     }
                 }
                 else
@@ -640,14 +639,14 @@ function newIconInstance(window)
                     if (ipv4s.length == 0)
                     {
                         // We only have IPv6 addresses, v6 only icon
-                        icon.src = getIconPath("sixornot_button_v6only_256");
+                        icon.src = getIconPath("sixornot_button_v6only_16");
                     }
                     else
                     {
                         // v6 and v4 addresses, display green icon (or orange when connection check implemented)
                         // If we can connect to this site using IPv6, display green
                         // If we cannot, display orange
-                        icon.src = getIconPath("sixornot_button_using6_256");
+                        icon.src = getIconPath("sixornot_button_using6_16");
                     }
                 }
                 specialLocation = null;
@@ -965,89 +964,6 @@ function newIconInstance(window)
         }
     } */
 
-/*    function getParameterValue(token,template,encoding)
-    {
-        var parameter, maybeEncode;
-        switch (encoding)
-        {
-            default:
-            case "none":
-                parameter = token.slice(1,-1);  // Cut off { & }
-                maybeEncode = function(a) { return a; };
-                break;
-
-            case "url":
-                parameter = token.slice(3,-3);  // Cut off %7B & %7D
-                maybeEncode = encodeURIComponent;
-                break;
-
-            case "escapequotes":
-                parameter = token.slice(1,-1);
-                maybeEncode = function(str) { return String(str).replace(/\\/g,"\\\\").replace(/\'/g,"\\\'").replace(/\"/g,"\\\""); };
-                break;
-        }
-        parameter = parameter.toLowerCase().split('-');  // Split into components if available (left/right side of '-')
-        switch (parameter[0])
-        {
-            case "fullurl":
-                if (encoding == "url")  // Some templates will need the URL variable to be encoded and others will need it to not be
-                {
-                    var charBeforeURL = template[ template.search(/\{fullURL\}/i) - 1 ];
-                    if (charBeforeURL == '=' || charBeforeURL == ':')
-                        return encodeURIComponent(url);
-                }
-                return url;
-
-            case "basedomainname":
-                try { return maybeEncode(tldService.getBaseDomainFromHost(host)); }
-                catch (e) {}  // Throws if something is wrong with host name or is IP address; fall-through and use full host name
-
-            case "domainname":
-                return maybeEncode(host);
-
-            case "tld":
-                try { return maybeEncode(tldService.getPublicSuffixFromHost(host)); }
-                catch (e) { return maybeEncode(host.truncateAfterLastChar(".")); }
-
-            case "ipaddress":
-                return maybeEncode(ip);
-
-            case "countrycode":
-                return countryCode;  // Always two ASCII characters; never needs encoding
-
-            case "countryname":
-                return maybeEncode(countrynames.GetStringFromName(countryCode));
-
-            case "title":
-                return maybeEncode(contentDoc.title);
-
-            case "baselocale":
-                var base = true;  // language-dialect -> language
-            case "locale":
-                var locale;
-                switch (parameter[1])
-                {
-                    default:      locale = Flagfox.locale.content;           break;  // {locale}      -> primary user requested content locale
-                    case "ui":    locale = Flagfox.locale.UI;                break;  // {locale-ui}   -> Flagfox UI strings locale (e.g. country names)
-                    case "os":    locale = Flagfox.locale.OS;                break;  // {locale-os}   -> native operating system locale
-                    case "page":  locale = contentDoc.documentElement.lang;  break;  // {locale-page} -> locale stated for the current page (empty string if none)
-                }
-                return maybeEncode( base ? locale.split('-')[0] : locale );  // Shouldn't need encoding, but do so if needed just in case of a bogus value in content
-
-            case "meta":
-                // Unfortunately contentDoc.querySelector is case-sensitive and HTML in the wild is messy, so search manually
-                if (!metaTags)  // Cached?
-                    metaTags = contentDoc.getElementsByTagName("meta");  // case-insensitive tag search
-                for (var i=0; i < metaTags.length; i++)
-                    if (parameter[1] == metaTags[i].name.toLowerCase())  // case-insensitive name search
-                        return maybeEncode(metaTags[i].content);
-                return "";  // Meta tags are optional and vary, thus they're always allowed placeholders; return empty string if no matched name
-
-            default:
-                return token;  // Don't know what it is; leave it alone
-        }
-    } */
-
     function onPrefChange(branch,prefName)
     {
         switch (prefName)
@@ -1079,24 +995,12 @@ function newIconInstance(window)
             doAction(hotClicks[binding]);
         }
 
-        /* There is a dblclick event, but I can't use that because it's sent out in addition to two click events,
-           not instead of. As a result, I just use the click event and detect multiple clicks within a short timeframe.
-           (which also allows for triple click detection) The time has to be very short, otherwise when a user does a
-           single click action it will still have to wait a while to see if there's going to be a second click. */
-        window.clearTimeout(this.clicktimer);
-        this.clicktimer = window.setTimeout(doClickAction, 250);
-        // Double click = two clicks within 250ms; Triple click = three clicks within 500ms
     }
 
     function onIconMouseDown(event)  // Handle keyboard modifiers when right-clicking on the icon
     {
         if (event.button == 2 && event.ctrlKey)  // Right+Ctrl
             menuContentAge = -1;  // Show all items at once
-    }
-
-    function onIconHover(event)  // Changes mouseover cursor to a hand when there is a click action
-    {
-        icon.style.cursor = isActionAllowed(hotClicks["click"]) ? "pointer" : "default" ;
     }
 
 /*    function onMenuCommand(event)
@@ -1112,19 +1016,6 @@ function newIconInstance(window)
         var menuItems = menu.getElementsByTagName("menuitem");
         for (var i=0; i < menuItems.length; i++)  // Decide which menu items to grey out if they aren't available
             menuItems[i].setAttribute("disabled", !isActionAllowed( menuItems[i].getAttribute("value") ));  // Need to use attributes here
-    } */
-
-    /* Listening to every keypress here because dynamically adding to a <keyset> with <keys> being listened to doesn't seem to work well.
-       This function only takes around a microsecond or less to run so it shouldn't affect performance.
-       event.charCode is case-sensitive so I don't need to check for shift separately. */
-/*    function onKeyPressed(event)
-    {
-        if (event.ctrlKey || event.altKey || event.metaKey)
-        {
-            var boundKey = hotKeys[event.charCode];
-            if (boundKey)
-                doAction( boundKey[getModsCode(event.ctrlKey,event.altKey,event.metaKey)] );
-        }
     } */
 
     /* The "online" and "offline" events fire many times at once on the window object.
@@ -1180,8 +1071,7 @@ var DnsHandler =
                     IPAddresses.push(nsrecord.getNextAddrAsString());
                 }
 
-                // Needs to be changed to return all the IPs, not just one of them (as an array? how does that affect returnIP?)
-//                returnIP(nsrecord.getNextAddrAsString());
+                // Return array of all IP addresses found for this domain
                 returnIP(IPAddresses)
             }
         };
@@ -1205,6 +1095,20 @@ function getIconPath(filename)
     return "resource://sixornot/skin/icons/" + filename + ".png";
 }
 
+/* Generic pref listener class
+    Usage:
+        function onPrefChange(branch,prefname)
+        {
+            switch (prefname)
+            {
+                case "prefname1":
+                    break;
+                case "prefname2":
+                    break;
+            }
+        }
+        var listener = new PrefListener("branchname.",onPrefChange);
+*/
 function PrefListener(branchName, onChanged)
 {
     var branch = prefService.getBranch(branchName);
@@ -1242,6 +1146,7 @@ function doOnShutdown(onShutdown)
     observerService.addObserver(quitEventObserver, "quit-application", false);
 }
 
+// Used for slide-down info bar
 function hashString(string)  // Returns a base-64 encoded MD5 hash of a Unicode string
 {
     var converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
@@ -1255,7 +1160,8 @@ function hashString(string)  // Returns a base-64 encoded MD5 hash of a Unicode 
     return cryptoHash.finish(true);
 }
 
-function getModsCode(ctrl,alt,meta)  // Convert boolean triplet into an integer
+// Needed for actions code
+/* function getModsCode(ctrl,alt,meta)  // Convert boolean triplet into an integer
 {
     var code = 0;
     if (ctrl)
@@ -1265,14 +1171,14 @@ function getModsCode(ctrl,alt,meta)  // Convert boolean triplet into an integer
     if (meta)
         code |= 4;
     return code;
-}
+} */
 
-function getCurrentWindow()
+/* function getCurrentWindow()
 {
     return Components.classes["@mozilla.org/appshell/window-mediator;1"]
                      .getService(Components.interfaces.nsIWindowMediator)
                      .getMostRecentWindow("navigator:browser");
-}
+} */
 
 function logErrorMessage(message)  // Logs a string message to the error console with no file link, similar to consoleService.logStringMessage(), but with "error" status
 {
