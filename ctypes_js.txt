@@ -1,0 +1,126 @@
+// Testing scratchpad for experiments with ctypes.jsm
+
+// http://msdn.microsoft.com/en-us/library/ms740496(VS.85).aspx     sockaddr
+// http://msdn.microsoft.com/en-us/library/ms738520(VS.85).aspx     getaddrinfo
+// https://developer.mozilla.org/en/js-ctypes/Using_js-ctypes/Working_with_data
+// http://blog.mozilla.com/dwitte/2010/03/12/extension-authors-browser-hackers-meet-js-ctypes/
+
+// Better explanation of sockaddr
+// http://www.retran.com/beej/sockaddr_inman.html
+
+// http://en.wikipedia.org/wiki/Getaddrinfo
+
+//let hostent = ctypes.StructType("hostent",[{ h_name : ctypes.char.ptr},{ h_aliases : ctypes.char.ptr.ptr},{ h_addrtype : ctypes.int},{ h_length : ctypes.int},{ h_addr_list : ctypes.uint8_t.array(4).ptr.ptr }]);
+
+
+Components.utils.import("resource://gre/modules/ctypes.jsm");
+
+//var library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
+//let library = ctypes.open("libc.so.6");
+var library = ctypes.open("Ws2_32.dll");
+
+//let hostent = ctypes.StructType("hostent",[{ h_name      : ctypes.char.ptr},{ h_aliases   : ctypes.char.ptr.ptr},{ h_addrtype  : ctypes.int},{ h_length    : ctypes.int},{ h_addr_list : ctypes.uint8_t.array(4).ptr.ptr }]);
+
+//let gethostbyname2 = library.declare("gethostbyname2",ctypes.default_abi,hostent.ptr,ctypes.char.ptr,ctypes.int);
+
+//let google = gethostbyname2("mail.google.com", 1)
+
+//int
+//getaddrinfo(const char *hostname, const char *servname, const struct addrinfo *hints,struct addrinfo **res);
+
+let sockaddr = ctypes.StructType("sockaddr", [{sa_family : ctypes.unsigned_short}, {sa_data : ctypes.uint8_t.array(28)}]);
+
+let addrinfo = ctypes.StructType("addrinfo")
+addrinfo.define([{ai_flags : ctypes.int}, {ai_family : ctypes.int}, {ai_socktype : ctypes.int}, {ai_protocol : ctypes.int}, {ai_addrlen : ctypes.int}, {ai_cannonname : ctypes.char.ptr}, {ai_addr : sockaddr.ptr}, {ai_next : addrinfo.ptr}]);
+
+let freeaddrinfo = library.declare("freeaddrinfo", ctypes.default_abi, ctypes.int, addrinfo.ptr);
+
+// Returns int status code, takes char, char, addrinfo.ptr, addrinfo.ptr.ptr
+let getaddrinfo = library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, addrinfo.ptr, addrinfo.ptr.ptr)
+
+var hintsVal = addrinfo();
+//AI_PASSIVE = 0x01
+//AI_CANONNAME = 0x02
+//AI_NUMERICHOST = 0x04
+//AI_ADDRCONFIG = 0x0400 - only resolves if we have a global address
+//AI_NON_AUTHORITATIVE = 0x04000
+//AI_SECURE = 0x08000
+//AI_RETURN_PREFERRED_NAMES = 0x010000
+hintsVal.ai_flags = 0;
+//AF_UNSPEC = 0
+//AF_INET = 2
+//AF_INET6 = 23
+hintsVal.ai_family = 2;
+//SOCK_STREAM = 1
+//SOCK_DGRAM = 2
+//SOCK_RAW = 3
+//SOCK_RDM = 4
+//SOCK_SEQPACKET = 5
+hintsVal.ai_socktype = 1;
+//IPPROTO_TCP = 6
+//IPPROTO_UDP = 17
+//IPPROTO_RM = 113
+hintsVal.ai_protocol = 6;
+
+
+// Pointer to an addrinfo
+var retVal = addrinfo().address()
+
+//var ret = getaddrinfo("entropy.me.uk", "http", hintsVal.address(), retVal.address());
+var ret = getaddrinfo("entropy.me.uk", null, null, retVal.address());
+
+// Return values
+// http://msdn.microsoft.com/en-us/library/ms740668(VS.85).aspx
+//EAI_AGAIN     WSATRY_AGAIN            11002   A temporary failure in name resolution occurred.
+//EAI_BADFLAGS  WSAEINVAL               10022   An invalid value was provided for the ai_flags member of the pHints parameter.
+//EAI_FAIL      WSANO_RECOVERY          11003   A non-recoverable failure in name resolution occurred.
+//EAI_FAMILY    WSAEAFNOSUPPORT         10047   The ai_family member of the pHints parameter is not supported.
+//EAI_MEMORY    WSA_NOT_ENOUGH_MEMORY   8       A memory allocation failure occurred.
+//EAI_NONAME    WSAHOST_NOT_FOUND       11001   The name does not resolve for the supplied parameters or the pNodeName and pServiceName parameters were not provided.
+//EAI_SERVICE   WSATYPE_NOT_FOUND       10109   The pServiceName parameter is not supported for the specified ai_socktype member of the pHints parameter.
+//EAI_SOCKTYPE  WSAESOCKTNOSUPPORT      10044   The ai_socktype member of the pHints parameter is not supported.
+//              WSANO_DATA              11004   Valid name, no data record of requested type.
+
+
+// Clean up memory we used
+freeaddrinfo(retVal);
+retVal = null
+
+// Bytes 0,1 are blank, 2-5 are IPv4 address, 6-21 are IPv6 address
+
+ctypes.char.array(28)([0, 0, 82, 113, -104, 84,  0, 0, 0,   0,  0, 0, 0,    0, 13, 89, 46, 126, 0, 0, 0, -120, 2, 0, 0, 0, 91, -58])
+ctypes.char.array(28)([0, 0,  0,   0,    0,  0, 32, 1, 4, 112, 31, 9, 3, -104,  0,  0,  0,   0, 0, 0, 0,    2, 0, 0, 0, 0, 48,  11])
+
+32,  1,  4, 112, 31,  9,  3, -104,  0,  0,  0,  0,  0,  0,  0,  2
+
+20, 01, 04,  70, 1F, 09, 03,   89, 00, 00, 00, 00, 00, 00, 00, 02
+
+2001:0470:1F09:0389:0000:0000:0000:0002
+
+addrlen 16
+ctypes.uint8_t.array(28)([0, 0, 82, 113, 152, 84, 0, 0, 0, 0, 0, 0, 0, 0, 228, 92, 46, 126, 0, 0, 0, 128, 65, 0, 0, 0, 136, 52])
+
+addrlen 28
+ctypes.uint8_t.array(28)([0, 0, 0, 0, 0, 0, 32, 1, 4, 112, 31, 9, 3, 152, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 56, 52])
+// Select bytes 6-21
+32,  1,  4, 112, 31,  9,  3, 152,  0,  0,  0,  0,  0,  0,  0,  2
+// Convert to hex + pad with zeros
+20, 01, 04,  70, 1F, 09, 03,  89, 00, 00, 00, 00, 00, 00, 00, 02
+// Contatenate with colons
+2001:0470:1F09:0389:0000:0000:0000:0002
+// Strip leading zeros, compress zeros etc.
+2001:470:1f09:389::2
+
+let ainfo = addrinfo()
+
+     struct addrinfo {
+             int ai_flags;           /* input flags */
+             int ai_family;          /* protocol family for socket */
+             int ai_socktype;        /* socket type */
+             int ai_protocol;        /* protocol for socket */
+             socklen_t ai_addrlen;   /* length of socket-address */
+             struct sockaddr *ai_addr; /* socket-address for socket */
+             char *ai_canonname;     /* canonical name for service location */
+             struct addrinfo *ai_next; /* pointer to next in list */
+     };
+
