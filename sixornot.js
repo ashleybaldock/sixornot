@@ -540,6 +540,13 @@ function newIconInstance(window)
 //        DNSrequest = DnsHandler.resolveHost(host, onReturnedIPs);
         onReturnedIPs(DnsHandler.resolveHostNative(host));
 
+        // Test run the garbage collector
+        window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
+        window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
+
+        Components.utils.forceGC()
+        Components.utils.forceGC()
+
         function onReturnedIPs(returnedIPs)
         {
             DNSrequest = null;  // Request complete
@@ -1054,10 +1061,10 @@ var DnsHandler =
     sockaddr_in6: null,
     sockaddr: null,
     addrinfo: null,
+//    freeaddrinfo: null,
     getaddrinfo: null,
     inet_ntop: null,
-    inet_pton: null,
-    ad_char: null,
+//    inet_pton: null,
 
     init : function ()
     {
@@ -1065,6 +1072,7 @@ var DnsHandler =
         try
         {
             this.library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
+            consoleService.logStringMessage("Sixornot - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
             this.AF_INET = 2;
             this.AF_INET6 = 30;
         }
@@ -1074,8 +1082,12 @@ var DnsHandler =
             try
             {
                 this.library = ctypes.open("Ws2_32.dll");
+                consoleService.logStringMessage("Sixornot - Running on Windows XP+, opened library: 'Ws2_32.dll'");
                 this.AF_INET = 2;
                 this.AF_INET6 = 23;
+
+                this.inet_ntop = this.library.declare("InetNtop", ctypes.default_abi, ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.int);
+
             }
             catch(e)
             {
@@ -1084,9 +1096,6 @@ var DnsHandler =
                 return false;
             }
         }
-//        this.library = ctypes.open("libc.so.6");
-//        this.library = ctypes.open("Ws2_32.dll");
-
         // Set up all the structs we need
         this.in_addr = ctypes.StructType("in_addr", [
                             {s_addr : ctypes.unsigned_char.array(4)}]);
@@ -1116,17 +1125,77 @@ var DnsHandler =
                             {ai_cannonname : ctypes.char.ptr}, 
                             {ai_addr : this.sockaddr.ptr}, 
                             {ai_next : this.addrinfo.ptr}]);
-        this.ad_char = ctypes.char(64);
         // Set up all the ctypes functions we need
 //        this.freeaddrinfo = this.library.declare("freeaddrinfo", ctypes.default_abi, ctypes.void_t, addrinfo.ptr);
         this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
         this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi, ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.int);
-        this.inet_pton = this.library.declare("inet_pton", ctypes.default_abi, ctypes.int, ctypes.int, ctypes.char.ptr, ctypes.voidptr_t);
+//        this.inet_pton = this.library.declare("inet_pton", ctypes.default_abi, ctypes.int, ctypes.int, ctypes.char.ptr, ctypes.voidptr_t);
     },
+
     shutdown : function()
     {
         this.library.close();
     },
+
+    // Convert IP object into a Javascript string
+    get_ip_str : function (address, address_family)
+    {
+        let temp_char = ctypes.char(64);
+        if (address_family === this.AF_INET)
+        {
+            let cast_addr4 = ctypes.cast(address, this.sockaddr_in);
+//            this.inet_ntop(this.AF_INET, cast_addr4.sin_addr.address(), temp_char.address(), 64);
+        }
+        if (address_family === this.AF_INET6)
+        {
+            let cast_addr6 = ctypes.cast(address, this.sockaddr_in6);
+//            this.inet_ntop(this.AF_INET6, cast_addr6.sin6_addr.address(), temp_char.address(), 64);
+        }
+        return temp_char.address().readString().substring(0);
+//        return "1.1.1.1";
+    },
+
+    // Proxy to native getaddrinfo functionality
+    resolveHostNative : function (host)
+    {
+        consoleService.logStringMessage("Sixornot - resolveHostNative");
+
+        let retValue = this.addrinfo()
+        let retVal = retValue.address()
+        let ret = this.getaddrinfo(host, null, null, retVal.address());
+        // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
+        // Check for duplicates as we do this
+        let addresses = [];
+
+        let notdone = true;
+        let i = retVal.contents;
+        while (notdone)
+        {
+            consoleService.logStringMessage("Sixornot - loop");
+
+            let new_addr = this.get_ip_str(i.ai_addr.contents, i.ai_family);
+
+            // Add to addresses array, strip duplicates as we go
+            if (addresses.indexOf(new_addr) === -1)
+            {
+                addresses.push(new_addr);
+            }
+            if (i.ai_next.isNull())
+            {
+                i = null;
+                notdone = false;
+            }
+            else
+            {
+                i = i.ai_next.contents;
+            }
+        }
+
+        consoleService.logStringMessage("Sixornot - Found the following addresses: " + addresses);
+        return addresses.slice();
+
+    },
+
     isProxiedDNS : function(url)  // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
     {
         var uri = ioService.newURI(url, null, null);
@@ -1138,118 +1207,6 @@ var DnsHandler =
     cancelRequest : function(request)
     {
         try { request.cancel(Components.results.NS_ERROR_ABORT); } catch(e) {}  // calls onLookupComplete() with status=Components.results.NS_ERROR_ABORT
-    },
-
-    // Convert IP object into a Javascript string
-    get_ip_str : function (address, address_family)
-    {
-//        var cast_addr;
-        let temp_char = ctypes.char(64);
-//        consoleService.logStringMessage("Sixornot - get_ip_str - case: " + address_family);
-        if (address_family === this.AF_INET)
-        {
-            let cast_addr4 = ctypes.cast(address, this.sockaddr_in);
-            this.inet_ntop(this.AF_INET, cast_addr4.sin_addr.address(), temp_char.address(), 64);
-//            let bleh4 = this.sockaddr_in();
-//            let meh4 = this.inet_pton(this.AF_INET, "1.1.1.1", bleh4.address());
-//            this.inet_ntop(this.AF_INET, bleh4.address(), temp_char.address(), 64);
-        }
-        if (address_family === this.AF_INET6)
-        {
-            let cast_addr6 = ctypes.cast(address, this.sockaddr_in6);
-            this.inet_ntop(this.AF_INET6, cast_addr6.sin6_addr.address(), temp_char.address(), 64);
-//            let bleh6 = this.sockaddr_in6();
-//            let meh6 = this.inet_pton(this.AF_INET6, "ffff:eeee:dddd::1", bleh6.address());
-//            this.inet_ntop(this.AF_INET6, bleh6.address(), temp_char.address(), 64);
-        }
-        return temp_char.address().readString().substring(0);
-//        let addr_text = this.ad_char.address().readString();
-//        return addr_text;
-    },
-    // Proxy to native getaddrinfo functionality
-//    resolveHostNative : function(host, returnIP)
-    resolveHostNative : function (host)
-    {
-        consoleService.logStringMessage("Sixornot - resolveHostNative");
-
-        var retValue = this.addrinfo()
-        var retVal = retValue.address()
-        var ret = this.getaddrinfo(host, null, null, retVal.address());
-        // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-        // Check for duplicates as we do this
-        var addresses = [];
-
-        var notdone = true;
-        var i = retVal.contents;
-        while (notdone)
-        {
-            consoleService.logStringMessage("Sixornot - loop");
-
-            this.new_addr = this.get_ip_str(i.ai_addr.contents, i.ai_family);
-//            new_addr = "1.1.1.1";
-
-//            var temp_char = ctypes.char(64);
-/*            if (i.ai_family === this.AF_INET)
-            {
-    //            consoleService.logStringMessage("Sixornot - case AF_INET");
-//                cast_addr = ctypes.cast(address, this.sockaddr_in);
-
-
-// readString() - does this actually copy the string into new_addr or make a reference to it? When the 64 byte char field is "global" (instance variable) to this object (and thus persists after this function ends) this seems to work, but if it is created within the function it crashes (presumably as the garbage collector tries to clean up something which is already freed??)
-
-                this.new_addr = this.inet_ntop(this.AF_INET, ctypes.cast(i.ai_addr.contents, this.sockaddr_in).sin_addr.address(), this.ad_char.address(), 64).readString();
-//                new_addr = "1.1.1.1";
-    //            string_pointer = this.inet_ntop(this.AF_INET, cast_addr.sin_addr.address(), temp_char.address(), 64);
-            }
-            if (i.ai_family === this.AF_INET6)
-            {
-    //            consoleService.logStringMessage("Sixornot - case AF_INET6");
-//                cast_addr = ctypes.cast(address, this.sockaddr_in6);
-                // It's these lines which lead to the crash
-                this.new_addr = this.inet_ntop(this.AF_INET6, ctypes.cast(i.ai_addr.contents, this.sockaddr_in6).sin6_addr.address(), this.ad_char.address(), 64).readString();
-//                new_addr = "ffff::1";
-    //            string_pointer = this.inet_ntop(this.AF_INET6, cast_addr.sin6_addr.address(), temp_char.address(), 64);
-            }
-//            let addr_text = temp_char.address().readString(); */
-
-            if (addresses.indexOf(this.new_addr) === -1)
-            {
-//                consoleService.logStringMessage("Sixornot - resolveHostNative - found: " + this.new_addr );
-                addresses.push(this.new_addr);
-            }
-/*            else
-            {
-                consoleService.logStringMessage("Sixornot - found duplicate: " + this.new_addr );
-            } */
-            if (i.ai_next.isNull())
-            {
-                i = null;
-                notdone = false;
-            }
-            else
-            {
-                i = i.ai_next.contents;
-            }
-        }
-        // Destroy everything we used
-//        freeaddrinfo(retVal);
-/*        in_addr = null;
-        sockaddr_in = null;
-        in6_addr = null;
-        sockaddr_in6 = null;
-        sockaddr = null;
-        addrinfo = null;
-        freeaddrinfo = null;
-        getaddrinfo = null;
-        inet_ntop = null;
-        inet_pton = null;
-        retVal = null; */
-
-        consoleService.logStringMessage(addresses);
-        consoleService.logStringMessage("those were the addresses");
-//        js_gc() - look this up on MDC, triggers garbage collection
-        return addresses.slice();
-
     },
 
     resolveHost : function(host,returnIP)  // Returns request object
