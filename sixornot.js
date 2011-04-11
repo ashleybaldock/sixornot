@@ -164,6 +164,7 @@ var Sixornot =
             iconsThisSession = [];
             shutdown();
         }
+        DnsHandler.shutdown();
     },
 
     warning : function(window, pref, message)  // Shows a slide-down info bar (max once per session for each unique message)
@@ -1086,8 +1087,6 @@ var DnsHandler =
                 this.AF_INET = 2;
                 this.AF_INET6 = 23;
 
-                this.inet_ntop = this.library.declare("InetNtop", ctypes.default_abi, ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.int);
-
             }
             catch(e)
             {
@@ -1140,18 +1139,19 @@ var DnsHandler =
     // Convert IP object into a Javascript string
     get_ip_str : function (address, address_family)
     {
-        let temp_char = ctypes.char(64);
+//        let temp_char = ctypes.char(64);
         if (address_family === this.AF_INET)
         {
-            let cast_addr4 = ctypes.cast(address, this.sockaddr_in);
+//            let cast_addr4 = ctypes.cast(address, this.sockaddr_in);
 //            this.inet_ntop(this.AF_INET, cast_addr4.sin_addr.address(), temp_char.address(), 64);
         }
         if (address_family === this.AF_INET6)
         {
-            let cast_addr6 = ctypes.cast(address, this.sockaddr_in6);
+//            let cast_addr6 = ctypes.cast(address, this.sockaddr_in6);
 //            this.inet_ntop(this.AF_INET6, cast_addr6.sin6_addr.address(), temp_char.address(), 64);
         }
-        return temp_char.address().readString().substring(0);
+//        return temp_char.address().readString().substring(0);
+        return address.sa_data.toString();
 //        return "1.1.1.1";
     },
 
@@ -1163,12 +1163,11 @@ var DnsHandler =
         let retValue = this.addrinfo()
         let retVal = retValue.address()
         let ret = this.getaddrinfo(host, null, null, retVal.address());
-        // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-        // Check for duplicates as we do this
         let addresses = [];
-
         let notdone = true;
         let i = retVal.contents;
+
+        // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
         while (notdone)
         {
             consoleService.logStringMessage("Sixornot - loop");
