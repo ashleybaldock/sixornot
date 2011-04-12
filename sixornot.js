@@ -1056,15 +1056,15 @@ var DnsHandler =
     AF_INET: null,
     AF_INET6: null,
     library: null,
-    in_addr: null,
-    sockaddr_in: null,
-    in6_addr: null,
-    sockaddr_in6: null,
+//    in_addr: null,
+//    sockaddr_in: null,
+//    in6_addr: null,
+//    sockaddr_in6: null,
     sockaddr: null,
     addrinfo: null,
 //    freeaddrinfo: null,
     getaddrinfo: null,
-    inet_ntop: null,
+//    inet_ntop: null,
 //    inet_pton: null,
 
     init : function ()
@@ -1096,7 +1096,7 @@ var DnsHandler =
             }
         }
         // Set up all the structs we need
-        this.in_addr = ctypes.StructType("in_addr", [
+/*        this.in_addr = ctypes.StructType("in_addr", [
                             {s_addr : ctypes.unsigned_char.array(4)}]);
         this.sockaddr_in = ctypes.StructType("sockaddr_in", [
                             {sin_family : ctypes.short}, 
@@ -1110,10 +1110,10 @@ var DnsHandler =
                             {sin6_port : ctypes.uint16_t}, 
                             {sin6_flowinfo : ctypes.uint32_t}, 
                             {sin6_addr : this.in6_addr}, 
-                            {sin6_scope_id : ctypes.uint32_t}]);
+                            {sin6_scope_id : ctypes.uint32_t}]); */
         this.sockaddr = ctypes.StructType("sockaddr", [
                             {sa_family : ctypes.unsigned_short},
-                            {sa_data : ctypes.char.array(28)}]);
+                            {sa_data : ctypes.unsigned_char.array(28)}]);
         this.addrinfo = ctypes.StructType("addrinfo");
         this.addrinfo.define([
                             {ai_flags : ctypes.int}, 
@@ -1127,7 +1127,7 @@ var DnsHandler =
         // Set up all the ctypes functions we need
 //        this.freeaddrinfo = this.library.declare("freeaddrinfo", ctypes.default_abi, ctypes.void_t, addrinfo.ptr);
         this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-        this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi, ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.int);
+//        this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi, ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.int);
 //        this.inet_pton = this.library.declare("inet_pton", ctypes.default_abi, ctypes.int, ctypes.int, ctypes.char.ptr, ctypes.voidptr_t);
     },
 
@@ -1136,24 +1136,86 @@ var DnsHandler =
         this.library.close();
     },
 
+    // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
+    to_hex : function (int_string)
+    {
+        let hex = Number(int_string).toString(16);
+        if (hex.length < 2)
+        {
+            hex = "0" + hex;
+        }
+        return hex;
+    },
+
+    // Ensure decimal number has no spaces etc.
+    to_decimal : function (int_string)
+    {
+        return Number(int_string).toString(10);
+    },
+
     // Convert IP object into a Javascript string
     get_ip_str : function (address, address_family)
     {
 //        let temp_char = ctypes.char(64);
+        // Find everything between square brackets
+        consoleService.logStringMessage("Sixornot - get_ip_str");
+        let r = RegExp(/\[(.*?)\]/);
+        let ip_array = r.exec(address.sa_data.toString())[0].split(",");
+        let ip_string = null;
+
+        consoleService.logStringMessage("Sixornot - get_ip_str - ip_array is: " + ip_array);
         if (address_family === this.AF_INET)
         {
 //            let cast_addr4 = ctypes.cast(address, this.sockaddr_in);
 //            this.inet_ntop(this.AF_INET, cast_addr4.sin_addr.address(), temp_char.address(), 64);
+            // IPv4 address
+            // Stored in bytes 2-5 (zero-index)
+            // [0, 0, 82, 113, 152, 84, 0, 0, 0, 0, 0, 0, 0, 0, 228, 92, 46, 126, 0, 0, 0, 128, 65, 0, 0, 0, 136, 52]
+            // Extract these into JS array, then convert this array into a string-formatted IPv4 address
+            let ip4_array = [];
+
+            for (let i=0; i<4; i++)
+            {
+                ip4_array.push(this.to_decimal(ip_array.slice(2,6)[i]));
+            }
+            ip_string = ip4_array.join(".");
         }
         if (address_family === this.AF_INET6)
         {
 //            let cast_addr6 = ctypes.cast(address, this.sockaddr_in6);
 //            this.inet_ntop(this.AF_INET6, cast_addr6.sin6_addr.address(), temp_char.address(), 64);
+            // IPv6 address
+            // Stored in bytes 6-21 (zero-index)
+            // [0, 0, 0, 0, 0, 0, ||32, 1, 4, 112, 31, 9, 3, 152, 0, 0, 0, 0, 0, 0, 0, 2||, 0, 0, 0, 0, 56, 52]
+            // Extract these into JS array, then convert them into string-formatted IPv6 address
+            let ip6_array = [];
+            let element = null;
+            let active_element = null;
+
+            for (let i=0; i<16; i++)
+            {
+                element = ip_array.slice(6,22)[i];
+                if (active_element === null)
+                {
+                    active_element = this.to_hex(element);
+                }
+                else
+                {
+                    ip6_array.push(active_element + this.to_hex(element));
+                    active_element = null;
+                }
+            }
+
+            // Compress into 4-byte groups, e.g. [0E,4F] to [0E4F]
+            ip_string = ip6_array.join(":")
         }
 //        return temp_char.address().readString().substring(0);
-        return address.sa_data.toString();
+        consoleService.logStringMessage("Sixornot - get_ip_str - ip_string is: " + ip_string);
+        return ip_string;
 //        return "1.1.1.1";
     },
+
+// "ctypes.unsigned_char.array(28)([0, 0, 209, 85, 229, 147, 0, 0, 0, 0, 0, 0, 0, 0, 38, 3, 232, 93, 0, 0, 0, 136, 140, 181, 120, 0, 140, 181])"
 
     // Proxy to native getaddrinfo functionality
     resolveHostNative : function (host)
