@@ -397,6 +397,8 @@ function newIconInstance(window)
     var host = "";             // The host name of the current URL
     var ipv4s = [];               // The IP addresses of the current host
     var ipv6s = [];               // The IP addresses of the current host
+    var localipv6s = [];         // Local IPv6 addresses
+    var localipv4s = [];         // Local IPv4 addresses
     var usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
 
 //    var icon = window.document.getElementById("sixornot-icon");
@@ -500,6 +502,8 @@ function newIconInstance(window)
         host = "";
         ipv6s = [];
         ipv4s = [];
+        localipv6s = [];
+        localipv4s = [];
 
         // If we've changed pages before completing a lookup, then abort the old request first
 //        DnsHandler.cancelRequest(DNSrequest);
@@ -542,22 +546,22 @@ function newIconInstance(window)
         onReturnedIPs(DnsHandler.resolveHostNative(host));
 
         // Test run the garbage collector
-        window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
-        window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
+//        window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
+//        window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
 
-        Components.utils.forceGC()
-        Components.utils.forceGC()
+//        Components.utils.forceGC()
+//        Components.utils.forceGC()
 
-        function onReturnedIPs(returnedIPs)
+        function onReturnedIPs(remoteips)
         {
             DNSrequest = null;  // Request complete
 
             // Test run the garbage collector
-            window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
-            window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
+//            window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
+//            window.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).garbageCollect()
 
-            Components.utils.forceGC()
-            Components.utils.forceGC()
+//            Components.utils.forceGC()
+//            Components.utils.forceGC()
 
             // This needs to iterate over the set of IP addresses to check whether each one is IPv4 or IPv6
             // Icon colour depends only on whether the site has:
@@ -570,26 +574,44 @@ function newIconInstance(window)
             // b.2) IPv4 and IPv6, connecting over IPv4 - Orange 
             // Everything else will display a grey icon of some kind to indicate no IP addresses are involved
 
-            if (returnedIPs[0] == "FAIL")
+            if (remoteips[0] == "FAIL")
             {
                 icon.src = getIconPath("sixornot_button_none_16");
                 specialLocation = ["lookuperror"];
                 return;  // DNS lookup failed (ip/countryCode/tldCountryCode stay empty)
             }
 
+            let i = 0;
 
-            function sixorfour(element, index, array) {
-                if (element.indexOf(":") != -1)
+            // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
+            // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
+            let localips = DnsHandler.resolveLocal();
+
+            // Parse list of local IPs for IPv4/IPv6
+            for (i=0; i<localips.length; i++)
+            {
+                if (localips[i].indexOf(":") != -1)
                 {
-                    ipv6s.push(element);
+                    localipv6s.push(localips[i]);
                 }
                 else
                 {
-                    ipv4s.push(element);
+                    localipv4s.push(localips[i]);
                 }
             }
 
-            returnedIPs.forEach(sixorfour);
+            // Parse list of IPs for IPv4/IPv6
+            for (i=0; i<remoteips.length; i++)
+            {
+                if (remoteips[i].indexOf(":") != -1)
+                {
+                    ipv6s.push(remoteips[i]);
+                }
+                else
+                {
+                    ipv4s.push(remoteips[i]);
+                }
+            }
 
             consoleService.logStringMessage("Sixornot - found IP addresses");
 
@@ -665,10 +687,17 @@ function newIconInstance(window)
                     }
                     else
                     {
-                        // v6 and v4 addresses, display green icon (or orange when connection check implemented)
-                        // If we can connect to this site using IPv6, display green
-                        // If we cannot, display orange
-                        icon.src = getIconPath("sixornot_button_using6_16");
+                        // v6 and v4 addresses, depending on possibility of v6 connection display green or yellow
+                        if (localipv6s.length == 0)
+                        {
+                            // Site has a v6 address, but we do not, so we're probably not using v6 to connect
+                            icon.src = getIconPath("sixornot_button_6avail_16");
+                        }
+                        else
+                        {
+                            // Site has a v6 address as do we, so hopefully we're using v6 to connect
+                            icon.src = getIconPath("sixornot_button_using6_16");
+                        }
                     }
                 }
                 specialLocation = null;
@@ -684,8 +713,31 @@ function newIconInstance(window)
         var grid = window.document.createElement("grid");
         var rows = window.document.createElement("rows");
 
-        var first4 = true;
-        var first6 = true;
+        var first = true;
+        var i = null;
+
+        function addSpacerLine()
+        {
+            var row = window.document.createElement("row");
+            var label = window.document.createElement("label");
+            label.setAttribute("value", " ");
+            var value = window.document.createElement("label");
+            row.appendChild(value);
+            row.appendChild(label);
+            rows.appendChild(row);
+        }
+
+        function addTitleLine(labelName)
+        {
+            var row = window.document.createElement("row");
+            var label = window.document.createElement("label");
+            label.setAttribute("value", labelName);
+            label.setAttribute("style", "font-weight: bold; text-align: right;");
+            var value = window.document.createElement("label");
+            row.appendChild(value);
+            row.appendChild(label);
+            rows.appendChild(row);
+        }
 
         function addLabeledLine(labelName, lineValue)
         {
@@ -712,49 +764,62 @@ function newIconInstance(window)
             rows.appendChild(row);
         }
 
-        function ip4element(element, index, array) {
-            if (first4)
-            {
-                if (ipv4s.length == 1)
-                {
-                    addLabeledLine("IPv4 address:", element);
-                }
-                else
-                {
-                    addLabeledLine("IPv4 addresses:", element);
-                }
-                first4 = false;
-            }
-            else
-            {
-                addUnLabeledLine(element);
-            }
-        }
-        function ip6element(element, index, array) {
-            if (first6)
-            {
-                if (ipv6s.length == 1)
-                {
-                    addLabeledLine("IPv6 address:", element);
-                }
-                else
-                {
-                    addLabeledLine("IPv6 addresses:", element);
-                }
-                first6 = false;
-            }
-            else
-            {
-                addUnLabeledLine(element);
-            }
+        if (ipv4s.length != 0 || ipv6s.length != 0 | host != "")
+        {
+            addTitleLine("Remote", "");
         }
 
         if (host != "")
+        {
             addLabeledLine("Domain name:", host);
-        if (ipv4s != [])
-            ipv4s.forEach(ip4element);
-        if (ipv6s != [])
-            ipv6s.forEach(ip6element);
+        }
+
+        first = true;
+        if (ipv4s.length != 0)
+        {
+            for (i=0; i<ipv4s.length; i++)
+            {
+                if (first)
+                {
+                    if (ipv4s.length == 1)
+                    {
+                        addLabeledLine("IPv4 address:", ipv4s[i]);
+                    }
+                    else
+                    {
+                        addLabeledLine("IPv4 addresses:", ipv4s[i]);
+                    }
+                    first = false;
+                }
+                else
+                {
+                    addUnLabeledLine(ipv4s[i]);
+                }
+            }
+        }
+        first = true;
+        if (ipv6s.length != 0)
+        {
+            for (i=0; i<ipv6s.length; i++)
+            {
+                if (first)
+                {
+                    if (ipv6s.length == 1)
+                    {
+                        addLabeledLine("IPv6 address:", ipv6s[i]);
+                    }
+                    else
+                    {
+                        addLabeledLine("IPv6 addresses:", ipv6s[i]);
+                    }
+                    first = false;
+                }
+                else
+                {
+                    addUnLabeledLine(ipv6s[i]);
+                }
+            }
+        }
 
         if (specialLocation)
         {
@@ -786,6 +851,60 @@ function newIconInstance(window)
             if (["unknownsite","lookuperror","nodnserror","offlinemode"].indexOf(specialLocation[0]) != -1)
                 extraLine.setAttribute("style", "font-style: italic;");
             rows.appendChild(extraLine);
+        }
+
+        if (localipv4s.length != 0 || localipv6s.length != 0)
+        {
+            addSpacerLine();
+            addTitleLine("Local");
+        }
+
+        // Append local IP address information
+        first = true;
+        if (localipv4s.length != 0)
+        {
+            for (i=0; i<localipv4s.length; i++)
+            {
+                if (first)
+                {
+                    if (localipv4s.length == 1)
+                    {
+                        addLabeledLine("IPv4 address:", localipv4s[i]);
+                    }
+                    else
+                    {
+                        addLabeledLine("IPv4 addresses:", localipv4s[i]);
+                    }
+                    first = false;
+                }
+                else
+                {
+                    addUnLabeledLine(localipv4s[i]);
+                }
+            }
+        }
+        first = true;
+        if (localipv6s.length != 0)
+        {
+            for (i=0; i<localipv6s.length; i++)
+            {
+                if (first)
+                {
+                    if (localipv6s.length == 1)
+                    {
+                        addLabeledLine("IPv6 address:", localipv6s[i]);
+                    }
+                    else
+                    {
+                        addLabeledLine("IPv6 addresses:", localipv6s[i]);
+                    }
+                    first = false;
+                }
+                else
+                {
+                    addUnLabeledLine(localipv6s[i]);
+                }
+            }
         }
 
         grid.appendChild(rows);
@@ -1076,6 +1195,8 @@ var DnsHandler =
             consoleService.logStringMessage("Sixornot - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
             this.AF_INET = 2;
             this.AF_INET6 = 30;
+            this.AF_UNSPEC = 0;
+            this.SOCK_STREAM = 1;
         }
         catch(e)
         {
@@ -1084,9 +1205,30 @@ var DnsHandler =
             {
                 this.library = ctypes.open("Ws2_32.dll");
                 consoleService.logStringMessage("Sixornot - Running on Windows XP+, opened library: 'Ws2_32.dll'");
+                // Flags
+                this.AI_PASSIVE = 0x01;
+                this.AI_CANONNAME = 0x02;
+                this.AI_NUMERICHOST = 0x04;
+                this.AI_ALL = 0x0100;
+                this.AI_ADDRCONFIG = 0x0400;
+                this.AI_NON_AUTHORITATIVE = 0x04000;
+                this.AI_SECURE = 0x08000;
+                this.AI_RETURN_PREFERRED_NAMES = 0x10000;
+                // Address family
+                this.AF_UNSPEC = 0;
                 this.AF_INET = 2;
                 this.AF_INET6 = 23;
-
+                // Socket type
+                this.SOCK_STREAM = 1;
+//                this.SOCK_DGRAM = 2;
+//                this.SOCK_RAW = 3;
+//                this.SOCK_RDM = 4;
+//                this.SOCK_SEQPACKET = 5;
+                // Protocol
+                this.IPPROTO_UNSPEC = 0;
+                this.IPPROTO_TCP = 6;
+                this.IPPROTO_UDP = 17;
+//                this.IPPROTO_RM = 113;
             }
             catch(e)
             {
@@ -1136,6 +1278,44 @@ var DnsHandler =
         this.library.close();
     },
 
+    typeof_ip4 : function (ip_address)
+    {
+        // For IPv4 addresses types are:
+        /*
+            local           127.0.0.0/24
+            rfc1918         10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+            linklocal       169.254.0.0/16
+            reserved        192.0.0.0/24, 240.0.0.0/4
+            documentation   192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24
+            6to4relay       192.88.99.0/24
+            benchmark       198.18.0.0/15
+            multicast       224.0.0.0/4
+        */
+    },
+
+    // Return the type of an IPv6 address
+    typeof_ip6 : function (ip_address)
+    {
+        // Incoming IPv6 address must be normalised to fully-expanded format in lowercase
+        // Then run patterns against it to determine its type
+        // For IPv6 addresses types are:
+        /*
+            unspecified     ::/128                                      All zeros
+            local           ::1/128         0000:0000:0000:0000:0000:0000:0000:0001
+            linklocal       fe80::/10                                   Starts with fe8, fe9, fea, feb
+            sitelocal       fec0::/10   (deprecated)
+            uniquelocal     fc00::/7    (similar to RFC1918 addresses)  Starts with: fc or fd
+            pdmulticast     ff00::/8                                    Starts with ff
+            v4transition    ::ffff:0:0/96 (IPv4-mapped)                     Starts with 0000:0000:0000:0000:0000:ffff
+                            ::ffff:0:0:0/96 (Stateless IP/ICMP Translation) Starts with 0000:0000:0000:0000:ffff:0000
+                            0064:ff9b::/96 ("Well-Known" prefix)            Starts with 0064:ff9b:0000:0000:0000:0000
+            6to4            2002::/16                                       Starts with 2002
+            teredo          2001::/32                                       Starts with 2001:0000
+            benchmark       2001:2::/48                                     Starts with 2001:0002:0000
+            documentation   2001:db8::/32                                   Starts with 2001:0db8
+        */
+    },
+
     // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
     to_hex : function (int_string)
     {
@@ -1156,77 +1336,76 @@ var DnsHandler =
     // Convert IP object into a Javascript string
     get_ip_str : function (address, address_family)
     {
-//        let temp_char = ctypes.char(64);
         // Find everything between square brackets
         consoleService.logStringMessage("Sixornot - get_ip_str");
         let r = RegExp(/\[(.*?)\]/);
         let ip_array = r.exec(address.sa_data.toString())[0].split(",");
-        let ip_string = null;
 
         consoleService.logStringMessage("Sixornot - get_ip_str - ip_array is: " + ip_array);
         if (address_family === this.AF_INET)
         {
-//            let cast_addr4 = ctypes.cast(address, this.sockaddr_in);
-//            this.inet_ntop(this.AF_INET, cast_addr4.sin_addr.address(), temp_char.address(), 64);
             // IPv4 address
             // Stored in bytes 2-5 (zero-index)
             // [0, 0, 82, 113, 152, 84, 0, 0, 0, 0, 0, 0, 0, 0, 228, 92, 46, 126, 0, 0, 0, 128, 65, 0, 0, 0, 136, 52]
-            // Extract these into JS array, then convert this array into a string-formatted IPv4 address
-            let ip4_array = [];
-
-            for (let i=0; i<4; i++)
-            {
-                ip4_array.push(this.to_decimal(ip_array.slice(2,6)[i]));
-            }
-            ip_string = ip4_array.join(".");
+            let ip4_array = ip_array.slice(2,6);
+            return [Number(ip4_array[0]), Number(ip4_array[1]), Number(ip4_array[2]), Number(ip4_array[3])].join(".");
         }
         if (address_family === this.AF_INET6)
         {
-//            let cast_addr6 = ctypes.cast(address, this.sockaddr_in6);
-//            this.inet_ntop(this.AF_INET6, cast_addr6.sin6_addr.address(), temp_char.address(), 64);
             // IPv6 address
             // Stored in bytes 6-21 (zero-index)
             // [0, 0, 0, 0, 0, 0, ||32, 1, 4, 112, 31, 9, 3, 152, 0, 0, 0, 0, 0, 0, 0, 2||, 0, 0, 0, 0, 56, 52]
-            // Extract these into JS array, then convert them into string-formatted IPv6 address
-            let ip6_array = [];
-            let element = null;
-            let active_element = null;
+            let ip6_array = ip_array.slice(6,22);
 
-            for (let i=0; i<16; i++)
-            {
-                element = ip_array.slice(6,22)[i];
-                if (active_element === null)
-                {
-                    active_element = this.to_hex(element);
-                }
-                else
-                {
-                    ip6_array.push(active_element + this.to_hex(element));
-                    active_element = null;
-                }
+            // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
+            let i = 0, m = "", c = [];
+            for (i = 0; i < 16; i++) {
+                c.push(((Number(ip6_array[i++]) << 8) + Number(ip6_array[i])).toString(16));
             }
-
-            // Compress into 4-byte groups, e.g. [0E,4F] to [0E4F]
-            ip_string = ip6_array.join(":")
+            return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
+                m = (t.length > m.length) ? t : m;
+                return t;
+            }).replace(m || ' ', '::');
         }
-//        return temp_char.address().readString().substring(0);
-        consoleService.logStringMessage("Sixornot - get_ip_str - ip_string is: " + ip_string);
-        return ip_string;
-//        return "1.1.1.1";
     },
-
-// "ctypes.unsigned_char.array(28)([0, 0, 209, 85, 229, 147, 0, 0, 0, 0, 0, 0, 0, 0, 38, 3, 232, 93, 0, 0, 0, 136, 140, 181, 120, 0, 140, 181])"
 
     // Proxy to native getaddrinfo functionality
     resolveHostNative : function (host)
     {
-        consoleService.logStringMessage("Sixornot - resolveHostNative");
+        consoleService.logStringMessage("Sixornot - resolveHostNative - resolving host: " + host);
 
-        let retValue = this.addrinfo()
-        let retVal = retValue.address()
-        let ret = this.getaddrinfo(host, null, null, retVal.address());
+        let hints = this.addrinfo();
+        //        this.AI_PASSIVE = 0x01;
+        //        this.AI_CANONNAME = 0x02;
+        //        this.AI_NUMERICHOST = 0x04;
+        //        this.AI_ALL = 0x0100;
+        //        this.AI_ADDRCONFIG = 0x0400;  - must be off
+        hints.ai_flags = 0x010 | 0x020 | 0x040 | 0x0100 | 0x0200;
+        //        this.AF_INET = 2;
+        //        this.AF_INET6 = 23;
+        //        this.AF_UNSPEC = 0;
+        hints.ai_family = this.AF_UNSPEC;
+        //        this.SOCK_STREAM = 1;
+        hints.ai_socktype = 0;
+        //        this.IPPROTO_UNSPEC = 0;
+        //        this.IPPROTO_TCP = 6;
+        //        this.IPPROTO_UDP = 17;
+        hints.ai_protocol = this.IPPROTO_UNSPEC;
+        hints.ai_addrlen = 0;
+//        hints.ai_addr = ctypes.voidptr_t();
+//        hints.ai_next = ctypes.voidptr_t(); */
+
+        let retValue = this.addrinfo();
+        let retVal = retValue.address();
+        let ret = this.getaddrinfo(host, null, hints.address(), retVal.address());
+//        let ret = this.getaddrinfo(host, null, null, retVal.address());
         let addresses = [];
         let notdone = true;
+        if (retVal.isNull())
+        {
+            consoleService.logStringMessage("Sixornot - resolveHostNative - Unable to resolve host, got no results from getaddrinfo");
+            return [];
+        }
         let i = retVal.contents;
 
         // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
@@ -1268,6 +1447,18 @@ var DnsHandler =
     cancelRequest : function(request)
     {
         try { request.cancel(Components.results.NS_ERROR_ABORT); } catch(e) {}  // calls onLookupComplete() with status=Components.results.NS_ERROR_ABORT
+    },
+
+    // Return the IP addresses of the local host
+    resolveLocal : function()
+    {
+        let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
+        var IPAddresses = [];
+        while (dnsresponse.hasMore())
+        {
+            IPAddresses.push(dnsresponse.getNextAddrAsString());
+        }
+        return IPAddresses;
     },
 
     resolveHost : function(host,returnIP)  // Returns request object
@@ -1542,8 +1733,7 @@ defineLazyGetter("threadManager", function() {
                      .getService(Components.interfaces.nsIThreadManager);
 });
 defineLazyGetter("dnsService", function() {
-    return Components.classes["@mozilla.org/network/dns-service;1"]
-                     .getService(Components.interfaces.nsIDNSService);
+    return Components.classes["@mozilla.org/network/dns-service;1"].getService(Components.interfaces.nsIDNSService);
 });
 defineLazyGetter("proxyService", function() {
     return Components.classes["@mozilla.org/network/protocol-proxy-service;1"]
