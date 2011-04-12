@@ -1,8 +1,20 @@
 /* This is a JavaScript module (JSM) to be imported via Components.utils.import() and acts as a singleton.
    Only the following listed symbols will exposed on import, and only when and where imported. */
 
-/* This library is heavily based on the excellent Flagfox addon by Dave Garrett
+/* This library is based on the excellent Flagfox addon by Dave Garrett
 See flagfox.net for more information */
+
+// TODO
+/*
+    Display local DNS name on tooltip
+    Italics for link-local local IPs
+    Banner notifications to explain things like IPv6-only sites with no local v6, and the consequences of having no local v6
+    Banner to advise on places to go in order to get v6 tunnels etc.?
+    Preferences - turn ctypes usage on/off
+    Detecting type of IPv6 local address and alter display of icon accordingly
+    Information added to popup to explain what the icon means
+    Menu on-click of the icon to allow you to copy IP addresses to clipboard
+*/
 
 const EXPORTED_SYMBOLS = ["Sixornot"];
 
@@ -707,8 +719,11 @@ function newIconInstance(window)
 
     function updateTooltipContent()
     {
-        while (tooltip.firstChild)  // Clear previously generated tooltip, if one exists
+        // Clear previously generated tooltip, if one exists
+        while (tooltip.firstChild)
+        {
             tooltip.removeChild(tooltip.firstChild);
+        }
 
         var grid = window.document.createElement("grid");
         var rows = window.document.createElement("rows");
@@ -756,7 +771,6 @@ function newIconInstance(window)
         {
             var row = window.document.createElement("row");
             var label = window.document.createElement("label");
-//            label.setAttribute("value", "");
             var value = window.document.createElement("label");
             value.setAttribute("value", lineValue);
             row.appendChild(label);
@@ -860,6 +874,8 @@ function newIconInstance(window)
         }
 
         // Append local IP address information
+        // TODO - If address is link-local (or otherwise not globally routeable) then render it in italics
+        // TODO - Display local DNS name as well
         first = true;
         if (localipv4s.length != 0)
         {
