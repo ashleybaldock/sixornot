@@ -1209,10 +1209,14 @@ var DnsHandler =
         {
             this.library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
             consoleService.logStringMessage("Sixornot - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
+            // Address family
+            this.AF_UNSPEC = 0;
             this.AF_INET = 2;
             this.AF_INET6 = 30;
-            this.AF_UNSPEC = 0;
+            // Socket type
             this.SOCK_STREAM = 1;
+            // Protocol
+            this.IPPROTO_UNSPEC = 0;
         }
         catch(e)
         {
