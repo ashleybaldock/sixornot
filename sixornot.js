@@ -402,6 +402,53 @@ function newIconInstance(window)
         urlbaricons.insertBefore(box, starbutton);
     }
 
+//    let toolbarpalette = window.document.getElementById("BrowserToolbarPalette");
+/*    let navbar = window.document.getElementById("urlbar-container");
+
+    var toolbarbutton = window.document.createElement("toolbarbutton");
+    toolbarbutton.setAttribute("id", "sixornot-toolbarbutton");
+    toolbarbutton.setAttribute("label", "Sixornot");
+    toolbarbutton.setAttribute("tooltiptext", "test tooltip");
+//    toolbarbutton.setAttribute("style", "list-style-image: url('resource://sixornot/skin/icons/sixornot_button_none_16.png');");
+    toolbarbutton.style.listStyleImage = "url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAo0lEQVR42u3VMQrCMBSA4Q7uOnsNB4%2FR0cM6ZPYyyRRIGhAzly5CNQrfD49Alhe%2BJdMkSZIk6d1ijMdSyryelNJp710hhMPWrpzzeRjAsiyX1tpzPf3%2B%2BgnsrV211hsAAAAAAAAAAAAAAAAAAAAAAACA0QDfHAAAAPweQH%2FUo5%2F3PafvCn4BAAAAAAAAAAAAAAAAAAAAAAAAAADGAkiSJOmPewEpGDS2TaImnAAAAABJRU5ErkJggg%3D%3D)";
+
+//    toolbarpalette.appendChild(toolbarbutton);
+    navbar.parentNode.appendChild(toolbarbutton); */
+
+
+    // Taken from: http://blog.fpmurphy.com/2011/02/firefox-4-restartless-add-ons.html
+
+   let doc = window.document;
+   // add iconized button
+   let (toggleButton = doc.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "toolbarbutton")) {
+      toggleButton.setAttribute("id", "sixornot-toolbarbutton");
+      toggleButton.setAttribute("label", "sixornot-label");
+      toggleButton.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
+     toggleButton.style.listStyleImage = "url('resource://sixornot/skin/icons/sixornot_button_none_16.png')";
+/*      if (value) {
+         toggleButton.setAttribute("tooltiptext", getLocalizedStr("onString"));
+         toggleButton.style.listStyleImage = "url('" + logo16on + "')";
+      } else {
+         toggleButton.setAttribute("tooltiptext", getLocalizedStr("offString"));
+         toggleButton.style.listStyleImage = "url('" + logo16off + "')";
+      } */
+//      toggleButton.addEventListener("command", toggle, true);
+      $(doc, "navigator-toolbox").palette.appendChild(toggleButton);
+
+/*      // move to location specified in prefs
+      let toolbarId = PREF_BRANCH_HTML5TOGGLE.getCharPref(PREF_TOOLBAR);
+      let toolbar = toolbarId && $(doc, toolbarId);
+      if (toolbar) {
+         let nextItem = $(doc, PREF_BRANCH_HTML5TOGGLE.getCharPref(PREF_NEXTITEM));
+         toolbar.insertItem(BUTTON_ID, nextItem &&
+            nextItem.parentNode.id == toolbarId && nextItem);
+      } */
+
+//      win.addEventListener("aftercustomization", toggleCustomize, false);
+   }
+
+
+
     // UI init success, init variables
     var contentDoc = null;     // Reference to the current page document object
     var url = "";              // The URL of the current page
@@ -1526,6 +1573,15 @@ var DnsHandler =
 };
 
 //// Utility functions //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function $(node, childId) {
+   if (node.getElementById) {
+      return node.getElementById(childId);
+   } else {
+      return node.querySelector("#" + childId);
+   }
+}
+
 
 function getIconPath(filename)
 {
