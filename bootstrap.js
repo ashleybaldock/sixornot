@@ -1,35 +1,64 @@
-/* Original code from http://starkravingfinkle.org/blog/2011/01/bootstrap-jones-adventures-in-restartless-add-ons/, modified with thanks to Mark Finkle */
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: BSD License
+ * 
+ * Copyright (c) 2008-2011 Timothy Baldock. All Rights Reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * 
+ * 3. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission from the author.
+ * 
+ * 4. Products derived from this software may not be called "SixOrNot" nor may "SixOrNot" appear in their names without specific prior written permission from the author.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * 
+ * ***** END LICENSE BLOCK ***** */
 
-// See: http://www.oxymoronical.com/experiments/apidocs/interface/nsIWindowMediatorListener for description of this object's structure
-/*let sixornot_winlistener = {
-    onOpenWindow: function(aWindow) {
-        // Wait for the window to finish loading
-        let domWindow = aWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowInternal);
-        domWindow.addEventListener("load", function() {
-            Components.utils.reportError("domWindow.addEventListener called");
-            domWindow.removeEventListener("load", arguments.callee, false);
-            Sixornot.init(domWindow);
-        }, false);
-    },
-    onCloseWindow: function(aWindow) { },
-    onWindowTitleChange: function(aWindow, aTitle) { }
-}*/
+/* Portions of this code are based on the Flagfox extension by Dave Garrett.
+ * Please see flagfox.net for more information on this extension.
+ * */
 
-/*function windowWatcher(subject, topic) {
-    if (topic != "domwindowopened") return;
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MIT/X11 License
+ * 
+ * Copyright (c) 2011 Finnbarr P. Murphy
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * ***** END LICENSE BLOCK ***** */
 
-    subject.addEventListener("load", function () {
-        subject.removeEventListener("load", arguments.callee, false);
-
-        // Now that the window has loaded, only register on browser windows
-        let doc = subject.document.documentElement;
-        if (doc.getAttribute("windowtype") == "navigator:browser") 
-        {
-            Sixornot.init(subject);
-        }
-    }, false);
-} */
-
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MIT/X11 License
+ * 
+ * Copyright (c) 2010 Erik Vold
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * Contributor(s):
+ *   Erik Vold <erikvvold@gmail.com> (Original Author)
+ *   Greg Parris <greg.parris@gmail.com>
+ *   Nils Maier <maierman@web.de>
+ *
+ * ***** END LICENSE BLOCK ***** */
 
 /*
     Constants and global variables
@@ -47,19 +76,19 @@ const BUTTON_ID     = "sixornot-buttonid",
 const PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
 
 const PREFS = {
-   enable:    false,
-   nextitem:  "bookmarks-menu-button-container",
-   toolbar:   "nav-bar"
+    enable:    false,
+    nextitem:  "bookmarks-menu-button-container",
+    toolbar:   "nav-bar"
 };
 
 let PREF_OBSERVER = {
-  observe: function(aSubject, aTopic, aData) {
-    if ("nsPref:changed" != aTopic || !PREFS[aData]) return;
-    runOnWindows(function(win) {
-      win.document.getElementById(KEY_ID).setAttribute(aData, getPref(aData));
-      addMenuItem(win);
-    });
-  }
+    observe: function(aSubject, aTopic, aData) {
+        if ("nsPref:changed" != aTopic || !PREFS[aData]) return;
+        runOnWindows(function(win) {
+            win.document.getElementById(KEY_ID).setAttribute(aData, getPref(aData));
+            addMenuItem(win);
+        });
+    }
 }
 
 /*
@@ -120,7 +149,6 @@ function main(win) {
 /*
     bootstrap.js API
 */
-// NEW
 function startup(data) AddonManager.getAddonByID(data.id, function(addon) {
     consoleService.logStringMessage("Sixornot - setInitialPrefs");
     setInitialPrefs();
@@ -148,19 +176,16 @@ function startup(data) AddonManager.getAddonByID(data.id, function(addon) {
     unload(function() prefs.removeObserver("", PREF_OBSERVER));
 });
 
-// NEW
 function shutdown(data, reason) {
     consoleService.logStringMessage("Sixornot - shutdown");
     if (reason !== APP_SHUTDOWN) unload();
 }
 
-// NEW
 function install(){
     consoleService.logStringMessage("Sixornot - install");
     setInitialPrefs();
 }
 
-// NEW
 function uninstall(){
     consoleService.logStringMessage("Sixornot - uninstall");
 // If this is due to an upgrade then don't delete preferences?
