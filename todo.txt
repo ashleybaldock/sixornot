@@ -6,8 +6,24 @@ Banner notifications to explain things like IPv6-only sites with no local v6, an
 Banner to advise on places to go in order to get v6 tunnels etc.?
 Preferences - turn ctypes usage on/off
 Detecting type of IPv6 local address and alter display of icon accordingly
-Information added to popup to explain what the icon means
-Menu on-click of the icon to allow you to copy IP addresses to clipboard
+Information added to popup to explain what the icon means?
 
 Add 24px icons for larger size buttons
 Preference to set whether icon should come before or after the star icon
+
+Menu on-click of the icon to allow you to copy IP addresses to clipboard
+Native menu look+feel
+    list of remote IPs  -> tooltip, "click to copy IP address"
+    list of local IPs   -> tooltip, "click to copy IP address"
+    Option to open preferences
+    Option to visit addon website + get more information/help
+
+Preferences dialog
+    Use ctypes dns
+    Show icon in address bar
+
+
+Testing
+    Unit tests for core functions
+    UI testing, full sequence for moving icon, close+reopen to check it stays in the right place
+    Install/uninstall/upgrade sequence testing
