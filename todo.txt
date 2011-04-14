@@ -10,3 +10,4 @@ Information added to popup to explain what the icon means
 Menu on-click of the icon to allow you to copy IP addresses to clipboard
 
 Add 24px icons for larger size buttons
+Preference to set whether icon should come before or after the star icon
