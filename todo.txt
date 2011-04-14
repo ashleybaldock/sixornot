@@ -1,0 +1,12 @@
+# TODO
+
+Display local DNS name on tooltip
+Italics for link-local local IPs
+Banner notifications to explain things like IPv6-only sites with no local v6, and the consequences of having no local v6
+Banner to advise on places to go in order to get v6 tunnels etc.?
+Preferences - turn ctypes usage on/off
+Detecting type of IPv6 local address and alter display of icon accordingly
+Information added to popup to explain what the icon means
+Menu on-click of the icon to allow you to copy IP addresses to clipboard
+
+Add 24px icons for larger size buttons

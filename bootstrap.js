@@ -60,6 +60,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+
 /*
     Constants and global variables
 */
@@ -165,14 +166,10 @@ function main(win)
 
         // Add event listeners
     //    icon.addEventListener("click",onIconClick,false);
-    //    icon.addEventListener("mousedown",onIconMouseDown,false);
-    //    icon.addEventListener("mouseover",onIconHover,false);
     //    menu.addEventListener("command",onMenuCommand,false);
     //    menu.addEventListener("popupshowing",onMenuShowing,false);
-    //    window.addEventListener("keypress",onKeyPressed,false);
-/*        win.addEventListener("online", onChangedOnlineStatus, false);
+        win.addEventListener("online", onChangedOnlineStatus, false);
         win.addEventListener("offline", onChangedOnlineStatus, false);
-        win.addEventListener("unload", unload, false); */
 
         // Position the icon
         let urlbaricons = doc.getElementById("urlbar-icons");
@@ -203,7 +200,6 @@ function main(win)
     var usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
     var specialLocation = null;
     var DNSrequest = null;
-//    var prefListener = new PrefListener("sixornot.", onPrefChange);
     var pollLoopID = win.setInterval(pollForContentChange, 250);
 
     // Add a callback to our unload list to remove the UI when addon is disabled
@@ -222,15 +218,11 @@ function main(win)
 
         win.clearInterval(pollLoopID);
 
-        /* window.removeEventListener("unload", unload, false);
         window.removeEventListener("offline", onChangedOnlineStatus, false);
-        window.removeEventListener("online", onChangedOnlineStatus, false); */
-//            window.removeEventListener("keypress", onKeyPressed, false);
+        window.removeEventListener("online", onChangedOnlineStatus, false);
         tooltip.removeEventListener("popupshowing", updateTooltipContent, false);
 //            menu.removeEventListener("popupshowing",onMenuShowing,false);
 //            menu.removeEventListener("command",onMenuCommand,false);
-//            icon.removeEventListener("mouseover",onIconHover,false);
-//            icon.removeEventListener("mousedown",onIconMouseDown,false);
 //            icon.removeEventListener("click",onIconClick,false);
         //DnsHandler.cancelRequest(DNSrequest);
 
@@ -281,7 +273,6 @@ function main(win)
         // If this fails returns false and we need to do lookup
         if (updateIcon())
         {
-            consoleService.logStringMessage("Sixornot - updateState, able to update state without dns lookup");
             return;
         }
 
@@ -405,18 +396,12 @@ function main(win)
 
             case "about:":
                 urlIsPortable = false;
-                if (url == "about:blank")  // Blank page gets its own icon and tooltip
-                {
-                    addressIcon.src = sother_16;
-                    toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+                addressIcon.src = sother_16;
+                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+                if (url == "about:blank")
                     specialLocation = ["blankpage"];
-                }
                 else
-                {
-                    addressIcon.src = sother_16;
-                    toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
                     specialLocation = ["internalfile", truncateBeforeFirstChar(url, "?")];
-                }
                 return true;
 
             case "chrome:":  case "resource:":
@@ -687,7 +672,11 @@ function main(win)
         grid.appendChild(rows);
         tooltip.appendChild(grid);
     }
-
+    // Online/Offline events can trigger multiple times, reset contentDoc so that the next time the timer fires it'll be updated
+    function onChangedOnlineStatus(event)
+    {
+        contentDoc = null;
+    }
 }
 
 
@@ -700,9 +689,6 @@ function startup(data) AddonManager.getAddonByID(data.id, function(addon) {
     setInitialPrefs();
     include(addon.getResourceURI("includes/utils.js").spec);
     include(addon.getResourceURI("includes/locale.js").spec);
-
-    // Import ctypes module
-    Components.utils.import("resource://gre/modules/ctypes.jsm");
 
     // Init DnsHandler
     DnsHandler.init();
@@ -752,65 +738,6 @@ function uninstall()
     PREF_BRANCH_SIXORNOT.deleteBranch("");             
 //   PREF_BRANCH_HTML5.setBoolPref('enable', value);
 }
-
-
-
-
-// OLD
-/*function startup(aData, aReason) {
-    Components.utils.import("resource://gre/modules/Services.jsm");
-
-    // Set up access to resource: URIs
-    let alias = Services.io.newFileURI(aData.installPath);
-    if (!aData.installPath.isDirectory())
-    {
-        alias = Services.io.newURI("jar:" + alias.spec + "!/", null, null);
-    }
-    Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler).setSubstitution("sixornot", alias);
-
-    // Import sixornot module as a singleton (only ever one of these even if imported multiple times)
-    Components.utils.import("resource://sixornot/sixornot.js");
-
-    // Load into any existing windows
-    // https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIWindowMediator
-    let enumerator = Services.wm.getEnumerator("navigator:browser");
-    while (enumerator.hasMoreElements()) {
-        let win = enumerator.getNext().QueryInterface(Components.interfaces.nsIDOMWindow);
-        // Now that the window has loaded, only register on browser windows
-        let doc = win.document.documentElement;
-        if (doc.getAttribute("windowtype") == "navigator:browser") 
-        {
-            Sixornot.init(win);
-        }
-    }
-
-    // Load into any new windows
-    Services.ww.registerNotification(windowWatcher);
-} */
-
-// OLD
-/*function shutdown(aData, aReason) {
-    // When the application is shutting down we normally don't have to clean up any UI changes
-    if (aReason == APP_SHUTDOWN) return;
-
-    // Remove listener placed on window mediator
-    Services.ww.unregisterNotification(windowWatcher);
-
-    // Unload from any existing windows
-    let enumerator = Services.wm.getEnumerator("navigator:browser");
-    while (enumerator.hasMoreElements()) {
-        let win = enumerator.getNext().QueryInterface(Components.interfaces.nsIDOMWindow);
-        // This is called for every window open, but calling it once destroys icon for all windows open, so this is slightly redundant
-        Sixornot.shutdown()
-    }
-
-    // Remove our resource: package registration
-    Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler).setSubstitution("sixornot", null);
-}
-
-function install(aData, aReason) { }
-
-function uninstall(aData, aReason) { } */
 
 
 /*
@@ -949,19 +876,15 @@ var DnsHandler =
     AF_INET: null,
     AF_INET6: null,
     library: null,
-//    in_addr: null,
-//    sockaddr_in: null,
-//    in6_addr: null,
-//    sockaddr_in6: null,
     sockaddr: null,
     addrinfo: null,
-//    freeaddrinfo: null,
     getaddrinfo: null,
-//    inet_ntop: null,
-//    inet_pton: null,
 
     init : function ()
     {
+        // Import ctypes module
+        Cu.import("resource://gre/modules/ctypes.jsm");
+
         // Try each of these until one works, this will also determine our platform
         try
         {
@@ -1015,22 +938,7 @@ var DnsHandler =
                 return false;
             }
         }
-        // Set up all the structs we need
-/*        this.in_addr = ctypes.StructType("in_addr", [
-                            {s_addr : ctypes.unsigned_char.array(4)}]);
-        this.sockaddr_in = ctypes.StructType("sockaddr_in", [
-                            {sin_family : ctypes.short}, 
-                            {sin_port : ctypes.unsigned_short}, 
-                            {sin_addr : this.in_addr}, 
-                            {sin_zero : ctypes.char.array(8)}]);
-        this.in6_addr = ctypes.StructType("in6_addr", [
-                            {s6_addr : ctypes.unsigned_char.array(16)}]);
-        this.sockaddr_in6 = ctypes.StructType("sockaddr_in6", [
-                            {sin6_family : ctypes.uint16_t},
-                            {sin6_port : ctypes.uint16_t}, 
-                            {sin6_flowinfo : ctypes.uint32_t}, 
-                            {sin6_addr : this.in6_addr}, 
-                            {sin6_scope_id : ctypes.uint32_t}]); */
+        // Set up the structs we need
         this.sockaddr = ctypes.StructType("sockaddr", [
                             {sa_family : ctypes.unsigned_short},
                             {sa_data : ctypes.unsigned_char.array(28)}]);
@@ -1044,11 +952,8 @@ var DnsHandler =
                             {ai_cannonname : ctypes.char.ptr}, 
                             {ai_addr : this.sockaddr.ptr}, 
                             {ai_next : this.addrinfo.ptr}]);
-        // Set up all the ctypes functions we need
-//        this.freeaddrinfo = this.library.declare("freeaddrinfo", ctypes.default_abi, ctypes.void_t, addrinfo.ptr);
+        // Set up the ctypes functions we need
         this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-//        this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi, ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.int);
-//        this.inet_pton = this.library.declare("inet_pton", ctypes.default_abi, ctypes.int, ctypes.int, ctypes.char.ptr, ctypes.voidptr_t);
     },
 
     shutdown : function()
@@ -1153,25 +1058,11 @@ var DnsHandler =
         consoleService.logStringMessage("Sixornot - resolveHostNative - resolving host: " + host);
 
         let hints = this.addrinfo();
-        //        this.AI_PASSIVE = 0x01;
-        //        this.AI_CANONNAME = 0x02;
-        //        this.AI_NUMERICHOST = 0x04;
-        //        this.AI_ALL = 0x0100;
-        //        this.AI_ADDRCONFIG = 0x0400;  - must be off
-        hints.ai_flags = 0x010 | 0x020 | 0x040 | 0x0100 | 0x0200;
-        //        this.AF_INET = 2;
-        //        this.AF_INET6 = 23;
-        //        this.AF_UNSPEC = 0;
+        hints.ai_flags = 0x00;
         hints.ai_family = this.AF_UNSPEC;
-        //        this.SOCK_STREAM = 1;
         hints.ai_socktype = 0;
-        //        this.IPPROTO_UNSPEC = 0;
-        //        this.IPPROTO_TCP = 6;
-        //        this.IPPROTO_UDP = 17;
         hints.ai_protocol = this.IPPROTO_UNSPEC;
         hints.ai_addrlen = 0;
-//        hints.ai_addr = ctypes.voidptr_t();
-//        hints.ai_next = ctypes.voidptr_t(); */
 
         let retValue = this.addrinfo();
         let retVal = retValue.address();
