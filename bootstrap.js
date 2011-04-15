@@ -73,7 +73,8 @@ const BUTTON_ID     = "sixornot-buttonid",
       ADDRESS_BOX_ID = "sixornot-addressboxid",
       ADDRESS_IMG_ID = "sixornot-addressimageid",
       TOOLTIP_ID = "sixornot-tooltipid",
-      MENU_ID = "sixornot-menuid",
+      ADDRESS_MENU_ID = "sixornot-addressmenuid",
+      TOOLBAR_MENU_ID = "sixornot-toolbarmenuid",
       PREF_TOOLBAR  = "toolbar",
       PREF_NEXTITEM = "nextitem";
 
@@ -87,7 +88,7 @@ const PREFS = {
 
 let PREF_OBSERVER = {
     observe: function(aSubject, aTopic, aData) {
-        if ("nsPref:changed" != aTopic || !PREFS[aData]) return;
+        if ("nsPref:changed" !== aTopic || !PREFS[aData]) return;
         runOnWindows(function(win) {
             win.document.getElementById(KEY_ID).setAttribute(aData, getPref(aData));
             addMenuItem(win);
@@ -119,7 +120,8 @@ function main(win)
     // Add tooltip, iconized button and address bar icon to browser window
     // These are created in their own scope, they need to be found again using their IDs for the current window
     let (tooltip = doc.createElementNS(NS_XUL, "tooltip"),
-         popupMenu = doc.createElementNS(NS_XUL, "menupopup"),
+         addressPopupMenu = doc.createElementNS(NS_XUL, "menupopup"),
+         toolbarPopupMenu = doc.createElementNS(NS_XUL, "menupopup"),
          toolbarButton = doc.createElementNS(NS_XUL, "toolbarbutton"),
          addressIcon = doc.createElementNS(NS_XUL, "image"),
          addressButton = doc.createElementNS(NS_XUL, "box")) 
@@ -131,32 +133,36 @@ function main(win)
         tooltip.addEventListener("popupshowing", updateTooltipContent, false);
 
         // Menu setup
-        popupMenu.setAttribute("id", MENU_ID);
-        popupMenu.setAttribute("position", "after_start");
+        toolbarPopupMenu.setAttribute("id", TOOLBAR_MENU_ID);
+        toolbarPopupMenu.setAttribute("position", "after_start");
+        addressPopupMenu.setAttribute("id", ADDRESS_MENU_ID);
+        addressPopupMenu.setAttribute("position", "after_start");
         // Add event listener for popupMenu opening (to update popupMenu contents dynamically)
-        popupMenu.addEventListener("popupshowing", updateMenuContent, false);
+        toolbarPopupMenu.addEventListener("popupshowing", updateMenuContent, false);
+        addressPopupMenu.addEventListener("popupshowing", updateMenuContent, false);
 
         // Iconized button setup
         toolbarButton.setAttribute("id", BUTTON_ID);
         toolbarButton.setAttribute("label", getLocalizedStr("label"));
         toolbarButton.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
         toolbarButton.setAttribute("tooltip", TOOLTIP_ID);
-        toolbarButton.setAttribute("popup", MENU_ID);
+//        toolbarButton.setAttribute("popup", TOOLBAR_MENU_ID);
         toolbarButton.setAttribute("type", "menu");
         toolbarButton.setAttribute("orient", "horizontal");
 
         toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
         // Menu which the button should open
-//        toolbarButton.appendChild(popupMenu);
+        toolbarButton.appendChild(toolbarPopupMenu);
 
         $(doc, "navigator-toolbox").palette.appendChild(toolbarButton);
  
         // Move to location specified in prefs
         let toolbarId = PREF_BRANCH_SIXORNOT.getCharPref(PREF_TOOLBAR);
         let toolbar = toolbarId && $(doc, toolbarId);
-        if (toolbar) {
+        if (toolbar)
+        {
             let nextItem = $(doc, PREF_BRANCH_SIXORNOT.getCharPref(PREF_NEXTITEM));
-            toolbar.insertItem(BUTTON_ID, nextItem && nextItem.parentNode.id == toolbarId && nextItem);
+            toolbar.insertItem(BUTTON_ID, nextItem && nextItem.parentNode.id === toolbarId && nextItem);
         }
 
         win.addEventListener("aftercustomization", toggleCustomize, false);
@@ -170,14 +176,14 @@ function main(win)
 
         addressIcon.setAttribute("id", ADDRESS_IMG_ID);
         addressIcon.setAttribute("tooltip", TOOLTIP_ID);
-        addressIcon.setAttribute("popup", MENU_ID);
+        addressIcon.setAttribute("popup", ADDRESS_MENU_ID);
         addressIcon.setAttribute("width", "16");
         addressIcon.setAttribute("height", "16");
         addressIcon.setAttribute("src", sother_16);
 
 
         // Add event listeners
-        addressIcon.addEventListener("click", onIconClick, false);
+//        addressIcon.addEventListener("click", onIconClick, false);
     //    popupMenu.addEventListener("command",onMenuCommand,false);
         win.addEventListener("online", onChangedOnlineStatus, false);
         win.addEventListener("offline", onChangedOnlineStatus, false);
@@ -187,7 +193,7 @@ function main(win)
         let starbutton = doc.getElementById("star-button");
         let anchor = urlbaricons.nextSibling;
         addressButton.appendChild(addressIcon);
-        addressButton.appendChild(popupMenu);
+        addressButton.appendChild(addressPopupMenu);
         addressButton.appendChild(tooltip);
         // If star icon visible, insert before it, otherwise just append to urlbaricons
         if (!starbutton)
@@ -197,17 +203,6 @@ function main(win)
         else
         {
             urlbaricons.insertBefore(addressButton, starbutton);
-        }
-    }
-
-    function onIconClick (e)
-    {
-        // Left button
-        if (e.button == 0)
-        {
-            let addressIcon = $(doc, ADDRESS_IMG_ID);
-            let popupMenu = $(doc, MENU_ID);
-            popupMenu.openPopup(addressIcon, "after_start", 0, 0, false, false, null);
         }
     }
 
@@ -230,12 +225,14 @@ function main(win)
         // Remove UI
         let toolbarButton = $(doc, BUTTON_ID) || $($(doc, "navigator-toolbox").palette, BUTTON_ID);
         let tooltip = $(doc, TOOLTIP_ID);
-        let popupMenu = $(doc, MENU_ID);
+        let addressPopupMenu = $(doc, ADDRESS_MENU_ID);
+        let toolbarPopupMenu = $(doc, TOOLBAR_MENU_ID);
         let addressIcon = $(doc, ADDRESS_IMG_ID);
         let addressButton = $(doc, ADDRESS_BOX_ID);
         toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
         tooltip && tooltip.parentNode.removeChild(tooltip);
-        popupMenu && popupMenu.parentNode.removeChild(popupMenu);
+        toolbarPopupMenu && popupMenu.parentNode.removeChild(popupMenu);
+        addressPopupMenu && popupMenu.parentNode.removeChild(popupMenu);
         addressIcon && addressIcon.parentNode.removeChild(addressIcon);
         addressButton && addressButton.parentNode.removeChild(addressButton);
 
@@ -246,19 +243,32 @@ function main(win)
         window.removeEventListener("offline", onChangedOnlineStatus, false);
         window.removeEventListener("online", onChangedOnlineStatus, false);
         tooltip.removeEventListener("popupshowing", updateTooltipContent, false);
-        popupMenu.removeEventListener("popupshowing", updateMenuContent, false);
+        toolbarPopupMenu.removeEventListener("popupshowing", updateMenuContent, false);
+        addressPopupMenu.removeEventListener("popupshowing", updateMenuContent, false);
 //            menu.removeEventListener("command",onMenuCommand,false);
-        addressIcon.removeEventListener("click", onIconClick, false);
+//        addressIcon.removeEventListener("click", onIconClick, false);
         //DnsHandler.cancelRequest(DNSrequest);
 
     }, win);
+
+    // Triggered when address bar icon is clicked on
+    function onIconClick (e)
+    {
+        // Left button
+        if (e.button === 0)
+        {
+            let addressIcon = $(doc, ADDRESS_IMG_ID);
+            let popupMenu = $(doc, ADDRESS_MENU_ID);
+            popupMenu.openPopup(addressIcon, "after_start", 0, 0, false, false, null);
+        }
+    }
 
     /* Poll for content change to ensure this is updated on all pages including errors */
     function pollForContentChange()
     {
         try
         {
-            if (contentDoc != win.content.document)
+            if (contentDoc !== win.content.document)
                 updateState();
         }
         catch (e)
@@ -309,7 +319,7 @@ function main(win)
         {
             consoleService.logStringMessage("Sixornot - Unable to look up host");
         }
-        if (host == "")
+        if (host === "")
         {
             addressIcon.src = sother_16;
             toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
@@ -349,7 +359,7 @@ function main(win)
             DNSrequest = null;
 
             // DNS lookup failed
-            if (remoteips[0] == "FAIL")
+            if (remoteips[0] === "FAIL")
             {
                 addressIcon.src = sother_16;
                 toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
@@ -366,7 +376,7 @@ function main(win)
             // Parse list of local IPs for IPv4/IPv6
             for (i=0; i<localips.length; i++)
             {
-                if (localips[i].indexOf(":") != -1)
+                if (localips[i].indexOf(":") !== -1)
                 {
                     localipv6s.push(localips[i]);
                 }
@@ -379,7 +389,7 @@ function main(win)
             // Parse list of IPs for IPv4/IPv6
             for (i=0; i<remoteips.length; i++)
             {
-                if (remoteips[i].indexOf(":") != -1)
+                if (remoteips[i].indexOf(":") !== -1)
                 {
                     ipv6s.push(remoteips[i]);
                 }
@@ -404,96 +414,109 @@ function main(win)
         consoleService.logStringMessage("Sixornot - updateIcon");
         let addressIcon = $(doc, ADDRESS_IMG_ID);
         let toolbarButton = $(doc, BUTTON_ID) || $($(doc, "navigator-toolbox").palette, BUTTON_ID);
-        switch (contentDoc.location.protocol)
+
+        if (contentDoc.location.protocol === "file:")
         {
-            case "file:":
-                urlIsPortable = false;
-                addressIcon.src = sother_16;
-                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
-                specialLocation = ["localfile"];
-                return true;
-
-            case "data:":
-                addressIcon.src = sother_16;
-                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
-                specialLocation = ["datauri", truncateBeforeFirstChar(url, ",")];
-                return true;
-
-            case "about:":
-                urlIsPortable = false;
-                addressIcon.src = sother_16;
-                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
-                if (url == "about:blank")
-                    specialLocation = ["blankpage"];
-                else
-                    specialLocation = ["internalfile", truncateBeforeFirstChar(url, "?")];
-                return true;
-
-            case "chrome:":  case "resource:":
-                urlIsPortable = false;
-                addressIcon.src = sother_16;
-                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
-                specialLocation = ["internalfile", contentDoc.location.protocol + "//"];
-                return true;
-
-            case "view-source:":  // TODO: handle better
-                urlIsPortable = false;
-            default:
-                if (host == "")
-                    return false;  // Unknown host -> still need to look up
-                
-                if (ipv6s.length == 0)
-                {
-                    // We only have IPv4 addresses for the website
-                    if (ipv4s.length == 0)
-                    {
-                        // No addresses at all, question mark icon
-                        addressIcon.src = sother_16;
-                        toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
-                    }
-                    else
-                    {
-                        // v4 only icon
-                        addressIcon.src = s4only_16;
-                        toolbarButton.style.listStyleImage = "url('" + s4only_16 + "')";
-                    }
-                }
-                else
-                {
-                    // We have at least one IPv6 address
-                    if (ipv4s.length == 0)
-                    {
-                        // We only have IPv6 addresses, v6 only icon
-                        addressIcon.src = s6only_16;
-                        toolbarButton.style.listStyleImage = "url('" + s6only_16 + "')";
-                    }
-                    else
-                    {
-                        // v6 and v4 addresses, depending on possibility of v6 connection display green or yellow
-                        if (localipv6s.length == 0)
-                        {
-                            // Site has a v6 address, but we do not, so we're probably not using v6 to connect
-                            addressIcon.src = s4pot6_16;
-                            toolbarButton.style.listStyleImage = "url('" + s4pot6_16 + "')";
-                        }
-                        else
-                        {
-                            // Site has a v6 address as do we, so hopefully we're using v6 to connect
-                            addressIcon.src = s6and4_16;
-                            toolbarButton.style.listStyleImage = "url('" + s6and4_16 + "')";
-                        }
-                    }
-                }
-                specialLocation = null;
-                return true;
+            urlIsPortable = false;
+            addressIcon.src = sother_16;
+            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            specialLocation = ["localfile"];
+            return true;
         }
+        if (contentDoc.location.protocol === "data:")
+        {
+            addressIcon.src = sother_16;
+            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            specialLocation = ["datauri", truncateBeforeFirstChar(url, ",")];
+            return true;
+        }
+        if (contentDoc.location.protocol === "about:")
+        {
+            urlIsPortable = false;
+            addressIcon.src = sother_16;
+            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            if (url === "about:blank")
+            {
+                specialLocation = ["blankpage"];
+            }
+            else
+            {
+                specialLocation = ["internalfile", truncateBeforeFirstChar(url, "?")];
+            }
+            return true;
+        }
+        if (contentDoc.location.protocol === "chrome:" || contentDoc.location.protocol === "resource:")
+        {
+            urlIsPortable = false;
+            addressIcon.src = sother_16;
+            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            specialLocation = ["internalfile", contentDoc.location.protocol + "//"];
+            return true;
+        }
+        if (contentDoc.location.protocol === "about:")
+        {
+            urlIsPortable = false;
+        }
+
+        // Unknown host -> still need to look up
+        if (host === "")
+        {
+            return false;
+        }
+
+        // Valid URL, valid host etc., ready to update the icon
+        if (ipv6s.length === 0)
+        {
+            // We only have IPv4 addresses for the website
+            if (ipv4s.length === 0)
+            {
+                // No addresses at all, question mark icon
+                addressIcon.src = sother_16;
+                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            }
+            else
+            {
+                // v4 only icon
+                addressIcon.src = s4only_16;
+                toolbarButton.style.listStyleImage = "url('" + s4only_16 + "')";
+            }
+        }
+        else
+        {
+            // We have at least one IPv6 address
+            if (ipv4s.length === 0)
+            {
+                // We only have IPv6 addresses, v6 only icon
+                addressIcon.src = s6only_16;
+                toolbarButton.style.listStyleImage = "url('" + s6only_16 + "')";
+            }
+            else
+            {
+                // v6 and v4 addresses, depending on possibility of v6 connection display green or yellow
+                if (localipv6s.length === 0)
+                {
+                    // Site has a v6 address, but we do not, so we're probably not using v6 to connect
+                    addressIcon.src = s4pot6_16;
+                    toolbarButton.style.listStyleImage = "url('" + s4pot6_16 + "')";
+                }
+                else
+                {
+                    // Site has a v6 address as do we, so hopefully we're using v6 to connect
+                    addressIcon.src = s6and4_16;
+                    toolbarButton.style.listStyleImage = "url('" + s6and4_16 + "')";
+                }
+            }
+        }
+        specialLocation = null;
+        return true;
     }
 
     // Update the contents of the popupMenu whenever it is opened
-    function updateMenuContent()
+    function updateMenuContent (evt)
     {
         consoleService.logStringMessage("Sixornot - updateMenuContent");
-        let popupMenu = $(doc, MENU_ID);
+//        let popupMenu = $(doc, MENU_ID);
+        let popupMenu = this;
         // Clear previously generated popupMenu, if one exists
         while (popupMenu.firstChild)
         {
@@ -502,9 +525,10 @@ function main(win)
 
         function addMenuItem(labelName)
         {
-            let (menuitem = doc.createElementNS(NS_XUL, "menuitem")) {
+            let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
+            {
                 menuitem.setAttribute("label", labelName);
-                $(doc, MENU_ID).appendChild(menuitem);
+                popupMenu.appendChild(menuitem);
             }
         }
 
@@ -525,77 +549,85 @@ function main(win)
             tooltip.removeChild(tooltip.firstChild);
         }
 
-        var grid = doc.createElement("grid");
-        var rows = doc.createElement("rows");
+        let grid = doc.createElement("grid");
+        let rows = doc.createElement("rows");
 
-        var first = true;
-        var i = null;
+        let first = true;
+        let i = null;
 
         function addSpacerLine()
         {
-            var row = doc.createElement("row");
-            var label = doc.createElement("label");
-            label.setAttribute("value", " ");
-            var value = doc.createElement("label");
-            row.appendChild(value);
-            row.appendChild(label);
-            rows.appendChild(row);
+            let (row = doc.createElementNS(NS_XUL, "row"),
+                 label = doc.createElementNS(NS_XUL, "label"),
+                 value = doc.createElementNS(NS_XUL, "label"))
+            {
+                label.setAttribute("value", " ");
+                row.appendChild(value);
+                row.appendChild(label);
+                rows.appendChild(row);
+            }
         }
 
         function addTitleLine(labelName)
         {
-            var row = doc.createElement("row");
-            var label = doc.createElement("label");
-            label.setAttribute("value", labelName);
-            label.setAttribute("style", "font-weight: bold; text-align: right;");
-            var value = doc.createElement("label");
-            row.appendChild(value);
-            row.appendChild(label);
-            rows.appendChild(row);
+            let (row = doc.createElementNS(NS_XUL, "row"),
+                 label = doc.createElementNS(NS_XUL, "label"),
+                 value = doc.createElementNS(NS_XUL, "label"))
+            {
+                label.setAttribute("value", labelName);
+                label.setAttribute("style", "font-weight: bold; text-align: right;");
+                row.appendChild(value);
+                row.appendChild(label);
+                rows.appendChild(row);
+            }
         }
 
         function addLabeledLine(labelName, lineValue)
         {
-            var row = doc.createElement("row");
-            var label = doc.createElement("label");
-            label.setAttribute("value", labelName);
-            label.setAttribute("style", "font-weight: bold;");
-            var value = doc.createElement("label");
-            value.setAttribute("value", lineValue);
-            row.appendChild(label);
-            row.appendChild(value);
-            rows.appendChild(row);
+            let (row = doc.createElementNS(NS_XUL, "row"),
+                 label = doc.createElementNS(NS_XUL, "label"),
+                 value = doc.createElementNS(NS_XUL, "label"))
+            {
+                label.setAttribute("value", labelName);
+                label.setAttribute("style", "font-weight: bold;");
+                value.setAttribute("value", lineValue);
+                row.appendChild(label);
+                row.appendChild(value);
+                rows.appendChild(row);
+            }
         }
 
         function addUnLabeledLine(lineValue)
         {
-            var row = doc.createElement("row");
-            var label = doc.createElement("label");
-            var value = doc.createElement("label");
-            value.setAttribute("value", lineValue);
-            row.appendChild(label);
-            row.appendChild(value);
-            rows.appendChild(row);
+            let (row = doc.createElementNS(NS_XUL, "row"),
+                 label = doc.createElementNS(NS_XUL, "label"),
+                 value = doc.createElementNS(NS_XUL, "label"))
+            {
+                value.setAttribute("value", lineValue);
+                row.appendChild(label);
+                row.appendChild(value);
+                rows.appendChild(row);
+            }
         }
 
-        if (ipv4s.length != 0 || ipv6s.length != 0 | host != "")
+        if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
             addTitleLine("Remote", "");
         }
 
-        if (host != "")
+        if (host !== "")
         {
             addLabeledLine("Domain name:", host);
         }
 
         first = true;
-        if (ipv4s.length != 0)
+        if (ipv4s.length !== 0)
         {
             for (i=0; i<ipv4s.length; i++)
             {
                 if (first)
                 {
-                    if (ipv4s.length == 1)
+                    if (ipv4s.length === 1)
                     {
                         addLabeledLine("IPv4 address:", ipv4s[i]);
                     }
@@ -612,13 +644,13 @@ function main(win)
             }
         }
         first = true;
-        if (ipv6s.length != 0)
+        if (ipv6s.length !== 0)
         {
             for (i=0; i<ipv6s.length; i++)
             {
                 if (first)
                 {
-                    if (ipv6s.length == 1)
+                    if (ipv6s.length === 1)
                     {
                         addLabeledLine("IPv6 address:", ipv6s[i]);
                     }
@@ -656,15 +688,19 @@ function main(win)
                 extraString = "Offline mode"
 
             if (specialLocation[1])
+            {
                 extraString += " (" + specialLocation[1] + ")";
-            var extraLine = doc.createElement("label");
+            }
+            let extraLine = doc.createElement("label");
             extraLine.setAttribute("value", extraString);
-            if (["unknownsite","lookuperror","nodnserror","offlinemode"].indexOf(specialLocation[0]) != -1)
+            if (["unknownsite", "lookuperror", "nodnserror", "offlinemode"].indexOf(specialLocation[0]) !== -1)
+            {
                 extraLine.setAttribute("style", "font-style: italic;");
+            }
             rows.appendChild(extraLine);
         }
 
-        if (localipv4s.length != 0 || localipv6s.length != 0)
+        if (localipv4s.length !== 0 || localipv6s.length !== 0)
         {
             addSpacerLine();
             addTitleLine("Local");
@@ -674,13 +710,13 @@ function main(win)
         // TODO - If address is link-local (or otherwise not globally routeable) then render it in italics
         // TODO - Display local DNS name as well
         first = true;
-        if (localipv4s.length != 0)
+        if (localipv4s.length !== 0)
         {
             for (i=0; i<localipv4s.length; i++)
             {
                 if (first)
                 {
-                    if (localipv4s.length == 1)
+                    if (localipv4s.length === 1)
                     {
                         addLabeledLine("IPv4 address:", localipv4s[i]);
                     }
@@ -697,13 +733,13 @@ function main(win)
             }
         }
         first = true;
-        if (localipv6s.length != 0)
+        if (localipv6s.length !== 0)
         {
             for (i=0; i<localipv6s.length; i++)
             {
                 if (first)
                 {
-                    if (localipv6s.length == 1)
+                    if (localipv6s.length === 1)
                     {
                         addLabeledLine("IPv6 address:", localipv6s[i]);
                     }
@@ -723,6 +759,7 @@ function main(win)
         grid.appendChild(rows);
         tooltip.appendChild(grid);
     }
+
     // Online/Offline events can trigger multiple times, reset contentDoc so that the next time the timer fires it'll be updated
     function onChangedOnlineStatus(event)
     {
@@ -803,7 +840,7 @@ function toggleCustomize(event) {
    if (button) {
       let parent = button.parentNode,
           nextItem = button.nextSibling;
-      if (parent && parent.localName == "toolbar") {
+      if (parent && parent.localName === "toolbar") {
           toolbarId = parent.id;
           nextItemId = nextItem && nextItem.id;
       }
@@ -882,16 +919,16 @@ function cleanExceptionStack(stack)
 function truncateBeforeFirstChar (str, character)
 {
     let pos = str.indexOf(character);
-    return (pos != -1) ? str.substring(0, pos) : str.valueOf();
+    return (pos !== -1) ? str.substring(0, pos) : str.valueOf();
 }
 function truncateAfterLastChar (str, character)
 {
     let pos = str.lastIndexOf(character);
-    return (pos != -1) ? str.substring(pos + 1) : str.valueOf();
+    return (pos !== -1) ? str.substring(pos + 1) : str.valueOf();
 }
 function cropTrailingChar (str, character)
 {
-    return (str.charAt(str.length - 1) == character) ? str.slice(0, str.length - 1) : str.valueOf();
+    return (str.charAt(str.length - 1) === character) ? str.slice(0, str.length - 1) : str.valueOf();
 }
 
 
@@ -1160,7 +1197,7 @@ var DnsHandler =
     {
         var uri = ioService.newURI(url, null, null);
         var proxyinfo = proxyService.resolve(uri, 0);  // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
-        return (proxyinfo != null) && (proxyinfo.flags & proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
+        return (proxyinfo !== null) && (proxyinfo.flags & proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
     },
 
@@ -1193,12 +1230,12 @@ var DnsHandler =
         {
             onLookupComplete : function(nsrequest, nsrecord, status)
             {
-                if (status == Components.results.NS_ERROR_ABORT)
+                if (status === Components.results.NS_ERROR_ABORT)
                     return;  // Ignore cancel
 
-                if (status != 0 || !nsrecord || !nsrecord.hasMore())
+                if (status !== 0 || !nsrecord || !nsrecord.hasMore())
                 {
-                    fail( (status==Components.results.NS_ERROR_UNKNOWN_HOST) ? ("Unknown host") : ("status " + status) );
+                    fail( (status === Components.results.NS_ERROR_UNKNOWN_HOST) ? ("Unknown host") : ("status " + status) );
                     return;  // IP not found in DNS
                 }
 
