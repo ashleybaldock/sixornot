@@ -73,6 +73,7 @@ const BUTTON_ID     = "sixornot-buttonid",
       ADDRESS_BOX_ID = "sixornot-addressboxid",
       ADDRESS_IMG_ID = "sixornot-addressimageid",
       TOOLTIP_ID = "sixornot-tooltipid",
+      MENU_ID = "sixornot-menuid",
       PREF_TOOLBAR  = "toolbar",
       PREF_NEXTITEM = "nextitem";
 
@@ -118,26 +119,36 @@ function main(win)
     // Add tooltip, iconized button and address bar icon to browser window
     // These are created in their own scope, they need to be found again using their IDs for the current window
     let (tooltip = doc.createElementNS(NS_XUL, "tooltip"),
+         popupMenu = doc.createElementNS(NS_XUL, "menupopup"),
          toolbarButton = doc.createElementNS(NS_XUL, "toolbarbutton"),
          addressIcon = doc.createElementNS(NS_XUL, "image"),
          addressButton = doc.createElementNS(NS_XUL, "box")) 
     {
         // Tooltip setup
         tooltip.setAttribute("id", TOOLTIP_ID);
-
         // Add event listeners
+        // Add event listener for tooltip showing (to update tooltip contents dynamically)
         tooltip.addEventListener("popupshowing", updateTooltipContent, false);
+
+        // Menu setup
+        popupMenu.setAttribute("id", MENU_ID);
+        popupMenu.setAttribute("position", "after_start");
+        // Add event listener for popupMenu opening (to update popupMenu contents dynamically)
+        popupMenu.addEventListener("popupshowing", updateMenuContent, false);
 
         // Iconized button setup
         toolbarButton.setAttribute("id", BUTTON_ID);
         toolbarButton.setAttribute("label", getLocalizedStr("label"));
         toolbarButton.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
         toolbarButton.setAttribute("tooltip", TOOLTIP_ID);
-//        toolbarButton.setAttribute("tooltiptext", getLocalizedStr("tt_default"));
+        toolbarButton.setAttribute("popup", MENU_ID);
+        toolbarButton.setAttribute("type", "menu");
+        toolbarButton.setAttribute("orient", "horizontal");
 
         toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+        // Menu which the button should open
+//        toolbarButton.appendChild(popupMenu);
 
-//        toolbarButton.addEventListener("command", toggle, true);
         $(doc, "navigator-toolbox").palette.appendChild(toolbarButton);
  
         // Move to location specified in prefs
@@ -159,15 +170,15 @@ function main(win)
 
         addressIcon.setAttribute("id", ADDRESS_IMG_ID);
         addressIcon.setAttribute("tooltip", TOOLTIP_ID);
+        addressIcon.setAttribute("popup", MENU_ID);
         addressIcon.setAttribute("width", "16");
         addressIcon.setAttribute("height", "16");
         addressIcon.setAttribute("src", sother_16);
 
 
         // Add event listeners
-    //    icon.addEventListener("click",onIconClick,false);
-    //    menu.addEventListener("command",onMenuCommand,false);
-    //    menu.addEventListener("popupshowing",onMenuShowing,false);
+        addressIcon.addEventListener("click", onIconClick, false);
+    //    popupMenu.addEventListener("command",onMenuCommand,false);
         win.addEventListener("online", onChangedOnlineStatus, false);
         win.addEventListener("offline", onChangedOnlineStatus, false);
 
@@ -176,6 +187,7 @@ function main(win)
         let starbutton = doc.getElementById("star-button");
         let anchor = urlbaricons.nextSibling;
         addressButton.appendChild(addressIcon);
+        addressButton.appendChild(popupMenu);
         addressButton.appendChild(tooltip);
         // If star icon visible, insert before it, otherwise just append to urlbaricons
         if (!starbutton)
@@ -185,6 +197,17 @@ function main(win)
         else
         {
             urlbaricons.insertBefore(addressButton, starbutton);
+        }
+    }
+
+    function onIconClick (e)
+    {
+        // Left button
+        if (e.button == 0)
+        {
+            let addressIcon = $(doc, ADDRESS_IMG_ID);
+            let popupMenu = $(doc, MENU_ID);
+            popupMenu.openPopup(addressIcon, "after_start", 0, 0, false, false, null);
         }
     }
 
@@ -207,10 +230,12 @@ function main(win)
         // Remove UI
         let toolbarButton = $(doc, BUTTON_ID) || $($(doc, "navigator-toolbox").palette, BUTTON_ID);
         let tooltip = $(doc, TOOLTIP_ID);
+        let popupMenu = $(doc, MENU_ID);
         let addressIcon = $(doc, ADDRESS_IMG_ID);
         let addressButton = $(doc, ADDRESS_BOX_ID);
         toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
         tooltip && tooltip.parentNode.removeChild(tooltip);
+        popupMenu && popupMenu.parentNode.removeChild(popupMenu);
         addressIcon && addressIcon.parentNode.removeChild(addressIcon);
         addressButton && addressButton.parentNode.removeChild(addressButton);
 
@@ -221,9 +246,9 @@ function main(win)
         window.removeEventListener("offline", onChangedOnlineStatus, false);
         window.removeEventListener("online", onChangedOnlineStatus, false);
         tooltip.removeEventListener("popupshowing", updateTooltipContent, false);
-//            menu.removeEventListener("popupshowing",onMenuShowing,false);
+        popupMenu.removeEventListener("popupshowing", updateMenuContent, false);
 //            menu.removeEventListener("command",onMenuCommand,false);
-//            icon.removeEventListener("click",onIconClick,false);
+        addressIcon.removeEventListener("click", onIconClick, false);
         //DnsHandler.cancelRequest(DNSrequest);
 
     }, win);
@@ -464,6 +489,32 @@ function main(win)
         }
     }
 
+    // Update the contents of the popupMenu whenever it is opened
+    function updateMenuContent()
+    {
+        consoleService.logStringMessage("Sixornot - updateMenuContent");
+        let popupMenu = $(doc, MENU_ID);
+        // Clear previously generated popupMenu, if one exists
+        while (popupMenu.firstChild)
+        {
+            popupMenu.removeChild(popupMenu.firstChild);
+        }
+
+        function addMenuItem(labelName)
+        {
+            let (menuitem = doc.createElementNS(NS_XUL, "menuitem")) {
+                menuitem.setAttribute("label", labelName);
+                $(doc, MENU_ID).appendChild(menuitem);
+            }
+        }
+
+        addMenuItem("test item 1");
+        addMenuItem("test item 2");
+        addMenuItem("test item 3");
+
+    }
+
+    // Update the contents of the tooltip whenever it is shown
     function updateTooltipContent()
     {
         consoleService.logStringMessage("Sixornot - updateTooltipContent");
