@@ -139,7 +139,9 @@ function main(win)
         addressPopupMenu.setAttribute("position", "after_start");
         // Add event listener for popupMenu opening (to update popupMenu contents dynamically)
         toolbarPopupMenu.addEventListener("popupshowing", updateMenuContent, false);
+        toolbarPopupMenu.addEventListener("command", onMenuCommand, false);
         addressPopupMenu.addEventListener("popupshowing", updateMenuContent, false);
+        addressPopupMenu.addEventListener("command", onMenuCommand, false);
 
         // Iconized button setup
         toolbarButton.setAttribute("id", BUTTON_ID);
@@ -182,7 +184,6 @@ function main(win)
 
 
         // Add event listeners
-    //    popupMenu.addEventListener("command",onMenuCommand,false);
         win.addEventListener("online", onChangedOnlineStatus, false);
         win.addEventListener("offline", onChangedOnlineStatus, false);
 
@@ -238,7 +239,9 @@ function main(win)
         win.removeEventListener("online", onChangedOnlineStatus, false);
         tooltip.removeEventListener("popupshowing", updateTooltipContent, false);
         toolbarPopupMenu.removeEventListener("popupshowing", updateMenuContent, false);
+        toolbarPopupMenu.removeEventListener("command", onMenuCommand, false);
         addressPopupMenu.removeEventListener("popupshowing", updateMenuContent, false);
+        addressPopupMenu.removeEventListener("command", onMenuCommand, false);
 
         // Remove UI
         tooltip && tooltip.parentNode.removeChild(tooltip);
@@ -248,7 +251,6 @@ function main(win)
         addressIcon && addressIcon.parentNode.removeChild(addressIcon);
         addressButton && addressButton.parentNode.removeChild(addressButton);
 
-//            menu.removeEventListener("command",onMenuCommand,false);
         //DnsHandler.cancelRequest(DNSrequest);
 
     }, win);
@@ -501,6 +503,31 @@ function main(win)
         return true;
     }
 
+    // Called whenever an item on the menu is clicked and bound to each menu item as an event handler
+    // Look up appropriate action by ID and perform that action
+    function onMenuCommand(evt)
+    {
+        consoleService.logStringMessage("Sixornot - onMenuCommand");
+        let commandID = evt.target.value;
+        // Actions
+        // "prefs" - Open preferences
+        // "copyc" - Copy text to clipboard
+        // "gotow" - Go to SixOrNot website
+        if (commandID.substring(0,5) === "copyc")
+        {
+            consoleService.logStringMessage("Sixornot - onMenuCommand, copy to clipboard");
+            clipboardHelper.copyString(commandID.substring(5));
+        }
+        if (commandID.substring(0,5) === "prefs")
+        {
+            consoleService.logStringMessage("Sixornot - onMenuCommand, open preferences");
+        }
+        if (commandID.substring(0,5) === "gotow")
+        {
+            consoleService.logStringMessage("Sixornot - onMenuCommand, goto web page");
+        }
+    }
+
     // Update the contents of the popupMenu whenever it is opened
     function updateMenuContent (evt)
     {
@@ -513,12 +540,18 @@ function main(win)
             popupMenu.removeChild(popupMenu.firstChild);
         }
 
-        function addMenuItem(labelName, ttText)
+        // labelName - displayed on menu item
+        // ttText - tooltip for menu item
+        // commandID - string of arbitrary data
+        //  first 5 characters determine function call
+        //  rest of string (if any) is data to use for function call
+        function addMenuItem(labelName, ttText, commandID)
         {
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
                 menuitem.setAttribute("tooltiptext", ttText);
+                menuitem.setAttribute("value", commandID);
                 popupMenu.appendChild(menuitem);
             }
         }
@@ -539,13 +572,7 @@ function main(win)
             }
         }
 
-/*        if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
-        {
-            addTitleLine("Remote", "");
-        } */
 
-
-        // TODO - if host is an IP address and is the same as one of the returned IPs then display some helpful string
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
             if (host !== "")
@@ -554,10 +581,27 @@ function main(win)
                 // (This would occur if the URL contains an IP address rather than a hostname)
                 if (ipv4s.indexOf(host) === -1 && ipv6s.indexOf(host) === -1)
                 {
-                    addMenuItem(host, "Click to copy all data for this domain to clipboard");
+                    // Build string containing list of all IP addresses (for copying to clipboard)
+                    let remotestring = host;
+                    if (ipv6s.length !== 0)
+                    {
+                        for (i=0; i<ipv6s.length; i++)
+                        {
+                            remotestring = remotestring + ", " + ipv6s[i];
+                        }
+                    }
+                    if (ipv4s.length !== 0)
+                    {
+                        for (i=0; i<ipv4s.length; i++)
+                        {
+                            remotestring = remotestring + ", " + ipv4s[i];
+                        }
+                    }
+                    addMenuItem(host, "Click to copy all data for this domain to clipboard", "copyc" + remotestring);
                 }
                 else
                 {
+                    // In this case there will only ever be one IP address record
                     addDisabledMenuItem("Hostname is IP address");
                 }
             }
@@ -570,14 +614,14 @@ function main(win)
             {
                 for (i=0; i<ipv6s.length; i++)
                 {
-                    addMenuItem(ipv6s[i], "Click to copy IP address to clipboard");
+                    addMenuItem(ipv6s[i], "Click to copy IP address to clipboard", "copyc" + ipv6s[i]);
                 }
             }
             if (ipv4s.length !== 0)
             {
                 for (i=0; i<ipv4s.length; i++)
                 {
-                    addMenuItem(ipv4s[i], "Click to copy IP address to clipboard");
+                    addMenuItem(ipv4s[i], "Click to copy IP address to clipboard", "copyc" + ipv4s[i]);
                 }
             }
         }
@@ -587,28 +631,45 @@ function main(win)
         }
         addMenuSeparator();
 
-        addMenuItem(dnsService.myHostName + " (localhost)", "Click to copy all data for local host to clipboard");
-
+        // Produce string containing all IP data for copy
+        let localstring = dnsService.myHostName;
         if (localipv6s.length !== 0)
         {
             for (i=0; i<localipv6s.length; i++)
             {
-                addMenuItem(localipv6s[i], "Click to copy IP address to clipboard");
+                localstring = localstring + ", " + localipv6s[i];
             }
         }
         if (localipv4s.length !== 0)
         {
             for (i=0; i<localipv4s.length; i++)
             {
-                addMenuItem(localipv4s[i], "Click to copy IP address to clipboard");
+                localstring = localstring + ", " + localipv4s[i];
+            }
+        }
+
+        addMenuItem(dnsService.myHostName + " (localhost)", "Click to copy all data for local host to clipboard", "copyc" + localstring);
+
+        if (localipv6s.length !== 0)
+        {
+            for (i=0; i<localipv6s.length; i++)
+            {
+                addMenuItem(localipv6s[i], "Click to copy IP address to clipboard", "copyc" + localipv6s[i]);
+            }
+        }
+        if (localipv4s.length !== 0)
+        {
+            for (i=0; i<localipv4s.length; i++)
+            {
+                addMenuItem(localipv4s[i], "Click to copy IP address to clipboard", "copyc" + localipv4s[i]);
             }
         }
 
         addMenuSeparator();
-        addMenuItem("Preferences...", "Click to open preferences dialog");
+        addMenuItem("Preferences...", "Click to open preferences dialog", "prefs");
 
         addMenuSeparator();
-        addMenuItem("Go to SixOrNot website", "Visit the SixOrNot website");
+        addMenuItem("Go to SixOrNot website", "Visit the SixOrNot website", "gotow" + "http://entropy.me.uk/sixornot/");
     }
 
     // Update the contents of the tooltip whenever it is shown
