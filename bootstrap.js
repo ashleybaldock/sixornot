@@ -505,34 +505,109 @@ function main(win)
     function updateMenuContent (evt)
     {
         consoleService.logStringMessage("Sixornot - updateMenuContent");
-//        let popupMenu = $(doc, MENU_ID);
-//        let popupMenu = this;
+        let popupMenu = this;
+
         // Clear previously generated popupMenu, if one exists
-        while (this.firstChild)
+        while (popupMenu.firstChild)
         {
-            this.removeChild(this.firstChild);
+            popupMenu.removeChild(popupMenu.firstChild);
         }
 
-        function addMenuItem(labelName)
+        function addMenuItem(labelName, ttText)
         {
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
-                this.appendChild(menuitem);
+                menuitem.setAttribute("tooltiptext", ttText);
+                popupMenu.appendChild(menuitem);
+            }
+        }
+        function addDisabledMenuItem(labelName)
+        {
+            let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
+            {
+                menuitem.setAttribute("label", labelName);
+                menuitem.setAttribute("disabled", true);
+                popupMenu.appendChild(menuitem);
+            }
+        }
+        function addMenuSeparator()
+        {
+            let (menuseparator = doc.createElementNS(NS_XUL, "menuseparator"))
+            {
+                popupMenu.appendChild(menuseparator);
             }
         }
 
-        addMenuItem("test item 1");
-        addMenuItem("test item 2");
-        addMenuItem("test item 3");
+/*        if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
+        {
+            addTitleLine("Remote", "");
+        } */
 
+
+        // TODO - if host is an IP address and is the same as one of the returned IPs then display some helpful string
+        if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
+        {
+            if (host !== "")
+            {
+                addMenuItem(host, "Click to copy to clipboard");
+            }
+            else
+            {
+                addDisabledMenuItem("No Hostname found");
+            }
+
+            if (ipv4s.length !== 0)
+            {
+                for (i=0; i<ipv4s.length; i++)
+                {
+                    addMenuItem(ipv4s[i], "Click to copy to clipboard");
+                }
+            }
+            if (ipv6s.length !== 0)
+            {
+                for (i=0; i<ipv6s.length; i++)
+                {
+                    addMenuItem(ipv6s[i], "Click to copy to clipboard");
+                }
+            }
+        }
+        else
+        {
+            addDisabledMenuItem("No remote site loaded");
+        }
+        addMenuSeparator();
+
+        addMenuItem("localhost", "Click to copy to clipboard");
+
+        if (localipv4s.length !== 0)
+        {
+            for (i=0; i<localipv4s.length; i++)
+            {
+                addMenuItem(localipv4s[i], "Click to copy to clipboard");
+            }
+        }
+        if (localipv6s.length !== 0)
+        {
+            for (i=0; i<localipv6s.length; i++)
+            {
+                addMenuItem(localipv6s[i], "Click to copy to clipboard");
+            }
+        }
+
+        addMenuSeparator();
+        addMenuItem("Preferences...", "Click to open preferences dialog");
+
+        addMenuSeparator();
+        addMenuItem("Go to SixOrNot website", "Visit the SixOrNot website");
     }
 
     // Update the contents of the tooltip whenever it is shown
-    function updateTooltipContent()
+    function updateTooltipContent (evt)
     {
         consoleService.logStringMessage("Sixornot - updateTooltipContent");
-        let tooltip = $(doc, TOOLTIP_ID);
+        let tooltip = this;
+
         // Clear previously generated tooltip, if one exists
         while (tooltip.firstChild)
         {
