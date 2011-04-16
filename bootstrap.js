@@ -550,7 +550,16 @@ function main(win)
         {
             if (host !== "")
             {
-                addMenuItem(host, "Click to copy to clipboard");
+                // If host is an IP address and appears in either array of addresses do not display as hostname
+                // (This would occur if the URL contains an IP address rather than a hostname)
+                if (ipv4s.indexOf(host) === -1 && ipv6s.indexOf(host) === -1)
+                {
+                    addMenuItem(host, "Click to copy all data for this domain to clipboard");
+                }
+                else
+                {
+                    addDisabledMenuItem("Hostname is IP address");
+                }
             }
             else
             {
@@ -561,14 +570,14 @@ function main(win)
             {
                 for (i=0; i<ipv4s.length; i++)
                 {
-                    addMenuItem(ipv4s[i], "Click to copy to clipboard");
+                    addMenuItem(ipv4s[i], "Click to copy IP address to clipboard");
                 }
             }
             if (ipv6s.length !== 0)
             {
                 for (i=0; i<ipv6s.length; i++)
                 {
-                    addMenuItem(ipv6s[i], "Click to copy to clipboard");
+                    addMenuItem(ipv6s[i], "Click to copy IP address to clipboard");
                 }
             }
         }
@@ -578,20 +587,20 @@ function main(win)
         }
         addMenuSeparator();
 
-        addMenuItem("localhost", "Click to copy to clipboard");
+        addMenuItem(dnsService.myHostName + " (localhost)", "Click to copy all data for local host to clipboard");
 
         if (localipv4s.length !== 0)
         {
             for (i=0; i<localipv4s.length; i++)
             {
-                addMenuItem(localipv4s[i], "Click to copy to clipboard");
+                addMenuItem(localipv4s[i], "Click to copy IP address to clipboard");
             }
         }
         if (localipv6s.length !== 0)
         {
             for (i=0; i<localipv6s.length; i++)
             {
-                addMenuItem(localipv6s[i], "Click to copy to clipboard");
+                addMenuItem(localipv6s[i], "Click to copy IP address to clipboard");
             }
         }
 
@@ -769,6 +778,7 @@ function main(win)
         {
             addSpacerLine();
             addTitleLine("Local");
+            addLabeledLine("Host name:", dnsService.myHostName);
         }
 
         // Append local IP address information
