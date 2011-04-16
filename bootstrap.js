@@ -566,18 +566,18 @@ function main(win)
                 addDisabledMenuItem("No Hostname found");
             }
 
-            if (ipv4s.length !== 0)
-            {
-                for (i=0; i<ipv4s.length; i++)
-                {
-                    addMenuItem(ipv4s[i], "Click to copy IP address to clipboard");
-                }
-            }
             if (ipv6s.length !== 0)
             {
                 for (i=0; i<ipv6s.length; i++)
                 {
                     addMenuItem(ipv6s[i], "Click to copy IP address to clipboard");
+                }
+            }
+            if (ipv4s.length !== 0)
+            {
+                for (i=0; i<ipv4s.length; i++)
+                {
+                    addMenuItem(ipv4s[i], "Click to copy IP address to clipboard");
                 }
             }
         }
@@ -589,18 +589,18 @@ function main(win)
 
         addMenuItem(dnsService.myHostName + " (localhost)", "Click to copy all data for local host to clipboard");
 
-        if (localipv4s.length !== 0)
-        {
-            for (i=0; i<localipv4s.length; i++)
-            {
-                addMenuItem(localipv4s[i], "Click to copy IP address to clipboard");
-            }
-        }
         if (localipv6s.length !== 0)
         {
             for (i=0; i<localipv6s.length; i++)
             {
                 addMenuItem(localipv6s[i], "Click to copy IP address to clipboard");
+            }
+        }
+        if (localipv4s.length !== 0)
+        {
+            for (i=0; i<localipv4s.length; i++)
+            {
+                addMenuItem(localipv4s[i], "Click to copy IP address to clipboard");
             }
         }
 
@@ -695,29 +695,6 @@ function main(win)
         }
 
         first = true;
-        if (ipv4s.length !== 0)
-        {
-            for (i=0; i<ipv4s.length; i++)
-            {
-                if (first)
-                {
-                    if (ipv4s.length === 1)
-                    {
-                        addLabeledLine("IPv4 address:", ipv4s[i]);
-                    }
-                    else
-                    {
-                        addLabeledLine("IPv4 addresses:", ipv4s[i]);
-                    }
-                    first = false;
-                }
-                else
-                {
-                    addUnLabeledLine(ipv4s[i]);
-                }
-            }
-        }
-        first = true;
         if (ipv6s.length !== 0)
         {
             for (i=0; i<ipv6s.length; i++)
@@ -737,6 +714,29 @@ function main(win)
                 else
                 {
                     addUnLabeledLine(ipv6s[i]);
+                }
+            }
+        }
+        first = true;
+        if (ipv4s.length !== 0)
+        {
+            for (i=0; i<ipv4s.length; i++)
+            {
+                if (first)
+                {
+                    if (ipv4s.length === 1)
+                    {
+                        addLabeledLine("IPv4 address:", ipv4s[i]);
+                    }
+                    else
+                    {
+                        addLabeledLine("IPv4 addresses:", ipv4s[i]);
+                    }
+                    first = false;
+                }
+                else
+                {
+                    addUnLabeledLine(ipv4s[i]);
                 }
             }
         }
@@ -783,30 +783,6 @@ function main(win)
 
         // Append local IP address information
         // TODO - If address is link-local (or otherwise not globally routeable) then render it in italics
-        // TODO - Display local DNS name as well
-        first = true;
-        if (localipv4s.length !== 0)
-        {
-            for (i=0; i<localipv4s.length; i++)
-            {
-                if (first)
-                {
-                    if (localipv4s.length === 1)
-                    {
-                        addLabeledLine("IPv4 address:", localipv4s[i]);
-                    }
-                    else
-                    {
-                        addLabeledLine("IPv4 addresses:", localipv4s[i]);
-                    }
-                    first = false;
-                }
-                else
-                {
-                    addUnLabeledLine(localipv4s[i]);
-                }
-            }
-        }
         first = true;
         if (localipv6s.length !== 0)
         {
@@ -827,6 +803,29 @@ function main(win)
                 else
                 {
                     addUnLabeledLine(localipv6s[i]);
+                }
+            }
+        }
+        first = true;
+        if (localipv4s.length !== 0)
+        {
+            for (i=0; i<localipv4s.length; i++)
+            {
+                if (first)
+                {
+                    if (localipv4s.length === 1)
+                    {
+                        addLabeledLine("IPv4 address:", localipv4s[i]);
+                    }
+                    else
+                    {
+                        addLabeledLine("IPv4 addresses:", localipv4s[i]);
+                    }
+                    first = false;
+                }
+                else
+                {
+                    addUnLabeledLine(localipv4s[i]);
                 }
             }
         }
@@ -1030,6 +1029,10 @@ defineLazyGetter("proxyService", function() {
 });
 defineLazyGetter("dnsService", function() {
     return Components.classes["@mozilla.org/network/dns-service;1"].getService(Components.interfaces.nsIDNSService);
+});
+defineLazyGetter("clipboardHelper", function() {
+    return Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+                     .getService(Components.interfaces.nsIClipboardHelper);
 });
 
 
