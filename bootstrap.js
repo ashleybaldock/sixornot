@@ -146,7 +146,6 @@ function main(win)
         toolbarButton.setAttribute("label", getLocalizedStr("label"));
         toolbarButton.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
         toolbarButton.setAttribute("tooltip", TOOLTIP_ID);
-//        toolbarButton.setAttribute("popup", TOOLBAR_MENU_ID);
         toolbarButton.setAttribute("type", "menu");
         toolbarButton.setAttribute("orient", "horizontal");
 
@@ -183,7 +182,6 @@ function main(win)
 
 
         // Add event listeners
-//        addressIcon.addEventListener("click", onIconClick, false);
     //    popupMenu.addEventListener("command",onMenuCommand,false);
         win.addEventListener("online", onChangedOnlineStatus, false);
         win.addEventListener("offline", onChangedOnlineStatus, false);
@@ -191,7 +189,7 @@ function main(win)
         // Position the icon
         let urlbaricons = doc.getElementById("urlbar-icons");
         let starbutton = doc.getElementById("star-button");
-        let anchor = urlbaricons.nextSibling;
+//        let anchor = urlbaricons.nextSibling;
         addressButton.appendChild(addressIcon);
         addressButton.appendChild(addressPopupMenu);
         addressButton.appendChild(tooltip);
@@ -221,50 +219,42 @@ function main(win)
     var pollLoopID = win.setInterval(pollForContentChange, 250);
 
     // Add a callback to our unload list to remove the UI when addon is disabled
-    unload(function() {
-        // Remove UI
+    unload(function () {
+        consoleService.logStringMessage("Sixornot - main unload function");
+        // Get UI elements
         let toolbarButton = $(doc, BUTTON_ID) || $($(doc, "navigator-toolbox").palette, BUTTON_ID);
         let tooltip = $(doc, TOOLTIP_ID);
         let addressPopupMenu = $(doc, ADDRESS_MENU_ID);
         let toolbarPopupMenu = $(doc, TOOLBAR_MENU_ID);
         let addressIcon = $(doc, ADDRESS_IMG_ID);
         let addressButton = $(doc, ADDRESS_BOX_ID);
-        toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
-        tooltip && tooltip.parentNode.removeChild(tooltip);
-        toolbarPopupMenu && popupMenu.parentNode.removeChild(popupMenu);
-        addressPopupMenu && popupMenu.parentNode.removeChild(popupMenu);
-        addressIcon && addressIcon.parentNode.removeChild(addressIcon);
-        addressButton && addressButton.parentNode.removeChild(addressButton);
 
-        win.removeEventListener("aftercustomization", toggleCustomize, false);
-
+        // Clear interval
         win.clearInterval(pollLoopID);
 
-        window.removeEventListener("offline", onChangedOnlineStatus, false);
-        window.removeEventListener("online", onChangedOnlineStatus, false);
+        // Clear event handlers
+        win.removeEventListener("aftercustomization", toggleCustomize, false);
+        win.removeEventListener("offline", onChangedOnlineStatus, false);
+        win.removeEventListener("online", onChangedOnlineStatus, false);
         tooltip.removeEventListener("popupshowing", updateTooltipContent, false);
         toolbarPopupMenu.removeEventListener("popupshowing", updateMenuContent, false);
         addressPopupMenu.removeEventListener("popupshowing", updateMenuContent, false);
+
+        // Remove UI
+        tooltip && tooltip.parentNode.removeChild(tooltip);
+        toolbarPopupMenu && toolbarPopupMenu.parentNode.removeChild(toolbarPopupMenu);
+        toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
+        addressPopupMenu && addressPopupMenu.parentNode.removeChild(addressPopupMenu);
+        addressIcon && addressIcon.parentNode.removeChild(addressIcon);
+        addressButton && addressButton.parentNode.removeChild(addressButton);
+
 //            menu.removeEventListener("command",onMenuCommand,false);
-//        addressIcon.removeEventListener("click", onIconClick, false);
         //DnsHandler.cancelRequest(DNSrequest);
 
     }, win);
 
-    // Triggered when address bar icon is clicked on
-    function onIconClick (e)
-    {
-        // Left button
-        if (e.button === 0)
-        {
-            let addressIcon = $(doc, ADDRESS_IMG_ID);
-            let popupMenu = $(doc, ADDRESS_MENU_ID);
-            popupMenu.openPopup(addressIcon, "after_start", 0, 0, false, false, null);
-        }
-    }
-
     /* Poll for content change to ensure this is updated on all pages including errors */
-    function pollForContentChange()
+    function pollForContentChange ()
     {
         try
         {
@@ -278,7 +268,7 @@ function main(win)
     }
 
     /* Updates icon/tooltip etc. state if needed - called by the polling loop */
-    function updateState()
+    function updateState ()
     {
         consoleService.logStringMessage("Sixornot - updateState");
 /*        if (!ready)  // Startup not finished; wait...
@@ -516,11 +506,11 @@ function main(win)
     {
         consoleService.logStringMessage("Sixornot - updateMenuContent");
 //        let popupMenu = $(doc, MENU_ID);
-        let popupMenu = this;
+//        let popupMenu = this;
         // Clear previously generated popupMenu, if one exists
-        while (popupMenu.firstChild)
+        while (this.firstChild)
         {
-            popupMenu.removeChild(popupMenu.firstChild);
+            this.removeChild(this.firstChild);
         }
 
         function addMenuItem(labelName)
@@ -528,7 +518,7 @@ function main(win)
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
-                popupMenu.appendChild(menuitem);
+                this.appendChild(menuitem);
             }
         }
 
