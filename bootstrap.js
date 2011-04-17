@@ -87,7 +87,7 @@ const PREFS = {
 };
 
 let PREF_OBSERVER = {
-    observe: function(aSubject, aTopic, aData) {
+    observe: function (aSubject, aTopic, aData) {
         if ("nsPref:changed" !== aTopic || !PREFS[aData]) return;
         runOnWindows(function(win) {
             win.document.getElementById(KEY_ID).setAttribute(aData, getPref(aData));
@@ -112,7 +112,7 @@ let s6only_24 = "", s6and4_24 = "", s4pot6_24 = "", s4only_24 = "", sother_24 = 
 /*
     Core functionality
 */
-function main(win)
+function main (win)
 {
     consoleService.logStringMessage("Sixornot - main");
     let doc = win.document;
@@ -155,14 +155,14 @@ function main(win)
         // Menu which the button should open
         toolbarButton.appendChild(toolbarPopupMenu);
 
-        $(doc, "navigator-toolbox").palette.appendChild(toolbarButton);
+        gbi(doc, "navigator-toolbox").palette.appendChild(toolbarButton);
  
         // Move to location specified in prefs
         let toolbarId = PREF_BRANCH_SIXORNOT.getCharPref(PREF_TOOLBAR);
-        let toolbar = toolbarId && $(doc, toolbarId);
+        let toolbar = toolbarId && gbi(doc, toolbarId);
         if (toolbar)
         {
-            let nextItem = $(doc, PREF_BRANCH_SIXORNOT.getCharPref(PREF_NEXTITEM));
+            let nextItem = gbi(doc, PREF_BRANCH_SIXORNOT.getCharPref(PREF_NEXTITEM));
             toolbar.insertItem(BUTTON_ID, nextItem && nextItem.parentNode.id === toolbarId && nextItem);
         }
 
@@ -190,7 +190,6 @@ function main(win)
         // Position the icon
         let urlbaricons = doc.getElementById("urlbar-icons");
         let starbutton = doc.getElementById("star-button");
-//        let anchor = urlbaricons.nextSibling;
         addressButton.appendChild(addressIcon);
         addressButton.appendChild(addressPopupMenu);
         addressButton.appendChild(tooltip);
@@ -223,12 +222,12 @@ function main(win)
     unload(function () {
         consoleService.logStringMessage("Sixornot - main unload function");
         // Get UI elements
-        let toolbarButton = $(doc, BUTTON_ID) || $($(doc, "navigator-toolbox").palette, BUTTON_ID);
-        let tooltip = $(doc, TOOLTIP_ID);
-        let addressPopupMenu = $(doc, ADDRESS_MENU_ID);
-        let toolbarPopupMenu = $(doc, TOOLBAR_MENU_ID);
-        let addressIcon = $(doc, ADDRESS_IMG_ID);
-        let addressButton = $(doc, ADDRESS_BOX_ID);
+        let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
+        let tooltip = gbi(doc, TOOLTIP_ID);
+        let addressPopupMenu = gbi(doc, ADDRESS_MENU_ID);
+        let toolbarPopupMenu = gbi(doc, TOOLBAR_MENU_ID);
+        let addressIcon = gbi(doc, ADDRESS_IMG_ID);
+        let addressButton = gbi(doc, ADDRESS_BOX_ID);
 
         // Clear interval
         win.clearInterval(pollLoopID);
@@ -280,8 +279,8 @@ function main(win)
             return;
         } */
 
-        let addressIcon = $(doc, ADDRESS_IMG_ID);
-        let toolbarButton = $(doc, BUTTON_ID) || $($(doc, "navigator-toolbox").palette, BUTTON_ID);
+        let addressIcon = gbi(doc, ADDRESS_IMG_ID);
+        let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
 
         contentDoc = win.content.document;
         url = contentDoc.location.href;
@@ -404,8 +403,8 @@ function main(win)
     function updateIcon()
     {
         consoleService.logStringMessage("Sixornot - updateIcon");
-        let addressIcon = $(doc, ADDRESS_IMG_ID);
-        let toolbarButton = $(doc, BUTTON_ID) || $($(doc, "navigator-toolbox").palette, BUTTON_ID);
+        let addressIcon = gbi(doc, ADDRESS_IMG_ID);
+        let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
 
         if (contentDoc.location.protocol === "file:")
         {
@@ -907,7 +906,7 @@ function main(win)
 /*
     bootstrap.js API
 */
-function startup(data) AddonManager.getAddonByID(data.id, function(addon) {
+function startup (data) AddonManager.getAddonByID(data.id, function(addon) {
     consoleService.logStringMessage("Sixornot - setInitialPrefs");
     setInitialPrefs();
     include(addon.getResourceURI("includes/utils.js").spec);
@@ -935,24 +934,27 @@ function startup(data) AddonManager.getAddonByID(data.id, function(addon) {
     prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
     prefs.addObserver("", PREF_OBSERVER, false);
 
-    unload(function() prefs.removeObserver("", PREF_OBSERVER));
+    unload(function () prefs.removeObserver("", PREF_OBSERVER));
 });
 
-function shutdown(data, reason)
+function shutdown (data, reason)
 {
     consoleService.logStringMessage("Sixornot - shutdown");
     // Shutdown DnsHandler
     DnsHandler.shutdown();
-    if (reason !== APP_SHUTDOWN) unload();
+    if (reason !== APP_SHUTDOWN)
+    {
+        unload();
+    }
 }
 
-function install()
+function install ()
 {
     consoleService.logStringMessage("Sixornot - install");
     setInitialPrefs();
 }
 
-function uninstall()
+function uninstall ()
 {
     consoleService.logStringMessage("Sixornot - uninstall");
 // If this is due to an upgrade then don't delete preferences?
@@ -968,81 +970,96 @@ function uninstall()
 */
 
 // Update preference which determines location of button when loading into new windows
-function toggleCustomize(event) {
+function toggleCustomize (evt)
+{
     consoleService.logStringMessage("Sixornot - toggleCustomize");
-   let toolbox = event.target, toolbarId, nextItemId;
-   let button = $(toolbox.parentNode, BUTTON_ID);
-   if (button) {
-      let parent = button.parentNode,
-          nextItem = button.nextSibling;
-      if (parent && parent.localName === "toolbar") {
-          toolbarId = parent.id;
-          nextItemId = nextItem && nextItem.id;
-      }
-   }
-   PREF_BRANCH_SIXORNOT.setCharPref(PREF_TOOLBAR,  toolbarId || "");
-   PREF_BRANCH_SIXORNOT.setCharPref(PREF_NEXTITEM, nextItemId || "");
+    let toolbox = evt.target, toolbarId, nextItemId;
+    let button = gbi(toolbox.parentNode, BUTTON_ID);
+    if (button) {
+        let parent = button.parentNode, nextItem = button.nextSibling;
+        if (parent && parent.localName === "toolbar")
+        {
+            toolbarId = parent.id;
+            nextItemId = nextItem && nextItem.id;
+        }
+    }
+    PREF_BRANCH_SIXORNOT.setCharPref(PREF_TOOLBAR,  toolbarId || "");
+    PREF_BRANCH_SIXORNOT.setCharPref(PREF_NEXTITEM, nextItemId || "");
 }
 
 // Return preference value, either from prefs store or from internal defaults
-function getPref(name) {
+function getPref (name)
+{
     consoleService.logStringMessage("Sixornot - getPref");
-   try {
+    try
+    {
       return PREF_BRANCH_SIXORNOT.getComplexValue(name, Ci.nsISupportsString).data;
-   } catch(e){}
-   return PREFS[name];
+    }
+    catch (e)
+    {
+    }
+    return PREFS[name];
 }
 
 // Proxy to getElementById
-function $(node, childId) {
-   if (node.getElementById) {
-      return node.getElementById(childId);
-   } else {
-      return node.querySelector("#" + childId);
-   }
+function gbi (node, childId)
+{
+    if (node.getElementById)
+    {
+        return node.getElementById(childId);
+    }
+    else
+    {
+        return node.querySelector("#" + childId);
+    }
 }
 
 // Set up initial values for preferences
-function setInitialPrefs() {
+function setInitialPrefs ()
+{
     consoleService.logStringMessage("Sixornot - setInitialPrefs");
-   let branch = PREF_BRANCH_SIXORNOT;
-   for (let [key, val] in Iterator(PREFS)) {
-      switch (typeof val) {
-         case "boolean":
+    let branch = PREF_BRANCH_SIXORNOT;
+    for (let [key, val] in Iterator(PREFS))
+    {
+        if (typeof val === "boolean")
+        {
             branch.setBoolPref(key, val);
-            break;
-         case "number":
+        }
+        else if (typeof val === "number")
+        {
             branch.setIntPref(key, val);
-            break;
-         case "string":
+        }
+        else if (typeof val === "string")
+        {
             branch.setCharPref(key, val);
-            break;
-      }
-   }
-
-   // save the current value of the html5.enable preference
-//   let value = PREF_BRANCH_HTML5.getBoolPref("enable");
-//   PREF_BRANCH_HTML5TOGGLE.setBoolPref('enable', value);
+        }
+    }
 }
 
 // Returns a string version of an exception object with its stack trace
-function parseException(e)
+function parseException (e)
 {
     if (!e)
+    {
         return "";
+    }
     else if (!e.stack)
+    {
         return String(e);
+    }
     else
+    {
         return String(e) + " \n" + cleanExceptionStack(e.stack);
+    }
 }
 // Undo conversion of resource:// urls into file:// urls in exceptions
-function cleanExceptionStack(stack)
+function cleanExceptionStack (stack)
 {
     try
     {
         const shortPath = "resource://sixornot/";
-        const longPath = ioService.newChannel(shortPath,null,null).URI.spec;
-        return stack.replace(new RegExp(longPath,"ig"), shortPath);
+        const longPath = ioService.newChannel(shortPath, null, null).URI.spec;
+        return stack.replace(new RegExp(longPath, "ig"), shortPath);
     }
     catch (e)
     {
@@ -1068,7 +1085,7 @@ function cropTrailingChar (str, character)
 
 
 // Lazy getter services
-function defineLazyGetter(getterName, getterFunction)
+function defineLazyGetter (getterName, getterFunction)
 {
     this.__defineGetter__(getterName, function() {
         delete this[getterName];
@@ -1183,7 +1200,7 @@ var DnsHandler =
         this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
     },
 
-    shutdown : function()
+    shutdown : function ()
     {
         this.library.close();
     },
@@ -1332,7 +1349,7 @@ var DnsHandler =
 
     },
 
-    isProxiedDNS : function(url)  // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
+    isProxiedDNS : function (url)  // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
     {
         var uri = ioService.newURI(url, null, null);
         var proxyinfo = proxyService.resolve(uri, 0);  // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
@@ -1340,13 +1357,13 @@ var DnsHandler =
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
     },
 
-    cancelRequest : function(request)
+    cancelRequest : function (request)
     {
         try { request.cancel(Components.results.NS_ERROR_ABORT); } catch(e) {}  // calls onLookupComplete() with status=Components.results.NS_ERROR_ABORT
     },
 
     // Return the IP addresses of the local host
-    resolveLocal : function()
+    resolveLocal : function ()
     {
         let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
         var IPAddresses = [];
@@ -1357,7 +1374,7 @@ var DnsHandler =
         return IPAddresses;
     },
 
-    resolveHost : function(host,returnIP)  // Returns request object
+    resolveHost : function (host,returnIP)  // Returns request object
     {
         function fail(reason)
         {
@@ -1367,7 +1384,7 @@ var DnsHandler =
 
         var callback =
         {
-            onLookupComplete : function(nsrequest, nsrecord, status)
+            onLookupComplete : function (nsrequest, nsrecord, status)
             {
                 if (status === Components.results.NS_ERROR_ABORT)
                     return;  // Ignore cancel
