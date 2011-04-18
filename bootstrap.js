@@ -243,7 +243,6 @@ function main (win)
     // Set up variables for this instance
     var contentDoc = null;      // Reference to the current page document object
     var url = "";               // The URL of the current page
-    var urlIsPortable = true;   // Is the URL not on this computer?
     var host = "";              // The host name of the current URL
     var ipv4s = [];             // The IP addresses of the current host
     var ipv6s = [];             // The IP addresses of the current host
@@ -333,7 +332,6 @@ function main (win)
 
         contentDoc = win.content.document;
         url = contentDoc.location.href;
-        urlIsPortable = true;
         host = "";
         ipv6s = [];
         ipv4s = [];
@@ -455,47 +453,24 @@ function main (win)
         let addressIcon = gbi(doc, ADDRESS_IMG_ID);
         let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
 
-        if (contentDoc.location.protocol === "file:")
+        let loc_options = ["file:", "data:", "about:", "chrome:", "resource:"];
+
+        function set_icon (icon)
         {
-            urlIsPortable = false;
-            addressIcon.src = sother_16;
-            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            // If this is null, address icon isn't showing
+            if (addressIcon !== null)
+            {
+                addressIcon.src = icon;
+            }
+            toolbarButton.style.listStyleImage = "url('" + icon + "')";
+        }
+
+        // For any of these protocols, display "other" icon
+        if (loc_options.indexOf(contentDoc.location.protocol) !== -1)
+        {
+            set_icon(sother_16);
             specialLocation = ["localfile"];
             return true;
-        }
-        if (contentDoc.location.protocol === "data:")
-        {
-            addressIcon.src = sother_16;
-            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
-            specialLocation = ["datauri", truncateBeforeFirstChar(url, ",")];
-            return true;
-        }
-        if (contentDoc.location.protocol === "about:")
-        {
-            urlIsPortable = false;
-            addressIcon.src = sother_16;
-            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
-            if (url === "about:blank")
-            {
-                specialLocation = ["blankpage"];
-            }
-            else
-            {
-                specialLocation = ["internalfile", truncateBeforeFirstChar(url, "?")];
-            }
-            return true;
-        }
-        if (contentDoc.location.protocol === "chrome:" || contentDoc.location.protocol === "resource:")
-        {
-            urlIsPortable = false;
-            addressIcon.src = sother_16;
-            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
-            specialLocation = ["internalfile", contentDoc.location.protocol + "//"];
-            return true;
-        }
-        if (contentDoc.location.protocol === "about:")
-        {
-            urlIsPortable = false;
         }
 
         // Unknown host -> still need to look up
@@ -511,14 +486,12 @@ function main (win)
             if (ipv4s.length === 0)
             {
                 // No addresses at all, question mark icon
-                addressIcon.src = sother_16;
-                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+                set_icon(sother_16);
             }
             else
             {
                 // v4 only icon
-                addressIcon.src = s4only_16;
-                toolbarButton.style.listStyleImage = "url('" + s4only_16 + "')";
+                set_icon(s4only_16);
             }
         }
         else
@@ -527,8 +500,7 @@ function main (win)
             if (ipv4s.length === 0)
             {
                 // We only have IPv6 addresses, v6 only icon
-                addressIcon.src = s6only_16;
-                toolbarButton.style.listStyleImage = "url('" + s6only_16 + "')";
+                set_icon(s6only_16);
             }
             else
             {
@@ -536,14 +508,12 @@ function main (win)
                 if (localipv6s.length === 0)
                 {
                     // Site has a v6 address, but we do not, so we're probably not using v6 to connect
-                    addressIcon.src = s4pot6_16;
-                    toolbarButton.style.listStyleImage = "url('" + s4pot6_16 + "')";
+                    set_icon(s4pot6_16);
                 }
                 else
                 {
                     // Site has a v6 address as do we, so hopefully we're using v6 to connect
-                    addressIcon.src = s6and4_16;
-                    toolbarButton.style.listStyleImage = "url('" + s6and4_16 + "')";
+                    set_icon(s6and4_16);
                 }
             }
         }
@@ -884,22 +854,22 @@ function main (win)
         if (specialLocation)
         {
             var extraString
-            if (specialLocation[0] === "unknownsite")
-                extraString = "Unknown site"
-            if (specialLocation[0] === "blankpage")
-                extraString = "Blank page"
-            if (specialLocation[0] === "internalfile")
-                extraString = "Internal file"
             if (specialLocation[0] === "localfile")
-                extraString = "Local file"
-            if (specialLocation[0] === "datauri")
-                extraString = "Data URI"
+            {
+                extraString = "Local location";
+            }
             if (specialLocation[0] === "lookuperror")
-                extraString = "Lookup error"
+            {
+                extraString = "Lookup error";
+            }
             if (specialLocation[0] === "nodnserror")
-                extraString = "No local DNS access"
+            {
+                extraString = "No local DNS access";
+            }
             if (specialLocation[0] === "offlinemode")
-                extraString = "Offline mode"
+            {
+                extraString = "Offline mode";
+            }
 
             if (specialLocation[1])
             {
@@ -1019,13 +989,6 @@ function startup (data)
         prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.addObserver("", PREF_OBSERVER, false);
 
-//        unload(function () prefs.removeObserver("", PREF_OBSERVER));
-
-        // Set up resource alias for preferences dialog
-        /* let resource = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
-        let alias = Services.io.newFileURI(data.installPath);
-        resource.setSubstitution("sixornot", alias);
-        unload(function () resource.setSubstitution("sixornot", null)); */
     });
 }
 
@@ -1040,13 +1003,9 @@ function reload ()
 function shutdown (data, reason)
 {
     consoleService.logStringMessage("Sixornot - shutdown");
-    // TODO - Need to close preferences dialog if it is open here
-
     // Shutdown DnsHandler
     DnsHandler.shutdown();
-    // Remove resource mapping
-//    let resProt = ioService.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
-//    resProt.setSubstitution("sixornot", root);
+
     if (reason !== APP_SHUTDOWN)
     {
         unload();
