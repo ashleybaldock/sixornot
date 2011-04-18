@@ -84,7 +84,8 @@ const PREFS = {
     enable:             false,
     nextitem:           "bookmarks-menu-button-container",
     toolbar:            "nav-bar",
-    showaddressicon:    false
+    showaddressicon:    false,
+    use_greyscale:      false
 };
 
 let PREF_OBSERVER = {
@@ -111,12 +112,14 @@ let PREF_OBSERVER = {
             // Simply reload all addon's attributes
             reload();
         }
-
-/*        // runOnWindows adds functionality into existing windows
-        runOnWindows(function(win) {
-            win.document.getElementById(KEY_ID).setAttribute(aData, getPref(aData));
-            addMenuItem(win);
-        }); */
+        // If the changed preference is the use_greyscale one
+        if (aData === "use_greyscale")
+        {
+            consoleService.logStringMessage("Sixornot - prefs observer - use_greyscale has changed");
+            // Simply switch to a different icon set and reload
+            set_iconset();
+            reload();
+        }
     }
 }
 
@@ -127,8 +130,15 @@ let PREF_OBSERVER = {
     ipv4 only                   4only_16.png, 4only_24.png
     Unknown                     other_16.png, other_24.png
 */
-let s6only_16 = "", s6and4_16 = "", s4pot6_16 = "", s4only_16 = "", sother_16 = "";
-let s6only_24 = "", s6and4_24 = "", s4pot6_24 = "", s4only_24 = "", sother_24 = "";
+// Colour icons
+let s6only_16_c = "", s6and4_16_c = "", s4pot6_16_c = "", s4only_16_c = "", sother_16_c = "";
+let s6only_24_c = "", s6and4_24_c = "", s4pot6_24_c = "", s4only_24_c = "", sother_24_c = "";
+// Greyscale icons
+let s6only_16_g = "", s6and4_16_g = "", s4pot6_16_g = "", s4only_16_g = "", sother_16_g = "";
+let s6only_24_g = "", s6and4_24_g = "", s4pot6_24_g = "", s4only_24_g = "", sother_24_g = "";
+// Current icons
+let s6only_16 = "",   s6and4_16 = "",   s4pot6_16 = "",   s4only_16 = "",   sother_16 = "";
+let s6only_24 = "",   s6and4_24 = "",   s4pot6_24 = "",   s4only_24 = "",   sother_24 = "";
 
 (function(global) global.include = function include(src) (
     Services.scriptloader.loadSubScript(src, global)))(this);
@@ -194,7 +204,7 @@ function main (win)
 
     }
     // Add address bar icon only if desired by preferences
-    if (PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"))
+    if (get_bool_pref("showaddressicon"))
     {
         let (addressPopupMenu = doc.createElementNS(NS_XUL, "menupopup"),
              addressIcon = doc.createElementNS(NS_XUL, "image"),
@@ -281,7 +291,7 @@ function main (win)
     }, win);
 
     // If we loaded the address bar icon UI, add a callback to remove it on unload
-    if (PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"))
+    if (get_bool_pref("showaddressicon"))
     {
         unload(function () {
             consoleService.logStringMessage("Sixornot - address bar unload function");
@@ -952,6 +962,37 @@ function main (win)
 }
 
 
+// Image set is either colour or greyscale
+function set_iconset ()
+{
+    // If use_greyscale is set to true, load grey icons, otherwise load default set
+    if (get_bool_pref("use_greyscale"))
+    {
+        s6only_16 = s6only_16_g;
+        s6and4_16 = s6and4_16_g;
+        s4pot6_16 = s4pot6_16_g;
+        s4only_16 = s4only_16_g;
+        sother_16 = sother_16_g;
+        s6only_24 = s6only_24_g;
+        s6and4_24 = s6and4_24_g;
+        s4pot6_24 = s4pot6_24_g;
+        s4only_24 = s4only_24_g;
+        sother_24 = sother_24_g;
+    }
+    else
+    {
+        s6only_16 = s6only_16_c;
+        s6and4_16 = s6and4_16_c;
+        s4pot6_16 = s4pot6_16_c;
+        s4only_16 = s4only_16_c;
+        sother_16 = sother_16_c;
+        s6only_24 = s6only_24_c;
+        s6and4_24 = s6and4_24_c;
+        s4pot6_24 = s4pot6_24_c;
+        s4only_24 = s4only_24_c;
+        sother_24 = sother_24_c;
+    }
+}
 
 /*
     bootstrap.js API
@@ -959,8 +1000,9 @@ function main (win)
 function startup (data)
 {
     AddonManager.getAddonByID(data.id, function(addon, data) {
-        consoleService.logStringMessage("Sixornot - setInitialPrefs");
-//        setInitialPrefs();
+        consoleService.logStringMessage("Sixornot - startup");
+
+        // Include libraries
         include(addon.getResourceURI("includes/utils.js").spec);
         include(addon.getResourceURI("includes/locale.js").spec);
 
@@ -968,16 +1010,33 @@ function startup (data)
         DnsHandler.init();
 
         initLocalization(addon, "sixornot.properties");
-        s6only_16 = addon.getResourceURI("images/6only_16.png").spec;
-        s6and4_16 = addon.getResourceURI("images/6and4_16.png").spec;
-        s4pot6_16 = addon.getResourceURI("images/4pot6_16.png").spec;
-        s4only_16 = addon.getResourceURI("images/4only_16.png").spec;
-        sother_16 = addon.getResourceURI("images/other_16.png").spec;
-        s6only_24 = addon.getResourceURI("images/6only_24.png").spec;
-        s6and4_24 = addon.getResourceURI("images/6and4_24.png").spec;
-        s4pot6_24 = addon.getResourceURI("images/4pot6_24.png").spec;
-        s4only_24 = addon.getResourceURI("images/4only_24.png").spec;
-        sother_24 = addon.getResourceURI("images/other_24.png").spec;
+
+        // Load image sets
+        // Greyscale
+        s6only_16_g = addon.getResourceURI("images/6only_g_16.png").spec;
+        s6and4_16_g = addon.getResourceURI("images/6and4_g_16.png").spec;
+        s4pot6_16_g = addon.getResourceURI("images/4pot6_g_16.png").spec;
+        s4only_16_g = addon.getResourceURI("images/4only_g_16.png").spec;
+        sother_16_g = addon.getResourceURI("images/other_g_16.png").spec;
+        s6only_24_g = addon.getResourceURI("images/6only_g_24.png").spec;
+        s6and4_24_g = addon.getResourceURI("images/6and4_g_24.png").spec;
+        s4pot6_24_g = addon.getResourceURI("images/4pot6_g_24.png").spec;
+        s4only_24_g = addon.getResourceURI("images/4only_g_24.png").spec;
+        sother_24_g = addon.getResourceURI("images/other_g_24.png").spec;
+        // Colour
+        s6only_16_c = addon.getResourceURI("images/6only_c_16.png").spec;
+        s6and4_16_c = addon.getResourceURI("images/6and4_c_16.png").spec;
+        s4pot6_16_c = addon.getResourceURI("images/4pot6_c_16.png").spec;
+        s4only_16_c = addon.getResourceURI("images/4only_c_16.png").spec;
+        sother_16_c = addon.getResourceURI("images/other_c_16.png").spec;
+        s6only_24_c = addon.getResourceURI("images/6only_c_24.png").spec;
+        s6and4_24_c = addon.getResourceURI("images/6and4_c_24.png").spec;
+        s4pot6_24_c = addon.getResourceURI("images/4pot6_c_24.png").spec;
+        s4only_24_c = addon.getResourceURI("images/4only_c_24.png").spec;
+        sother_24_c = addon.getResourceURI("images/other_c_24.png").spec;
+
+        // Set active image set
+        set_iconset();
 
 //        let root = addon.getResourceURI("").spec;
         consoleService.logStringMessage("Sixornot - hasresource is:" + addon.hasResource("content/options.xul"));
@@ -1055,18 +1114,27 @@ function toggleCustomize (evt)
     PREF_BRANCH_SIXORNOT.setCharPref(PREF_NEXTITEM, nextItemId || "");
 }
 
-// Return preference value, either from prefs store or from internal defaults
-function getPref (name)
+// Return boolean preference value, either from prefs store or from internal defaults
+function get_bool_pref (name)
 {
-    consoleService.logStringMessage("Sixornot - getPref");
+    consoleService.logStringMessage("Sixornot - get_bool_pref");
     try
     {
-      return PREF_BRANCH_SIXORNOT.getComplexValue(name, Ci.nsISupportsString).data;
+        return PREF_BRANCH_SIXORNOT.getBoolPref(name);
     }
     catch (e)
     {
+        consoleService.logStringMessage("Sixornot - get_bool_pref error - " + e);
     }
-    return PREFS[name];
+    if (PREFS.hasOwnProperty(name))
+    {
+        consoleService.logStringMessage("Sixornot - get_bool_pref returning PREFS[name] : " + PREFS[name]);
+        return PREFS[name]
+    }
+    else
+    {
+        consoleService.logStringMessage("Sixornot - get_bool_pref error - No default preference value!");
+    }
 }
 
 // Proxy to getElementById
