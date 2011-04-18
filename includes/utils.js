@@ -60,13 +60,17 @@ function runOnLoad(window, callback) {
  * @param [function] callback: 1-parameter function that gets a browser window.
  */
 function runOnWindows(callback) {
-  // Wrap the callback in a function that ignores failures
-  function watcher(window) {
-    try {
-      callback(window);
+    // Wrap the callback in a function that ignores failures
+    function watcher(window) {
+        callback(window);
+/*        try
+        {
+            callback(window);
+        }
+        catch(ex)
+        {
+        } */
     }
-    catch(ex) {}
-  }
 
   // Add functionality to existing windows
   let browserWindows = Services.wm.getEnumerator("navigator:browser");
@@ -89,12 +93,16 @@ function runOnWindows(callback) {
  */
 function watchWindows(callback) {
   // Wrap the callback in a function that ignores failures
-  function watcher(window) {
-    try {
-      callback(window);
+    function watcher(window) {
+        callback(window);
+/*        try
+        {
+            callback(window);
+        }
+        catch(ex)
+        {
+        } */
     }
-    catch(ex) {}
-  }
 
   // Add functionality to existing windows
   runOnWindows(callback);
@@ -168,3 +176,4 @@ function unload(callback, container) {
   }
   return removeUnloader;
 }
+

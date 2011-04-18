@@ -14,7 +14,7 @@
    
         <em:homepageURL>http://www.entropy.me.uk/sixornot/</em:homepageURL>
 
-        <!--<em:optionsURL>resource://sixornot/content/options.xul</em:optionsURL>-->
+        <!-- <em:optionsURL>resource://sixornot/content/options.xul</em:optionsURL> -->
 
         <em:bootstrap>true</em:bootstrap>
 
