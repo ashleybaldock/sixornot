@@ -822,12 +822,12 @@ function main (win)
 
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
-            addTitleLine("Remote", "");
+            addTitleLine(gt("header_remote"), "");
         }
 
         if (host !== "")
         {
-            addLabeledLine("Domain name:", host);
+            addLabeledLine(gt("prefix_domain"), host);
         }
 
         first = true;
@@ -839,11 +839,11 @@ function main (win)
                 {
                     if (ipv6s.length === 1)
                     {
-                        addLabeledLine("IPv6 address:", ipv6s[i]);
+                        addLabeledLine(gt("prefix_v6_single"), ipv6s[i]);
                     }
                     else
                     {
-                        addLabeledLine("IPv6 addresses:", ipv6s[i]);
+                        addLabeledLine(gt("prefix_v6_multi"), ipv6s[i]);
                     }
                     first = false;
                 }
@@ -862,11 +862,11 @@ function main (win)
                 {
                     if (ipv4s.length === 1)
                     {
-                        addLabeledLine("IPv4 address:", ipv4s[i]);
+                        addLabeledLine(gt("prefix_v4_single"), ipv4s[i]);
                     }
                     else
                     {
-                        addLabeledLine("IPv4 addresses:", ipv4s[i]);
+                        addLabeledLine(gt("prefix_v4_multi"), ipv4s[i]);
                     }
                     first = false;
                 }
@@ -882,19 +882,19 @@ function main (win)
             var extraString
             if (specialLocation[0] === "localfile")
             {
-                extraString = "Local location";
+                extraString = gt("other_localfile");
             }
             if (specialLocation[0] === "lookuperror")
             {
-                extraString = "Lookup error";
+                extraString = gt("other_lookuperror");
             }
             if (specialLocation[0] === "nodnserror")
             {
-                extraString = "No local DNS access";
+                extraString = gt("other_nodnserror");
             }
             if (specialLocation[0] === "offlinemode")
             {
-                extraString = "Offline mode";
+                extraString = gt("other_offlinemode");
             }
 
             if (specialLocation[1])
@@ -913,8 +913,8 @@ function main (win)
         if (localipv4s.length !== 0 || localipv6s.length !== 0)
         {
             addSpacerLine();
-            addTitleLine("Local");
-            addLabeledLine("Host name:", dnsService.myHostName);
+            addTitleLine(gt("header_local"));
+            addLabeledLine(gt("prefix_host"), dnsService.myHostName);
         }
 
         // Append local IP address information
@@ -928,11 +928,11 @@ function main (win)
                 {
                     if (localipv6s.length === 1)
                     {
-                        addLabeledLine("IPv6 address:", localipv6s[i]);
+                        addLabeledLine(gt("prefix_v6_single"), localipv6s[i]);
                     }
                     else
                     {
-                        addLabeledLine("IPv6 addresses:", localipv6s[i]);
+                        addLabeledLine(gt("prefix_v6_multi"), localipv6s[i]);
                     }
                     first = false;
                 }
@@ -951,11 +951,11 @@ function main (win)
                 {
                     if (localipv4s.length === 1)
                     {
-                        addLabeledLine("IPv4 address:", localipv4s[i]);
+                        addLabeledLine(gt("prefix_v4_single"), localipv4s[i]);
                     }
                     else
                     {
-                        addLabeledLine("IPv4 addresses:", localipv4s[i]);
+                        addLabeledLine(gt("prefix_v4_multi"), localipv4s[i]);
                     }
                     first = false;
                 }
