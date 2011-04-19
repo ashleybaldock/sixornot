@@ -555,11 +555,11 @@ function main (win)
         {
             consoleService.logStringMessage("Sixornot - onMenuCommand, goto web page");
         }
+        // TODO - merge taddr and tgrey cases into single case which uses remainder of value field to determine which preference to set
         if (commandID.substring(0,5) === "taddr")
         {
             consoleService.logStringMessage("Sixornot - onMenuCommand, toggle address bar icon");
             // Toggle address bar icon visibility
-            // This sets the preference, and the preference listener will take care of actually removing/adding the icon
             if (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true")
             {
                 consoleService.logStringMessage("Sixornot - onMenuCommand, set showaddressicon to true");
@@ -569,6 +569,21 @@ function main (win)
             {
                 consoleService.logStringMessage("Sixornot - onMenuCommand, set showaddressicon to false");
                 PREF_BRANCH_SIXORNOT.setBoolPref("showaddressicon", false);
+            }
+        }
+        if (commandID.substring(0,5) === "tgrey")
+        {
+            consoleService.logStringMessage("Sixornot - onMenuCommand, toggle greyscale icons");
+            // Toggle greyscale iconset display
+            if (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true")
+            {
+                consoleService.logStringMessage("Sixornot - onMenuCommand, set use_greyscale to true");
+                PREF_BRANCH_SIXORNOT.setBoolPref("use_greyscale", true);
+            }
+            else
+            {
+                consoleService.logStringMessage("Sixornot - onMenuCommand, set use_greyscale to false");
+                PREF_BRANCH_SIXORNOT.setBoolPref("use_greyscale", false);
             }
         }
     }
@@ -726,6 +741,7 @@ function main (win)
         addMenuSeparator();
 //        addMenuItem("Preferences...", "Click to open preferences dialog", "prefs");
         addToggleMenuItem("Show Addressbar Icon", "Toggles display of SixOrNot icon in Address Bar", "taddr", PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
+        addToggleMenuItem("Use Greyscale Icons", "Check to use greyscale icons rather than colourful ones", "tgrey", PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
 
         addMenuSeparator();
         addMenuItem("Go to SixOrNot website", "Visit the SixOrNot website", "gotow" + "http://entropy.me.uk/sixornot/");
