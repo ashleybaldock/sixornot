@@ -24,54 +24,89 @@
  * Contributor(s):
  *   Erik Vold <erikvvold@gmail.com> (Original Author)
  *   Finnbarr P. Murphy <fpm@hotmail.com>
+ *   Timothy Baldock <tb@entropy.me.uk>
  *
  * ***** END LICENSE BLOCK ***** */
 
 
-var initLocalization = (function(global) {
-   let regex = /(\w+)-\w+/;
+var initLocalisation = (function(global) {
+    let regex = /(\w+)-\w+/;
 
-   // get user's locale
-   let locale = Cc["@mozilla.org/chrome/chrome-registry;1"]
-      .getService(Ci.nsIXULChromeRegistry).getSelectedLocale("global");
+    // get user's locale
+    let locale = Cc["@mozilla.org/chrome/chrome-registry;1"].getService(Ci.nsIXULChromeRegistry).getSelectedLocale("global");
+    consoleService.logStringMessage("Sixornot - initLocalisation - detected locale as: " + locale);
 
-   function getStr(aStrBundle, aKey) {
-      if (!aStrBundle) return false;
-      try {
-         return aStrBundle.GetStringFromName(aKey);
-      } catch (e) {}
-      return "";
-   }
+    function getStr(aStrBundle, aKey)
+    {
+        consoleService.logStringMessage("Sixornot - getStr");
+        if (!aStrBundle)
+        {
+            return false;
+        }
+        try
+        {
+            return aStrBundle.GetStringFromName(aKey);
+        }
+        catch (e)
+        {
+        }
+        return "";
+    }
 
-   return function(addon, filename) {
-      defaultLocale = "en";
-      function filepath(locale) addon.getResourceURI("locale/" + locale + "/" + filename).spec
+    return function (addon, filename)
+    {
+        defaultLocale = "en";
+        function filepath (locale)
+        {
+            return addon.getResourceURI("locale/" + locale + "/" + filename).spec;
+        }
 
-      let defaultBundle = Services.strings.createBundle(filepath(locale));
-      let defaultBasicBundle;
-      let (locale_base = locale.match(regex)) {
-         if (locale_base) {
-            defaultBasicBundle = Services.strings.createBundle(filepath(locale_base[1]));
-         }
-      }
-
-      let addonsDefaultBundle = Services.strings.createBundle(filepath(defaultLocale));
-
-      return global.getLocalizedStr = function l10n_underscore(aKey, aLocale) {
-         let localeBundle, localeBasicBundle;
-         if (aLocale) {
-            localeBundle = Services.strings.createBundle(filepath(aLocale));
-            let locale_base = aLocale.match(splitter);
-            if (locale_base) {
-               localeBasicBundle = Services.strings.createBundle(filepath(locale_base[1]));
+        let defaultBundle = Services.strings.createBundle(filepath(locale));
+        let defaultBasicBundle;
+        // Locale made up of two parts, language code and country code
+        // We try to use more specific option first (localeBundle) or less specific second (localeBasicBundle)
+        // E.g. locale is "en-US", try to find a file called "en-US/sixornot.properties" first, but fall back to "en/sixornot.properties" if not
+        let (locale_base = locale.match(regex))
+        {
+            if (locale_base)
+            {
+                defaultBasicBundle = Services.strings.createBundle(filepath(locale_base[1]));
             }
-         }
+        }
 
-         return getStr(localeBundle, aKey)
-            || getStr(localeBasicBundle, aKey)
-            || (defaultBundle && (getStr(defaultBundle, aKey) || (defaultBundle = null)))
-            || (defaultBasicBundle && (getStr(defaultBasicBundle, aKey) || (defaultBasicBundle = null)))
-            || getStr(addonsDefaultBundle, aKey);
-      }
-   }
+        let addonsDefaultBundle = Services.strings.createBundle(filepath(defaultLocale));
+
+        // Return this function in addon-global scope
+        // If called with only one argument, return translated string
+        // If called with two arguments, return translated string for the locale specified in second argument (if possible)
+        return global.gt = function l10n_underscore (aKey, aLocale)
+        {
+            let localeBundle, localeBasicBundle;
+            if (aLocale)
+            {
+                localeBundle = Services.strings.createBundle(filepath(aLocale));
+//                let locale_base = aLocale.match(splitter);
+                // Locale made up of two parts, language code and country code
+                // We try to use more specific option first (localeBundle) or less specific second (localeBasicBundle)
+                // E.g. locale is "en-US", try to find a file called "en-US/sixornot.properties" first, but fall back to "en/sixornot.properties" if not
+                let locale_base = aLocale.match(regex);
+                if (locale_base)
+                {
+                    localeBasicBundle = Services.strings.createBundle(filepath(locale_base[1]));
+                }
+            }
+
+            // Search from most specific to least specific locale(s)
+            // 1. locale passed into function, e.g. en-US
+            // 2. generic locale passed in, e.g. en
+            // 3. Locale set on init, e.g. en-GB
+            // 4. generic form of that locale, e.g. en
+            // 5. fall-back default, e.g. en
+            return getStr(localeBundle, aKey)
+                || getStr(localeBasicBundle, aKey)
+                || (defaultBundle && (getStr(defaultBundle, aKey) || (defaultBundle = null)))
+                || (defaultBasicBundle && (getStr(defaultBasicBundle, aKey) || (defaultBasicBundle = null)))
+                || getStr(addonsDefaultBundle, aKey);
+        }
+    }
 })(this);

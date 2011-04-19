@@ -81,7 +81,6 @@ const BUTTON_ID     = "sixornot-buttonid",
 const PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
 
 const PREFS = {
-    enable:             false,
     nextitem:           "bookmarks-menu-button-container",
     toolbar:            "nav-bar",
     showaddressicon:    false,
@@ -172,7 +171,7 @@ function main (win)
 
         // Iconized button setup
         toolbarButton.setAttribute("id", BUTTON_ID);
-        toolbarButton.setAttribute("label", getLocalizedStr("label"));
+        toolbarButton.setAttribute("label", gt("label"));
         toolbarButton.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
         toolbarButton.setAttribute("tooltip", TOOLTIP_ID);
         toolbarButton.setAttribute("type", "menu");
@@ -360,7 +359,8 @@ function main (win)
         }
 
         // Need to look up host
-        try {
+        try
+        {
             host = cropTrailingChar(contentDoc.location.hostname, ".");
         } 
         catch (e)
@@ -399,7 +399,7 @@ function main (win)
 
         // Ideally just hitting the DNS cache here
 //        DNSrequest = DnsHandler.resolveHost(host, onReturnedIPs);
-        onReturnedIPs(DnsHandler.resolveHostNative(host));
+        onReturnedIPs(DnsHandler.resolveHost(host));
 
         function onReturnedIPs(remoteips)
         {
@@ -670,37 +670,37 @@ function main (win)
                             remotestring = remotestring + ", " + ipv4s[i];
                         }
                     }
-                    addMenuItem(host, "Click to copy all data for this domain to clipboard", "copyc" + remotestring);
+                    addMenuItem(host, gt("tt_copydomclip"), "copyc" + remotestring);
                 }
                 else
                 {
                     // In this case there will only ever be one IP address record
-                    addDisabledMenuItem("Hostname is IP address");
+                    addDisabledMenuItem(gt("hostnameisip"));
                 }
             }
             else
             {
-                addDisabledMenuItem("No Hostname found");
+                addDisabledMenuItem(gt("nohostnamefound"));
             }
 
             if (ipv6s.length !== 0)
             {
                 for (i=0; i<ipv6s.length; i++)
                 {
-                    addMenuItem(ipv6s[i], "Click to copy IP address to clipboard", "copyc" + ipv6s[i]);
+                    addMenuItem(ipv6s[i], gt("tt_copyip6clip"), "copyc" + ipv6s[i]);
                 }
             }
             if (ipv4s.length !== 0)
             {
                 for (i=0; i<ipv4s.length; i++)
                 {
-                    addMenuItem(ipv4s[i], "Click to copy IP address to clipboard", "copyc" + ipv4s[i]);
+                    addMenuItem(ipv4s[i], gt("tt_copyip4clip"), "copyc" + ipv4s[i]);
                 }
             }
         }
         else
         {
-            addDisabledMenuItem("No remote site loaded");
+            addDisabledMenuItem(gt("noremoteloaded"));
         }
         addMenuSeparator();
 
@@ -721,30 +721,30 @@ function main (win)
             }
         }
 
-        addMenuItem(dnsService.myHostName + " (localhost)", "Click to copy all data for local host to clipboard", "copyc" + localstring);
+        addMenuItem(dnsService.myHostName + " (localhost)", gt("tt_copylocalclip"), "copyc" + localstring);
 
         if (localipv6s.length !== 0)
         {
             for (i=0; i<localipv6s.length; i++)
             {
-                addMenuItem(localipv6s[i], "Click to copy IP address to clipboard", "copyc" + localipv6s[i]);
+                addMenuItem(localipv6s[i], gt("tt_copyip6clip"), "copyc" + localipv6s[i]);
             }
         }
         if (localipv4s.length !== 0)
         {
             for (i=0; i<localipv4s.length; i++)
             {
-                addMenuItem(localipv4s[i], "Click to copy IP address to clipboard", "copyc" + localipv4s[i]);
+                addMenuItem(localipv4s[i], gt("tt_copyip4clip"), "copyc" + localipv4s[i]);
             }
         }
 
         addMenuSeparator();
 //        addMenuItem("Preferences...", "Click to open preferences dialog", "prefs");
-        addToggleMenuItem("Show Addressbar Icon", "Toggles display of SixOrNot icon in Address Bar", "taddr", PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
-        addToggleMenuItem("Use Greyscale Icons", "Check to use greyscale icons rather than colourful ones", "tgrey", PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
+        addToggleMenuItem(gt("showaddressicon"), gt("tt_showaddressicon"), "taddr", PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
+        addToggleMenuItem(gt("usegreyscale"), gt("tt_usegreyscale"), "tgrey", PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
 
         addMenuSeparator();
-        addMenuItem("Go to SixOrNot website", "Visit the SixOrNot website", "gotow" + "http://entropy.me.uk/sixornot/");
+        addMenuItem(gt("gotowebsite"), gt("tt_gotowebsite"), "gotow" + "http://entropy.me.uk/sixornot/");
     }
 
     // Update the contents of the tooltip whenever it is shown
@@ -1025,7 +1025,7 @@ function startup (data)
         // Init DnsHandler
         DnsHandler.init();
 
-        initLocalization(addon, "sixornot.properties");
+        initLocalisation(addon, "sixornot.properties");
 
         // Load image sets
         // Greyscale
@@ -1102,9 +1102,7 @@ function uninstall ()
     consoleService.logStringMessage("Sixornot - uninstall");
 // If this is due to an upgrade then don't delete preferences?
 // Some kind of upgrade function to potentially upgrade preference settings may be required
-//   let value = PREF_BRANCH_HTML5TOGGLE.getBoolPref("enable");
     PREF_BRANCH_SIXORNOT.deleteBranch("");             
-//   PREF_BRANCH_HTML5.setBoolPref('enable', value);
 }
 
 
@@ -1239,28 +1237,28 @@ function cropTrailingChar (str, character)
 // Lazy getter services
 function defineLazyGetter (getterName, getterFunction)
 {
-    this.__defineGetter__(getterName, function() {
+    this.__defineGetter__(getterName, function () {
         delete this[getterName];
         return this[getterName] = getterFunction.apply(this);
     });
 }
 
-defineLazyGetter("consoleService", function() {
+defineLazyGetter("consoleService", function () {
     return Components.classes["@mozilla.org/consoleservice;1"]
                      .getService(Components.interfaces.nsIConsoleService);
 });
-defineLazyGetter("ioService", function() {
+defineLazyGetter("ioService", function () {
     return Components.classes["@mozilla.org/network/io-service;1"]
                      .getService(Components.interfaces.nsIIOService);
 });
-defineLazyGetter("proxyService", function() {
+defineLazyGetter("proxyService", function () {
     return Components.classes["@mozilla.org/network/protocol-proxy-service;1"]
                      .getService(Components.interfaces.nsIProtocolProxyService);
 });
-defineLazyGetter("dnsService", function() {
+defineLazyGetter("dnsService", function () {
     return Components.classes["@mozilla.org/network/dns-service;1"].getService(Components.interfaces.nsIDNSService);
 });
-defineLazyGetter("clipboardHelper", function() {
+defineLazyGetter("clipboardHelper", function () {
     return Components.classes["@mozilla.org/widget/clipboardhelper;1"]
                      .getService(Components.interfaces.nsIClipboardHelper);
 });
@@ -1275,6 +1273,7 @@ var DnsHandler =
     sockaddr: null,
     addrinfo: null,
     getaddrinfo: null,
+    resolve_native: false,
 
     init : function ()
     {
@@ -1284,7 +1283,7 @@ var DnsHandler =
         // Try each of these until one works, this will also determine our platform
         try
         {
-            this.library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
+            this.library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation2");
             consoleService.logStringMessage("Sixornot - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
             // Address family
             this.AF_UNSPEC = 0;
@@ -1294,6 +1293,7 @@ var DnsHandler =
             this.SOCK_STREAM = 1;
             // Protocol
             this.IPPROTO_UNSPEC = 0;
+            this.resolve_native = true;
         }
         catch(e)
         {
@@ -1326,35 +1326,53 @@ var DnsHandler =
                 this.IPPROTO_TCP = 6;
                 this.IPPROTO_UDP = 17;
 //                this.IPPROTO_RM = 113;
+                this.resolve_native = true;
             }
-            catch(e)
+            catch (e)
             {
                 consoleService.logStringMessage("Sixornot - Not running on Windows XP+");
                 // Here we should degrade down to using Firefox's builtin methods
-                return false;
+                consoleService.logStringMessage("Sixornot - Native resolver not supported on this platform, falling back to builtin");
+                this.resolve_native = false;
             }
         }
-        // Set up the structs we need
-        this.sockaddr = ctypes.StructType("sockaddr", [
-                            {sa_family : ctypes.unsigned_short},
-                            {sa_data : ctypes.unsigned_char.array(28)}]);
-        this.addrinfo = ctypes.StructType("addrinfo");
-        this.addrinfo.define([
-                            {ai_flags : ctypes.int}, 
-                            {ai_family : ctypes.int}, 
-                            {ai_socktype : ctypes.int}, 
-                            {ai_protocol : ctypes.int}, 
-                            {ai_addrlen : ctypes.int}, 
-                            {ai_cannonname : ctypes.char.ptr}, 
-                            {ai_addr : this.sockaddr.ptr}, 
-                            {ai_next : this.addrinfo.ptr}]);
-        // Set up the ctypes functions we need
-        this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
+
+        if (this.resolve_native)
+        {
+            try
+            {
+                // Set up the structs we need
+                this.sockaddr = ctypes.StructType("sockaddr", [
+                                    {sa_family : ctypes.unsigned_short},
+                                    {sa_data : ctypes.unsigned_char.array(28)}]);
+                this.addrinfo = ctypes.StructType("addrinfo");
+                this.addrinfo.define([
+                                    {ai_flags : ctypes.int}, 
+                                    {ai_family : ctypes.int}, 
+                                    {ai_socktype : ctypes.int}, 
+                                    {ai_protocol : ctypes.int}, 
+                                    {ai_addrlen : ctypes.int}, 
+                                    {ai_cannonname : ctypes.char.ptr}, 
+                                    {ai_addr : this.sockaddr.ptr}, 
+                                    {ai_next : this.addrinfo.ptr}]);
+                // Set up the ctypes functions we need
+                this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
+            }
+            catch (e)
+            {
+                consoleService.logStringMessage("Sixornot - Unable to init native resolver, falling back to native");
+                this.library.close();
+                this.resolve_native = false;
+            }
+        }
     },
 
     shutdown : function ()
     {
-        this.library.close();
+        if (this.resolve_native)
+        {
+            this.library.close();
+        }
     },
 
     typeof_ip4 : function (ip_address)
@@ -1448,6 +1466,32 @@ var DnsHandler =
         }
     },
 
+    // Resolve a host using either native or builtin functionality
+    resolveHost : function (host)
+    {
+        if (this.resolve_native)
+        {
+            return this.resolveHostNative(host);
+        }
+        else
+        {
+            return this.resolveHostFirefox(host);
+        }
+    },
+
+    // Resolve a host using Firefox's built-in functionality
+    resolveHostFirefox : function (host)
+    {
+        consoleService.logStringMessage("Sixornot - resolveHostFirefox - resolving host: " + host);
+        let dnsresponse = dnsService.resolve(host, true);
+        var IPAddresses = [];
+        while (dnsresponse.hasMore())
+        {
+            IPAddresses.push(dnsresponse.getNextAddrAsString());
+        }
+        return IPAddresses;
+    },
+
     // Proxy to native getaddrinfo functionality
     resolveHostNative : function (host)
     {
@@ -1509,10 +1553,10 @@ var DnsHandler =
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
     },
 
-    cancelRequest : function (request)
+/*    cancelRequest : function (request)
     {
         try { request.cancel(Components.results.NS_ERROR_ABORT); } catch(e) {}  // calls onLookupComplete() with status=Components.results.NS_ERROR_ABORT
-    },
+    }, */
 
     // Return the IP addresses of the local host
     resolveLocal : function ()
@@ -1524,9 +1568,9 @@ var DnsHandler =
             IPAddresses.push(dnsresponse.getNextAddrAsString());
         }
         return IPAddresses;
-    },
+    }
 
-    resolveHost : function (host,returnIP)  // Returns request object
+/*    resolveHost : function (host,returnIP)  // Returns request object
     {
         function fail(reason)
         {
@@ -1567,6 +1611,6 @@ var DnsHandler =
             fail( "exception " + ((e.name && e.name.length) ? e.name : e) );
             return null;
         }
-    }
+    } */
 };
 
