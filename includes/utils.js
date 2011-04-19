@@ -20,6 +20,7 @@
  * Contributor(s):
  *   Edward Lee <edilee@mozilla.com>
  *   Erik Vold <erikvvold@gmail.com>
+ *   Timothy Baldock <tb@entropy.me.uk>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -41,15 +42,19 @@
  * @usage runOnLoad(window, callback): Apply a callback to to run on a window when it loads.
  * @param [function] callback: 1-parameter function that gets a browser window.
  */
-function runOnLoad(window, callback) {
-  // Listen for one load event before checking the window type
-  window.addEventListener("load", function() {
-    window.removeEventListener("load", arguments.callee, false);
+function runOnLoad (window, callback)
+{
+    // Listen for one load event before checking the window type
+    window.addEventListener("load", function ()
+    {
+        window.removeEventListener("load", arguments.callee, false);
 
-    // Now that the window has loaded, only handle browser windows
-    if (window.document.documentElement.getAttribute("windowtype") == "navigator:browser")
-      callback(window);
-  }, false);
+        // Now that the window has loaded, only handle browser windows
+        if (window.document.documentElement.getAttribute("windowtype") == "navigator:browser")
+        {
+            callback(window);
+        }
+    }, false);
 }
 
 
@@ -59,30 +64,35 @@ function runOnLoad(window, callback) {
  * @usage runOnWindows(callback): Apply a callback to each open browser window.
  * @param [function] callback: 1-parameter function that gets a browser window.
  */
-function runOnWindows(callback) {
+function runOnWindows (callback)
+{
     // Wrap the callback in a function that ignores failures
     function watcher(window) {
-        callback(window);
-/*        try
+        try
         {
             callback(window);
         }
         catch(ex)
         {
-        } */
+        }
     }
 
-  // Add functionality to existing windows
-  let browserWindows = Services.wm.getEnumerator("navigator:browser");
-  while (browserWindows.hasMoreElements()) {
-    // Only run the watcher immediately if the browser is completely loaded
-    let browserWindow = browserWindows.getNext();
-    if (browserWindow.document.readyState == "complete")
-      watcher(browserWindow);
-    // Wait for the window to load before continuing
-    else
-      runOnLoad(browserWindow, watcher);
-  }
+    // Add functionality to existing windows
+    let browserWindows = Services.wm.getEnumerator("navigator:browser");
+    while (browserWindows.hasMoreElements())
+    {
+        // Only run the watcher immediately if the browser is completely loaded
+        let browserWindow = browserWindows.getNext();
+        if (browserWindow.document.readyState == "complete")
+        {
+            watcher(browserWindow);
+        }
+        // Wait for the window to load before continuing
+        else
+        {
+            runOnLoad(browserWindow, watcher);
+        }
+    }
 }
 
 /**
@@ -91,31 +101,34 @@ function runOnWindows(callback) {
  * @usage watchWindows(callback): Apply a callback to each browser window.
  * @param [function] callback: 1-parameter function that gets a browser window.
  */
-function watchWindows(callback) {
-  // Wrap the callback in a function that ignores failures
+function watchWindows (callback)
+{
+    // Wrap the callback in a function that ignores failures
     function watcher(window) {
-        callback(window);
-/*        try
+        try
         {
             callback(window);
         }
         catch(ex)
         {
-        } */
+        }
     }
 
-  // Add functionality to existing windows
-  runOnWindows(callback);
+    // Add functionality to existing windows
+    runOnWindows(callback);
 
-  // Watch for new browser windows opening then wait for it to load
-  function windowWatcher(subject, topic) {
-    if (topic == "domwindowopened")
-      runOnLoad(subject, watcher);
-  }
-  Services.ww.registerNotification(windowWatcher);
+    // Watch for new browser windows opening then wait for it to load
+    function windowWatcher (subject, topic)
+    {
+        if (topic == "domwindowopened")
+        {
+            runOnLoad(subject, watcher);
+        }
+    }
+    Services.ww.registerNotification(windowWatcher);
 
-  // Make sure to stop watching for windows if we're unloading
-  unload(function() Services.ww.unregisterNotification(windowWatcher));
+    // Make sure to stop watching for windows if we're unloading
+    unload(function() Services.ww.unregisterNotification(windowWatcher));
 }
 
 /**
@@ -133,47 +146,60 @@ function watchWindows(callback) {
  * @param [node] container: Remove the callback when this container unloads.
  * @return [function]: A 0-parameter function that undoes adding the callback.
  */
-function unload(callback, container) {
-  // Initialize the array of unloaders on the first usage
-  let unloaders = unload.unloaders;
-  if (unloaders == null)
-    unloaders = unload.unloaders = [];
-
-  // Calling with no arguments runs all the unloader callbacks
-  if (callback == null) {
-    unloaders.slice().forEach(function(unloader) unloader());
-    unloaders.length = 0;
-    return;
-  }
-
-  // The callback is bound to the lifetime of the container if we have one
-  if (container != null) {
-    // Remove the unloader when the container unloads
-    container.addEventListener("unload", removeUnloader, false);
-
-    // Wrap the callback to additionally remove the unload listener
-    let origCallback = callback;
-    callback = function() {
-      container.removeEventListener("unload", removeUnloader, false);
-      origCallback();
+function unload (callback, container)
+{
+    // Initialize the array of unloaders on the first usage
+    let unloaders = unload.unloaders;
+    if (unloaders == null)
+    {
+        unloaders = unload.unloaders = [];
     }
-  }
 
-  // Wrap the callback in a function that ignores failures
-  function unloader() {
-    try {
-      callback();
+    // Calling with no arguments runs all the unloader callbacks
+    if (callback == null)
+    {
+        unloaders.slice().forEach(function(unloader) unloader());
+        unloaders.length = 0;
+        return;
     }
-    catch(ex) {}
-  }
-  unloaders.push(unloader);
 
-  // Provide a way to remove the unloader
-  function removeUnloader() {
-    let index = unloaders.indexOf(unloader);
-    if (index != -1)
-      unloaders.splice(index, 1);
-  }
-  return removeUnloader;
+    // The callback is bound to the lifetime of the container if we have one
+    if (container != null)
+    {
+        // Remove the unloader when the container unloads
+        container.addEventListener("unload", removeUnloader, false);
+
+        // Wrap the callback to additionally remove the unload listener
+        let origCallback = callback;
+        callback = function()
+        {
+            container.removeEventListener("unload", removeUnloader, false);
+            origCallback();
+        }
+    }
+
+    // Wrap the callback in a function that ignores failures
+    function unloader ()
+    {
+        try
+        {
+            callback();
+        }
+        catch (ex)
+        {
+        }
+    }
+    unloaders.push(unloader);
+
+    // Provide a way to remove the unloader
+    function removeUnloader ()
+    {
+        let index = unloaders.indexOf(unloader);
+        if (index != -1)
+        {
+            unloaders.splice(index, 1);
+        }
+    }
+    return removeUnloader;
 }
 

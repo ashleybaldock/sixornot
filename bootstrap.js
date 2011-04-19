@@ -329,12 +329,6 @@ function main (win)
     function updateState ()
     {
         consoleService.logStringMessage("Sixornot - updateState");
-/*        if (!ready)  // Startup not finished; wait...
-        {
-            if (ready === null)  // If aborted, unload
-                unload();
-            return;
-        } */
 
         let addressIcon = gbi(doc, ADDRESS_IMG_ID);
         let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
@@ -1283,7 +1277,7 @@ var DnsHandler =
         // Try each of these until one works, this will also determine our platform
         try
         {
-            this.library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation2");
+            this.library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
             consoleService.logStringMessage("Sixornot - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
             // Address family
             this.AF_UNSPEC = 0;
