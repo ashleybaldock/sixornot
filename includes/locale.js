@@ -102,11 +102,13 @@ var initLocalisation = (function(global) {
             // 3. Locale set on init, e.g. en-GB
             // 4. generic form of that locale, e.g. en
             // 5. fall-back default, e.g. en
+            // 6. If all else fails, return the string passed in
             return getStr(localeBundle, aKey)
                 || getStr(localeBasicBundle, aKey)
                 || (defaultBundle && (getStr(defaultBundle, aKey) || (defaultBundle = null)))
                 || (defaultBasicBundle && (getStr(defaultBasicBundle, aKey) || (defaultBasicBundle = null)))
-                || getStr(addonsDefaultBundle, aKey);
+                || getStr(addonsDefaultBundle, aKey)
+                || aKey;
         }
     }
 })(this);
