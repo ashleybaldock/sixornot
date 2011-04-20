@@ -71,3 +71,44 @@ pre
     padding: 0.5em;
     background-color: #d5e6e6;
 }
+
+ul.icon_list
+{
+    margin: 1em 2em;
+    padding: 0.5em;
+}
+
+ul.icon_list li
+{
+    list-style: none;
+    background-repeat: no-repeat;
+    background-position: center left;
+    margin: 0.5em 0;
+    padding-left: 60px;
+    vertical-align: middle;
+}
+
+li.i_other
+{
+    background-image: url("sixornot_other_cg_24.png");
+}
+
+li.i_6only
+{
+    background-image: url("sixornot_6only_cg_24.png");
+}
+
+li.i_6and4
+{
+    background-image: url("sixornot_6and4_cg_24.png");
+}
+
+li.i_4pot6
+{
+    background-image: url("sixornot_4pot6_cg_24.png");
+}
+
+li.i_4only
+{
+    background-image: url("sixornot_4only_cg_24.png");
+}
