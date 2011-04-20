@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-GB" lang="en-GB">
+	
+<head>
+
+<link rel="stylesheet" type="text/css" href="../style.css" />
+
+<title>SixOrNot Online Documentation</title>
+
+</head>
+	
+<body>
+
+<div class="header">
+<h1>SixOrNot Online Documentation</h1>
+<p class="version">Version 1.0.0</p>
+</div>
+
+<h2 class="menu"><a name="Menu"></a>Contents</h2>
+<ol>
+<li><a href="#Installation">Installation</a></li>
+<li><a href="#Introduction">Introduction</a></li>
+<li><a href="#Interface">Interface</a>
+    <ul>
+    <li><a href="#Interface_Icons">Icon Meanings</a></li>
+    <li><a href="#Interface_Settings">Configurable Settings</a></li>
+    </ul>
+</li>
+<li><a href="#IPConcepts">IP Address Concepts</a></li>
+<li><a href="#FurtherReading">Further Reading</a></li>
+<li><a href="#AnyOtherQuestions">Any Other Questions</a></li>
+<li><a href="#SixOrNotLicence">SixOrNot Licence</a></li>
+</ol>
+
+
+<h2><a name="Introduction"></a>Introduction<a href="#Menu">Menu</a></h2>
+
+<p>SixOrNot is a Firefox extension intended to make it easy for you to identify when the website you're connecting to supports the current generation Internet Protocol (version 6). It does this by checking the site's DNS records and displaying an icon either in the address bar or as a button (which you may place anywhere buttons can usually be placed in Firefox). This icon indicates whether the site currently supports IPv6 (or only the legacy Internet Protocol, IPv4).</p>
+
+<h2><a name="Installation"></a>Installation<a href="#Menu">Menu</a></h2>
+
+<p>Installation is via the usual Firefox method, simply download the .xpi format attachment and accept when prompted to install. SixOrNot is a "restartless" or "bootstrapped" extension - this means you don't need to restart Firefox when it is installed and you should see the addressbar icon appear immediately upon installation.</p>
+
+<p>Upgrading should be similarly easy and handled automatically by the addons interface.</p>
+
+<h2><a name="Interface"></a>Interface<a href="#Menu">Menu</a></h2>
+
+<p>The SixOrNot interface is fairly simple. An icon is displayed either in the address bar near the star icon or as a button. By default the address bar icon is enabled and the button is placed into the button palette which you can access by the standard UI customisation method. Whether accessed through the button or address bar icon the functionality is identical. On mouseover the icon displays a tooltip which shows information about the site you are connecting to. The IPv6/IPv4 addresses of the site are shown in the Remote section along with its domain name. Additionally the IPv6/IPv4 addresses of your own client are shown under the Local section.</p>
+
+<p>Clicking on either the address bar icon or the button will open a popup menu. This menu allows you to copy IP address information to the clipboard. To copy all the IP addresses for a particular domain click the first entry in the menu (which will show the domain name of the remote site). This will copy the domain name followed by the IP addresses in comma separated format. If you wish to copy an individual IP address select it from the list and only that address will be copied to the clipboard.</p>
+
+<p>The same functionality is available for the local host entries. Below the IP address section are options to configure settings (see the Configurable Settings section below for more details on what these do) and a link to the SixOrNot website where this documentation can be found.</p>
+
+    <h3><a name="Interface_Icons"></a>Icon Meanings<a href="#Interface">Interface</a></h3>
+
+    <p>The IP addressing state of the remote website is displayed via a set of 5 icons, their meanings are outlined below. Note that there are two sets of icons to choose between (one colourful, the other greyscale). The grey icons look nicer when used with the button on Max OSX for example, and can be better for those who have difficulty distinguishing between colours.</p>
+
+    <ul>
+    <li class="i_other">This icon can mean a variety of things, generally it indicates that no IP address information exists for the current location or that there was a failure obtaining it. Try navigating to a website and ensuring you are not using a Proxy and that Offline mode isn't enabled.</li>
+    <li class="i_6only">This icon indicates that only AAAA (IPv6) records were found for the current domain. This generally means that the domain in question only supports IPv6. For example: <a href="http://ipv6.entropy.me.uk">ipv6.entropy.me.uk</a>.</li>
+    <li class="i_6and4">This icon indicates that both AAAA (IPv6) and A (IPv4) records were found for the current domain and SixOrNot detected that the local host has at least one valid IPv6 address. You are probably connecting to this website using IPv6, the current generation of the Internet Protocol. For example: <a href="http://entropy.me.uk">entropy.me.uk</a>.</li>
+    <li class="i_4pot6">This icon indicates that both AAAA (IPv6) and A (IPv4) records were found for the current domain but SixOrNot has not detected any local valid IPv6 addresses. While the remote domain does support IPv6 you are probably not able to connect to this site using native IPv6.</li>
+    <li class="i_4only">This icon indicates that only A (IPv4) records were returned for the current domain. Either your DNS is not capable of returning AAAA records or (more likely) the domain in question supports only the legacy version of the Internet Protocol suite. Why not ask why they haven't upgraded yet? An example can be found here: <a href="http://ipv4.entropy.me.uk">ipv4.entropy.me.uk</a></li>
+    </ul>
+
+    <h3><a name="Interface_Settings"></a>Configurable Settings<a href="#Interface">Interface</a></h3>
+
+    <p>SixOrNot allows you to configure two settings.</p>
+
+    <ol>
+    <li>Whether or not the address bar icon should be displayed. This is either on or off. This can be configured via the menu either by clicking on the address bar icon or the button. If you turn the address bar icon off and don't see the button try opening the button palette via the standard right-click+"Customise" functionality in Firefox. You can drag the address bar icon from there to anywhere you like on the UI. Note: If you want the address bar icon back you need to switch it on via the button's menu. You can always remove the button again afterwards by dragging it back to the button palette.</li>
+    <li>Whether to use the colourful icon set or the greyscale one. This can be switched via either menu at any time. The grey icons don't look quite as good except when being used on Mac OSX with the button (where most buttons are greyscale). They are also good for those with specific accessibility needs where colours aren't a sufficient means of communicating information.</li>
+    </ol>
+
+    <p>These two options can also be configured via the following two boolean values in "about:config":</p>
+
+    <pre>extensions.sixornot.showaddressicon</pre>
+    <pre>extensions.sixornot.use_greyscale</pre>
+
+    <p>The other two sixornot settings control the location of the button and should not be changed manually.</p>
+
+
+<h2><a name="IPConcepts"></a>IP Address Concepts<a href="#Menu">Menu</a></h2>
+
+<p>IP addresses are fundamental to the operation of the Internet, billions of people use millions of them every day and yet they are invisible in day-to-day use. Usually we don't need to care about IP addresses and in most cases one only becomes aware of them when something is broken. This is due to a system called DNS - the Domain Name System. This masks the technical complexity of addressing behind easy-to-remember domain names. When you visit a website behind the scenes the domain name of that website (everything between the "http://" and the first "/") is looked up via a DNS query to produce an IP address. These addresses are then used to determine how to communicate with the server responsible for serving that website.</p>
+
+<p>There are currently two flavours of IP address around because the Internet is going through a migration period from the old way of addressing things (known as Internet Protocol version 4, or IPv4) to a new addressing system (known as Internet Protocol version 6, or IPv6). The main difference is the number of addresses available, though this is by far the most important difference. IPv4 addresses are represented as 32-bit numbers, the largest number which can be represented in this way is 2^32 (2 to the power of 32) or 4,294,967,296. That sounds like a lot but we are rapidly running out of them (and in practice we can't even use all of those). IPv6 addresses are represented by 128-bit numbers, the largest number which can be represented in this way is 2^128 (2 to the power of 128) or 340,282,366,920,938,463,463,374,607,431,768,211,456 (that's approximately 340 billion billion billion billion, or 3.4x10^38).</p>
+
+<p>So why is there a problem? Adoption of the current IP addressing standard (IPv6) has been slow. Most traffic on the Internet still uses the legacy addressing scheme. At the time of writing less than 1% of all Internet traffic uses IPv6. Given the impending exhaustion of IPv4 addresses (at the time of writing the Asia-Pacific regional registry, APNIC, has already run out) this is a major problem facing the Internet community. The transition from IPv4 to IPv6 isn't an easy one and involves a lot of work, this is typically work which goes unnoticed to the end user. This is as it should be and for the vast majority of people IP addressing will continue to remain an invisible part of their Internet-using experience. The flip side of this invisibility however is that it's easy to overlook the pioneers who are already using IPv6 and raise awareness among those that are not. I am hopeful that by exposing the IP version being used as part of your web browsing this extension will help make it just a little bit more visible.</p>
+
+
+<h2><a name="FurtherReading"></a>Further Reading<a href="#Menu">Menu</a></h2>
+
+<p>For more information about IPv6, IPv4 address exhaustion and associated concepts please see the following links.</p>
+
+<ul>
+<li><a href="http://en.wikipedia.org/wiki/IPv4_address_exhaustion">http://en.wikipedia.org/wiki/IPv4_address_exhaustion</a></li>
+<li><a href="http://en.wikipedia.org/wiki/IPv6">http://en.wikipedia.org/wiki/IPv6</a></li>
+<li><a href="http://ipv6.he.net/certification/primer.php">http://ipv6.he.net/certification/primer.php</a></li>
+<li><a href="http://aaisp.net.uk/kb-broadband-ipv6.html">http://aaisp.net.uk/kb-broadband-ipv6.html</a></li>
+<li><a href="http://isoc.org/wp/worldipv6day/">http://isoc.org/wp/worldipv6day/</a></li>
+<li><a href="http://www.ietf.org/rfc/rfc3513.txt">http://www.ietf.org/rfc/rfc3513.txt</a></li>
+</ul>
+
+
+<h2><a name="AnyOtherQuestions"></a>Any Other Questions<a href="#Menu">Menu</a></h2>
+
+<p>If you have any further questions about SixOrNot or IPv6 please feel free to email me. My email address details can be found on the <a href="http://entropy.me.uk/contact.html/">Contact</a> section of my website.</p>
+
+
+<h2><a name="SixOrNotLicence"></a>SixOrNot Licence<a href="#Menu">Menu</a></h2>
+
+<p>A reproduction of the SixOrNot Licence, for your convenience. This document is covered by the same licence.</p>
+
+<p class="monospace">Copyright &copy; 2008-2011 Timothy Baldock. All Rights Reserved.</p>
+
+<p class="monospace">Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+
+<p class="monospace">1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p>
+
+<p class="monospace">2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p>
+
+<p class="monospace">3. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission from the author.</p>
+
+<p class="monospace">4. Products derived from this software may not be called "SixOrNot" nor may "SixOrNot" appear in their names without specific prior written permission from the author.</p>
+
+<p class="monospace">THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. </p>
+
+
+</body>
+	
+</html>
+
+
