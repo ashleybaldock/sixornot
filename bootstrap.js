@@ -1019,6 +1019,10 @@ function startup (data)
         // Init DnsHandler
         DnsHandler.init();
 
+        // Run DnsHandler tests
+        DnsHandler.test_normalise_ip6();
+        DnsHandler.test_typeof_ip6();
+
         initLocalisation(addon, "sixornot.properties");
 
         // Load image sets
@@ -1392,6 +1396,35 @@ var DnsHandler =
         return (ip_address.indexOf(":") !== -1);
     },
 
+    test_normalise_ip6 : function ()
+    {
+        let overall = true;
+        let tests = [
+                        ["::",                                      "0000:0000:0000:0000:0000:0000:0000:0000"],
+                        ["::1",                                     "0000:0000:0000:0000:0000:0000:0000:0001"],
+                        ["fe80::fa22:22ff:fee8:2222",               "fe80:0000:0000:0000:fa22:22ff:fee8:2222"],
+                        ["fc00::",                                  "fc00:0000:0000:0000:0000:0000:0000:0000"],
+                        ["ff00:1234:5678:9abc:def0:d:ee:fff",       "ff00:1234:5678:9abc:def0:000d:00ee:0fff"],
+                        ["2:0::1:2",                                "0002:0000:0000:0000:0000:0000:0001:0002"],
+                        ["2001:8b1:1fe4:1::2222",                   "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
+                        ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
+                    ];
+        for (let i = 0; i < tests.length; i++)
+        {
+            let result = this.normalise_ip6(tests[i][0]);
+            if (result === tests[i][1])
+            {
+                consoleService.logStringMessage("Sixornot - test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+            }
+            else
+            {
+                consoleService.logStringMessage("Sixornot - test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
+                overall = false;
+            }
+        }
+        return overall;
+    },
+
     // Expand IPv6 address into long version
     normalise_ip6 : function (ip6_address)
     {
@@ -1401,9 +1434,8 @@ var DnsHandler =
         let left_parts = sides[0].split(":");
         let right_parts = sides[1] && sides[1].split(":") || [];
 
-        let outarray = ["0000", "0000", "0000", "0000", "0000", "0000", "0000", "0000"];
-        outarray.splice(0, left_parts.length, left_parts);
-        outarray.splice(outarray.length - right_parts.length, right_parts.length, right_parts);
+        let middle = ["0", "0", "0", "0", "0", "0", "0", "0"].slice(0, 8 - left_parts.length - right_parts.length);
+        let outarray = Array.concat(left_parts, middle, right_parts);
 
         // Pad each component to 4 char length with zeros to left (and convert to lowercase)
         let pad_left = function (str)
@@ -1411,8 +1443,38 @@ var DnsHandler =
             return ("0000" + str).slice(-4);
         }
 
-        // Cut off the extra semicolon on the end and return string
         return outarray.map(pad_left).join(":").toLowerCase();
+    },
+
+    // Unit test suite for typeof_ip6 function, returns false if a test fails
+    test_typeof_ip6 : function ()
+    {
+        let overall = true;
+        let tests = [
+                        ["::", "unspecified"],
+                        ["::1", "localhost"],
+                        ["fe80::fa22:22ff:fee8:2222", "linklocal"],
+                        ["fec0::ffff:fa22:22ff:fee8:2222", "sitelocal"],
+                        ["fc00::1", "uniquelocal"],
+                        ["ff00::1", "multicast"],
+                        ["2002::1", "6to4"],
+                        ["2001:0000::1", "teredo"],
+                        ["2001:8b1:1fe4:1::2222", "global"],
+                    ];
+        for (let i = 0; i < tests.length; i++)
+        {
+            let result = this.typeof_ip6(tests[i][0]);
+            if (result === tests[i][1])
+            {
+                consoleService.logStringMessage("Sixornot - test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+            }
+            else
+            {
+                consoleService.logStringMessage("Sixornot - test_typeof_ip6, failed test value: " + tests[i][0] + ", expected result: " + i[1] + ", actual result: " + result);
+                overall = false;
+            }
+        }
+        return overall;
     },
 
     // Return the type of an IPv6 address
@@ -1458,7 +1520,8 @@ var DnsHandler =
         {
             return "teredo";
         }
-        return "unknown";
+        // If no other type then address is global
+        return "global";
         // For IPv6 addresses types are:
         /*
             unspecified     ::/128                                      All zeros
