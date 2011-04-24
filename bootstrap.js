@@ -1231,10 +1231,12 @@ function cropTrailingChar (str, character)
 // Lazy getter services
 function defineLazyGetter (getterName, getterFunction)
 {
-    this.__defineGetter__(getterName, function () {
-        delete this[getterName];
-        return this[getterName] = getterFunction.apply(this);
-    });
+    this.__defineGetter__(getterName, function ()
+        {
+            delete this[getterName];
+            return this[getterName] = getterFunction.apply(this);
+        }
+    );
 }
 
 defineLazyGetter("consoleService", function () {
@@ -1384,19 +1386,87 @@ var DnsHandler =
         */
     },
 
+    is_ip6 : function (ip_address)
+    {
+        // Needs a more robust test for a valid IPv6 address
+        return (ip_address.indexOf(":") !== -1);
+    },
+
+    // Expand IPv6 address into long version
+    normalise_ip6 : function (ip6_address)
+    {
+        // Split by instances of ::
+        let sides = ip6_address.split("::");
+        // Split remaining sections by instances of :
+        let left_parts = sides[0].split(":");
+        let right_parts = sides[1] && sides[1].split(":") || [];
+
+        let outarray = ["0000", "0000", "0000", "0000", "0000", "0000", "0000", "0000"];
+        outarray.splice(0, left_parts.length, left_parts);
+        outarray.splice(outarray.length - right_parts.length, right_parts.length, right_parts);
+
+        // Pad each component to 4 char length with zeros to left (and convert to lowercase)
+        let pad_left = function (str)
+        {
+            return ("0000" + str).slice(-4);
+        }
+
+        // Cut off the extra semicolon on the end and return string
+        return outarray.map(pad_left).join(":").toLowerCase();
+    },
+
     // Return the type of an IPv6 address
     typeof_ip6 : function (ip_address)
     {
-        // Incoming IPv6 address must be normalised to fully-expanded format in lowercase
-        // Then run patterns against it to determine its type
+        // 1. Check IP version, return false if v4
+        if (!this.is_ip6(ip_address))
+        {
+            return false;
+        }
+        // 2. Normalise address, return false if normalisation fails
+        let norm_address = this.normalise_ip6(ip_address);
+        // 3. Compare against type patterns
+        if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0000")
+        {
+            return "unspecified";
+        }
+        if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0001")
+        {
+            return "localhost";
+        }
+        if (["fe8", "fe9", "fea", "feb"].indexOf(norm_address.substr(0, 3)) !== -1)
+        {
+            return "linklocal";
+        }
+        if (["fec", "fed", "fee", "fef"].indexOf(norm_address.substr(0, 3)) !== -1)
+        {
+            return "sitelocal";
+        }
+        if (["fc", "fd"].indexOf(norm_address.substr(0, 2)) !== -1)
+        {
+            return "uniquelocal";
+        }
+        if (["ff"].indexOf(norm_address.substr(0, 2)) !== -1)
+        {
+            return "multicast";
+        }
+        if (["2002"].indexOf(norm_address.substr(0, 4)) !== -1)
+        {
+            return "6to4";
+        }
+        if (["2001:0000"].indexOf(norm_address.substr(0, 9)) !== -1)
+        {
+            return "teredo";
+        }
+        return "unknown";
         // For IPv6 addresses types are:
         /*
             unspecified     ::/128                                      All zeros
             local           ::1/128         0000:0000:0000:0000:0000:0000:0000:0001
-            linklocal       fe80::/10                                   Starts with fe8, fe9, fea, feb
-            sitelocal       fec0::/10   (deprecated)
-            uniquelocal     fc00::/7    (similar to RFC1918 addresses)  Starts with: fc or fd
-            pdmulticast     ff00::/8                                    Starts with ff
+            linklocal       fe80::/10                                       Starts with fe8, fe9, fea, feb
+            sitelocal       fec0::/10   (deprecated)                        Starts with fec, fed, fee, fef
+            uniquelocal     fc00::/7    (similar to RFC1918 addresses)      Starts with: fc or fd
+            pdmulticast     ff00::/8                                        Starts with ff
             v4transition    ::ffff:0:0/96 (IPv4-mapped)                     Starts with 0000:0000:0000:0000:0000:ffff
                             ::ffff:0:0:0/96 (Stateless IP/ICMP Translation) Starts with 0000:0000:0000:0000:ffff:0000
                             0064:ff9b::/96 ("Well-Known" prefix)            Starts with 0064:ff9b:0000:0000:0000:0000
