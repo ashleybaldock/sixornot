@@ -500,10 +500,10 @@ function main (win)
         }
         else
         {
-            // We have at least one IPv6 address
+            // They have at least one IPv6 address
             if (ipv4s.length === 0)
             {
-                // We only have IPv6 addresses, v6 only icon
+                // They only have IPv6 addresses, v6 only icon
                 set_icon(s6only_16);
             }
             else
@@ -516,8 +516,16 @@ function main (win)
                 }
                 else
                 {
-                    // Site has a v6 address as do we, so hopefully we're using v6 to connect
-                    set_icon(s6and4_16);
+                    // If at least one of the IPv6 addresses we have is of the global type show green icon
+                    if (localipv6s.map(DnsHandler.typeof_ip6).indexOf("global") !== -1)
+                    {
+                        set_icon(s6and4_16);
+                    }
+                    // Otherwise show only yellow icon, we may have an IPv6 address but it may not be globally routeable
+                    else
+                    {
+                        set_icon(s4pot6_16);
+                    }
                 }
             }
         }
@@ -759,19 +767,6 @@ function main (win)
         let first = true;
         let i = null;
 
-        function addSpacerLine()
-        {
-            let (row = doc.createElementNS(NS_XUL, "row"),
-                 label = doc.createElementNS(NS_XUL, "label"),
-                 value = doc.createElementNS(NS_XUL, "label"))
-            {
-                label.setAttribute("value", " ");
-                row.appendChild(value);
-                row.appendChild(label);
-                rows.appendChild(row);
-            }
-        }
-
         function addTitleLine(labelName)
         {
             let (row = doc.createElementNS(NS_XUL, "row"),
@@ -786,28 +781,27 @@ function main (win)
             }
         }
 
-        function addLabeledLine(labelName, lineValue)
+        function addLabeledLine(labelName, lineValue, italic)
         {
             let (row = doc.createElementNS(NS_XUL, "row"),
                  label = doc.createElementNS(NS_XUL, "label"),
                  value = doc.createElementNS(NS_XUL, "label"))
             {
+                if (!labelName)
+                {
+                    labelName = " ";
+                }
+                if (!lineValue)
+                {
+                    lineValue = " ";
+                }
                 label.setAttribute("value", labelName);
                 label.setAttribute("style", "font-weight: bold;");
                 value.setAttribute("value", lineValue);
-                row.appendChild(label);
-                row.appendChild(value);
-                rows.appendChild(row);
-            }
-        }
-
-        function addUnLabeledLine(lineValue)
-        {
-            let (row = doc.createElementNS(NS_XUL, "row"),
-                 label = doc.createElementNS(NS_XUL, "label"),
-                 value = doc.createElementNS(NS_XUL, "label"))
-            {
-                value.setAttribute("value", lineValue);
+                if (italic)
+                {
+                    value.setAttribute("style", "font-style: italic;");
+                }
                 row.appendChild(label);
                 row.appendChild(value);
                 rows.appendChild(row);
@@ -843,7 +837,7 @@ function main (win)
                 }
                 else
                 {
-                    addUnLabeledLine(ipv6s[i]);
+                    addLabeledLine(" ", ipv6s[i]);
                 }
             }
         }
@@ -866,7 +860,7 @@ function main (win)
                 }
                 else
                 {
-                    addUnLabeledLine(ipv4s[i]);
+                    addLabeledLine(" ", ipv4s[i]);
                 }
             }
         }
@@ -906,13 +900,12 @@ function main (win)
 
         if (localipv4s.length !== 0 || localipv6s.length !== 0)
         {
-            addSpacerLine();
+            addLabeledLine();
             addTitleLine(gt("header_local"));
             addLabeledLine(gt("prefix_host"), dnsService.myHostName);
         }
 
         // Append local IP address information
-        // TODO - If address is link-local (or otherwise not globally routeable) then render it in italics
         first = true;
         if (localipv6s.length !== 0)
         {
@@ -922,20 +915,42 @@ function main (win)
                 {
                     if (localipv6s.length === 1)
                     {
-                        addLabeledLine(gt("prefix_v6_single"), localipv6s[i]);
+                        if (DnsHandler.typeof_ip6(localipv6s[i]) !== "global")
+                        {
+                            addLabeledLine(gt("prefix_v6_single"), localipv6s[i]);
+                        }
+                        else
+                        {
+                            addLabeledLine(gt("prefix_v6_single"), localipv6s[i], true);
+                        }
                     }
                     else
                     {
-                        addLabeledLine(gt("prefix_v6_multi"), localipv6s[i]);
+                        if (DnsHandler.typeof_ip6(localipv6s[i]) !== "global")
+                        {
+                            addLabeledLine(gt("prefix_v6_multi"), localipv6s[i]);
+                        }
+                        else
+                        {
+                            addLabeledLine(gt("prefix_v6_multi"), localipv6s[i], true);
+                        }
                     }
                     first = false;
                 }
                 else
                 {
-                    addUnLabeledLine(localipv6s[i]);
+                    if (DnsHandler.typeof_ip6(localipv6s[i]) === "global")
+                    {
+                        addLabeledLine(" ", localipv6s[i]);
+                    }
+                    else
+                    {
+                        addLabeledLine(" ", localipv6s[i], true);
+                    }
                 }
             }
         }
+        // TODO - Italics for linklocal IPv4 addresses as well
         first = true;
         if (localipv4s.length !== 0)
         {
@@ -955,7 +970,7 @@ function main (win)
                 }
                 else
                 {
-                    addUnLabeledLine(localipv4s[i]);
+                    addLabeledLine(" ", localipv4s[i]);
                 }
             }
         }
@@ -1022,6 +1037,7 @@ function startup (data)
         // Run DnsHandler tests
         DnsHandler.test_normalise_ip6();
         DnsHandler.test_typeof_ip6();
+        DnsHandler.test_is_ip6();
 
         initLocalisation(addon, "sixornot.properties");
 
@@ -1375,6 +1391,12 @@ var DnsHandler =
         }
     },
 
+    is_ip4 : function (ip_address)
+    {
+        // Check IPv4 address for validity (needs a better check)
+        return (ip_address.indexOf(".") !== -1);
+    },
+
     typeof_ip4 : function (ip_address)
     {
         // For IPv4 addresses types are:
@@ -1390,9 +1412,48 @@ var DnsHandler =
         */
     },
 
+    test_is_ip6 : function ()
+    {
+        let overall = true;
+        let tests = [
+                        ["::",                                      true],
+                        ["::1",                                     true],
+                        ["fe80::fa22:22ff:fee8:2222",               true],
+                        ["fc00::",                                  true],
+                        ["ff00:1234:5678:9abc:def0:d:ee:fff",       true],
+                        ["2:0::1:2",                                true],
+                        ["2001:8b1:1fe4:1::2222",                   true],
+                        ["2001:08b1:1fe4:0001:0000:0000:0000:2222", true],
+                        ["192.168.2.1",                             false],
+                        ["blah",                                    false],
+                        [":::",                                     false],
+                        [":",                                       false],
+                        ["1::2::3",                                 false],
+                    ];
+        for (let i = 0; i < tests.length; i++)
+        {
+            let result = this.is_ip6(tests[i][0]);
+            if (result === tests[i][1])
+            {
+                consoleService.logStringMessage("Sixornot - test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+            }
+            else
+            {
+                consoleService.logStringMessage("Sixornot - test_is_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
+                overall = false;
+            }
+        }
+        return overall;
+    },
+
     is_ip6 : function (ip_address)
     {
         // Needs a more robust test for a valid IPv6 address
+        // Must contain at most one ::
+        // May contain up to 7 : (dependant on :: or not)
+        // May contain exactly one %
+        // Chars before the % may include 0-9, a-f, A-F, :
+        // Chars after the % may include 0-9, a-f, A-F
         return (ip_address.indexOf(":") !== -1);
     },
 
@@ -1408,6 +1469,7 @@ var DnsHandler =
                         ["2:0::1:2",                                "0002:0000:0000:0000:0000:0000:0001:0002"],
                         ["2001:8b1:1fe4:1::2222",                   "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
                         ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
+                        ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"],
                     ];
         for (let i = 0; i < tests.length; i++)
         {
@@ -1460,6 +1522,10 @@ var DnsHandler =
                         ["2002::1", "6to4"],
                         ["2001:0000::1", "teredo"],
                         ["2001:8b1:1fe4:1::2222", "global"],
+                        ["192.168.2.1", false],
+                        ["blah", false],
+                        [":", false],
+                        ["...", false],
                     ];
         for (let i = 0; i < tests.length; i++)
         {
@@ -1481,12 +1547,12 @@ var DnsHandler =
     typeof_ip6 : function (ip_address)
     {
         // 1. Check IP version, return false if v4
-        if (!this.is_ip6(ip_address))
+        if (!DnsHandler.is_ip6(ip_address))
         {
             return false;
         }
         // 2. Normalise address, return false if normalisation fails
-        let norm_address = this.normalise_ip6(ip_address);
+        let norm_address = DnsHandler.normalise_ip6(ip_address);
         // 3. Compare against type patterns
         if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0000")
         {

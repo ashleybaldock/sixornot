@@ -1,13 +1,14 @@
 # TODO
 
 Display local DNS name on tooltip                                           - DONE
-Italics for link-local local IPs
+Italics for link-local local IPv6                                           - DONE
+Italics for link-local IPv4                                                 
 Banner notifications to explain things like IPv6-only sites with no local v6, and the consequences of having no local v6
 Banner to advise on places to go in order to get v6 tunnels etc.?
 Preferences - turn ctypes usage on/off  - Needs a pref, but mechanism to do this is there
             - select greyscale/colour icon set                              - DONE
             - switch address bar icon on/off                                - DONE
-Detecting type of IPv6 local address and alter display of icon accordingly
+Detecting type of IPv6 local address and alter display of icon accordingly  - DONE
 Information added to popup to explain what the icon means?
 
 Add 24px icons for larger size buttons                                      - DONE (images there, needs testing on Linux)
@@ -21,7 +22,7 @@ Native menu look+feel                                                       - DO
     Option to open preferences      No preferences, all in the menu         - DONE
     Option to visit addon website + get more information/help               
 
-Website/help documentation
+Website/help documentation                                                  - DONE
 
 Testing
     Unit tests for core functions
