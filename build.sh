@@ -21,8 +21,8 @@ cp includes/utils.js ../dist/$version/src/includes/
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale
-mkdir ../dist/$version/src/locale/en-GB
-cp locale/en-GB/sixornot.properties ../dist/$version/src/locale/en-GB/
+mkdir ../dist/$version/src/locale/en
+cp locale/en/sixornot.properties ../dist/$version/src/locale/en/
 
 # Create .zip file from build directory (with .xpi file extension)
 cd ../dist/$version/src/

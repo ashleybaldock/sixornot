@@ -915,7 +915,7 @@ function main (win)
                 {
                     if (localipv6s.length === 1)
                     {
-                        if (DnsHandler.typeof_ip6(localipv6s[i]) !== "global")
+                        if (DnsHandler.typeof_ip6(localipv6s[i]) === "global")
                         {
                             addLabeledLine(gt("prefix_v6_single"), localipv6s[i]);
                         }
@@ -926,7 +926,7 @@ function main (win)
                     }
                     else
                     {
-                        if (DnsHandler.typeof_ip6(localipv6s[i]) !== "global")
+                        if (DnsHandler.typeof_ip6(localipv6s[i]) === "global")
                         {
                             addLabeledLine(gt("prefix_v6_multi"), localipv6s[i]);
                         }

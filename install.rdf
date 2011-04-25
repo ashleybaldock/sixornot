@@ -11,6 +11,12 @@
         <em:type>2</em:type>
 
         <em:creator>Timothy Baldock</em:creator>
+
+        <!-- <em:developer></em:developer>
+        <em:contributor></em:contributor>
+        <em:translator></em:translator> -->
+
+        <!-- Localisation: https://developer.mozilla.org/en/Localizing_extension_descriptions -->
    
         <em:homepageURL>http://www.entropy.me.uk/sixornot/</em:homepageURL>
 
