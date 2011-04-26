@@ -149,6 +149,19 @@ let s6only_24 = "",   s6and4_24 = "",   s4pot6_24 = "",   s4only_24 = "",   soth
 function main (win)
 {
     consoleService.logStringMessage("Sixornot - main");
+    // Set up variables for this instance
+    var contentDoc = null;      // Reference to the current page document object
+    var url = "";               // The URL of the current page
+    var host = "";              // The host name of the current URL
+    var ipv4s = [];             // The IP addresses of the current host
+    var ipv6s = [];             // The IP addresses of the current host
+    var localipv6s = [];        // Local IPv6 addresses
+    var localipv4s = [];        // Local IPv4 addresses
+    var usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
+    var specialLocation = null;
+    var DNSrequest = null;
+    var pollLoopID = win.setInterval(pollForContentChange, 250);
+
     let doc = win.document;
 
     // Add tooltip, iconized button and address bar icon to browser window
@@ -249,19 +262,6 @@ function main (win)
         }
     }
 
-    // Set up variables for this instance
-    var contentDoc = null;      // Reference to the current page document object
-    var url = "";               // The URL of the current page
-    var host = "";              // The host name of the current URL
-    var ipv4s = [];             // The IP addresses of the current host
-    var ipv6s = [];             // The IP addresses of the current host
-    var localipv6s = [];        // Local IPv6 addresses
-    var localipv4s = [];        // Local IPv4 addresses
-    var usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
-    var specialLocation = null;
-    var DNSrequest = null;
-    var pollLoopID = win.setInterval(pollForContentChange, 250);
-
     // Add a callback to our unload list to remove the UI when addon is disabled
     unload(function () {
         consoleService.logStringMessage("Sixornot - main unload function");
@@ -336,10 +336,12 @@ function main (win)
         contentDoc = win.content.document;
         url = contentDoc.location.href;
         host = "";
+        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         ipv6s = [];
         ipv4s = [];
         localipv6s = [];
         localipv4s = [];
+        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
 
         // If we've changed pages before completing a lookup, then abort the old request first
 //        DnsHandler.cancelRequest(DNSrequest);
@@ -406,6 +408,7 @@ function main (win)
                 addressIcon.src = sother_16;
                 toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
                 specialLocation = ["lookuperror"];
+                consoleService.logStringMessage("Sixornot - DNS lookup failed");
                 return;
             }
 
@@ -424,6 +427,7 @@ function main (win)
                 }
             }
 
+            consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
             // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
             let localips = [];
@@ -450,6 +454,7 @@ function main (win)
             }
 
             consoleService.logStringMessage("Sixornot - found IP addresses");
+            consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
 
             // This must now work as we have a valid IP address
             updateIcon();
@@ -467,6 +472,7 @@ function main (win)
 
         let loc_options = ["file:", "data:", "about:", "chrome:", "resource:"];
 
+        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         function set_icon (icon)
         {
             // If this is null, address icon isn't showing
@@ -546,60 +552,35 @@ function main (win)
     function onMenuCommand (evt)
     {
         consoleService.logStringMessage("Sixornot - onMenuCommand");
-        let commandID = evt.target.value;
+
+        let commandID = evt.target.value.substring(0,5);
+        let commandString = evt.target.value.substring(5);
         // Actions
         // "prefs" - Open preferences
         // "copyc" - Copy text to clipboard
         // "gotow" - Go to SixOrNot website
         // "taddr" - Show or hide the address bar icon
-        if (commandID.substring(0,5) === "copyc")
+        if (commandID === "copyc")
         {
             consoleService.logStringMessage("Sixornot - onMenuCommand, copy to clipboard");
-            clipboardHelper.copyString(commandID.substring(5));
+            clipboardHelper.copyString(commandString);
         }
-        /* if (commandID.substring(0,5) === "prefs")
-        {
-            consoleService.logStringMessage("Sixornot - onMenuCommand, open preferences");
-        } */
-        if (commandID.substring(0,5) === "gotow")
+        else if (commandID === "gotow")
         {
             consoleService.logStringMessage("Sixornot - onMenuCommand, goto web page");
             // Add tab to most recent window, regardless of where this function was called from
             let currentWindow = getCurrentWindow();
             currentWindow.focus();
             let currentBrowser = currentWindow.getBrowser();
-            currentBrowser.selectedTab = currentBrowser.addTab(commandID.substring(5), null, null);
+            currentBrowser.selectedTab = currentBrowser.addTab(commandString);
         }
         // TODO - merge taddr and tgrey cases into single case which uses remainder of value field to determine which preference to set
-        if (commandID.substring(0,5) === "taddr")
+        else if (commandID === "tbool")
         {
-            consoleService.logStringMessage("Sixornot - onMenuCommand, toggle address bar icon");
             // Toggle address bar icon visibility
-            if (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true")
-            {
-                consoleService.logStringMessage("Sixornot - onMenuCommand, set showaddressicon to true");
-                PREF_BRANCH_SIXORNOT.setBoolPref("showaddressicon", true);
-            }
-            else
-            {
-                consoleService.logStringMessage("Sixornot - onMenuCommand, set showaddressicon to false");
-                PREF_BRANCH_SIXORNOT.setBoolPref("showaddressicon", false);
-            }
-        }
-        if (commandID.substring(0,5) === "tgrey")
-        {
-            consoleService.logStringMessage("Sixornot - onMenuCommand, toggle greyscale icons");
-            // Toggle greyscale iconset display
-            if (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true")
-            {
-                consoleService.logStringMessage("Sixornot - onMenuCommand, set use_greyscale to true");
-                PREF_BRANCH_SIXORNOT.setBoolPref("use_greyscale", true);
-            }
-            else
-            {
-                consoleService.logStringMessage("Sixornot - onMenuCommand, set use_greyscale to false");
-                PREF_BRANCH_SIXORNOT.setBoolPref("use_greyscale", false);
-            }
+            let toggle = (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true");
+            consoleService.logStringMessage("Sixornot - onMenuCommand, set boolean pref value: " + commandString + " to " + toggle);
+            PREF_BRANCH_SIXORNOT.setBoolPref(commandString, toggle);
         }
     }
 
@@ -607,6 +588,7 @@ function main (win)
     function updateMenuContent (evt)
     {
         consoleService.logStringMessage("Sixornot - updateMenuContent");
+        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         let popupMenu = this;
 
         // Clear previously generated popupMenu, if one exists
@@ -622,6 +604,7 @@ function main (win)
         //  rest of string (if any) is data to use for function call
         function addMenuItem(labelName, ttText, commandID)
         {
+            consoleService.logStringMessage("Sixornot - addMenuItem: " + labelName + ", " + ttText + ", " + commandID);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
@@ -632,19 +615,20 @@ function main (win)
         }
         function addToggleMenuItem(labelName, ttText, commandID, initialState)
         {
+            consoleService.logStringMessage("Sixornot - addToggleMenuItem: " + labelName + ", " + ttText + ", " + commandID + ", " + initialState);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
                 menuitem.setAttribute("tooltiptext", ttText);
                 menuitem.setAttribute("value", commandID);
                 menuitem.setAttribute("type", "checkbox");
-//                menuitem.setAttribute("autocheck", true);
                 menuitem.setAttribute("checked", initialState);
                 popupMenu.appendChild(menuitem);
             }
         }
         function addDisabledMenuItem(labelName)
         {
+            consoleService.logStringMessage("Sixornot - addDisabledMenuItem: " + labelName);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
@@ -654,12 +638,12 @@ function main (win)
         }
         function addMenuSeparator()
         {
+            consoleService.logStringMessage("Sixornot - addMenuSeparator");
             let (menuseparator = doc.createElementNS(NS_XUL, "menuseparator"))
             {
                 popupMenu.appendChild(menuseparator);
             }
         }
-
 
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
@@ -670,21 +654,7 @@ function main (win)
                 if (ipv4s.indexOf(host) === -1 && ipv6s.indexOf(host) === -1)
                 {
                     // Build string containing list of all IP addresses (for copying to clipboard)
-                    let remotestring = host;
-                    if (ipv6s.length !== 0)
-                    {
-                        for (i=0; i<ipv6s.length; i++)
-                        {
-                            remotestring = remotestring + ", " + ipv6s[i];
-                        }
-                    }
-                    if (ipv4s.length !== 0)
-                    {
-                        for (i=0; i<ipv4s.length; i++)
-                        {
-                            remotestring = remotestring + ", " + ipv4s[i];
-                        }
-                    }
+                    let remotestring = Array.concat([host], ipv6s, ipv4s).join(", ");
                     addMenuItem(host, gt("tt_copydomclip"), "copyc" + remotestring);
                 }
                 else
@@ -698,74 +668,60 @@ function main (win)
                 addDisabledMenuItem(gt("nohostnamefound"));
             }
 
-            if (ipv6s.length !== 0)
+            for (i = 0; i < ipv6s.length; i++)
             {
-                for (i=0; i<ipv6s.length; i++)
-                {
-                    addMenuItem(ipv6s[i], gt("tt_copyip6clip"), "copyc" + ipv6s[i]);
-                }
+                addMenuItem(ipv6s[i], gt("tt_copyip6clip"), "copyc" + ipv6s[i]);
             }
-            if (ipv4s.length !== 0)
+            for (i = 0; i < ipv4s.length; i++)
             {
-                for (i=0; i<ipv4s.length; i++)
-                {
-                    addMenuItem(ipv4s[i], gt("tt_copyip4clip"), "copyc" + ipv4s[i]);
-                }
+                addMenuItem(ipv4s[i], gt("tt_copyip4clip"), "copyc" + ipv4s[i]);
             }
         }
         else
         {
             addDisabledMenuItem(gt("noremoteloaded"));
         }
+
         addMenuSeparator();
 
         // Produce string containing all IP data for copy
-        let localstring = dnsService.myHostName;
-        if (localipv6s.length !== 0)
-        {
-            for (i=0; i<localipv6s.length; i++)
-            {
-                localstring = localstring + ", " + localipv6s[i];
-            }
-        }
-        if (localipv4s.length !== 0)
-        {
-            for (i=0; i<localipv4s.length; i++)
-            {
-                localstring = localstring + ", " + localipv4s[i];
-            }
-        }
+        let localstring = Array.concat([dnsService.myHostName], localipv6s, localipv4s).join(", ");
+        addMenuItem(dnsService.myHostName + " (localhost)",
+                    gt("tt_copylocalclip"),
+                    "copyc" + localstring);
 
-        addMenuItem(dnsService.myHostName + " (localhost)", gt("tt_copylocalclip"), "copyc" + localstring);
-
-        if (localipv6s.length !== 0)
+        for (i = 0; i < localipv6s.length; i++)
         {
-            for (i=0; i<localipv6s.length; i++)
-            {
-                addMenuItem(localipv6s[i], gt("tt_copyip6clip"), "copyc" + localipv6s[i]);
-            }
+            addMenuItem(localipv6s[i], gt("tt_copyip6clip"), "copyc" + localipv6s[i]);
         }
-        if (localipv4s.length !== 0)
+        for (i = 0; i < localipv4s.length; i++)
         {
-            for (i=0; i<localipv4s.length; i++)
-            {
-                addMenuItem(localipv4s[i], gt("tt_copyip4clip"), "copyc" + localipv4s[i]);
-            }
+            addMenuItem(localipv4s[i], gt("tt_copyip4clip"), "copyc" + localipv4s[i]);
         }
 
         addMenuSeparator();
-//        addMenuItem("Preferences...", "Click to open preferences dialog", "prefs");
-        addToggleMenuItem(gt("showaddressicon"), gt("tt_showaddressicon"), "taddr", PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
-        addToggleMenuItem(gt("usegreyscale"), gt("tt_usegreyscale"), "tgrey", PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
+
+        // Preferences toggle menu items
+        addToggleMenuItem(gt("showaddressicon"),
+                          gt("tt_showaddressicon"),
+                          "tbool" + "showaddressicon",
+                          PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
+        addToggleMenuItem(gt("usegreyscale"),
+                          gt("tt_usegreyscale"),
+                          "tbool" + "use_greyscale",
+                          PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
 
         addMenuSeparator();
-        addMenuItem(gt("gotowebsite"), gt("tt_gotowebsite"), "gotow" + "http://entropy.me.uk/sixornot/");
+        addMenuItem(gt("gotowebsite"),
+                    gt("tt_gotowebsite"),
+                    "gotow" + "http://entropy.me.uk/sixornot/");
     }
 
     // Update the contents of the tooltip whenever it is shown
     function updateTooltipContent (evt)
     {
         consoleService.logStringMessage("Sixornot - updateTooltipContent");
+        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         let tooltip = this;
 
         // Clear previously generated tooltip, if one exists
@@ -777,48 +733,42 @@ function main (win)
         let grid = doc.createElement("grid");
         let rows = doc.createElement("rows");
 
-        let first = true;
-        let i = null;
+        let i;
 
-        function addTitleLine(labelName)
+        function addTitleLine (labelName)
         {
-            let (row = doc.createElementNS(NS_XUL, "row"),
-                 label = doc.createElementNS(NS_XUL, "label"),
-                 value = doc.createElementNS(NS_XUL, "label"))
-            {
-                label.setAttribute("value", labelName);
-                label.setAttribute("style", "font-weight: bold; text-align: right;");
-                row.appendChild(value);
-                row.appendChild(label);
-                rows.appendChild(row);
-            }
+            consoleService.logStringMessage("Sixornot - addTitleLine");
+            let row = doc.createElementNS(NS_XUL, "row");
+            let label = doc.createElementNS(NS_XUL, "label");
+            let value = doc.createElementNS(NS_XUL, "label");
+
+            label.setAttribute("value", labelName);
+            label.setAttribute("style", "font-weight: bold; text-align: right;");
+            row.appendChild(value);
+            row.appendChild(label);
+            rows.appendChild(row);
         }
 
-        function addLabeledLine(labelName, lineValue, italic)
+        function addLabeledLine (labelName, lineValue, italic)
         {
-            let (row = doc.createElementNS(NS_XUL, "row"),
-                 label = doc.createElementNS(NS_XUL, "label"),
-                 value = doc.createElementNS(NS_XUL, "label"))
+            consoleService.logStringMessage("Sixornot - addLabeledLine");
+            let row = doc.createElementNS(NS_XUL, "row");
+            let label = doc.createElementNS(NS_XUL, "label");
+            let value = doc.createElementNS(NS_XUL, "label");
+            // Set defaults
+            labelName = labelName || " ";
+            lineValue = lineValue || " ";
+
+            label.setAttribute("value", labelName);
+            label.setAttribute("style", "font-weight: bold;");
+            value.setAttribute("value", lineValue);
+            if (italic)
             {
-                if (!labelName)
-                {
-                    labelName = " ";
-                }
-                if (!lineValue)
-                {
-                    lineValue = " ";
-                }
-                label.setAttribute("value", labelName);
-                label.setAttribute("style", "font-weight: bold;");
-                value.setAttribute("value", lineValue);
-                if (italic)
-                {
-                    value.setAttribute("style", "font-style: italic;");
-                }
-                row.appendChild(label);
-                row.appendChild(value);
-                rows.appendChild(row);
+                value.setAttribute("style", "font-style: italic;");
             }
+            row.appendChild(label);
+            row.appendChild(value);
+            rows.appendChild(row);
         }
 
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
@@ -831,86 +781,37 @@ function main (win)
             addLabeledLine(gt("prefix_domain"), host);
         }
 
-        first = true;
-        if (ipv6s.length !== 0)
+        // Add IPv6 address(es) to tooltip with special case if only one
+        if (ipv6s.length === 1)
         {
-            for (i=0; i<ipv6s.length; i++)
-            {
-                if (first)
-                {
-                    if (ipv6s.length === 1)
-                    {
-                        addLabeledLine(gt("prefix_v6_single"), ipv6s[i]);
-                    }
-                    else
-                    {
-                        addLabeledLine(gt("prefix_v6_multi"), ipv6s[i]);
-                    }
-                    first = false;
-                }
-                else
-                {
-                    addLabeledLine(" ", ipv6s[i]);
-                }
-            }
+            consoleService.logStringMessage("Sixornot - ipv6s.length is 1");
+            addLabeledLine(gt("prefix_v6_single"), ipv6s[0]);
         }
-        first = true;
-        if (ipv4s.length !== 0)
+        else if (ipv6s.length > 1)
         {
-            for (i=0; i<ipv4s.length; i++)
+            consoleService.logStringMessage("Sixornot - ipv6s.length is > 1");
+            addLabeledLine(gt("prefix_v6_multi"), ipv6s[0]);
+            for (i = 1; i < ipv6s.length; i++)
             {
-                if (first)
-                {
-                    if (ipv4s.length === 1)
-                    {
-                        addLabeledLine(gt("prefix_v4_single"), ipv4s[i]);
-                    }
-                    else
-                    {
-                        addLabeledLine(gt("prefix_v4_multi"), ipv4s[i]);
-                    }
-                    first = false;
-                }
-                else
-                {
-                    addLabeledLine(" ", ipv4s[i]);
-                }
+                addLabeledLine(" ", ipv6s[i]);
             }
         }
 
-        if (specialLocation)
+        // Add IPv4 address(es) to tooltip with special case if only one
+        if (ipv4s.length === 1)
         {
-            var extraString
-            if (specialLocation[0] === "localfile")
+            addLabeledLine(gt("prefix_v4_single"), ipv4s[0]);
+        }
+        else if (ipv4s.length > 1)
+        {
+            addLabeledLine(gt("prefix_v4_multi"), ipv4s[0]);
+            for (i = 1; i < ipv4s.length; i++)
             {
-                extraString = gt("other_localfile");
+                addLabeledLine(" ", ipv4s[i]);
             }
-            if (specialLocation[0] === "lookuperror")
-            {
-                extraString = gt("other_lookuperror");
-            }
-            if (specialLocation[0] === "nodnserror")
-            {
-                extraString = gt("other_nodnserror");
-            }
-            if (specialLocation[0] === "offlinemode")
-            {
-                extraString = gt("other_offlinemode");
-            }
-
-            if (specialLocation[1])
-            {
-                extraString += " (" + specialLocation[1] + ")";
-            }
-            let extraLine = doc.createElement("label");
-            extraLine.setAttribute("value", extraString);
-            if (["unknownsite", "lookuperror", "nodnserror", "offlinemode"].indexOf(specialLocation[0]) !== -1)
-            {
-                extraLine.setAttribute("style", "font-style: italic;");
-            }
-            rows.appendChild(extraLine);
         }
 
+        // Add local IP address information if available
         if (localipv4s.length !== 0 || localipv6s.length !== 0)
         {
             addLabeledLine();
@@ -919,73 +820,73 @@ function main (win)
         }
 
         // Append local IP address information
-        first = true;
-        if (localipv6s.length !== 0)
+        // TODO - Convert other functions to this form
+        let v6_italic = function (ip6_address)
         {
-            for (i=0; i<localipv6s.length; i++)
+            return DnsHandler.typeof_ip6(ip6_address) !== "global";
+        };
+        if (localipv6s.length === 1)
+        {
+            addLabeledLine(gt("prefix_v6_single"), localipv6s[0], v6_italic(localipv6s[0]));
+        }
+        else if (localipv6s.length > 1)
+        {
+            addLabeledLine(gt("prefix_v6_multi"), localipv6s[0], v6_italic(localipv6s[0]));
+            for (i = 1; i < localipv6s.length; i++)
             {
-                if (first)
-                {
-                    if (localipv6s.length === 1)
-                    {
-                        if (DnsHandler.typeof_ip6(localipv6s[i]) === "global")
-                        {
-                            addLabeledLine(gt("prefix_v6_single"), localipv6s[i]);
-                        }
-                        else
-                        {
-                            addLabeledLine(gt("prefix_v6_single"), localipv6s[i], true);
-                        }
-                    }
-                    else
-                    {
-                        if (DnsHandler.typeof_ip6(localipv6s[i]) === "global")
-                        {
-                            addLabeledLine(gt("prefix_v6_multi"), localipv6s[i]);
-                        }
-                        else
-                        {
-                            addLabeledLine(gt("prefix_v6_multi"), localipv6s[i], true);
-                        }
-                    }
-                    first = false;
-                }
-                else
-                {
-                    if (DnsHandler.typeof_ip6(localipv6s[i]) === "global")
-                    {
-                        addLabeledLine(" ", localipv6s[i]);
-                    }
-                    else
-                    {
-                        addLabeledLine(" ", localipv6s[i], true);
-                    }
-                }
+                addLabeledLine(" ", localipv6s[i], v6_italic(localipv6s[i]));
             }
         }
+
         // TODO - Italics for linklocal IPv4 addresses as well
-        first = true;
-        if (localipv4s.length !== 0)
+        // Add local IPv4 address(es) to tooltip with special case if only one
+        if (localipv4s.length === 1)
         {
-            for (i=0; i<localipv4s.length; i++)
+            addLabeledLine(gt("prefix_v4_single"), localipv4s[0]);
+        }
+        else if (localipv4s.length > 1)
+        {
+            addLabeledLine(gt("prefix_v4_multi"), localipv4s[0]);
+            for (i = 1; i < localipv4s.length; i++)
             {
-                if (first)
-                {
-                    if (localipv4s.length === 1)
-                    {
-                        addLabeledLine(gt("prefix_v4_single"), localipv4s[i]);
-                    }
-                    else
-                    {
-                        addLabeledLine(gt("prefix_v4_multi"), localipv4s[i]);
-                    }
-                    first = false;
-                }
-                else
-                {
-                    addLabeledLine(" ", localipv4s[i]);
-                }
+                addLabeledLine(" ", localipv4s[i]);
             }
+        }
+
+        // TODO - Replace this with an array mapping/lookup table
+        // TODO - If a special location is set no need to do any of the IP address stuff!
+        if (specialLocation)
+        {
+            let extraString, extraLine;
+
+            if (specialLocation[0] === "localfile")
+            {
+                extraString = gt("other_localfile");
+            }
+            else if (specialLocation[0] === "lookuperror")
+            {
+                extraString = gt("other_lookuperror");
+            }
+            else if (specialLocation[0] === "nodnserror")
+            {
+                extraString = gt("other_nodnserror");
+            }
+            else if (specialLocation[0] === "offlinemode")
+            {
+                extraString = gt("other_offlinemode");
+            }
+
+            if (specialLocation[1])
+            {
+                extraString += " (" + specialLocation[1] + ")";
+            }
+            extraLine = doc.createElement("label");
+            extraLine.setAttribute("value", extraString);
+            if (["unknownsite", "lookuperror", "nodnserror", "offlinemode"].indexOf(specialLocation[0]) !== -1)
+            {
+                extraLine.setAttribute("style", "font-style: italic;");
+            }
+            rows.appendChild(extraLine);
         }
 
         grid.appendChild(rows);
