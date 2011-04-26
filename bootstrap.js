@@ -213,7 +213,6 @@ function main (win)
         win.addEventListener("online", onChangedOnlineStatus, false);
         win.addEventListener("offline", onChangedOnlineStatus, false);
         win.addEventListener("aftercustomization", toggleCustomize, false);
-
     }
     // Add address bar icon only if desired by preferences
     if (get_bool_pref("showaddressicon"))
@@ -258,7 +257,6 @@ function main (win)
             {
                 urlbaricons.insertBefore(addressButton, starbutton);
             }
-
         }
     }
 
