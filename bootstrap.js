@@ -556,6 +556,11 @@ function main (win)
         if (commandID.substring(0,5) === "gotow")
         {
             consoleService.logStringMessage("Sixornot - onMenuCommand, goto web page");
+            // Add tab to most recent window, regardless of where this function was called from
+            let currentWindow = getCurrentWindow();
+            currentWindow.focus();
+            let currentBrowser = currentWindow.getBrowser();
+            currentBrowser.selectedTab = currentBrowser.addTab(commandID.substring(5), null, null);
         }
         // TODO - merge taddr and tgrey cases into single case which uses remainder of value field to determine which preference to set
         if (commandID.substring(0,5) === "taddr")
@@ -1163,6 +1168,13 @@ function get_bool_pref (name)
     {
         consoleService.logStringMessage("Sixornot - get_bool_pref error - No default preference value!");
     }
+}
+
+function getCurrentWindow ()
+{
+    return Components.classes["@mozilla.org/appshell/window-mediator;1"]
+                     .getService(Components.interfaces.nsIWindowMediator)
+                     .getMostRecentWindow("navigator:browser");
 }
 
 // Proxy to getElementById

@@ -38,7 +38,6 @@ var initLocalisation = (function(global) {
 
     function getStr(aStrBundle, aKey)
     {
-        consoleService.logStringMessage("Sixornot - getStr");
         if (!aStrBundle)
         {
             return false;
