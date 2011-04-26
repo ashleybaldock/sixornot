@@ -411,9 +411,30 @@ function main (win)
 
             let i = 0;
 
+            // Parse list of IPs for IPv4/IPv6
+            for (i=0; i<remoteips.length; i++)
+            {
+                if (remoteips[i].indexOf(":") !== -1)
+                {
+                    ipv6s.push(remoteips[i]);
+                }
+                else
+                {
+                    ipv4s.push(remoteips[i]);
+                }
+            }
+
             // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
-            let localips = DnsHandler.resolveLocal();
+            let localips = [];
+            try
+            {
+                localips = DnsHandler.resolveLocal();
+            }
+            catch (e)
+            {
+                consoleService.logStringMessage("Sixornot - Unable to look up local IP addresses");
+            }
 
             // Parse list of local IPs for IPv4/IPv6
             for (i=0; i<localips.length; i++)
@@ -425,19 +446,6 @@ function main (win)
                 else
                 {
                     localipv4s.push(localips[i]);
-                }
-            }
-
-            // Parse list of IPs for IPv4/IPv6
-            for (i=0; i<remoteips.length; i++)
-            {
-                if (remoteips[i].indexOf(":") !== -1)
-                {
-                    ipv6s.push(remoteips[i]);
-                }
-                else
-                {
-                    ipv4s.push(remoteips[i]);
                 }
             }
 
