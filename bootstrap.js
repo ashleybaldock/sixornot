@@ -1673,7 +1673,7 @@ var DnsHandler =
 
     resolveLocalFirefox : function ()
     {
-        consoleService.logStringMessage("Sixornot - resolveLocalFirefox - resolving host: " + host);
+        consoleService.logStringMessage("Sixornot - resolveLocalFirefox - resolving local host");
         let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
         var IPAddresses = [];
         while (dnsresponse.hasMore())
