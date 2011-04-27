@@ -419,7 +419,7 @@ function main (win)
             let i = 0;
 
             // Parse list of IPs for IPv4/IPv6
-            for (i=0; i<remoteips.length; i++)
+            for (i = 0; i < remoteips.length; i++)
             {
                 if (remoteips[i].indexOf(":") !== -1)
                 {
@@ -443,10 +443,12 @@ function main (win)
             {
                 consoleService.logStringMessage("Sixornot - Unable to look up local IP addresses");
                 Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
+                localips = [];
             }
 
+            consoleService.logStringMessage("Sixornot - localips is: " + localips + "; typeof localips is: " + typeof localips);
             // Parse list of local IPs for IPv4/IPv6
-            for (i=0; i<localips.length; i++)
+            for (i = 0; i < localips.length; i++)
             {
                 if (localips[i].indexOf(":") !== -1)
                 {
@@ -1212,10 +1214,13 @@ var DnsHandler =
 {
     AF_INET: null,
     AF_INET6: null,
+    AF_LINK: null,
     library: null,
     sockaddr: null,
     addrinfo: null,
     getaddrinfo: null,
+    ifaddrs: null,
+    getifaddrs: null,
     resolve_native: false,
     local_native: false,
 
@@ -1237,6 +1242,7 @@ var DnsHandler =
             // Address family
             this.AF_UNSPEC = 0;
             this.AF_INET = 2;
+            this.AF_LINK = 18;  // MAC Addresses
             this.AF_INET6 = 30;
             // Socket type
             this.SOCK_STREAM = 1;
@@ -1245,8 +1251,10 @@ var DnsHandler =
             try
             {
                 // Set up the structs we need
+                // On OSX (and maybe elsewhere) only the second byte of sockaddr represents the sa_family, the first byte is unknown use
                 this.sockaddr = ctypes.StructType("sockaddr", [
-                                    {sa_family : ctypes.unsigned_short},
+                                    {sa_unknown : ctypes.unsigned_char},
+                                    {sa_family : ctypes.unsigned_char},
                                     {sa_data : ctypes.unsigned_char.array(28)}]);
                 this.addrinfo = ctypes.StructType("addrinfo");
                 this.addrinfo.define([
@@ -1261,7 +1269,6 @@ var DnsHandler =
                                      ]);
                 // Set up the ctypes functions we need
                 this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-                this.getifaddrs = this.library.declare("getifaddrs", this.ifaddrs.ptr.ptr);
                 try
                 {
                     // Used for local address lookup
@@ -1269,19 +1276,19 @@ var DnsHandler =
                     this.ifaddrs.define([
                                          {ifa_next : this.ifaddrs.ptr}, 
                                          {ifa_name : ctypes.char.ptr}, 
-                                         {ifa_flags : ctypes.int}, 
+                                         {ifa_flags : ctypes.unsigned_int}, 
                                          {ifa_addr : this.sockaddr.ptr}, 
                                          {ifa_netmask : this.sockaddr.ptr}, 
                                          {ifa_dstaddr : this.sockaddr.ptr}, 
                                          {ifa_data : ctypes.voidptr_t}, 
                                         ]);
                     // Set up the ctypes functions we need
-                    this.getifaddrs = this.library.declare("getifaddrs", this.ifaddrs.ptr.ptr);
+                    this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi, ctypes.int, this.ifaddrs.ptr.ptr);
                 }
                 catch (e)
                 {
                     consoleService.logStringMessage("Sixornot - Unable to init native local resolver, falling back to Firefox method for local addresses (WARNING: May not work if DNS isn't configured for local host)");
-                    this.library.close();
+                    Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
                     // If we've got this far then remote resolution should still work, so only disable local native resolution
                     this.local_native = false;
                 }
@@ -1289,6 +1296,7 @@ var DnsHandler =
             catch (e)
             {
                 consoleService.logStringMessage("Sixornot - Unable to init native resolvers, falling back to Firefox method for local and remote addresses");
+                Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
                 this.library.close();
                 this.resolve_native = false;
                 this.local_native = false;
@@ -1615,17 +1623,25 @@ var DnsHandler =
         let ip_array = r.exec(address.sa_data.toString())[0].split(",");
 
         consoleService.logStringMessage("Sixornot - get_ip_str - ip_array is: " + ip_array);
-        if (address_family === this.AF_INET)
+        // IPv4 Addresses
+        if (address_family === this.AF_INET) // 4628 (unknown??), 528 = IPv4
         {
-            // IPv4 address
             // Stored in bytes 2-5 (zero-index)
             // [0, 0, 82, 113, 152, 84, 0, 0, 0, 0, 0, 0, 0, 0, 228, 92, 46, 126, 0, 0, 0, 128, 65, 0, 0, 0, 136, 52]
             let ip4_array = ip_array.slice(2,6);
-            return [Number(ip4_array[0]), Number(ip4_array[1]), Number(ip4_array[2]), Number(ip4_array[3])].join(".");
+            return ip4_array.map(Number).join(".");
         }
-        if (address_family === this.AF_INET6)
+        // MAC Addresses (OSX-specific for now!)
+        if (address_family === this.AF_LINK)
         {
-            // IPv6 address
+            // Stored in bytes 12-17 (zero-index)
+            // [7, 0, 6, 6, 6, 0, 118, 109, 110, 101, 116, 49, ||0, 80, 86, 192, 0, 1||, 20, 0, 0, 0, 6, 0, 0, 6, 14, 0])
+            let mac_array = ip_array.slice(12, 18);
+            return mac_array.map(this.to_hex).join("-");
+        }
+        // IPv6 Addresses
+        if (address_family === this.AF_INET6) // 7708 = IPv6
+        {
             // Stored in bytes 6-21 (zero-index)
             // [0, 0, 0, 0, 0, 0, ||32, 1, 4, 112, 31, 9, 3, 152, 0, 0, 0, 0, 0, 0, 0, 2||, 0, 0, 0, 0, 56, 52]
             let ip6_array = ip_array.slice(6,22);
@@ -1671,19 +1687,6 @@ var DnsHandler =
     {
         consoleService.logStringMessage("Sixornot - resolveLocalNative - resolving local host");
 
-        /* this.ifaddrs = ctypes.StructType("ifaddrs");
-        this.ifaddrs.define([
-                             {ifa_next : this.ifaddrs.ptr}, 
-                             {ifa_name : ctypes.char.ptr}, 
-                             {ifa_flags : ctypes.int}, 
-                             {ifa_addr : this.sockaddr.ptr}, 
-                             {ifa_netmask : this.sockaddr.ptr}, 
-                             {ifa_dstaddr : this.sockaddr.ptr}, 
-                             {ifa_data : ctypes.voidptr_t}, 
-                            ]);
-        // Set up the ctypes functions we need
-        this.getifaddrs = this.library.declare("getifaddrs", this.ifaddrs.ptr.ptr); */
-
         let retValue = this.ifaddrs();
         let retVal = retValue.address();
         let ret = this.getifaddrs(retVal.address());
@@ -1697,15 +1700,28 @@ var DnsHandler =
         }
         let i = retVal.contents;
 
+        /* this.ifaddrs = ctypes.StructType("ifaddrs");
+        this.ifaddrs.define([
+                             {ifa_next : this.ifaddrs.ptr}, 
+                             {ifa_name : ctypes.char.ptr}, 
+                             {ifa_flags : ctypes.unsigned_int}, 
+                             {ifa_addr : this.sockaddr.ptr}, 
+                             {ifa_netmask : this.sockaddr.ptr}, 
+                             {ifa_dstaddr : this.sockaddr.ptr}, 
+                             {ifa_data : ctypes.voidptr_t}, 
+                            ]);
+        // Set up the ctypes functions we need
+        this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi, ctypes.int, this.ifaddrs.ptr.ptr); */
+
         // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
         while (notdone)
         {
-            consoleService.logStringMessage("Sixornot - loop");
+            consoleService.logStringMessage("Sixornot - loop, sa_family is: " + i.ifa_addr.contents.sa_family);
 
-            let new_addr = this.get_ip_str(i.ifa_addr.contents.ai_addr.contents, i.ifa_addr.contents.ai_family);
+            let new_addr = this.get_ip_str(i.ifa_addr.contents, i.ifa_addr.contents.sa_family);
 
-            // Add to addresses array, strip duplicates as we go
-            if (addresses.indexOf(new_addr) === -1)
+            // Add to addresses array, check for blank return from get_ip_str, strip duplicates as we go
+            if (new_addr && addresses.indexOf(new_addr) === -1)
             {
                 addresses.push(new_addr);
             }
