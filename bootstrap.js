@@ -345,6 +345,16 @@ function main (win)
 //        DnsHandler.cancelRequest(DNSrequest);
         DNSrequest = null;
 
+        let set_icon = function (icon)
+        {
+            // If this is null, address icon isn't showing
+            if (addressIcon !== null)
+            {
+                addressIcon.src = icon;
+            }
+            toolbarButton.style.listStyleImage = "url('" + icon + "')";
+        };
+
         // Tries to update icon based on protocol type (e.g. for local pages which don't need to be looked up)
         // If this fails returns false and we need to do lookup
         if (updateIcon())
@@ -363,8 +373,7 @@ function main (win)
         }
         if (host === "")
         {
-            addressIcon.src = sother_16;
-            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            set_icon(sother_16);
             specialLocation = ["unknownsite"];
             consoleService.logStringMessage("Sixornot warning: no host returned for \"" + url + "\"");
             return;
@@ -373,8 +382,7 @@ function main (win)
         // Offline mode or otherwise not connected
         if (!win.navigator.onLine)
         {
-            addressIcon.src = sother_16;
-            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            set_icon(sother_16);
             specialLocation = ["offlinemode"];
             consoleService.logStringMessage("Sixornot is in offline mode");
             return;
@@ -383,8 +391,7 @@ function main (win)
         // Proxy in use for DNS; can't do a DNS lookup
         if (DnsHandler.isProxiedDNS(url))
         {
-            addressIcon.src = sother_16;
-            toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+            set_icon(sother_16);
             specialLocation = ["nodnserror"];
             consoleService.logStringMessage("Sixornot is in proxied mode");
 //            Sixornot.warning(window, "sixornot.warn.proxy", strings.GetStringFromName("proxywarnmessage"));
@@ -403,8 +410,7 @@ function main (win)
             // DNS lookup failed
             if (remoteips[0] === "FAIL")
             {
-                addressIcon.src = sother_16;
-                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+                set_icon(sother_16);
                 specialLocation = ["lookuperror"];
                 consoleService.logStringMessage("Sixornot - DNS lookup failed");
                 return;
@@ -436,6 +442,7 @@ function main (win)
             catch (e)
             {
                 consoleService.logStringMessage("Sixornot - Unable to look up local IP addresses");
+                Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
             }
 
             // Parse list of local IPs for IPv4/IPv6
@@ -1077,6 +1084,7 @@ function get_bool_pref (name)
     }
 }
 
+// Return the current browser window
 function getCurrentWindow ()
 {
     return Components.classes["@mozilla.org/appshell/window-mediator;1"]
@@ -1209,6 +1217,7 @@ var DnsHandler =
     addrinfo: null,
     getaddrinfo: null,
     resolve_native: false,
+    local_native: false,
 
     init : function ()
     {
@@ -1220,6 +1229,11 @@ var DnsHandler =
         {
             this.library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
             consoleService.logStringMessage("Sixornot - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
+            // On OSX use native functionality to resolve both remote and local addresses
+            // On this platform getaddrinfo w/ local hostname doesn't always return all local addresses
+            // So we need to use getifaddr to do this
+            this.resolve_native = true;
+            this.local_native = true;
             // Address family
             this.AF_UNSPEC = 0;
             this.AF_INET = 2;
@@ -1228,7 +1242,57 @@ var DnsHandler =
             this.SOCK_STREAM = 1;
             // Protocol
             this.IPPROTO_UNSPEC = 0;
-            this.resolve_native = true;
+            try
+            {
+                // Set up the structs we need
+                this.sockaddr = ctypes.StructType("sockaddr", [
+                                    {sa_family : ctypes.unsigned_short},
+                                    {sa_data : ctypes.unsigned_char.array(28)}]);
+                this.addrinfo = ctypes.StructType("addrinfo");
+                this.addrinfo.define([
+                                      {ai_flags : ctypes.int}, 
+                                      {ai_family : ctypes.int}, 
+                                      {ai_socktype : ctypes.int}, 
+                                      {ai_protocol : ctypes.int}, 
+                                      {ai_addrlen : ctypes.int}, 
+                                      {ai_cannonname : ctypes.char.ptr}, 
+                                      {ai_addr : this.sockaddr.ptr}, 
+                                      {ai_next : this.addrinfo.ptr}
+                                     ]);
+                // Set up the ctypes functions we need
+                this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
+                this.getifaddrs = this.library.declare("getifaddrs", this.ifaddrs.ptr.ptr);
+                try
+                {
+                    // Used for local address lookup
+                    this.ifaddrs = ctypes.StructType("ifaddrs");
+                    this.ifaddrs.define([
+                                         {ifa_next : this.ifaddrs.ptr}, 
+                                         {ifa_name : ctypes.char.ptr}, 
+                                         {ifa_flags : ctypes.int}, 
+                                         {ifa_addr : this.sockaddr.ptr}, 
+                                         {ifa_netmask : this.sockaddr.ptr}, 
+                                         {ifa_dstaddr : this.sockaddr.ptr}, 
+                                         {ifa_data : ctypes.voidptr_t}, 
+                                        ]);
+                    // Set up the ctypes functions we need
+                    this.getifaddrs = this.library.declare("getifaddrs", this.ifaddrs.ptr.ptr);
+                }
+                catch (e)
+                {
+                    consoleService.logStringMessage("Sixornot - Unable to init native local resolver, falling back to Firefox method for local addresses (WARNING: May not work if DNS isn't configured for local host)");
+                    this.library.close();
+                    // If we've got this far then remote resolution should still work, so only disable local native resolution
+                    this.local_native = false;
+                }
+            }
+            catch (e)
+            {
+                consoleService.logStringMessage("Sixornot - Unable to init native resolvers, falling back to Firefox method for local and remote addresses");
+                this.library.close();
+                this.resolve_native = false;
+                this.local_native = false;
+            }
         }
         catch(e)
         {
@@ -1237,6 +1301,9 @@ var DnsHandler =
             {
                 this.library = ctypes.open("Ws2_32.dll");
                 consoleService.logStringMessage("Sixornot - Running on Windows XP+, opened library: 'Ws2_32.dll'");
+                // On Windows resolve remote IPs via native method, but use Firefox method to find local addresses since this always works on Windows
+                this.resolve_native = true;
+                this.local_native = false;
                 // Flags
                 this.AI_PASSIVE = 0x01;
                 this.AI_CANONNAME = 0x02;
@@ -1261,7 +1328,32 @@ var DnsHandler =
                 this.IPPROTO_TCP = 6;
                 this.IPPROTO_UDP = 17;
 //                this.IPPROTO_RM = 113;
-                this.resolve_native = true;
+                try
+                {
+                    // Set up the structs we need
+                    this.sockaddr = ctypes.StructType("sockaddr", [
+                                        {sa_family : ctypes.unsigned_short},
+                                        {sa_data : ctypes.unsigned_char.array(28)}]);
+                    this.addrinfo = ctypes.StructType("addrinfo");
+                    this.addrinfo.define([
+                                        {ai_flags : ctypes.int}, 
+                                        {ai_family : ctypes.int}, 
+                                        {ai_socktype : ctypes.int}, 
+                                        {ai_protocol : ctypes.int}, 
+                                        {ai_addrlen : ctypes.int}, 
+                                        {ai_cannonname : ctypes.char.ptr}, 
+                                        {ai_addr : this.sockaddr.ptr}, 
+                                        {ai_next : this.addrinfo.ptr}]);
+                    // Set up the ctypes functions we need
+                    this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
+                }
+                catch (e)
+                {
+                    consoleService.logStringMessage("Sixornot - Unable to init native resolver, falling back to native");
+                    this.library.close();
+                    this.resolve_native = false;
+                    this.local_native = false;
+                }
             }
             catch (e)
             {
@@ -1269,35 +1361,7 @@ var DnsHandler =
                 // Here we should degrade down to using Firefox's builtin methods
                 consoleService.logStringMessage("Sixornot - Native resolver not supported on this platform, falling back to builtin");
                 this.resolve_native = false;
-            }
-        }
-
-        if (this.resolve_native)
-        {
-            try
-            {
-                // Set up the structs we need
-                this.sockaddr = ctypes.StructType("sockaddr", [
-                                    {sa_family : ctypes.unsigned_short},
-                                    {sa_data : ctypes.unsigned_char.array(28)}]);
-                this.addrinfo = ctypes.StructType("addrinfo");
-                this.addrinfo.define([
-                                    {ai_flags : ctypes.int}, 
-                                    {ai_family : ctypes.int}, 
-                                    {ai_socktype : ctypes.int}, 
-                                    {ai_protocol : ctypes.int}, 
-                                    {ai_addrlen : ctypes.int}, 
-                                    {ai_cannonname : ctypes.char.ptr}, 
-                                    {ai_addr : this.sockaddr.ptr}, 
-                                    {ai_next : this.addrinfo.ptr}]);
-                // Set up the ctypes functions we need
-                this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-            }
-            catch (e)
-            {
-                consoleService.logStringMessage("Sixornot - Unable to init native resolver, falling back to native");
-                this.library.close();
-                this.resolve_native = false;
+                this.local_native = false;
             }
         }
     },
@@ -1578,6 +1642,88 @@ var DnsHandler =
         }
     },
 
+    // Return the IP addresses of the local host
+    resolveLocal : function ()
+    {
+        if (this.local_native)
+        {
+            return this.resolveLocalNative();
+        }
+        else
+        {
+            return this.resolveLocalFirefox();
+        }
+    },
+
+    resolveLocalFirefox : function ()
+    {
+        consoleService.logStringMessage("Sixornot - resolveLocalFirefox - resolving host: " + host);
+        let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
+        var IPAddresses = [];
+        while (dnsresponse.hasMore())
+        {
+            IPAddresses.push(dnsresponse.getNextAddrAsString());
+        }
+        return IPAddresses;
+    },
+
+    resolveLocalNative : function ()
+    {
+        consoleService.logStringMessage("Sixornot - resolveLocalNative - resolving local host");
+
+        /* this.ifaddrs = ctypes.StructType("ifaddrs");
+        this.ifaddrs.define([
+                             {ifa_next : this.ifaddrs.ptr}, 
+                             {ifa_name : ctypes.char.ptr}, 
+                             {ifa_flags : ctypes.int}, 
+                             {ifa_addr : this.sockaddr.ptr}, 
+                             {ifa_netmask : this.sockaddr.ptr}, 
+                             {ifa_dstaddr : this.sockaddr.ptr}, 
+                             {ifa_data : ctypes.voidptr_t}, 
+                            ]);
+        // Set up the ctypes functions we need
+        this.getifaddrs = this.library.declare("getifaddrs", this.ifaddrs.ptr.ptr); */
+
+        let retValue = this.ifaddrs();
+        let retVal = retValue.address();
+        let ret = this.getifaddrs(retVal.address());
+
+        let addresses = [];
+        let notdone = true;
+        if (retVal.isNull())
+        {
+            consoleService.logStringMessage("Sixornot - resolveLocalNative - Got no results from getifaddrs");
+            return ["FAIL"];
+        }
+        let i = retVal.contents;
+
+        // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
+        while (notdone)
+        {
+            consoleService.logStringMessage("Sixornot - loop");
+
+            let new_addr = this.get_ip_str(i.ifa_addr.contents.ai_addr.contents, i.ifa_addr.contents.ai_family);
+
+            // Add to addresses array, strip duplicates as we go
+            if (addresses.indexOf(new_addr) === -1)
+            {
+                addresses.push(new_addr);
+            }
+            if (i.ifa_next.isNull())
+            {
+                i = null;
+                notdone = false;
+            }
+            else
+            {
+                i = i.ifa_next.contents;
+            }
+        }
+
+        consoleService.logStringMessage("Sixornot - Found the following addresses: " + addresses);
+        return addresses.slice();
+    },
+
     // Resolve a host using either native or builtin functionality
     resolveHost : function (host)
     {
@@ -1625,7 +1771,7 @@ var DnsHandler =
         if (retVal.isNull())
         {
             consoleService.logStringMessage("Sixornot - resolveHostNative - Unable to resolve host, got no results from getaddrinfo");
-            return [];
+            return ["FAIL"];
         }
         let i = retVal.contents;
 
@@ -1669,18 +1815,6 @@ var DnsHandler =
     {
         try { request.cancel(Components.results.NS_ERROR_ABORT); } catch(e) {}  // calls onLookupComplete() with status=Components.results.NS_ERROR_ABORT
     }, */
-
-    // Return the IP addresses of the local host
-    resolveLocal : function ()
-    {
-        let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
-        var IPAddresses = [];
-        while (dnsresponse.hasMore())
-        {
-            IPAddresses.push(dnsresponse.getNextAddrAsString());
-        }
-        return IPAddresses;
-    }
 
 /*    resolveHost : function (host,returnIP)  // Returns request object
     {
