@@ -1250,28 +1250,97 @@ var DnsHandler =
             this.IPPROTO_UNSPEC = 0;
             try
             {
-                // Set up the structs we need
-                // On OSX (and maybe elsewhere) only the second byte of sockaddr represents the sa_family, the first byte is unknown use
+                // Set up the structs we need on OSX
+
+                /*
+                From /usr/include/sys/socket.h
+                struct sockaddr {
+                    __uint8_t   sa_len;         total length
+                    sa_family_t sa_family;      [XSI] address family
+                    char        sa_data[14];    [XSI] addr value (actually larger)
+                };
+                typedef __uint8_t       sa_family_t;
+
+                From /usr/include/netinet/in.h
+                struct sockaddr_in {
+                    __uint8_t   sin_len;        total length
+                    sa_family_t sin_family;     address family
+                    in_port_t   sin_port;       socket port
+                    struct  in_addr sin_addr;   address value
+                    char        sin_zero[8];    padding (may need to be bigger to cope with sockaddrs holding IPv6 addresses?)
+                };
+                typedef __uint16_t  in_port_t;
+                typedef __uint32_t  in_addr_t;
+                struct in_addr {
+                    in_addr_t s_addr;
+                };
+
+                From /usr/include/netinet6/in6.h
+                struct sockaddr_in6 {
+                    __uint8_t   sin6_len;       length of this struct(sa_family_t)
+                    sa_family_t sin6_family;    AF_INET6 (sa_family_t)
+                    in_port_t   sin6_port;      Transport layer port # (in_port_t)
+                    __uint32_t  sin6_flowinfo;  IP6 flow information
+                    struct in6_addr sin6_addr;  IP6 address
+                    __uint32_t  sin6_scope_id;  scope zone index
+                };
+                struct in6_addr {
+                    union {
+                        __uint8_t   __u6_addr8[16];
+                        __uint16_t  __u6_addr16[8];
+                        __uint32_t  __u6_addr32[4];
+                    } __u6_addr;            // 128-bit IP6 address
+                };
+                */
+
                 this.sockaddr = ctypes.StructType("sockaddr", [
-                                    {sa_unknown : ctypes.unsigned_char},
-                                    {sa_family : ctypes.unsigned_char},
-                                    {sa_data : ctypes.unsigned_char.array(28)}]);
+                                    {sa_len : ctypes.uint8_t},                      // Total length
+                                    {sa_family : ctypes.uint8_t},                   // Address family
+                                    {sa_data : ctypes.unsigned_char.array(28)}      // Address value (max possible size)
+                                    ]);
+                this.sockaddr_in = ctypes.StructType("sockaddr_in", [
+                                    {sin_len : ctypes.uint8_t},                     // Total length
+                                    {sin_family : ctypes.uint8_t},                  // Address family
+                                    {sin_port : ctypes.uint16_t},                   // Socket port
+                                    {sin_addr : ctypes.uint32_t},                   // Address value (or could be struct in_addr)
+                                    {sin_zero : ctypes.unsigned_char.array(8)}      // Padding
+                                    ]);
+                this.sockaddr_in6 = ctypes.StructType("sockaddr_in6", [
+                                    {sin6_len : ctypes.uint8_t},                    // Total length
+                                    {sin6_family : ctypes.uint8_t},                 // Address family
+                                    {sin6_port : ctypes.uint16_t},                  // Socket port
+                                    {sin6_flowinfo : ctypes.uint32_t},              // IP6 flow information
+                                    {sin6_addr : ctypes.uint16_t.array(8)},         // IP6 address value (or could be struct in6_addr)
+                                    {sin6_scope_id : ctypes.uint32_t}               // Scope zone index
+                                    ]);
                 this.addrinfo = ctypes.StructType("addrinfo");
                 this.addrinfo.define([
-                                      {ai_flags : ctypes.int}, 
-                                      {ai_family : ctypes.int}, 
-                                      {ai_socktype : ctypes.int}, 
-                                      {ai_protocol : ctypes.int}, 
-                                      {ai_addrlen : ctypes.int}, 
-                                      {ai_cannonname : ctypes.char.ptr}, 
-                                      {ai_addr : this.sockaddr.ptr}, 
-                                      {ai_next : this.addrinfo.ptr}
+                                    {ai_flags : ctypes.int}, 
+                                    {ai_family : ctypes.int}, 
+                                    {ai_socktype : ctypes.int}, 
+                                    {ai_protocol : ctypes.int}, 
+                                    {ai_addrlen : ctypes.int}, 
+                                    {ai_cannonname : ctypes.char.ptr}, 
+                                    {ai_addr : this.sockaddr.ptr}, 
+                                    {ai_next : this.addrinfo.ptr}
                                      ]);
                 // Set up the ctypes functions we need
                 this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
                 try
                 {
                     // Used for local address lookup
+                    /*
+                    From /usr/include/ifaddrs.h
+                    struct ifaddrs {
+                        struct ifaddrs  *ifa_next;
+                        char        *ifa_name;
+                        unsigned int         ifa_flags;
+                        struct sockaddr *ifa_addr;
+                        struct sockaddr *ifa_netmask;
+                        struct sockaddr *ifa_dstaddr;
+                        void        *ifa_data;
+                    };
+                    */
                     this.ifaddrs = ctypes.StructType("ifaddrs");
                     this.ifaddrs.define([
                                          {ifa_next : this.ifaddrs.ptr}, 
