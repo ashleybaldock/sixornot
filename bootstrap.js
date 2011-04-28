@@ -609,7 +609,7 @@ function main (win)
         // commandID - string of arbitrary data
         //  first 5 characters determine function call
         //  rest of string (if any) is data to use for function call
-        function addMenuItem(labelName, ttText, commandID)
+        let addMenuItem = function (labelName, ttText, commandID)
         {
             consoleService.logStringMessage("Sixornot - addMenuItem: " + labelName + ", " + ttText + ", " + commandID);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
@@ -619,8 +619,8 @@ function main (win)
                 menuitem.setAttribute("value", commandID);
                 popupMenu.appendChild(menuitem);
             }
-        }
-        function addToggleMenuItem(labelName, ttText, commandID, initialState)
+        };
+        let addToggleMenuItem = function (labelName, ttText, commandID, initialState)
         {
             consoleService.logStringMessage("Sixornot - addToggleMenuItem: " + labelName + ", " + ttText + ", " + commandID + ", " + initialState);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
@@ -632,8 +632,8 @@ function main (win)
                 menuitem.setAttribute("checked", initialState);
                 popupMenu.appendChild(menuitem);
             }
-        }
-        function addDisabledMenuItem(labelName)
+        };
+        let addDisabledMenuItem = function (labelName)
         {
             consoleService.logStringMessage("Sixornot - addDisabledMenuItem: " + labelName);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
@@ -642,15 +642,15 @@ function main (win)
                 menuitem.setAttribute("disabled", true);
                 popupMenu.appendChild(menuitem);
             }
-        }
-        function addMenuSeparator()
+        };
+        let addMenuSeparator = function ()
         {
             consoleService.logStringMessage("Sixornot - addMenuSeparator");
             let (menuseparator = doc.createElementNS(NS_XUL, "menuseparator"))
             {
                 popupMenu.appendChild(menuseparator);
             }
-        }
+        };
 
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
@@ -742,7 +742,7 @@ function main (win)
 
         let i;
 
-        function addTitleLine (labelName)
+        let addTitleLine = function (labelName)
         {
             consoleService.logStringMessage("Sixornot - addTitleLine");
             let row = doc.createElementNS(NS_XUL, "row");
@@ -754,9 +754,9 @@ function main (win)
             row.appendChild(value);
             row.appendChild(label);
             rows.appendChild(row);
-        }
+        };
 
-        function addLabeledLine (labelName, lineValue, italic)
+        let addLabeledLine = function (labelName, lineValue, italic)
         {
             consoleService.logStringMessage("Sixornot - addLabeledLine");
             let row = doc.createElementNS(NS_XUL, "row");
@@ -776,7 +776,7 @@ function main (win)
             row.appendChild(label);
             row.appendChild(value);
             rows.appendChild(row);
-        }
+        };
 
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
@@ -845,18 +845,21 @@ function main (win)
             }
         }
 
-        // TODO - Italics for linklocal IPv4 addresses as well
+        let v4_italic = function (ip4_address)
+        {
+            return ["global", "rfc1918"].indexOf(DnsHandler.typeof_ip4(ip4_address)) === -1;
+        };
         // Add local IPv4 address(es) to tooltip with special case if only one
         if (localipv4s.length === 1)
         {
-            addLabeledLine(gt("prefix_v4_single"), localipv4s[0]);
+            addLabeledLine(gt("prefix_v4_single"), localipv4s[0], v4_italic(localipv4s[0]));
         }
         else if (localipv4s.length > 1)
         {
-            addLabeledLine(gt("prefix_v4_multi"), localipv4s[0]);
+            addLabeledLine(gt("prefix_v4_multi"), localipv4s[0], v4_italic(localipv4s[0]));
             for (i = 1; i < localipv4s.length; i++)
             {
-                addLabeledLine(" ", localipv4s[i]);
+                addLabeledLine(" ", localipv4s[i], v4_italic(localipv4s[i]));
             }
         }
 
@@ -945,7 +948,7 @@ function set_iconset ()
 */
 function startup (data)
 {
-    AddonManager.getAddonByID(data.id, function(addon, data) {
+    AddonManager.getAddonByID(data.id, function (addon, data) {
         consoleService.logStringMessage("Sixornot - startup");
 
         // Include libraries
@@ -1035,8 +1038,8 @@ function install ()
 function uninstall ()
 {
     consoleService.logStringMessage("Sixornot - uninstall");
-// If this is due to an upgrade then don't delete preferences?
-// Some kind of upgrade function to potentially upgrade preference settings may be required
+    // TODO If this is due to an upgrade then don't delete preferences?
+    // Some kind of upgrade function to potentially upgrade preference settings may be required
     PREF_BRANCH_SIXORNOT.deleteBranch("");             
 }
 
@@ -1051,7 +1054,8 @@ function toggleCustomize (evt)
     consoleService.logStringMessage("Sixornot - toggleCustomize");
     let toolbox = evt.target, toolbarId, nextItemId;
     let button = gbi(toolbox.parentNode, BUTTON_ID);
-    if (button) {
+    if (button)
+    {
         let parent = button.parentNode, nextItem = button.nextSibling;
         if (parent && parent.localName === "toolbar")
         {
@@ -1518,17 +1522,95 @@ var DnsHandler =
 
     typeof_ip4 : function (ip_address)
     {
-        // For IPv4 addresses types are:
+        if (!DnsHandler.is_ip4(ip_address))
+        {
+            return false;
+        }
+        // For IPv4 addresses types are (from RFC 3330)
         /*
-            local           127.0.0.0/24
-            rfc1918         10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-            linklocal       169.254.0.0/16
-            reserved        192.0.0.0/24, 240.0.0.0/4
-            documentation   192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24
-            6to4relay       192.88.99.0/24
-            benchmark       198.18.0.0/15
-            multicast       224.0.0.0/4
+           Address Block             Present Use                       Reference
+           ---------------------------------------------------------------------
+           0.0.0.0/8            "This" Network                 [RFC1700, page 4]
+           10.0.0.0/8           Private-Use Networks                   [RFC1918]
+           14.0.0.0/8           Public-Data Networks         [RFC1700, page 181]
+           24.0.0.0/8           Cable Television Networks                    --
+           39.0.0.0/8           Reserved but subject
+                                   to allocation                       [RFC1797]
+           127.0.0.0/8          Loopback                       [RFC1700, page 5]
+           128.0.0.0/16         Reserved but subject
+                                   to allocation                             --
+           169.254.0.0/16       Link Local                                   --
+           172.16.0.0/12        Private-Use Networks                   [RFC1918]
+           191.255.0.0/16       Reserved but subject
+                                   to allocation                             --
+           192.0.0.0/24         Reserved but subject
+                                   to allocation                             --
+           192.0.2.0/24         Test-Net
+           192.88.99.0/24       6to4 Relay Anycast                     [RFC3068]
+           192.168.0.0/16       Private-Use Networks                   [RFC1918]
+           198.18.0.0/15        Network Interconnect
+                                   Device Benchmark Testing            [RFC2544]
+           223.255.255.0/24     Reserved but subject
+                                   to allocation                             --
+           224.0.0.0/4          Multicast                              [RFC3171]
+           240.0.0.0/4          Reserved for Future Use        [RFC1700, page 4]
         */
+        /*
+            route           0.0.0.0/8                                   Starts with 0
+            local           127.0.0.0/24                                Starts with 127
+            rfc1918         10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16   Starts with 10, 172.16-31, 192.168
+            linklocal       169.254.0.0/16                              Starts with 169.254
+            reserved        240.0.0.0/4                                 Starts with 240-255
+            documentation   192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24   Starts with 192.0.2, 198.51.100, 203.0.113
+            6to4relay       192.88.99.0/24                              Starts with 192.88.99
+            benchmark       198.18.0.0/15                               Starts with 198.18, 198.19
+            multicast       224.0.0.0/4                                 Starts with 224-239
+        */
+        let split_address = ip_address.split(".").map(Number);
+        if (split_address[0] === 0)
+        {
+            return "route";
+        }
+        else if (split_address[0] === 127)
+        {
+            return "localhost";
+        }
+        else if (split_address[0] === 10
+             || (split_address[0] === 172 && [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31].indexOf(split_address[1]) !== -1)
+             || (split_address[0] === 192 && split_address[1] === 168))
+        {
+            return "rfc1918";
+        }
+        else if (split_address[0] === 169 && split_address[1] === 254)
+        {
+            return "linklocal";
+        }
+        else if ([240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255].indexOf(split_address[0]) !== -1)
+        {
+            return "reserved";
+        }
+        else if ((split_address[0] === 192 && split_address[1] === 0  && split_address[2] === 2)
+              || (split_address[0] === 198 && split_address[1] === 51 && split_address[2] === 100)
+              || (split_address[0] === 203 && split_address[1] === 0  && split_address[2] === 113))
+        {
+            return "documentation";
+        }
+        else if (split_address[0] === 192 && split_address[1] === 88 && split_address[2] === 99)
+        {
+            return "6to4relay";
+        }
+        else if (split_address[0] === 198 && [18,19].indexOf(split_address[1]) !== -1)
+        {
+            return "benchmark";
+        }
+        else if ([224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239].indexOf(split_address[0]) !== -1)
+        {
+            return "multicast";
+        }
+        else
+        {
+            return "global";
+        }
     },
 
     test_is_ip6 : function ()
@@ -1709,7 +1791,7 @@ var DnsHandler =
         return "global";
         // For IPv6 addresses types are:
         /*
-            unspecified     ::/128                                      All zeros
+            unspecified     ::/128                                          All zeros
             local           ::1/128         0000:0000:0000:0000:0000:0000:0000:0001
             linklocal       fe80::/10                                       Starts with fe8, fe9, fea, feb
             sitelocal       fec0::/10   (deprecated)                        Starts with fec, fed, fee, fef
