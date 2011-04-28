@@ -399,7 +399,6 @@ function main (win)
         }
 
         // Ideally just hitting the DNS cache here
-//        DNSrequest = DnsHandler.resolveHost(host, onReturnedIPs);
         onReturnedIPs(DnsHandler.resolveHost(host));
 
         function onReturnedIPs(remoteips)
@@ -1842,12 +1841,6 @@ var DnsHandler =
         {
             // Cast to sockaddr_in6
             let sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
-            // Read IPv6 address value as 8 16bit numbers
-            /* let ip6 = [];
-            for (let i = 0; i < sockaddr_in6.sin6_addr.length; i++)
-            {
-                ip6.push(sockaddr_in6.sin6_addr[i]);
-            } */
             // Convert to hex quad notation + return string
             // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
             let i = 0, m = "", c = [];
@@ -2012,7 +2005,6 @@ var DnsHandler =
         {
             consoleService.logStringMessage("Sixornot - loop");
 
-//            let new_addr = this.get_ip_str(i.ai_addr.contents, i.ai_family);
             let new_addr = this.sockaddr_to_str(i.ai_addr.contents);
 
             // Add to addresses array, strip duplicates as we go
@@ -2042,100 +2034,7 @@ var DnsHandler =
         var proxyinfo = proxyService.resolve(uri, 0);  // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
         return (proxyinfo !== null) && (proxyinfo.flags & proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
-    },
-
-/*    cancelRequest : function (request)
-    {
-        try { request.cancel(Components.results.NS_ERROR_ABORT); } catch(e) {}  // calls onLookupComplete() with status=Components.results.NS_ERROR_ABORT
-    }, */
-
-/*    resolveHost : function (host,returnIP)  // Returns request object
-    {
-        function fail(reason)
-        {
-            logErrorMessage("Sixornot warning: DNS lookup failure for \"" + host + "\": " + reason);
-            returnIP(["FAIL"]);
-        }
-
-        var callback =
-        {
-            onLookupComplete : function (nsrequest, nsrecord, status)
-            {
-                if (status === Components.results.NS_ERROR_ABORT)
-                    return;  // Ignore cancel
-
-                if (status !== 0 || !nsrecord || !nsrecord.hasMore())
-                {
-                    fail( (status === Components.results.NS_ERROR_UNKNOWN_HOST) ? ("Unknown host") : ("status " + status) );
-                    return;  // IP not found in DNS
-                }
-
-                var IPAddresses = [];
-                while (nsrecord.hasMore())
-                {
-                    IPAddresses.push(nsrecord.getNextAddrAsString());
-                }
-
-                // Return array of all IP addresses found for this domain
-                returnIP(IPAddresses)
-            }
-        };
-
-        try
-        {
-            return dnsService.asyncResolve(host, 0, callback, threadManager.currentThread);
-        }
-        catch (e)
-        {
-            fail( "exception " + ((e.name && e.name.length) ? e.name : e) );
-            return null;
-        }
-    } */
-
-    /* // Convert IP object into a Javascript string
-    get_ip_str : function (address, address_family)
-    {
-        // Find everything between square brackets
-        consoleService.logStringMessage("Sixornot - get_ip_str");
-        let r = RegExp(/\[(.*?)\]/);
-        let ip_array = r.exec(address.sa_data.toString())[0].split(",");
-
-        consoleService.logStringMessage("Sixornot - get_ip_str - ip_array is: " + ip_array);
-        // IPv4 Addresses
-        if (address_family === this.AF_INET)
-        {
-            // Stored in bytes 2-5 (zero-index)
-            // [0, 0, 82, 113, 152, 84, 0, 0, 0, 0, 0, 0, 0, 0, 228, 92, 46, 126, 0, 0, 0, 128, 65, 0, 0, 0, 136, 52]
-            let ip4_array = ip_array.slice(2,6);
-            return ip4_array.map(Number).join(".");
-        }
-        // MAC Addresses (OSX-specific for now!)
-        if (address_family === this.AF_LINK)
-        {
-            // Stored in bytes 12-17 (zero-index)
-            // [7, 0, 6, 6, 6, 0, 118, 109, 110, 101, 116, 49, ||0, 80, 86, 192, 0, 1||, 20, 0, 0, 0, 6, 0, 0, 6, 14, 0])
-            let mac_array = ip_array.slice(12, 18);
-            return mac_array.map(this.to_hex).join("-");
-        }
-        // IPv6 Addresses
-        if (address_family === this.AF_INET6)
-        {
-            // Stored in bytes 6-21 (zero-index)
-            // [0, 0, 0, 0, 0, 0, ||32, 1, 4, 112, 31, 9, 3, 152, 0, 0, 0, 0, 0, 0, 0, 2||, 0, 0, 0, 0, 56, 52]
-            let ip6_array = ip_array.slice(6,22);
-
-            // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
-            let i = 0, m = "", c = [];
-            for (i = 0; i < 16; i++) {
-                c.push(((Number(ip6_array[i++]) << 8) + Number(ip6_array[i])).toString(16));
-            }
-            return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
-                m = (t.length > m.length) ? t : m;
-                return t;
-            }).replace(m || ' ', '::');
-        }
-    }, */
-
+    }
 };
 
 
