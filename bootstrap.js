@@ -1294,25 +1294,25 @@ var DnsHandler =
                 */
 
                 this.sockaddr = ctypes.StructType("sockaddr", [
-                                    {sa_len : ctypes.uint8_t},                      // Total length
-                                    {sa_family : ctypes.uint8_t},                   // Address family
-                                    {sa_data : ctypes.unsigned_char.array(28)}      // Address value (max possible size)
-                                    ]);
+                                    {sa_len : ctypes.uint8_t},                      // Total length (1)
+                                    {sa_family : ctypes.uint8_t},                   // Address family (1)
+                                    {sa_data : ctypes.unsigned_char.array(28)}      // Address value (max possible size) (28)
+                                    ]);                                             // (30) - must be larger than sockaddr_in and sockaddr_in6 for type casting to work
                 this.sockaddr_in = ctypes.StructType("sockaddr_in", [
-                                    {sin_len : ctypes.uint8_t},                     // Total length
-                                    {sin_family : ctypes.uint8_t},                  // Address family
-                                    {sin_port : ctypes.uint16_t},                   // Socket port
-                                    {sin_addr : ctypes.uint32_t},                   // Address value (or could be struct in_addr)
-                                    {sin_zero : ctypes.unsigned_char.array(8)}      // Padding
-                                    ]);
+                                    {sin_len : ctypes.uint8_t},                     // Total length (1)
+                                    {sin_family : ctypes.uint8_t},                  // Address family (1)
+                                    {sin_port : ctypes.uint16_t},                   // Socket port (2)
+                                    {sin_addr : ctypes.uint32_t},                   // Address value (or could be struct in_addr) (4)
+                                    {sin_zero : ctypes.unsigned_char.array(8)}      // Padding (8)
+                                    ]);                                             // (16)
                 this.sockaddr_in6 = ctypes.StructType("sockaddr_in6", [
-                                    {sin6_len : ctypes.uint8_t},                    // Total length
-                                    {sin6_family : ctypes.uint8_t},                 // Address family
-                                    {sin6_port : ctypes.uint16_t},                  // Socket port
-                                    {sin6_flowinfo : ctypes.uint32_t},              // IP6 flow information
-                                    {sin6_addr : ctypes.uint16_t.array(8)},         // IP6 address value (or could be struct in6_addr)
-                                    {sin6_scope_id : ctypes.uint32_t}               // Scope zone index
-                                    ]);
+                                    {sin6_len : ctypes.uint8_t},                    // Total length (1)
+                                    {sin6_family : ctypes.uint8_t},                 // Address family (1)
+                                    {sin6_port : ctypes.uint16_t},                  // Socket port (2)
+                                    {sin6_flowinfo : ctypes.uint32_t},              // IP6 flow information (4)
+                                    {sin6_addr : ctypes.uint16_t.array(8)},         // IP6 address value (or could be struct in6_addr) (16)
+                                    {sin6_scope_id : ctypes.uint32_t}               // Scope zone index (4)
+                                    ]);                                             // (28)
                 this.addrinfo = ctypes.StructType("addrinfo");
                 this.addrinfo.define([
                                     {ai_flags : ctypes.int}, 
@@ -1683,6 +1683,51 @@ var DnsHandler =
         return Number(int_string).toString(10);
     },
 
+    // Converts a sockaddr structure to a string representation of its address
+    sockaddr_to_str : function (sockaddr)
+    {
+        consoleService.logStringMessage("Sixornot - sockaddr_to_ip");
+        if (sockaddr.sa_family === this.AF_INET)
+        {
+            // Cast to sockaddr_in
+            let sockaddr_in = ctypes.cast(sockaddr, this.sockaddr_in);
+            // Read IP address value as 32bit number
+            let ip4 = sockaddr_in.sin_addr;
+            // Convert to dotted decimal notation + return string
+            let ip4str = [ip4 >>> 24, (ip4 << 8) >>> 24, (ip4 << 16) >>> 24, (ip4 << 24) >>> 24].join(".");
+            return ip4str;
+        }
+        else if (sockaddr.sa_family === this.AF_INET6)
+        {
+            // Cast to sockaddr_in6
+            let sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
+            // Read IPv6 address value as 8 16bit numbers
+            let ip6 = [];
+            for (let i = 0; i < sockaddr_in6.sin6_addr.length; i++)
+            {
+                ip6.push(sockaddr_in6.sin6_addr[i]);
+            }
+            // Convert to hex quad notation + return string
+            // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
+            return ip6.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
+                m = (t.length > m.length) ? t : m;
+                return t;
+            }).replace(m || ' ', '::');
+        }
+        else if (sockaddr.sa_family === this.AF_LINK)
+        {
+            // Cast to ???
+            // Read MAC address value
+            // Convert to MAC format with '-' separators + return string
+            return false;
+        }
+        else
+        {
+            // Unknown address family, return false
+            return false;
+        }
+    },
+
     // Convert IP object into a Javascript string
     get_ip_str : function (address, address_family)
     {
@@ -1693,7 +1738,7 @@ var DnsHandler =
 
         consoleService.logStringMessage("Sixornot - get_ip_str - ip_array is: " + ip_array);
         // IPv4 Addresses
-        if (address_family === this.AF_INET) // 4628 (unknown??), 528 = IPv4
+        if (address_family === this.AF_INET)
         {
             // Stored in bytes 2-5 (zero-index)
             // [0, 0, 82, 113, 152, 84, 0, 0, 0, 0, 0, 0, 0, 0, 228, 92, 46, 126, 0, 0, 0, 128, 65, 0, 0, 0, 136, 52]
@@ -1709,7 +1754,7 @@ var DnsHandler =
             return mac_array.map(this.to_hex).join("-");
         }
         // IPv6 Addresses
-        if (address_family === this.AF_INET6) // 7708 = IPv6
+        if (address_family === this.AF_INET6)
         {
             // Stored in bytes 6-21 (zero-index)
             // [0, 0, 0, 0, 0, 0, ||32, 1, 4, 112, 31, 9, 3, 152, 0, 0, 0, 0, 0, 0, 0, 2||, 0, 0, 0, 0, 56, 52]
@@ -1787,7 +1832,8 @@ var DnsHandler =
         {
             consoleService.logStringMessage("Sixornot - loop, sa_family is: " + i.ifa_addr.contents.sa_family);
 
-            let new_addr = this.get_ip_str(i.ifa_addr.contents, i.ifa_addr.contents.sa_family);
+//            let new_addr = this.get_ip_str(i.ifa_addr.contents, i.ifa_addr.contents.sa_family);
+            let new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
 
             // Add to addresses array, check for blank return from get_ip_str, strip duplicates as we go
             if (new_addr && addresses.indexOf(new_addr) === -1)
@@ -1865,7 +1911,8 @@ var DnsHandler =
         {
             consoleService.logStringMessage("Sixornot - loop");
 
-            let new_addr = this.get_ip_str(i.ai_addr.contents, i.ai_family);
+//            let new_addr = this.get_ip_str(i.ai_addr.contents, i.ai_family);
+            let new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
 
             // Add to addresses array, strip duplicates as we go
             if (addresses.indexOf(new_addr) === -1)
