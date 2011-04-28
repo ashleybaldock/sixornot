@@ -1212,6 +1212,7 @@ defineLazyGetter("clipboardHelper", function () {
 // The DNS Handler which does most of the work of the extension
 var DnsHandler =
 {
+    AF_UNSPEC: null,
     AF_INET: null,
     AF_INET6: null,
     AF_LINK: null,
@@ -1224,6 +1225,9 @@ var DnsHandler =
     resolve_native: false,
     local_native: false,
 
+    osx_library: "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
+    win_library: "Ws2_32.dll",
+
     init : function ()
     {
         // Import ctypes module
@@ -1232,24 +1236,24 @@ var DnsHandler =
         // Try each of these until one works, this will also determine our platform
         try
         {
-            this.library = ctypes.open("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation");
-            consoleService.logStringMessage("Sixornot - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
-            // On OSX use native functionality to resolve both remote and local addresses
-            // On this platform getaddrinfo w/ local hostname doesn't always return all local addresses
-            // So we need to use getifaddr to do this
-            this.resolve_native = true;
-            this.local_native = true;
-            // Address family
-            this.AF_UNSPEC = 0;
-            this.AF_INET = 2;
-            this.AF_LINK = 18;  // MAC Addresses
-            this.AF_INET6 = 30;
-            // Socket type
-            this.SOCK_STREAM = 1;
-            // Protocol
-            this.IPPROTO_UNSPEC = 0;
+            this.library = ctypes.open(this.osx_library);
             try
             {
+                consoleService.logStringMessage("Sixornot - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
+                // On OSX use native functionality to resolve both remote and local addresses
+                // On this platform getaddrinfo w/ local hostname doesn't always return all local addresses
+                // So we need to use getifaddr to do this
+                this.resolve_native = true;
+                this.local_native = true;
+                // Address family
+                this.AF_UNSPEC = 0;
+                this.AF_INET = 2;
+                this.AF_LINK = 18;  // MAC Addresses
+                this.AF_INET6 = 30;
+                // Socket type
+                this.SOCK_STREAM = 1;
+                // Protocol
+                this.IPPROTO_UNSPEC = 0;
                 // Set up the structs we need on OSX
 
                 /*
@@ -1376,41 +1380,95 @@ var DnsHandler =
             consoleService.logStringMessage("Sixornot - Not running on OSX");
             try
             {
-                this.library = ctypes.open("Ws2_32.dll");
-                consoleService.logStringMessage("Sixornot - Running on Windows XP+, opened library: 'Ws2_32.dll'");
-                // On Windows resolve remote IPs via native method, but use Firefox method to find local addresses since this always works on Windows
-                this.resolve_native = true;
-                this.local_native = false;
-                // Flags
-                this.AI_PASSIVE = 0x01;
-                this.AI_CANONNAME = 0x02;
-                this.AI_NUMERICHOST = 0x04;
-                this.AI_ALL = 0x0100;
-                this.AI_ADDRCONFIG = 0x0400;
-                this.AI_NON_AUTHORITATIVE = 0x04000;
-                this.AI_SECURE = 0x08000;
-                this.AI_RETURN_PREFERRED_NAMES = 0x10000;
-                // Address family
-                this.AF_UNSPEC = 0;
-                this.AF_INET = 2;
-                this.AF_INET6 = 23;
-                // Socket type
-                this.SOCK_STREAM = 1;
-//                this.SOCK_DGRAM = 2;
-//                this.SOCK_RAW = 3;
-//                this.SOCK_RDM = 4;
-//                this.SOCK_SEQPACKET = 5;
-                // Protocol
-                this.IPPROTO_UNSPEC = 0;
-                this.IPPROTO_TCP = 6;
-                this.IPPROTO_UDP = 17;
-//                this.IPPROTO_RM = 113;
+                this.library = ctypes.open(this.win_library);
                 try
                 {
-                    // Set up the structs we need
+                    consoleService.logStringMessage("Sixornot - Running on Windows XP+, opened library: 'Ws2_32.dll'");
+                    // On Windows resolve remote IPs via native method, but use Firefox method to find local addresses since this always works on Windows
+                    this.resolve_native = true;
+                    this.local_native = false;
+                    // Flags
+                    this.AI_PASSIVE = 0x01;
+                    this.AI_CANONNAME = 0x02;
+                    this.AI_NUMERICHOST = 0x04;
+                    this.AI_ALL = 0x0100;
+                    this.AI_ADDRCONFIG = 0x0400;
+                    this.AI_NON_AUTHORITATIVE = 0x04000;
+                    this.AI_SECURE = 0x08000;
+                    this.AI_RETURN_PREFERRED_NAMES = 0x10000;
+                    // Address family
+                    this.AF_UNSPEC = 0;
+                    this.AF_INET = 2;
+                    this.AF_INET6 = 23;
+                    // Socket type
+                    this.SOCK_STREAM = 1;
+                    /* this.SOCK_DGRAM = 2;
+                    this.SOCK_RAW = 3;
+                    this.SOCK_RDM = 4;
+                    this.SOCK_SEQPACKET = 5; */
+                    // Protocol
+                    this.IPPROTO_UNSPEC = 0;
+                    this.IPPROTO_TCP = 6;
+                    this.IPPROTO_UDP = 17;
+                    //this.IPPROTO_RM = 113;
+                    // Set up the structs we need on Windows XP+
+                    /*
+                    From: http://msdn.microsoft.com/en-us/library/ms740496(v=vs.85).aspx
+                    struct sockaddr {
+                            ushort  sa_family;
+                            char    sa_data[14];
+                    };
+
+                    struct sockaddr_in {
+                            short   sin_family;
+                            u_short sin_port;
+                            struct  in_addr sin_addr;
+                            char    sin_zero[8];
+                    };
+                    struct sockaddr_in6 {
+                            short   sin6_family;
+                            u_short sin6_port;
+                            u_long  sin6_flowinfo;
+                            struct  in6_addr sin6_addr;
+                            u_long  sin6_scope_id;
+                    };
+                    // From: http://msdn.microsoft.com/en-us/library/ms738571(v=VS.85).aspx
+                    typedef struct in_addr {
+                      union {
+                        struct {
+                          u_char s_b1,s_b2,s_b3,s_b4;
+                        } S_un_b;
+                        struct {
+                          u_short s_w1,s_w2;
+                        } S_un_w;
+                        u_long S_addr;
+                      } S_un;
+                    } IN_ADDR, *PIN_ADDR, FAR *LPIN_ADDR;
+                    From: http://msdn.microsoft.com/en-us/library/ms738560(v=VS.85).aspx
+                    typedef struct in6_addr {
+                      union {
+                        u_char  Byte[16];
+                        u_short Word[8];
+                      } u;
+                    } IN6_ADDR, *PIN6_ADDR, FAR *LPIN6_ADDR;
+                    */
                     this.sockaddr = ctypes.StructType("sockaddr", [
-                                        {sa_family : ctypes.unsigned_short},
-                                        {sa_data : ctypes.unsigned_char.array(28)}]);
+                                        {sa_family : ctypes.unsigned_short},            // Address family (2)
+                                        {sa_data : ctypes.unsigned_char.array(28)}      // Address value (max possible size) (28)
+                                        ]);                                             // (30)
+                    this.sockaddr_in = ctypes.StructType("sockaddr_in", [
+                                        {sin_family : ctypes.short},                    // Address family (2)
+                                        {sin_port : ctypes.unsigned_short},             // Socket port (2)
+                                        {sin_addr : ctypes.unsigned_long},              // Address value (or could be struct in_addr) (4)
+                                        {sin_zero : ctypes.char.array(8)}               // Padding (8)
+                                        ]);                                             // (16)
+                    this.sockaddr_in6 = ctypes.StructType("sockaddr_in6", [
+                                        {sin6_family : ctypes.short},                   // Address family (2)
+                                        {sin6_port : ctypes.unsigned_short},            // Socket port (2)
+                                        {sin6_flowinfo : ctypes.unsigned_long},         // IP6 flow information (4)
+                                        {sin6_addr : ctypes.unsigned_char.array(16)},   // IP6 address value (or could be struct in6_addr) (16)
+                                        {sin6_scope_id : ctypes.unsigned_long}          // Scope zone index (4)
+                                        ]);                                             // (28)
                     this.addrinfo = ctypes.StructType("addrinfo");
                     this.addrinfo.define([
                                         {ai_flags : ctypes.int}, 
@@ -1427,6 +1485,7 @@ var DnsHandler =
                 catch (e)
                 {
                     consoleService.logStringMessage("Sixornot - Unable to init native resolver, falling back to native");
+                    Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
                     this.library.close();
                     this.resolve_native = false;
                     this.local_native = false;
@@ -1686,7 +1745,7 @@ var DnsHandler =
     // Converts a sockaddr structure to a string representation of its address
     sockaddr_to_str : function (sockaddr)
     {
-        consoleService.logStringMessage("Sixornot - sockaddr_to_ip");
+        consoleService.logStringMessage("Sixornot - sockaddr_to_str");
         if (sockaddr.sa_family === this.AF_INET)
         {
             // Cast to sockaddr_in
@@ -1694,9 +1753,8 @@ var DnsHandler =
             // Read IP address value as 32bit number
             let ip4 = sockaddr_in.sin_addr;
             // Convert to dotted decimal notation + return string
-            //let ip4str = [ip4 >>> 24, (ip4 << 8) >>> 24, (ip4 << 16) >>> 24, (ip4 << 24) >>> 24].join(".");
-            let ip4str = [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
-            return ip4str;
+            // return [ip4 >>> 24, (ip4 << 8) >>> 24, (ip4 << 16) >>> 24, (ip4 << 24) >>> 24].join(".");
+            return [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
         }
         else if (sockaddr.sa_family === this.AF_INET6)
         {
@@ -1730,50 +1788,6 @@ var DnsHandler =
         {
             // Unknown address family, return false
             return false;
-        }
-    },
-
-    // Convert IP object into a Javascript string
-    get_ip_str : function (address, address_family)
-    {
-        // Find everything between square brackets
-        consoleService.logStringMessage("Sixornot - get_ip_str");
-        let r = RegExp(/\[(.*?)\]/);
-        let ip_array = r.exec(address.sa_data.toString())[0].split(",");
-
-        consoleService.logStringMessage("Sixornot - get_ip_str - ip_array is: " + ip_array);
-        // IPv4 Addresses
-        if (address_family === this.AF_INET)
-        {
-            // Stored in bytes 2-5 (zero-index)
-            // [0, 0, 82, 113, 152, 84, 0, 0, 0, 0, 0, 0, 0, 0, 228, 92, 46, 126, 0, 0, 0, 128, 65, 0, 0, 0, 136, 52]
-            let ip4_array = ip_array.slice(2,6);
-            return ip4_array.map(Number).join(".");
-        }
-        // MAC Addresses (OSX-specific for now!)
-        if (address_family === this.AF_LINK)
-        {
-            // Stored in bytes 12-17 (zero-index)
-            // [7, 0, 6, 6, 6, 0, 118, 109, 110, 101, 116, 49, ||0, 80, 86, 192, 0, 1||, 20, 0, 0, 0, 6, 0, 0, 6, 14, 0])
-            let mac_array = ip_array.slice(12, 18);
-            return mac_array.map(this.to_hex).join("-");
-        }
-        // IPv6 Addresses
-        if (address_family === this.AF_INET6)
-        {
-            // Stored in bytes 6-21 (zero-index)
-            // [0, 0, 0, 0, 0, 0, ||32, 1, 4, 112, 31, 9, 3, 152, 0, 0, 0, 0, 0, 0, 0, 2||, 0, 0, 0, 0, 56, 52]
-            let ip6_array = ip_array.slice(6,22);
-
-            // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
-            let i = 0, m = "", c = [];
-            for (i = 0; i < 16; i++) {
-                c.push(((Number(ip6_array[i++]) << 8) + Number(ip6_array[i])).toString(16));
-            }
-            return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
-                m = (t.length > m.length) ? t : m;
-                return t;
-            }).replace(m || ' ', '::');
         }
     },
 
@@ -1995,5 +2009,52 @@ var DnsHandler =
             return null;
         }
     } */
+
+    /* // Convert IP object into a Javascript string
+    get_ip_str : function (address, address_family)
+    {
+        // Find everything between square brackets
+        consoleService.logStringMessage("Sixornot - get_ip_str");
+        let r = RegExp(/\[(.*?)\]/);
+        let ip_array = r.exec(address.sa_data.toString())[0].split(",");
+
+        consoleService.logStringMessage("Sixornot - get_ip_str - ip_array is: " + ip_array);
+        // IPv4 Addresses
+        if (address_family === this.AF_INET)
+        {
+            // Stored in bytes 2-5 (zero-index)
+            // [0, 0, 82, 113, 152, 84, 0, 0, 0, 0, 0, 0, 0, 0, 228, 92, 46, 126, 0, 0, 0, 128, 65, 0, 0, 0, 136, 52]
+            let ip4_array = ip_array.slice(2,6);
+            return ip4_array.map(Number).join(".");
+        }
+        // MAC Addresses (OSX-specific for now!)
+        if (address_family === this.AF_LINK)
+        {
+            // Stored in bytes 12-17 (zero-index)
+            // [7, 0, 6, 6, 6, 0, 118, 109, 110, 101, 116, 49, ||0, 80, 86, 192, 0, 1||, 20, 0, 0, 0, 6, 0, 0, 6, 14, 0])
+            let mac_array = ip_array.slice(12, 18);
+            return mac_array.map(this.to_hex).join("-");
+        }
+        // IPv6 Addresses
+        if (address_family === this.AF_INET6)
+        {
+            // Stored in bytes 6-21 (zero-index)
+            // [0, 0, 0, 0, 0, 0, ||32, 1, 4, 112, 31, 9, 3, 152, 0, 0, 0, 0, 0, 0, 0, 2||, 0, 0, 0, 0, 56, 52]
+            let ip6_array = ip_array.slice(6,22);
+
+            // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
+            let i = 0, m = "", c = [];
+            for (i = 0; i < 16; i++) {
+                c.push(((Number(ip6_array[i++]) << 8) + Number(ip6_array[i])).toString(16));
+            }
+            return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
+                m = (t.length > m.length) ? t : m;
+                return t;
+            }).replace(m || ' ', '::');
+        }
+    }, */
+
 };
+
+
 
