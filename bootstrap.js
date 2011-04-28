@@ -1310,7 +1310,7 @@ var DnsHandler =
                                     {sin6_family : ctypes.uint8_t},                 // Address family (1)
                                     {sin6_port : ctypes.uint16_t},                  // Socket port (2)
                                     {sin6_flowinfo : ctypes.uint32_t},              // IP6 flow information (4)
-                                    {sin6_addr : ctypes.uint16_t.array(8)},         // IP6 address value (or could be struct in6_addr) (16)
+                                    {sin6_addr : ctypes.uint8_t.array(16)},         // IP6 address value (or could be struct in6_addr) (16)
                                     {sin6_scope_id : ctypes.uint32_t}               // Scope zone index (4)
                                     ]);                                             // (28)
                 this.addrinfo = ctypes.StructType("addrinfo");
@@ -1694,7 +1694,8 @@ var DnsHandler =
             // Read IP address value as 32bit number
             let ip4 = sockaddr_in.sin_addr;
             // Convert to dotted decimal notation + return string
-            let ip4str = [ip4 >>> 24, (ip4 << 8) >>> 24, (ip4 << 16) >>> 24, (ip4 << 24) >>> 24].join(".");
+            //let ip4str = [ip4 >>> 24, (ip4 << 8) >>> 24, (ip4 << 16) >>> 24, (ip4 << 24) >>> 24].join(".");
+            let ip4str = [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
             return ip4str;
         }
         else if (sockaddr.sa_family === this.AF_INET6)
@@ -1702,14 +1703,18 @@ var DnsHandler =
             // Cast to sockaddr_in6
             let sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
             // Read IPv6 address value as 8 16bit numbers
-            let ip6 = [];
+            /* let ip6 = [];
             for (let i = 0; i < sockaddr_in6.sin6_addr.length; i++)
             {
                 ip6.push(sockaddr_in6.sin6_addr[i]);
-            }
+            } */
             // Convert to hex quad notation + return string
             // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
-            return ip6.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
+            let i = 0, m = "", c = [];
+            for (i = 0; i < sockaddr_in6.sin6_addr.length; i++) {
+                c.push(((Number(sockaddr_in6.sin6_addr[i++]) << 8) + Number(sockaddr_in6.sin6_addr[i])).toString(16));
+            }
+            return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
                 m = (t.length > m.length) ? t : m;
                 return t;
             }).replace(m || ' ', '::');
@@ -1912,7 +1917,7 @@ var DnsHandler =
             consoleService.logStringMessage("Sixornot - loop");
 
 //            let new_addr = this.get_ip_str(i.ai_addr.contents, i.ai_family);
-            let new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
+            let new_addr = this.sockaddr_to_str(i.ai_addr.contents);
 
             // Add to addresses array, strip duplicates as we go
             if (addresses.indexOf(new_addr) === -1)
