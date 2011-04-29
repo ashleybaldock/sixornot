@@ -1521,6 +1521,7 @@ var DnsHandler =
 
     typeof_ip4 : function (ip_address)
     {
+        // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
         if (!DnsHandler.is_ip4(ip_address))
         {
             return false;
@@ -1575,7 +1576,7 @@ var DnsHandler =
             return "localhost";
         }
         else if (split_address[0] === 10
-             || (split_address[0] === 172 && [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31].indexOf(split_address[1]) !== -1)
+             || (split_address[0] === 172 && split_address[1] >= 16 && split_address[1] <= 31)
              || (split_address[0] === 192 && split_address[1] === 168))
         {
             return "rfc1918";
@@ -1584,7 +1585,7 @@ var DnsHandler =
         {
             return "linklocal";
         }
-        else if ([240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255].indexOf(split_address[0]) !== -1)
+        else if (split_address[0] >= 240)
         {
             return "reserved";
         }
@@ -1602,7 +1603,7 @@ var DnsHandler =
         {
             return "benchmark";
         }
-        else if ([224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239].indexOf(split_address[0]) !== -1)
+        else if (split_address[0] >= 224 && split_address[0] <= 239)
         {
             return "multicast";
         }
@@ -1900,7 +1901,6 @@ var DnsHandler =
         let ret = this.getifaddrs(retVal.address());
 
         let addresses = [];
-        let notdone = true;
         if (retVal.isNull())
         {
             consoleService.logStringMessage("Sixornot - resolveLocalNative - Got no results from getifaddrs");
@@ -1922,11 +1922,10 @@ var DnsHandler =
         this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi, ctypes.int, this.ifaddrs.ptr.ptr); */
 
         // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-        while (notdone)
+        for (;;)
         {
             consoleService.logStringMessage("Sixornot - loop, sa_family is: " + i.ifa_addr.contents.sa_family);
 
-//            let new_addr = this.get_ip_str(i.ifa_addr.contents, i.ifa_addr.contents.sa_family);
             let new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
 
             // Add to addresses array, check for blank return from get_ip_str, strip duplicates as we go
@@ -1936,13 +1935,9 @@ var DnsHandler =
             }
             if (i.ifa_next.isNull())
             {
-                i = null;
-                notdone = false;
+                break;
             }
-            else
-            {
-                i = i.ifa_next.contents;
-            }
+            i = i.ifa_next.contents;
         }
 
         consoleService.logStringMessage("Sixornot - Found the following addresses: " + addresses);
