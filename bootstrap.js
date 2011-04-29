@@ -389,7 +389,7 @@ function main (win)
         }
 
         // Proxy in use for DNS; can't do a DNS lookup
-        if (dns_handler.isProxiedDNS(url))
+        if (dns_handler.is_proxied_dns(url))
         {
             set_icon(sother_16);
             specialLocation = ["nodnserror"];
@@ -398,7 +398,7 @@ function main (win)
         }
 
         // Ideally just hitting the DNS cache here
-        onReturnedIPs(dns_handler.resolveHost(host));
+        onReturnedIPs(dns_handler.resolve_host(host));
 
         function onReturnedIPs(remoteips)
         {
@@ -425,7 +425,7 @@ function main (win)
             let localips = [];
             try
             {
-                localips = dns_handler.resolveLocal();
+                localips = dns_handler.resolve_local();
             }
             catch (e)
             {
@@ -1844,21 +1844,21 @@ var dns_handler =
     },
 
     // Return the IP addresses of the local host
-    resolveLocal : function ()
+    resolve_local : function ()
     {
         if (this.local_native)
         {
-            return this.resolveLocalNative();
+            return this.resolve_local_native();
         }
         else
         {
-            return this.resolveLocalFirefox();
+            return this.resolve_local_firefox();
         }
     },
 
-    resolveLocalFirefox : function ()
+    resolve_local_firefox : function ()
     {
-        consoleService.logStringMessage("Sixornot - resolveLocalFirefox - resolving local host");
+        consoleService.logStringMessage("Sixornot - resolve_local_firefox - resolving local host");
         let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
         var IPAddresses = [];
         while (dnsresponse.hasMore())
@@ -1868,40 +1868,26 @@ var dns_handler =
         return IPAddresses;
     },
 
-    resolveLocalNative : function ()
+    resolve_local_native : function ()
     {
-        consoleService.logStringMessage("Sixornot - resolveLocalNative - resolving local host");
+        consoleService.logStringMessage("Sixornot - resolve_local_native - resolving local host");
 
-        let retValue = this.ifaddrs();
-        let retVal = retValue.address();
-        let ret = this.getifaddrs(retVal.address());
+        let first_addr = this.ifaddrs();
+        let first_addr_ptr = first_addr.address();
+        let ret = this.getifaddrs(first_addr_ptr.address());
 
-        let addresses = [];
-        if (retVal.isNull())
+        if (first_addr_ptr.isNull())
         {
-            consoleService.logStringMessage("Sixornot - resolveLocalNative - Got no results from getifaddrs");
+            consoleService.logStringMessage("Sixornot - resolve_local_native - Got no results from getifaddrs");
             return ["FAIL"];
         }
-        let i = retVal.contents;
 
-        /* this.ifaddrs = ctypes.StructType("ifaddrs");
-        this.ifaddrs.define([
-                             {ifa_next : this.ifaddrs.ptr}, 
-                             {ifa_name : ctypes.char.ptr}, 
-                             {ifa_flags : ctypes.unsigned_int}, 
-                             {ifa_addr : this.sockaddr.ptr}, 
-                             {ifa_netmask : this.sockaddr.ptr}, 
-                             {ifa_dstaddr : this.sockaddr.ptr}, 
-                             {ifa_data : ctypes.voidptr_t}, 
-                            ]);
-        // Set up the ctypes functions we need
-        this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi, ctypes.int, this.ifaddrs.ptr.ptr); */
+        let i = first_addr_ptr.contents;
+        let addresses = [];
 
         // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
         for (;;)
         {
-            consoleService.logStringMessage("Sixornot - loop, sa_family is: " + i.ifa_addr.contents.sa_family);
-
             let new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
 
             // Add to addresses array, check for blank return from get_ip_str, strip duplicates as we go
@@ -1921,36 +1907,37 @@ var dns_handler =
     },
 
     // Resolve a host using either native or builtin functionality
-    resolveHost : function (host)
+    resolve_host : function (host)
     {
         if (this.resolve_native)
         {
-            return this.resolveHostNative(host);
+            return this.resolve_host_native(host);
         }
         else
         {
-            return this.resolveHostFirefox(host);
+            return this.resolve_host_firefox(host);
         }
     },
 
     // Resolve a host using Firefox's built-in functionality
-    resolveHostFirefox : function (host)
+    resolve_host_firefox : function (host)
     {
-        consoleService.logStringMessage("Sixornot - resolveHostFirefox - resolving host: " + host);
+        consoleService.logStringMessage("Sixornot - resolve_host_firefox - resolving host: " + host);
         let dnsresponse = dnsService.resolve(host, true);
-        var IPAddresses = [];
+        var ip_addresses = [];
         while (dnsresponse.hasMore())
         {
-            IPAddresses.push(dnsresponse.getNextAddrAsString());
+            ip_addresses.push(dnsresponse.getNextAddrAsString());
         }
-        return IPAddresses;
+        return ip_addresses;
     },
 
     // Proxy to native getaddrinfo functionality
-    resolveHostNative : function (host)
+    resolve_host_native : function (host)
     {
-        consoleService.logStringMessage("Sixornot - resolveHostNative - resolving host: " + host);
+        consoleService.logStringMessage("Sixornot - resolve_host_native - resolving host: " + host);
 
+        // Debugging - TODO if needed split this into function that creates addrinfo with flags etc.
         let hints = this.addrinfo();
         hints.ai_flags = 0x00;
         hints.ai_family = this.AF_UNSPEC;
@@ -1958,24 +1945,23 @@ var dns_handler =
         hints.ai_protocol = this.IPPROTO_UNSPEC;
         hints.ai_addrlen = 0;
 
-        let retValue = this.addrinfo();
-        let retVal = retValue.address();
-        let ret = this.getaddrinfo(host, null, hints.address(), retVal.address());
+        let first_addr = this.addrinfo();
+        let first_addr_ptr = first_addr.address();
+        let ret = this.getaddrinfo(host, null, hints.address(), first_addr_ptr.address());
+        // TODO - Check ret for errors
 //        let ret = this.getaddrinfo(host, null, null, retVal.address());
-        let addresses = [];
-        let notdone = true;
-        if (retVal.isNull())
+        if (first_addr_ptr.isNull())
         {
-            consoleService.logStringMessage("Sixornot - resolveHostNative - Unable to resolve host, got no results from getaddrinfo");
+            consoleService.logStringMessage("Sixornot - resolve_host_native - Unable to resolve host, got no results from getaddrinfo");
             return ["FAIL"];
         }
-        let i = retVal.contents;
+
+        let i = first_addr_ptr.contents;
+        let addresses = [];
 
         // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-        while (notdone)
+        for (;;)
         {
-            consoleService.logStringMessage("Sixornot - loop");
-
             let new_addr = this.sockaddr_to_str(i.ai_addr.contents);
 
             // Add to addresses array, strip duplicates as we go
@@ -1985,13 +1971,9 @@ var dns_handler =
             }
             if (i.ai_next.isNull())
             {
-                i = null;
-                notdone = false;
+                break;
             }
-            else
-            {
-                i = i.ai_next.contents;
-            }
+            i = i.ai_next.contents;
         }
 
         consoleService.logStringMessage("Sixornot - Found the following addresses: " + addresses);
@@ -1999,7 +1981,8 @@ var dns_handler =
 
     },
 
-    isProxiedDNS : function (url)  // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
+    // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
+    is_proxied_dns : function (url)
     {
         var uri = ioService.newURI(url, null, null);
         var proxyinfo = proxyService.resolve(uri, 0);  // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
