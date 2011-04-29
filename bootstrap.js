@@ -1804,43 +1804,56 @@ var dns_handler =
     sockaddr_to_str : function (sockaddr)
     {
         consoleService.logStringMessage("Sixornot - sockaddr_to_str");
-        if (sockaddr.sa_family === this.AF_INET)
+        let dispatch = [];
+        dispatch[this.AF_INET] = this._af_inet_to_str;
+        dispatch[this.AF_INET6] = this._af_inet6_to_str;
+        dispatch[this.AF_LINK] = this._af_link_to_str;
+
+        let f = dispatch[sockaddr.sa_family];
+        if (f)
         {
-            // Cast to sockaddr_in
-            let sockaddr_in = ctypes.cast(sockaddr, this.sockaddr_in);
-            // Read IP address value as 32bit number
-            let ip4 = sockaddr_in.sin_addr;
-            // Convert to dotted decimal notation + return string
-            // return [ip4 >>> 24, (ip4 << 8) >>> 24, (ip4 << 16) >>> 24, (ip4 << 24) >>> 24].join(".");
-            return [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
+            // Need to use function.call so that the value of "this" in the called function is set correctly
+            return f.call(this, sockaddr);
         }
-        else if (sockaddr.sa_family === this.AF_INET6)
-        {
-            // Cast to sockaddr_in6
-            let sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
-            // Convert to hex quad notation + return string
-            // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
-            let i = 0, m = "", c = [];
-            for (i = 0; i < sockaddr_in6.sin6_addr.length; i++) {
-                c.push(((Number(sockaddr_in6.sin6_addr[i++]) << 8) + Number(sockaddr_in6.sin6_addr[i])).toString(16));
-            }
-            return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
-                m = (t.length > m.length) ? t : m;
-                return t;
-            }).replace(m || ' ', '::');
+        // Unknown address family, return false
+        return false;
+    },
+
+    _af_inet_to_str : function (sockaddr)
+    {
+        consoleService.logStringMessage("Sixornot - _af_inet_to_str");
+        // Cast to sockaddr_in
+        let sockaddr_in = ctypes.cast(sockaddr, this.sockaddr_in);
+        // Read IP address value as 32bit number
+        let ip4 = sockaddr_in.sin_addr;
+        // Convert to dotted decimal notation + return string
+        // return [ip4 >>> 24, (ip4 << 8) >>> 24, (ip4 << 16) >>> 24, (ip4 << 24) >>> 24].join(".");
+        return [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
+    },
+    _af_inet6_to_str : function (sockaddr)
+    {
+        consoleService.logStringMessage("Sixornot - _af_inet6_to_str");
+        // Cast to sockaddr_in6
+        let sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
+        // Convert to hex quad notation + return string
+        // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
+        // TODO - replace this horrible code
+        let i = 0, m = "", c = [];
+        for (i = 0; i < sockaddr_in6.sin6_addr.length; i++) {
+            c.push(((Number(sockaddr_in6.sin6_addr[i++]) << 8) + Number(sockaddr_in6.sin6_addr[i])).toString(16));
         }
-        else if (sockaddr.sa_family === this.AF_LINK)
-        {
-            // Cast to ???
-            // Read MAC address value
-            // Convert to MAC format with '-' separators + return string
-            return false;
-        }
-        else
-        {
-            // Unknown address family, return false
-            return false;
-        }
+        return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
+            m = (t.length > m.length) ? t : m;
+            return t;
+        }).replace(m || ' ', '::');
+    },
+    _af_link_to_str : function (sockaddr)
+    {
+        consoleService.logStringMessage("Sixornot - _af_link_to_str");
+        // Cast to ???
+        // Read MAC address value
+        // Convert to MAC format with '-' separators + return string
+        return false;
     },
 
     // Return the IP addresses of the local host
@@ -1860,12 +1873,12 @@ var dns_handler =
     {
         consoleService.logStringMessage("Sixornot - resolve_local_firefox - resolving local host");
         let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
-        var IPAddresses = [];
+        let ip_addresses = [];
         while (dnsresponse.hasMore())
         {
-            IPAddresses.push(dnsresponse.getNextAddrAsString());
+            ip_addresses.push(dnsresponse.getNextAddrAsString());
         }
-        return IPAddresses;
+        return ip_addresses;
     },
 
     resolve_local_native : function ()
@@ -1924,7 +1937,7 @@ var dns_handler =
     {
         consoleService.logStringMessage("Sixornot - resolve_host_firefox - resolving host: " + host);
         let dnsresponse = dnsService.resolve(host, true);
-        var ip_addresses = [];
+        let ip_addresses = [];
         while (dnsresponse.hasMore())
         {
             ip_addresses.push(dnsresponse.getNextAddrAsString());
