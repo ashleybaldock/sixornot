@@ -284,7 +284,7 @@ function main (win)
         toolbarPopupMenu && toolbarPopupMenu.parentNode.removeChild(toolbarPopupMenu);
         toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
 
-        //DnsHandler.cancelRequest(DNSrequest);
+        //dns_handler.cancelRequest(DNSrequest);
     }, win);
 
     // If we loaded the address bar icon UI, add a callback to remove it on unload
@@ -342,7 +342,7 @@ function main (win)
         consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
 
         // If we've changed pages before completing a lookup, then abort the old request first
-//        DnsHandler.cancelRequest(DNSrequest);
+//        dns_handler.cancelRequest(DNSrequest);
         DNSrequest = null;
 
         let set_icon = function (icon)
@@ -389,7 +389,7 @@ function main (win)
         }
 
         // Proxy in use for DNS; can't do a DNS lookup
-        if (DnsHandler.isProxiedDNS(url))
+        if (dns_handler.isProxiedDNS(url))
         {
             set_icon(sother_16);
             specialLocation = ["nodnserror"];
@@ -398,7 +398,7 @@ function main (win)
         }
 
         // Ideally just hitting the DNS cache here
-        onReturnedIPs(DnsHandler.resolveHost(host));
+        onReturnedIPs(dns_handler.resolveHost(host));
 
         function onReturnedIPs(remoteips)
         {
@@ -414,16 +414,18 @@ function main (win)
                 return;
             }
 
+            consoleService.logStringMessage("Sixornot - remoteips is: " + remoteips + "; typeof remoteips is: " + typeof remoteips);
+
             // Parse list of IPs for IPv4/IPv6
-            localipv6s = remoteips.filter(DnsHandler.is_ip6);
-            localipv4s = remoteips.filter(DnsHandler.is_ip4);
+            ipv6s = remoteips.filter(dns_handler.is_ip6);
+            ipv4s = remoteips.filter(dns_handler.is_ip4);
 
             // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
             let localips = [];
             try
             {
-                localips = DnsHandler.resolveLocal();
+                localips = dns_handler.resolveLocal();
             }
             catch (e)
             {
@@ -434,9 +436,9 @@ function main (win)
             consoleService.logStringMessage("Sixornot - localips is: " + localips + "; typeof localips is: " + typeof localips);
             // Parse list of local IPs for IPv4/IPv6
             localipv6s = localips.filter(function (a) {
-                return DnsHandler.is_ip6(a) && DnsHandler.typeof_ip6(a) !== "localhost"; });
+                return dns_handler.is_ip6(a) && dns_handler.typeof_ip6(a) !== "localhost"; });
             localipv4s = localips.filter(function (a) {
-                return DnsHandler.is_ip4(a) && DnsHandler.typeof_ip4(a) !== "localhost"; });
+                return dns_handler.is_ip4(a) && dns_handler.typeof_ip4(a) !== "localhost"; });
 
             consoleService.logStringMessage("Sixornot - found IP addresses");
 
@@ -515,7 +517,7 @@ function main (win)
                 else
                 {
                     // If at least one of the IPv6 addresses we have is of the global type show green icon
-                    if (localipv6s.map(DnsHandler.typeof_ip6).indexOf("global") !== -1)
+                    if (localipv6s.map(dns_handler.typeof_ip6).indexOf("global") !== -1)
                     {
                         set_icon(s6and4_16);
                     }
@@ -558,7 +560,6 @@ function main (win)
             let currentBrowser = currentWindow.getBrowser();
             currentBrowser.selectedTab = currentBrowser.addTab(commandString);
         }
-        // TODO - merge taddr and tgrey cases into single case which uses remainder of value field to determine which preference to set
         else if (commandID === "tbool")
         {
             // Toggle address bar icon visibility
@@ -807,7 +808,7 @@ function main (win)
         // TODO - Convert other functions to this form
         let v6_italic = function (ip6_address)
         {
-            return DnsHandler.typeof_ip6(ip6_address) !== "global";
+            return dns_handler.typeof_ip6(ip6_address) !== "global";
         };
         if (localipv6s.length === 1)
         {
@@ -824,7 +825,7 @@ function main (win)
 
         let v4_italic = function (ip4_address)
         {
-            return ["global", "rfc1918"].indexOf(DnsHandler.typeof_ip4(ip4_address)) === -1;
+            return ["global", "rfc1918"].indexOf(dns_handler.typeof_ip4(ip4_address)) === -1;
         };
         // Add local IPv4 address(es) to tooltip with special case if only one
         if (localipv4s.length === 1)
@@ -932,13 +933,13 @@ function startup (data)
         include(addon.getResourceURI("includes/utils.js").spec);
         include(addon.getResourceURI("includes/locale.js").spec);
 
-        // Init DnsHandler
-        DnsHandler.init();
+        // Init dns_handler
+        dns_handler.init();
 
-        // Run DnsHandler tests
-        DnsHandler.test_normalise_ip6();
-        DnsHandler.test_typeof_ip6();
-        DnsHandler.test_is_ip6();
+        // Run dns_handler tests
+        dns_handler.test_normalise_ip6();
+        dns_handler.test_typeof_ip6();
+        dns_handler.test_is_ip6();
 
         initLocalisation(addon, "sixornot.properties");
 
@@ -969,9 +970,6 @@ function startup (data)
         // Set active image set
         set_iconset();
 
-//        let root = addon.getResourceURI("").spec;
-        consoleService.logStringMessage("Sixornot - hasresource is:" + addon.hasResource("content/options.xul"));
-
         // Load into existing windows and set callback to load into any new ones too
         watchWindows(main);
 
@@ -993,8 +991,8 @@ function reload ()
 function shutdown (data, reason)
 {
     consoleService.logStringMessage("Sixornot - shutdown");
-    // Shutdown DnsHandler
-    DnsHandler.shutdown();
+    // Shutdown dns_handler
+    dns_handler.shutdown();
 
     if (reason !== APP_SHUTDOWN)
     {
@@ -1191,7 +1189,7 @@ defineLazyGetter("clipboardHelper", function () {
 
 
 // The DNS Handler which does most of the work of the extension
-var DnsHandler =
+var dns_handler =
 {
     AF_UNSPEC: null,
     AF_INET: null,
@@ -1500,7 +1498,7 @@ var DnsHandler =
     typeof_ip4 : function (ip_address)
     {
         // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
-        if (!DnsHandler.is_ip4(ip_address))
+        if (!dns_handler.is_ip4(ip_address))
         {
             return false;
         }
@@ -1726,12 +1724,12 @@ var DnsHandler =
     typeof_ip6 : function (ip_address)
     {
         // 1. Check IP version, return false if v4
-        if (!DnsHandler.is_ip6(ip_address))
+        if (!dns_handler.is_ip6(ip_address))
         {
             return false;
         }
         // 2. Normalise address, return false if normalisation fails
-        let norm_address = DnsHandler.normalise_ip6(ip_address);
+        let norm_address = dns_handler.normalise_ip6(ip_address);
         // 3. Compare against type patterns
         if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0000")
         {
