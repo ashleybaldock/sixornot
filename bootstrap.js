@@ -1489,9 +1489,15 @@ var dns_handler =
         }
     },
 
+    validate_ip4 : function (ip_address)
+    {
+        // TODO - Write this function if needed, extensive validation of IPv4 address
+        return false;
+    },
+
+    // Quick check for address family, not a validator (see validate_ip4)
     is_ip4 : function (ip_address)
     {
-        // Check IPv4 address for validity (needs a better check)
         return (ip_address.indexOf(".") !== -1);
     },
 
@@ -1623,14 +1629,15 @@ var dns_handler =
         return overall;
     },
 
+    validate_ip6 : function (ip_address)
+    {
+        // TODO - Write this function if needed, extensive validation of IPv6 address
+        return false;
+    },
+
+    // Quick check for address family, not a validator (see validate_ip6)
     is_ip6 : function (ip_address)
     {
-        // Needs a more robust test for a valid IPv6 address
-        // Must contain at most one ::
-        // May contain up to 7 : (dependant on :: or not)
-        // May contain exactly one %
-        // Chars before the % may include 0-9, a-f, A-F, :
-        // Chars after the % may include 0-9, a-f, A-F
         return (ip_address.indexOf(":") !== -1);
     },
 
