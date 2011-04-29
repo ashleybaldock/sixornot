@@ -394,7 +394,6 @@ function main (win)
             set_icon(sother_16);
             specialLocation = ["nodnserror"];
             consoleService.logStringMessage("Sixornot is in proxied mode");
-//            Sixornot.warning(window, "sixornot.warn.proxy", strings.GetStringFromName("proxywarnmessage"));
             return;
         }
 
@@ -415,22 +414,10 @@ function main (win)
                 return;
             }
 
-            let i = 0;
-
             // Parse list of IPs for IPv4/IPv6
-            for (i = 0; i < remoteips.length; i++)
-            {
-                if (remoteips[i].indexOf(":") !== -1)
-                {
-                    ipv6s.push(remoteips[i]);
-                }
-                else
-                {
-                    ipv4s.push(remoteips[i]);
-                }
-            }
+            localipv6s = remoteips.filter(DnsHandler.is_ip6);
+            localipv4s = remoteips.filter(DnsHandler.is_ip4);
 
-            consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
             // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
             let localips = [];
@@ -442,25 +429,16 @@ function main (win)
             {
                 consoleService.logStringMessage("Sixornot - Unable to look up local IP addresses");
                 Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
-                localips = [];
             }
 
             consoleService.logStringMessage("Sixornot - localips is: " + localips + "; typeof localips is: " + typeof localips);
             // Parse list of local IPs for IPv4/IPv6
-            for (i = 0; i < localips.length; i++)
-            {
-                if (localips[i].indexOf(":") !== -1)
-                {
-                    localipv6s.push(localips[i]);
-                }
-                else
-                {
-                    localipv4s.push(localips[i]);
-                }
-            }
+            localipv6s = localips.filter(function (a) {
+                return DnsHandler.is_ip6(a) && DnsHandler.typeof_ip6(a) !== "localhost"; });
+            localipv4s = localips.filter(function (a) {
+                return DnsHandler.is_ip4(a) && DnsHandler.typeof_ip4(a) !== "localhost"; });
 
             consoleService.logStringMessage("Sixornot - found IP addresses");
-            consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
 
             // This must now work as we have a valid IP address
             updateIcon();
@@ -470,7 +448,7 @@ function main (win)
 
     /* Update the status icon state (icon & tooltip)
        Returns true if it's done and false if unknown */
-    function updateIcon()
+    function updateIcon ()
     {
         consoleService.logStringMessage("Sixornot - updateIcon");
         let addressIcon = gbi(doc, ADDRESS_IMG_ID);
