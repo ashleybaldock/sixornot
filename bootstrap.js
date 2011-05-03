@@ -1604,12 +1604,12 @@ var dns_handler =
     {
         consoleService.logStringMessage("Sixornot - _local_ctypes_async - resolving local host");
         // This uses dns_worker to do the work asynchronously
-        // Add callback to request mapping table
-        this.next_callback_id = this.next_callback_id + 1;
-        this.callback_ids[this.next_callback_id] = callback;
-        let request_id = 2;
-        this.worker.postMessage([this.next_callback_id, request_id, null]);
-        return true;
+
+        let new_callback_id = this.add_callback_id(callback);
+
+        this.worker.postMessage([new_callback_id, 2, null]);
+
+        return this.make_cancel_obj(new_callback_id);
     },
 
     // Proxy to _remote_firefox_async since it does much the same thing
@@ -1625,6 +1625,7 @@ var dns_handler =
     resolve_remote_async : function (host, callback)
     {
         consoleService.logStringMessage("Sixornot - dns_handler:resolve_remote_async");
+        consoleService.logStringMessage("Sixornot - dns_handler:resolve_remote_async, typeof callback: " + typeof callback);
         if (this.remote_ctypes)
         {
             // If remote resolution is happening via ctypes...
@@ -1637,16 +1638,71 @@ var dns_handler =
         }
     },
 
+    // Return index of this.callback_ids for a specified callback_id
+    find_callback_by_id : function (callback_id)
+    {
+        consoleService.logStringMessage("Sixornot - dns_handler:find_callback_by_id: " + callback_id);
+        // Callback IDs is an array of 2-item arrays - [ID, callback]
+        // Search array for item with ID, if found remove it
+        let f = function (a)
+        {
+            return a[0];
+        };
+        // Returns -1 if ID not found
+        return this.callback_ids.map(f).indexOf(callback_id);
+    },
+
+    // Search this.callback_ids for the ID in question, remove it if it exists
+    remove_callback_id : function (callback_id)
+    {
+        consoleService.logStringMessage("Sixornot - dns_handler:remove_callback_id: " + callback_id);
+        consoleService.logStringMessage("Sixornot - dns_handler:remove_callback_id, array is: " + this.callback_ids.toSource());
+        let i = this.find_callback_by_id(callback_id);
+        consoleService.logStringMessage("Sixornot - dns_handler:remove_callback_id, i is: " + i);
+        if (i !== -1)
+        {
+            // Return the callback function
+            let j = this.callback_ids.splice(i, 1);
+            consoleService.logStringMessage("Sixornot - dns_handler:remove_callback_id, j is: " + j.toSource());
+//            return this.callback_ids.splice(i, 1)[1];
+            return j[0][1];
+        }
+        // If ID not found, return false
+        return false;
+    },
+
+    // Add a callback to the callback_ids array with the next available ID
+    add_callback_id : function (callback)
+    {
+        // Use next available callback ID, return that ID
+        this.next_callback_id = this.next_callback_id + 1;
+        this.callback_ids.push([this.next_callback_id, callback]);
+        return this.next_callback_id;
+    },
+
+    make_cancel_obj : function (callback_id)
+    {
+        let obj =
+        {
+            cancel : function ()
+            {
+                // Remove ID from callback_ids if it exists there
+                dns_handler.remove_callback_id(callback_id);
+            }
+        }
+        return obj;
+    },
+
     _remote_ctypes_async : function (host, callback)
     {
         consoleService.logStringMessage("Sixornot - dns_handler:_remote_ctypes_async");
         // This uses dns_worker to do the work asynchronously
-        this.next_callback_id = this.next_callback_id + 1;
-        this.callback_ids[this.next_callback_id] = callback;
-        let request_id = 1;
-        this.worker.postMessage([this.next_callback_id, request_id, host]);
-        // TODO - This should return an object with a cancel() method which cancels the request
-        return true;
+
+        let new_callback_id = this.add_callback_id(callback);
+
+        this.worker.postMessage([new_callback_id, 1, host]);
+
+        return this.make_cancel_obj(new_callback_id);
     },
 
     _remote_firefox_async : function (host, callback)
@@ -1723,10 +1779,13 @@ var dns_handler =
         // remotelookup/locallookup, find correct callback and call it
         else if (evt.data[1] === 1 || evt.data[1] === 2)
         {
-            let callback = this.callback_ids[evt.data[0]];
+            let callback = this.remove_callback_id(evt.data[0]);
+            consoleService.logStringMessage("Sixornot - dns_handler:onworkermessage, typeof callback: " + typeof callback);
             // Execute callback
-            callback(evt.data[2]);
-            // TODO - Remove expired callback from array
+            if (callback)
+            {
+                callback(evt.data[2]);
+            }
         }
     },
 

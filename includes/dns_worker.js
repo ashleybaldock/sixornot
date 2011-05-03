@@ -81,7 +81,7 @@ var dns =
     local_ctypes: false,
 
     osx_library: "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
-    win_library: "Ws2_32.dll_",
+    win_library: "Ws2_32.dll",
 
     check_remote : function ()
     {
