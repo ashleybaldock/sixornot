@@ -370,23 +370,6 @@ var dns =
         consoleService.logStringMessage("Sixornot(dns_worker) - dns:init completed");
     },
 
-    // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
-    to_hex : function (int_string)
-    {
-        let hex = Number(int_string).toString(16);
-        if (hex.length < 2)
-        {
-            hex = "0" + hex;
-        }
-        return hex;
-    },
-
-    // Ensure decimal number has no spaces etc.
-    to_decimal : function (int_string)
-    {
-        return Number(int_string).toString(10);
-    },
-
     // Converts a sockaddr structure to a string representation of its address
     sockaddr_to_str : function (sockaddr)
     {

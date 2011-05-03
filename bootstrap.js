@@ -398,8 +398,8 @@ function main (win)
         }
 
         // Ideally just hitting the DNS cache here
-//        onReturnedIPs(dns_handler.resolve_host_async(host));
-        dns_handler.resolve_host_async(host, onReturnedIPs);
+//        onReturnedIPs(dns_handler.resolve_remote_async(host));
+        dns_handler.resolve_remote_async(host, onReturnedIPs);
 
         let onReturnedIPs = function (remoteips)
         {
@@ -1604,17 +1604,117 @@ var dns_handler =
         this.worker.postMessage([this.next_callback_id, request_id, null]);
         return true;
     },
-    // Resolve IP addresses of a remote host using DNS
-    resolve_host_async : function (host, callback)
+    resolve_local_firefox : function ()
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:resolve_host_async");
+        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local_firefox - resolving local host");
+        let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
+        let ip_addresses = [];
+        while (dnsresponse.hasMore())
+        {
+            ip_addresses.push(dnsresponse.getNextAddrAsString());
+        }
+        return ip_addresses;
+    },
+
+
+    // Resolve IP addresses of a remote host using DNS
+    // This should return an object which can be used to cancel the pending request
+    resolve_remote_async : function (host, callback)
+    {
+        consoleService.logStringMessage("Sixornot - dns_handler:resolve_remote_async");
+        // If remote resolution is happening via ctypes...
+        return _remote_native_async(host, callback);
+        // Else if using firefox methods
+        return _remote_firefox_async(host, callback);
+    },
+
+    _remote_native_async : function (host, callback)
+    {
+        consoleService.logStringMessage("Sixornot - dns_handler:_remote_native_async");
         // This uses dns_worker to do the work asynchronously
         this.next_callback_id = this.next_callback_id + 1;
         this.callback_ids[this.next_callback_id] = callback;
         let request_id = 1;
         this.worker.postMessage([this.next_callback_id, request_id, host]);
+        // TODO - This should return an object with a cancel() method which cancels the request
         return true;
     },
+
+    _remote_firefox_async : function (host, callback)
+    {
+        consoleService.logStringMessage("Sixornot - dns_handler:_remote_firefox_async");
+
+        let fail = function (reason)
+        {
+            logErrorMessage("Sixornot warning: DNS lookup failure for \"" + host + "\": " + reason);
+            callback(["FAIL"]);
+        };
+
+        let my_callback =
+        {
+            onLookupComplete : function (nsrequest, nsrecord, nsstatus)
+            {
+                // Request has been cancelled
+                if (nsstatus === Components.results.NS_ERROR_ABORT)
+                {
+                    return;
+                }
+                // Request has failed for some reason
+                if (nsstatus !== 0 || !nsrecord || !nsrecord.hasMore())
+                {
+                    if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST)
+                    {
+                        fail("Unknown Host");
+                    }
+                    else
+                    {
+                        fail("status: " + nsstatus);
+                    }
+                    // Address was not found in DNS for some reason
+                    return;  
+                }
+                // Otherwise address was found
+                let ip_addresses = [];
+                while (dnsresponse.hasMore())
+                {
+                    ip_addresses.push(dnsresponse.getNextAddrAsString());
+                }
+                // Call callback for this request with ip_addresses array as argument
+                callback(ip_addresses);
+            }
+        };
+
+        try
+        {
+            return dnsService.asyncResolve(host, 0, my_callback, threadManager.currentThread);
+        }
+        catch (e)
+        {
+            if (e.name && e.name.length)
+            {
+                fail("exception: " + e.name);
+            }
+            else
+            {
+                fail("exception: " + e);
+            }
+            return null;
+        }
+    },
+
+    // Resolve a host using Firefox's built-in functionality
+    resolve_remote_firefox : function (host)
+    {
+        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_remote_firefox - resolving host: " + host);
+        let dnsresponse = dnsService.resolve(host, true);
+        let ip_addresses = [];
+        while (dnsresponse.hasMore())
+        {
+            ip_addresses.push(dnsresponse.getNextAddrAsString());
+        }
+        return ip_addresses;
+    },
+
 
     // Called by worker to pass information back to main thread
     onworkermessage : function (evt)
