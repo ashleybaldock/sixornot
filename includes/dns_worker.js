@@ -18,6 +18,13 @@
  * ***** END LICENSE BLOCK ***** */
 
 
+// Utility functions
+
+let consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
+
+// dns-service is not thread safe
+//let dnsService = XPCOM.createInstance("@mozilla.org/network/dns-service;1");
+
 // Data is an array
 // [callback_id, request_id, data]
 // callback_id is a number which will be passed back to the main thread
@@ -26,32 +33,39 @@
 // request_id references the type of request, check lookup table
 // data is arbitrary information passed to the request_id function
 
+consoleService.logStringMessage("Sixornot(dns_worker)");
 
 var reqids =
 {
     remotelookup: 1,
     locallookup: 2,
+    checkremote: 3,     // Check whether native resolver is in use for remote lookups
+    checklocal: 4,      // Check whether native resolver is in use for local lookups
 }
 
 
-var onmessage = function (evt)
+onmessage = function (evt)
 {
+    consoleService.logStringMessage("Sixornot(dns_worker) - onmessage: " + evt.data);
     if (evt.data && evt.data[1])
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - onmessage");
         let dispatch = [];
         dispatch[reqids.remotelookup] = dns.resolve_host;
         dispatch[reqids.locallookup] = dns.resolve_local;
+        dispatch[reqids.checkremote] = dns.check_remote;
+        dispatch[reqids.checklocal] = dns.check_local;
 
         // Use request_id (data[1]) to select function
-        let f = dispatch[data[1]];
+        let f = dispatch[evt.data[1]];
         if (f)
         {
             // Need to use function.call so that the value of "this" in the called function is set correctly
-            f.call(this, data);
+            let ret = f.call(dns, evt.data[2]);
+            // Return data to main thread
+            postMessage([evt.data[0], evt.data[1], ret]);
         }
     }
-}
+};
 
 // ChromeWorker specific dns functions
 var dns =
@@ -71,6 +85,15 @@ var dns =
 
     osx_library: "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
     win_library: "Ws2_32.dll",
+
+    check_remote : function ()
+    {
+        return this.resolve_native;
+    },
+    check_local : function ()
+    {
+        return this.local_native;
+    },
 
     init : function ()
     {
@@ -344,6 +367,7 @@ var dns =
                 this.local_native = false;
             }
         }
+        consoleService.logStringMessage("Sixornot(dns_worker) - dns:init completed");
     },
 
     // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
@@ -556,30 +580,10 @@ var dns =
         return addresses.slice();
 
     }
-}
+};
 
 // Set up DNS (load ctypes modules etc.)
+consoleService.logStringMessage("Sixornot(dns_worker) - calling dns.init");
 dns.init();
 
-
-// Utility functions
-
-// Lazy getter services
-function defineLazyGetter (getterName, getterFunction)
-{
-    this.__defineGetter__(getterName, function ()
-        {
-            delete this[getterName];
-            return this[getterName] = getterFunction.apply(this);
-        }
-    );
-}
-
-defineLazyGetter("consoleService", function () {
-    return Components.classes["@mozilla.org/consoleservice;1"]
-                     .getService(Components.interfaces.nsIConsoleService);
-});
-defineLazyGetter("dnsService", function () {
-    return Components.classes["@mozilla.org/network/dns-service;1"].getService(Components.interfaces.nsIDNSService);
-});
 

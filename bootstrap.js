@@ -426,6 +426,7 @@ function main (win)
             // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
             dns_handler.resolve_local_async(onReturnedLocalIPs);
+
             let onReturnedLocalIPs = function (localips)
             {
                 consoleService.logStringMessage("Sixornot - onReturnedLocalIPs");
@@ -442,7 +443,7 @@ function main (win)
                 // This must now work as we have a valid IP address
                 updateIcon();
             };
-            let localips = [];
+            /* let localips = [];
             try
             {
                 localips = dns_handler.resolve_local_async();
@@ -451,8 +452,7 @@ function main (win)
             {
                 consoleService.logStringMessage("Sixornot - Unable to look up local IP addresses");
                 Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
-            }
-
+            } */
         }
     }
 
@@ -933,9 +933,14 @@ function set_iconset ()
 /*
     bootstrap.js API
 */
-function startup (data)
+function startup (aData, aReason)
 {
-    AddonManager.getAddonByID(data.id, function (addon, data) {
+    // Set up resource URI alias
+    let resource = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
+    let alias = Services.io.newFileURI(aData.installPath);
+    resource.setSubstitution("sixornot", alias);
+
+    AddonManager.getAddonByID(aData.id, function (addon, data) {
         consoleService.logStringMessage("Sixornot - startup");
 
         // Include libraries
@@ -950,9 +955,11 @@ function startup (data)
         dns_handler.test_typeof_ip6();
         dns_handler.test_is_ip6();
 
+        consoleService.logStringMessage("Sixornot - startup - initLocalisation...");
         initLocalisation(addon, "sixornot.properties");
 
         // Load image sets
+        consoleService.logStringMessage("Sixornot - startup - loading image sets...");
         // Greyscale
         s6only_16_g = addon.getResourceURI("images/6only_g_16.png").spec;
         s6and4_16_g = addon.getResourceURI("images/6and4_g_16.png").spec;
@@ -977,11 +984,14 @@ function startup (data)
         sother_24_c = addon.getResourceURI("images/other_c_24.png").spec;
 
         // Set active image set
+        consoleService.logStringMessage("Sixornot - startup - setting active image set...");
         set_iconset();
 
         // Load into existing windows and set callback to load into any new ones too
+        consoleService.logStringMessage("Sixornot - startup - loading into windows...");
         watchWindows(main);
 
+        consoleService.logStringMessage("Sixornot - startup - setting up prefs observer...");
         let prefs = PREF_BRANCH_SIXORNOT;
         prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.addObserver("", PREF_OBSERVER, false);
@@ -1010,6 +1020,9 @@ function shutdown (data, reason)
         let prefs = PREF_BRANCH_SIXORNOT;
         prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.removeObserver("", PREF_OBSERVER);
+
+        let resource = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
+        resource.setSubstitution("sixornot", null);
     }
 }
 
@@ -1178,22 +1191,27 @@ function defineLazyGetter (getterName, getterFunction)
 
 defineLazyGetter("consoleService", function () {
     return Components.classes["@mozilla.org/consoleservice;1"]
-                     .getService(Components.interfaces.nsIConsoleService);
+                    .getService(Components.interfaces.nsIConsoleService);
 });
 defineLazyGetter("ioService", function () {
     return Components.classes["@mozilla.org/network/io-service;1"]
-                     .getService(Components.interfaces.nsIIOService);
+                    .getService(Components.interfaces.nsIIOService);
 });
 defineLazyGetter("proxyService", function () {
     return Components.classes["@mozilla.org/network/protocol-proxy-service;1"]
-                     .getService(Components.interfaces.nsIProtocolProxyService);
+                    .getService(Components.interfaces.nsIProtocolProxyService);
 });
 defineLazyGetter("dnsService", function () {
-    return Components.classes["@mozilla.org/network/dns-service;1"].getService(Components.interfaces.nsIDNSService);
+    return Components.classes["@mozilla.org/network/dns-service;1"]
+                    .getService(Components.interfaces.nsIDNSService);
 });
 defineLazyGetter("clipboardHelper", function () {
     return Components.classes["@mozilla.org/widget/clipboardhelper;1"]
-                     .getService(Components.interfaces.nsIClipboardHelper);
+                    .getService(Components.interfaces.nsIClipboardHelper);
+});
+defineLazyGetter("workerFactory", function () {
+    return Components.classes["@mozilla.org/threads/workerfactory;1"]
+                    .createInstance(Components.interfaces.nsIWorkerFactory);
 });
 
 
@@ -1219,13 +1237,16 @@ var dns_handler =
     callback_ids: [],
     next_callback_id: 0,
 
-    init : function ()
+    worker: null,
+
+    init : function (worker_url)
     {
+        consoleService.logStringMessage("Sixornot - dns_handler - init");
         // Import ctypes module (not needed, this is all handled by our worker)
         // Cu.import("resource://gre/modules/ctypes.jsm");
 
         // Initialise ChromeWorker which will be used to do DNS lookups either via ctypes or dnsService
-        this.worker = ChromeWorker(addon.getResourceURI("includes/dns_worker.js").spec);
+        this.worker = workerFactory.newChromeWorker("resource://sixornot/includes/dns_worker.js");
 
   	    // Shim to get 'this' to refer to dns_handler, not the
   	    // worker, when a message is received.
@@ -1234,7 +1255,7 @@ var dns_handler =
   	        self.onworkermessage.call(self, evt);
   	    };
 
-  	    // this.worker.postMessage(this.tickerSymbol);
+//  	    this.worker.postMessage("test");
 
         // Set up request map, which will map async requests to their callbacks
         this.callback_ids = [];
@@ -1574,6 +1595,7 @@ var dns_handler =
     // Return the IP addresses of the local host
     resolve_local_async : function (callback)
     {
+        consoleService.logStringMessage("Sixornot - dns_handler:resolve_local_async");
         // This uses dns_worker to do the work asynchronously
         // Add callback to request mapping table
         this.next_callback_id = this.next_callback_id + 1;
@@ -1585,6 +1607,7 @@ var dns_handler =
     // Resolve IP addresses of a remote host using DNS
     resolve_host_async : function (host, callback)
     {
+        consoleService.logStringMessage("Sixornot - dns_handler:resolve_host_async");
         // This uses dns_worker to do the work asynchronously
         this.next_callback_id = this.next_callback_id + 1;
         this.callback_ids[this.next_callback_id] = callback;
@@ -1596,6 +1619,7 @@ var dns_handler =
     // Called by worker to pass information back to main thread
     onworkermessage : function (evt)
     {
+        consoleService.logStringMessage("Sixornot - dns_handler:onworkermessage - message is: " + evt.data);
         // evt.data is the information passed back
         // This is an array: [callback_id, request_id, data]
         // data will usually be a list of IP addresses
