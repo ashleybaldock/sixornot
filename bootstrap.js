@@ -159,7 +159,8 @@ function main (win)
     var localipv4s = [];        // Local IPv4 addresses
     var usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
     var specialLocation = null;
-    var DNSrequest = null;
+    var dns_request = null;     // Reference to this window's active DNS lookup request
+                                // There can be only one at a time per window
     var pollLoopID = win.setInterval(pollForContentChange, 250);
 
     let doc = win.document;
@@ -263,6 +264,9 @@ function main (win)
     // Add a callback to our unload list to remove the UI when addon is disabled
     unload(function () {
         consoleService.logStringMessage("Sixornot - main unload function");
+        // Cancel any active DNS lookups
+        dns_handler.cancel_request(dns_request);
+
         // Get UI elements
         let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
         let tooltip = gbi(doc, TOOLTIP_ID);
@@ -283,8 +287,6 @@ function main (win)
         tooltip && tooltip.parentNode.removeChild(tooltip);
         toolbarPopupMenu && toolbarPopupMenu.parentNode.removeChild(toolbarPopupMenu);
         toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
-
-        //dns_handler.cancelRequest(DNSrequest);
     }, win);
 
     // If we loaded the address bar icon UI, add a callback to remove it on unload
@@ -342,8 +344,8 @@ function main (win)
         consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
 
         // If we've changed pages before completing a lookup, then abort the old request first
-//        dns_handler.cancelRequest(DNSrequest);
-        DNSrequest = null;
+        dns_handler.cancel_request(dns_request);
+        dns_request = null;
 
         let set_icon = function (icon)
         {
@@ -400,7 +402,7 @@ function main (win)
         let onReturnedIPs = function (remoteips)
         {
             consoleService.logStringMessage("Sixornot - onReturnedIPs");
-            DNSrequest = null;
+            dns_request = null;
 
             // DNS lookup failed
             if (remoteips[0] === "FAIL")
@@ -425,6 +427,7 @@ function main (win)
             let onReturnedLocalIPs = function (localips)
             {
                 consoleService.logStringMessage("Sixornot - onReturnedLocalIPs");
+                dns_request = null;
 
                 consoleService.logStringMessage("Sixornot - localips is: " + localips + "; typeof localips is: " + typeof localips);
                 // Parse list of local IPs for IPv4/IPv6
@@ -439,7 +442,7 @@ function main (win)
                 updateIcon();
             };
 
-            dns_handler.resolve_local_async(onReturnedLocalIPs);
+            dns_request = dns_handler.resolve_local_async(onReturnedLocalIPs);
 
             /* let localips = [];
             try
@@ -455,7 +458,7 @@ function main (win)
 
         // Ideally just hitting the DNS cache here
 //        onReturnedIPs(dns_handler.resolve_remote_async(host));
-        dns_handler.resolve_remote_async(host, onReturnedIPs);
+        dns_request = dns_handler.resolve_remote_async(host, onReturnedIPs);
     }
 
 
@@ -1654,7 +1657,7 @@ var dns_handler =
         {
             onLookupComplete : function (nsrequest, dnsresponse, nsstatus)
             {
-                // Request has been cancelled
+                // Request has been cancelled - ignore
                 if (nsstatus === Components.results.NS_ERROR_ABORT)
                 {
                     return;
@@ -1724,6 +1727,20 @@ var dns_handler =
             // Execute callback
             callback(evt.data[2]);
             // TODO - Remove expired callback from array
+        }
+    },
+
+    // Cancels an active DNS lookup request
+    cancel_request : function (request)
+    {
+        try
+        {
+            request.cancel(Components.results.NS_ERROR_ABORT);
+        }
+        catch (e)
+        {
+            // TODO - Maybe hide this exception?
+            Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
         }
     },
 
