@@ -1277,10 +1277,8 @@ var dns_handler =
 
     shutdown : function ()
     {
-        if (this.remote_ctypes)
-        {
-            this.library.close();
-        }
+        // Shutdown async resolver
+        this.worker.postMessage([-1, 0, null]);
     },
 
     validate_ip4 : function (ip_address)
@@ -1638,6 +1636,9 @@ var dns_handler =
         }
     },
 
+
+
+
     // Return index of this.callback_ids for a specified callback_id
     find_callback_by_id : function (callback_id)
     {
@@ -1692,6 +1693,9 @@ var dns_handler =
         }
         return obj;
     },
+
+
+
 
     _remote_ctypes_async : function (host, callback)
     {

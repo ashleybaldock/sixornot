@@ -35,6 +35,7 @@ consoleService.logStringMessage("Sixornot(dns_worker)");
 
 var reqids =
 {
+    shutdown: 0,        // Shut down DNS resolver, must be last request!
     remotelookup: 1,
     locallookup: 2,
     checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
@@ -47,6 +48,7 @@ onmessage = function (evt)
     if (evt.data && evt.data[1])
     {
         let dispatch = [];
+        dispatch[reqids.shutdown] = dns.shutdown;
         dispatch[reqids.remotelookup] = dns.resolve_remote;
         dispatch[reqids.locallookup] = dns.resolve_local;
         dispatch[reqids.checkremote] = dns.check_remote;
@@ -368,6 +370,17 @@ var dns =
             }
         }
         consoleService.logStringMessage("Sixornot(dns_worker) - dns:init completed");
+    },
+
+    shutdown : function ()
+    {
+        if (this.remote_ctypes || this.local_ctypes)
+        {
+            // Shutdown ctypes library
+            this.library.close();
+            // Close worker thread
+            close();
+        }
     },
 
     // Converts a sockaddr structure to a string representation of its address
