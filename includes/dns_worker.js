@@ -22,27 +22,24 @@
 
 let consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
 
-// dns-service is not thread safe
-//let dnsService = XPCOM.createInstance("@mozilla.org/network/dns-service;1");
+
+consoleService.logStringMessage("Sixornot(dns_worker)");
 
 // Data is an array
 // [callback_id, request_id, data]
 // callback_id is a number which will be passed back to the main thread
 //      to indicate which callback function (if any) should be executed
 //      when this request completes
-// request_id references the type of request, check lookup table
+// request_id references the type of request, see reqids table
 // data is arbitrary information passed to the request_id function
-
-consoleService.logStringMessage("Sixornot(dns_worker)");
 
 var reqids =
 {
     remotelookup: 1,
     locallookup: 2,
-    checkremote: 3,     // Check whether native resolver is in use for remote lookups
-    checklocal: 4,      // Check whether native resolver is in use for local lookups
+    checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
+    checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
 }
-
 
 onmessage = function (evt)
 {
@@ -50,7 +47,7 @@ onmessage = function (evt)
     if (evt.data && evt.data[1])
     {
         let dispatch = [];
-        dispatch[reqids.remotelookup] = dns.resolve_host;
+        dispatch[reqids.remotelookup] = dns.resolve_remote;
         dispatch[reqids.locallookup] = dns.resolve_local;
         dispatch[reqids.checkremote] = dns.check_remote;
         dispatch[reqids.checklocal] = dns.check_local;
@@ -80,23 +77,26 @@ var dns =
     getaddrinfo: null,
     ifaddrs: null,
     getifaddrs: null,
-    resolve_native: false,
-    local_native: false,
+    remote_ctypes: false,
+    local_ctypes: false,
 
     osx_library: "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
-    win_library: "Ws2_32.dll",
+    win_library: "Ws2_32.dll_",
 
     check_remote : function ()
     {
-        return this.resolve_native;
+        consoleService.logStringMessage("Sixornot(dns_worker) - dns:check_remote, value: " + this.remote_ctypes);
+        return this.remote_ctypes;
     },
     check_local : function ()
     {
-        return this.local_native;
+        consoleService.logStringMessage("Sixornot(dns_worker) - dns:check_local, value: " + this.local_ctypes);
+        return this.local_ctypes;
     },
 
     init : function ()
     {
+        consoleService.logStringMessage("Sixornot(dns_worker) - dns:init");
         // Import ctypes module (not needed within a ChromeWorker)
         // Cu.import("resource://gre/modules/ctypes.jsm");
 
@@ -106,12 +106,12 @@ var dns =
             this.library = ctypes.open(this.osx_library);
             try
             {
-                consoleService.logStringMessage("Sixornot(dns_worker) - Running on OSX, opened library: '/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation'");
-                // On OSX use native functionality to resolve both remote and local addresses
+                consoleService.logStringMessage("Sixornot(dns_worker) - Running on OSX, opened library: '" + this.osx_library + "'");
+                // On OSX use ctypes functionality to resolve both remote and local addresses
                 // On this platform getaddrinfo w/ local hostname doesn't always return all local addresses
                 // So we need to use getifaddr to do this
-                this.resolve_native = true;
-                this.local_native = true;
+                this.remote_ctypes = true;
+                this.local_ctypes = true;
                 // Address family
                 this.AF_UNSPEC = 0;
                 this.AF_INET = 2;
@@ -227,19 +227,19 @@ var dns =
                 }
                 catch (e)
                 {
-                    consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init native local resolver, falling back to Firefox method for local addresses (WARNING: May not work if DNS isn't configured for local host)");
+                    consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init ctypes local resolver, falling back to Firefox method for local addresses (WARNING: May not work if DNS isn't configured for local host)");
                     Components.utils.reportError("Sixornot(dns_worker) EXCEPTION: " + parseException(e));
-                    // If we've got this far then remote resolution should still work, so only disable local native resolution
-                    this.local_native = false;
+                    // If we've got this far then remote resolution should still work, so only disable local ctypes resolution
+                    this.local_ctypes = false;
                 }
             }
             catch (e)
             {
-                consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init native resolvers, falling back to Firefox method for local and remote addresses");
+                consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init ctypes resolvers, falling back to Firefox method for local and remote addresses");
                 Components.utils.reportError("Sixornot(dns_worker) EXCEPTION: " + parseException(e));
                 this.library.close();
-                this.resolve_native = false;
-                this.local_native = false;
+                this.remote_ctypes = false;
+                this.local_ctypes = false;
             }
         }
         catch(e)
@@ -250,10 +250,10 @@ var dns =
                 this.library = ctypes.open(this.win_library);
                 try
                 {
-                    consoleService.logStringMessage("Sixornot(dns_worker) - Running on Windows XP+, opened library: 'Ws2_32.dll'");
-                    // On Windows resolve remote IPs via native method, but use Firefox method to find local addresses since this always works on Windows
-                    this.resolve_native = true;
-                    this.local_native = false;
+                    consoleService.logStringMessage("Sixornot(dns_worker) - Running on Windows XP+, opened library: '" + this.win_library + "'");
+                    // On Windows resolve remote IPs via ctypes method, but use Firefox method to find local addresses since this always works on Windows
+                    this.remote_ctypes = true;
+                    this.local_ctypes = false;
                     // Flags
                     this.AI_PASSIVE = 0x01;
                     this.AI_CANONNAME = 0x02;
@@ -351,11 +351,11 @@ var dns =
                 }
                 catch (e)
                 {
-                    consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init native resolver, falling back to native");
+                    consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init ctypes resolver, falling back to firefox");
                     Components.utils.reportError("Sixornot(dns_worker) EXCEPTION: " + parseException(e));
                     this.library.close();
-                    this.resolve_native = false;
-                    this.local_native = false;
+                    this.remote_ctypes = false;
+                    this.local_ctypes = false;
                 }
             }
             catch (e)
@@ -363,8 +363,8 @@ var dns =
                 consoleService.logStringMessage("Sixornot(dns_worker) - Not running on Windows XP+");
                 // Here we should degrade down to using Firefox's builtin methods
                 consoleService.logStringMessage("Sixornot(dns_worker) - Native resolver not supported on this platform, falling back to builtin");
-                this.resolve_native = false;
-                this.local_native = false;
+                this.remote_ctypes = false;
+                this.local_ctypes = false;
             }
         }
         consoleService.logStringMessage("Sixornot(dns_worker) - dns:init completed");
@@ -426,34 +426,9 @@ var dns =
         return false;
     },
 
-    // Return the IP addresses of the local host
     resolve_local : function ()
     {
-        if (this.local_native)
-        {
-            return this.resolve_local_native();
-        }
-        else
-        {
-            return this.resolve_local_firefox();
-        }
-    },
-
-    resolve_local_firefox : function ()
-    {
-        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local_firefox - resolving local host");
-        let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
-        let ip_addresses = [];
-        while (dnsresponse.hasMore())
-        {
-            ip_addresses.push(dnsresponse.getNextAddrAsString());
-        }
-        return ip_addresses;
-    },
-
-    resolve_local_native : function ()
-    {
-        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local_native - resolving local host");
+        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local - resolving local host");
 
         let first_addr = this.ifaddrs();
         let first_addr_ptr = first_addr.address();
@@ -461,7 +436,7 @@ var dns =
 
         if (first_addr_ptr.isNull())
         {
-            consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local_native - Got no results from getifaddrs");
+            consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local - Got no results from getifaddrs");
             return ["FAIL"];
         }
 
@@ -489,36 +464,10 @@ var dns =
         return addresses.slice();
     },
 
-    // Resolve a host using either native or builtin functionality
-    resolve_host : function (host)
+    // Proxy to ctypes getaddrinfo functionality
+    resolve_remote : function (host)
     {
-        if (this.resolve_native)
-        {
-            return this.resolve_host_native(host);
-        }
-        else
-        {
-            return this.resolve_host_firefox(host);
-        }
-    },
-
-    // Resolve a host using Firefox's built-in functionality
-    resolve_host_firefox : function (host)
-    {
-        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_host_firefox - resolving host: " + host);
-        let dnsresponse = dnsService.resolve(host, true);
-        let ip_addresses = [];
-        while (dnsresponse.hasMore())
-        {
-            ip_addresses.push(dnsresponse.getNextAddrAsString());
-        }
-        return ip_addresses;
-    },
-
-    // Proxy to native getaddrinfo functionality
-    resolve_host_native : function (host)
-    {
-        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_host_native - resolving host: " + host);
+        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_remote - resolving host: " + host);
 
         // Debugging - TODO if needed split this into function that creates addrinfo with flags etc.
         let hints = this.addrinfo();
@@ -535,7 +484,7 @@ var dns =
 //        let ret = this.getaddrinfo(host, null, null, retVal.address());
         if (first_addr_ptr.isNull())
         {
-            consoleService.logStringMessage("Sixornot(dns_worker) - resolve_host_native - Unable to resolve host, got no results from getaddrinfo");
+            consoleService.logStringMessage("Sixornot(dns_worker) - resolve_remote - Unable to resolve host, got no results from getaddrinfo");
             return ["FAIL"];
         }
 
@@ -565,8 +514,8 @@ var dns =
     }
 };
 
+
 // Set up DNS (load ctypes modules etc.)
 consoleService.logStringMessage("Sixornot(dns_worker) - calling dns.init");
 dns.init();
-
 

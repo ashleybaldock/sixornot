@@ -397,10 +397,6 @@ function main (win)
             return;
         }
 
-        // Ideally just hitting the DNS cache here
-//        onReturnedIPs(dns_handler.resolve_remote_async(host));
-        dns_handler.resolve_remote_async(host, onReturnedIPs);
-
         let onReturnedIPs = function (remoteips)
         {
             consoleService.logStringMessage("Sixornot - onReturnedIPs");
@@ -425,7 +421,6 @@ function main (win)
 
             // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
-            dns_handler.resolve_local_async(onReturnedLocalIPs);
 
             let onReturnedLocalIPs = function (localips)
             {
@@ -443,6 +438,9 @@ function main (win)
                 // This must now work as we have a valid IP address
                 updateIcon();
             };
+
+            dns_handler.resolve_local_async(onReturnedLocalIPs);
+
             /* let localips = [];
             try
             {
@@ -454,6 +452,10 @@ function main (win)
                 Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
             } */
         }
+
+        // Ideally just hitting the DNS cache here
+//        onReturnedIPs(dns_handler.resolve_remote_async(host));
+        dns_handler.resolve_remote_async(host, onReturnedIPs);
     }
 
 
@@ -1213,6 +1215,10 @@ defineLazyGetter("workerFactory", function () {
     return Components.classes["@mozilla.org/threads/workerfactory;1"]
                     .createInstance(Components.interfaces.nsIWorkerFactory);
 });
+defineLazyGetter("threadManager", function() {
+    return Components.classes["@mozilla.org/thread-manager;1"]
+                     .getService(Components.interfaces.nsIThreadManager);
+});
 
 
 // The DNS Handler which does most of the work of the extension
@@ -1228,11 +1234,8 @@ var dns_handler =
     getaddrinfo: null,
     ifaddrs: null,
     getifaddrs: null,
-    resolve_native: false,
-    local_native: false,
-
-    osx_library: "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
-    win_library: "Ws2_32.dll",
+    remote_ctypes: false,
+    local_ctypes: false,
 
     callback_ids: [],
     next_callback_id: 0,
@@ -1255,7 +1258,10 @@ var dns_handler =
   	        self.onworkermessage.call(self, evt);
   	    };
 
-//  	    this.worker.postMessage("test");
+        // Check whether to use ctypes methods for remote hosts
+  	    this.worker.postMessage([-1, 3, null]);
+        // Check whether to use ctypes methods for local hosts
+  	    this.worker.postMessage([-1, 4, null]);
 
         // Set up request map, which will map async requests to their callbacks
         this.callback_ids = [];
@@ -1268,7 +1274,7 @@ var dns_handler =
 
     shutdown : function ()
     {
-        if (this.resolve_native)
+        if (this.remote_ctypes)
         {
             this.library.close();
         }
@@ -1575,27 +1581,25 @@ var dns_handler =
         */
     },
 
-    // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
-    to_hex : function (int_string)
-    {
-        let hex = Number(int_string).toString(16);
-        if (hex.length < 2)
-        {
-            hex = "0" + hex;
-        }
-        return hex;
-    },
-
-    // Ensure decimal number has no spaces etc.
-    to_decimal : function (int_string)
-    {
-        return Number(int_string).toString(10);
-    },
-
-    // Return the IP addresses of the local host
+    // Return the IP address(es) of the local host
     resolve_local_async : function (callback)
     {
         consoleService.logStringMessage("Sixornot - dns_handler:resolve_local_async");
+        if (this.local_ctypes)
+        {
+            // If remote resolution is happening via ctypes...
+            return this._local_ctypes_async(callback);
+        }
+        else
+        {
+            // Else if using firefox methods
+            return this._local_firefox_async(callback);
+        }
+    },
+
+    _local_ctypes_async : function (callback)
+    {
+        consoleService.logStringMessage("Sixornot - _local_ctypes_async - resolving local host");
         // This uses dns_worker to do the work asynchronously
         // Add callback to request mapping table
         this.next_callback_id = this.next_callback_id + 1;
@@ -1604,33 +1608,35 @@ var dns_handler =
         this.worker.postMessage([this.next_callback_id, request_id, null]);
         return true;
     },
-    resolve_local_firefox : function ()
+
+    // Proxy to _remote_firefox_async since it does much the same thing
+    _local_firefox_async : function (callback)
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local_firefox - resolving local host");
-        let dnsresponse = dnsService.resolve(dnsService.myHostName, true);
-        let ip_addresses = [];
-        while (dnsresponse.hasMore())
-        {
-            ip_addresses.push(dnsresponse.getNextAddrAsString());
-        }
-        return ip_addresses;
+        consoleService.logStringMessage("Sixornot - _local_firefox_async - resolving local host");
+        return this._remote_firefox_async(dnsService.myHostName, callback);
     },
 
 
-    // Resolve IP addresses of a remote host using DNS
+    // Resolve IP address(es) of a remote host using DNS
     // This should return an object which can be used to cancel the pending request
     resolve_remote_async : function (host, callback)
     {
         consoleService.logStringMessage("Sixornot - dns_handler:resolve_remote_async");
-        // If remote resolution is happening via ctypes...
-        return _remote_native_async(host, callback);
-        // Else if using firefox methods
-        return _remote_firefox_async(host, callback);
+        if (this.remote_ctypes)
+        {
+            // If remote resolution is happening via ctypes...
+            return this._remote_ctypes_async(host, callback);
+        }
+        else
+        {
+            // Else if using firefox methods
+            return this._remote_firefox_async(host, callback);
+        }
     },
 
-    _remote_native_async : function (host, callback)
+    _remote_ctypes_async : function (host, callback)
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:_remote_native_async");
+        consoleService.logStringMessage("Sixornot - dns_handler:_remote_ctypes_async");
         // This uses dns_worker to do the work asynchronously
         this.next_callback_id = this.next_callback_id + 1;
         this.callback_ids[this.next_callback_id] = callback;
@@ -1644,15 +1650,9 @@ var dns_handler =
     {
         consoleService.logStringMessage("Sixornot - dns_handler:_remote_firefox_async");
 
-        let fail = function (reason)
-        {
-            logErrorMessage("Sixornot warning: DNS lookup failure for \"" + host + "\": " + reason);
-            callback(["FAIL"]);
-        };
-
         let my_callback =
         {
-            onLookupComplete : function (nsrequest, nsrecord, nsstatus)
+            onLookupComplete : function (nsrequest, dnsresponse, nsstatus)
             {
                 // Request has been cancelled
                 if (nsstatus === Components.results.NS_ERROR_ABORT)
@@ -1660,15 +1660,17 @@ var dns_handler =
                     return;
                 }
                 // Request has failed for some reason
-                if (nsstatus !== 0 || !nsrecord || !nsrecord.hasMore())
+                if (nsstatus !== 0 || !dnsresponse || !dnsresponse.hasMore())
                 {
                     if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST)
                     {
-                        fail("Unknown Host");
+                        consoleService.logStringMessage("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, unknown host");
+                        callback(["FAIL"]);
                     }
                     else
                     {
-                        fail("status: " + nsstatus);
+                        consoleService.logStringMessage("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, status: " + nsstatus);
+                        callback(["FAIL"]);
                     }
                     // Address was not found in DNS for some reason
                     return;  
@@ -1690,31 +1692,11 @@ var dns_handler =
         }
         catch (e)
         {
-            if (e.name && e.name.length)
-            {
-                fail("exception: " + e.name);
-            }
-            else
-            {
-                fail("exception: " + e);
-            }
+            Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
+            callback(["FAIL"]);
             return null;
         }
     },
-
-    // Resolve a host using Firefox's built-in functionality
-    resolve_remote_firefox : function (host)
-    {
-        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_remote_firefox - resolving host: " + host);
-        let dnsresponse = dnsService.resolve(host, true);
-        let ip_addresses = [];
-        while (dnsresponse.hasMore())
-        {
-            ip_addresses.push(dnsresponse.getNextAddrAsString());
-        }
-        return ip_addresses;
-    },
-
 
     // Called by worker to pass information back to main thread
     onworkermessage : function (evt)
@@ -1724,10 +1706,25 @@ var dns_handler =
         // This is an array: [callback_id, request_id, data]
         // data will usually be a list of IP addresses
         // Look up correct callback in callback_ids array
-        let callback = this.callback_ids[evt.data[0]];
-        // Execute callback
-        callback(evt.data[2]);
-        // TODO - Remove expired callback from array
+
+        // checkremote, set remote ctypes status
+        if (evt.data[1] === 3)
+        {
+            this.remote_ctypes = evt.data[2];
+        }
+        // checklocal, set local ctypes status
+        else if (evt.data[1] === 4)
+        {
+            this.local_ctypes = evt.data[2];
+        }
+        // remotelookup/locallookup, find correct callback and call it
+        else if (evt.data[1] === 1 || evt.data[1] === 2)
+        {
+            let callback = this.callback_ids[evt.data[0]];
+            // Execute callback
+            callback(evt.data[2]);
+            // TODO - Remove expired callback from array
+        }
     },
 
     // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
@@ -1737,7 +1734,26 @@ var dns_handler =
         var proxyinfo = proxyService.resolve(uri, 0);  // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
         return (proxyinfo !== null) && (proxyinfo.flags & proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
-    }
+    },
+
+/*
+    // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
+    to_hex : function (int_string)
+    {
+        let hex = Number(int_string).toString(16);
+        if (hex.length < 2)
+        {
+            hex = "0" + hex;
+        }
+        return hex;
+    },
+
+    // Ensure decimal number has no spaces etc.
+    to_decimal : function (int_string)
+    {
+        return Number(int_string).toString(10);
+    },
+*/
 };
 
 
