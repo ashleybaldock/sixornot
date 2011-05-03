@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script builds the SixOrNot addon ready for distribution
-version="0.5.5"
+version="0.6.0"
 
 # Create build directory by version
 mkdir ../dist/$version
@@ -18,6 +18,7 @@ cp images/*.png ../dist/$version/src/images/
 mkdir ../dist/$version/src/includes
 cp includes/locale.js ../dist/$version/src/includes/
 cp includes/utils.js ../dist/$version/src/includes/
+cp includes/dns_worker.js ../dist/$version/src/includes/
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale
