@@ -44,7 +44,7 @@ var reqids =
 
 onmessage = function (evt)
 {
-    consoleService.logStringMessage("Sixornot(dns_worker) - onmessage: " + evt.data);
+    consoleService.logStringMessage("Sixornot(dns_worker) - onmessage: " + evt.data.toSource());
     if (evt.data && evt.data[1])
     {
         let dispatch = [];
@@ -374,6 +374,7 @@ var dns =
 
     shutdown : function ()
     {
+        consoleService.logStringMessage("Sixornot(dns_worker) - shutdown");
         if (this.remote_ctypes || this.local_ctypes)
         {
             // Shutdown ctypes library

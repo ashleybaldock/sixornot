@@ -263,8 +263,8 @@ function main (win)
 
     // Add a callback to our unload list to remove the UI when addon is disabled
     unload(function () {
-        consoleService.logStringMessage("Sixornot - main unload function");
-        // Cancel any active DNS lookups
+        consoleService.logStringMessage("Sixornot - main:unload");
+        // Cancel any active DNS lookups for this window
         dns_handler.cancel_request(dns_request);
 
         // Get UI elements
@@ -1015,13 +1015,15 @@ function reload ()
 function shutdown (data, reason)
 {
     consoleService.logStringMessage("Sixornot - shutdown");
-    // Shutdown dns_handler
-    dns_handler.shutdown();
 
     if (reason !== APP_SHUTDOWN)
     {
+        // Unload all UI via init-time unload() callbacks
         unload();
         
+        // Shutdown dns_handler
+        dns_handler.shutdown();
+
         let prefs = PREF_BRANCH_SIXORNOT;
         prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.removeObserver("", PREF_OBSERVER);
@@ -1277,6 +1279,7 @@ var dns_handler =
 
     shutdown : function ()
     {
+        consoleService.logStringMessage("Sixornot - dns_handler - shutdown");
         // Shutdown async resolver
         this.worker.postMessage([-1, 0, null]);
     },
