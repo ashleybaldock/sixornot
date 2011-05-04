@@ -1247,7 +1247,7 @@ var dns_handler =
 
     worker: null,
 
-    init : function (worker_url)
+    init : function ()
     {
         consoleService.logStringMessage("Sixornot - dns_handler - init");
         // Import ctypes module (not needed, this is all handled by our worker)
@@ -1293,7 +1293,7 @@ var dns_handler =
     // Quick check for address family, not a validator (see validate_ip4)
     is_ip4 : function (ip_address)
     {
-        return (ip_address.indexOf(".") !== -1);
+        return (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
     },
 
     typeof_ip4 : function (ip_address)
