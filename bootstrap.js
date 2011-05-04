@@ -89,32 +89,32 @@ const PREFS = {
 
 let PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
-        consoleService.logStringMessage("Sixornot - prefs observer");
-        consoleService.logStringMessage("aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData);
+        log("Sixornot - prefs observer");
+        log("aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData);
         if (!(aTopic.valueOf() === "nsPref:changed"))
         {
-            consoleService.logStringMessage("Sixornot - not a pref change event 1");
+            log("Sixornot - not a pref change event 1");
             return;
         }
         if (!PREFS.hasOwnProperty(aData))
         {
-            consoleService.logStringMessage("Sixornot - not a pref change event 2");
+            log("Sixornot - not a pref change event 2");
             return;
         }
 
-        consoleService.logStringMessage("Sixornot - prefs observer continues");
-        consoleService.logStringMessage("Sixornot - aData is: " + aData);
+        log("Sixornot - prefs observer continues");
+        log("Sixornot - aData is: " + aData);
         // If the changed preference is the addressicon one
         if (aData === "showaddressicon")
         {
-            consoleService.logStringMessage("Sixornot - prefs observer - addressicon has changed");
+            log("Sixornot - prefs observer - addressicon has changed");
             // Simply reload all addon's attributes
             reload();
         }
         // If the changed preference is the use_greyscale one
         if (aData === "use_greyscale")
         {
-            consoleService.logStringMessage("Sixornot - prefs observer - use_greyscale has changed");
+            log("Sixornot - prefs observer - use_greyscale has changed");
             // Simply switch to a different icon set and reload
             set_iconset();
             reload();
@@ -148,7 +148,7 @@ let s6only_24 = "",   s6and4_24 = "",   s4pot6_24 = "",   s4only_24 = "",   soth
 */
 function main (win)
 {
-    consoleService.logStringMessage("Sixornot - main");
+    log("Sixornot - main");
     // Set up variables for this instance
     var contentDoc = null;      // Reference to the current page document object
     var url = "";               // The URL of the current page
@@ -263,7 +263,7 @@ function main (win)
 
     // Add a callback to our unload list to remove the UI when addon is disabled
     unload(function () {
-        consoleService.logStringMessage("Sixornot - main:unload");
+        log("Sixornot - main:unload");
         // Cancel any active DNS lookups for this window
         dns_handler.cancel_request(dns_request);
 
@@ -293,7 +293,7 @@ function main (win)
     if (get_bool_pref("showaddressicon"))
     {
         unload(function () {
-            consoleService.logStringMessage("Sixornot - address bar unload function");
+            log("Sixornot - address bar unload function");
             // Get UI elements
             let addressPopupMenu = gbi(doc, ADDRESS_MENU_ID);
             let addressIcon = gbi(doc, ADDRESS_IMG_ID);
@@ -321,14 +321,14 @@ function main (win)
         }
         catch (e)
         {
-            Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
+            Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
         }
     }
 
     /* Updates icon/tooltip etc. state if needed - called by the polling loop */
     function updateState ()
     {
-        consoleService.logStringMessage("Sixornot - updateState");
+        log("Sixornot - updateState");
 
         let addressIcon = gbi(doc, ADDRESS_IMG_ID);
         let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
@@ -336,12 +336,12 @@ function main (win)
         contentDoc = win.content.document;
         url = contentDoc.location.href;
         host = "";
-        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
+        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         ipv6s = [];
         ipv4s = [];
         localipv6s = [];
         localipv4s = [];
-        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
+        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
 
         // If we've changed pages before completing a lookup, then abort the old request first
         dns_handler.cancel_request(dns_request);
@@ -367,17 +367,17 @@ function main (win)
         // Need to look up host
         try
         {
-            host = cropTrailingChar(contentDoc.location.hostname, ".");
+            host = crop_trailing_char(contentDoc.location.hostname, ".");
         } 
         catch (e)
         {
-            consoleService.logStringMessage("Sixornot - Unable to look up host");
+            log("Sixornot - Unable to look up host");
         }
         if (host === "")
         {
             set_icon(sother_16);
             specialLocation = ["unknownsite"];
-            consoleService.logStringMessage("Sixornot warning: no host returned for \"" + url + "\"");
+            log("Sixornot warning: no host returned for \"" + url + "\"");
             return;
         }
 
@@ -386,7 +386,7 @@ function main (win)
         {
             set_icon(sother_16);
             specialLocation = ["offlinemode"];
-            consoleService.logStringMessage("Sixornot is in offline mode");
+            log("Sixornot is in offline mode");
             return;
         }
 
@@ -395,13 +395,13 @@ function main (win)
         {
             set_icon(sother_16);
             specialLocation = ["nodnserror"];
-            consoleService.logStringMessage("Sixornot is in proxied mode");
+            log("Sixornot is in proxied mode");
             return;
         }
 
         let onReturnedIPs = function (remoteips)
         {
-            consoleService.logStringMessage("Sixornot - onReturnedIPs");
+            log("Sixornot - onReturnedIPs");
             dns_request = null;
 
             // DNS lookup failed
@@ -409,34 +409,34 @@ function main (win)
             {
                 set_icon(sother_16);
                 specialLocation = ["lookuperror"];
-                consoleService.logStringMessage("Sixornot - DNS lookup failed");
+                log("Sixornot - DNS lookup failed");
                 return;
             }
 
-            consoleService.logStringMessage("Sixornot - remoteips is: " + remoteips + "; typeof remoteips is: " + typeof remoteips);
+            log("Sixornot - remoteips is: " + remoteips + "; typeof remoteips is: " + typeof remoteips);
 
             // Parse list of IPs for IPv4/IPv6
             ipv6s = remoteips.filter(dns_handler.is_ip6);
             ipv4s = remoteips.filter(dns_handler.is_ip4);
 
-            consoleService.logStringMessage("Sixornot - found remote IP addresses, trying local next");
+            log("Sixornot - found remote IP addresses, trying local next");
 
             // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
 
             let onReturnedLocalIPs = function (localips)
             {
-                consoleService.logStringMessage("Sixornot - onReturnedLocalIPs");
+                log("Sixornot - onReturnedLocalIPs");
                 dns_request = null;
 
-                consoleService.logStringMessage("Sixornot - localips is: " + localips + "; typeof localips is: " + typeof localips);
+                log("Sixornot - localips is: " + localips + "; typeof localips is: " + typeof localips);
                 // Parse list of local IPs for IPv4/IPv6
                 localipv6s = localips.filter(function (a) {
                     return dns_handler.is_ip6(a) && dns_handler.typeof_ip6(a) !== "localhost"; });
                 localipv4s = localips.filter(function (a) {
                     return dns_handler.is_ip4(a) && dns_handler.typeof_ip4(a) !== "localhost"; });
 
-                consoleService.logStringMessage("Sixornot - found local IP addresses");
+                log("Sixornot - found local IP addresses");
 
                 // This must now work as we have a valid IP address
                 updateIcon();
@@ -451,8 +451,8 @@ function main (win)
             }
             catch (e)
             {
-                consoleService.logStringMessage("Sixornot - Unable to look up local IP addresses");
-                Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
+                log("Sixornot - Unable to look up local IP addresses");
+                Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
             } */
         }
 
@@ -466,13 +466,13 @@ function main (win)
        Returns true if it's done and false if unknown */
     function updateIcon ()
     {
-        consoleService.logStringMessage("Sixornot - updateIcon");
+        log("Sixornot - updateIcon");
         let addressIcon = gbi(doc, ADDRESS_IMG_ID);
         let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
 
         let loc_options = ["file:", "data:", "about:", "chrome:", "resource:"];
 
-        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
+        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         function set_icon (icon)
         {
             // If this is null, address icon isn't showing
@@ -551,7 +551,7 @@ function main (win)
     // Look up appropriate action by ID and perform that action
     function onMenuCommand (evt)
     {
-        consoleService.logStringMessage("Sixornot - onMenuCommand");
+        log("Sixornot - onMenuCommand");
 
         let commandID = evt.target.value.substring(0,5);
         let commandString = evt.target.value.substring(5);
@@ -562,12 +562,12 @@ function main (win)
         // "taddr" - Show or hide the address bar icon
         if (commandID === "copyc")
         {
-            consoleService.logStringMessage("Sixornot - onMenuCommand, copy to clipboard");
+            log("Sixornot - onMenuCommand, copy to clipboard");
             clipboardHelper.copyString(commandString);
         }
         else if (commandID === "gotow")
         {
-            consoleService.logStringMessage("Sixornot - onMenuCommand, goto web page");
+            log("Sixornot - onMenuCommand, goto web page");
             // Add tab to most recent window, regardless of where this function was called from
             let currentWindow = getCurrentWindow();
             currentWindow.focus();
@@ -578,7 +578,7 @@ function main (win)
         {
             // Toggle address bar icon visibility
             let toggle = (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true");
-            consoleService.logStringMessage("Sixornot - onMenuCommand, set boolean pref value: " + commandString + " to " + toggle);
+            log("Sixornot - onMenuCommand, set boolean pref value: " + commandString + " to " + toggle);
             PREF_BRANCH_SIXORNOT.setBoolPref(commandString, toggle);
         }
     }
@@ -586,8 +586,8 @@ function main (win)
     // Update the contents of the popupMenu whenever it is opened
     function updateMenuContent (evt)
     {
-        consoleService.logStringMessage("Sixornot - updateMenuContent");
-        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
+        log("Sixornot - updateMenuContent");
+        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         let popupMenu = this;
 
         // Clear previously generated popupMenu, if one exists
@@ -603,7 +603,7 @@ function main (win)
         //  rest of string (if any) is data to use for function call
         let addMenuItem = function (labelName, ttText, commandID)
         {
-            consoleService.logStringMessage("Sixornot - addMenuItem: " + labelName + ", " + ttText + ", " + commandID);
+            log("Sixornot - addMenuItem: " + labelName + ", " + ttText + ", " + commandID);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
@@ -614,7 +614,7 @@ function main (win)
         };
         let addToggleMenuItem = function (labelName, ttText, commandID, initialState)
         {
-            consoleService.logStringMessage("Sixornot - addToggleMenuItem: " + labelName + ", " + ttText + ", " + commandID + ", " + initialState);
+            log("Sixornot - addToggleMenuItem: " + labelName + ", " + ttText + ", " + commandID + ", " + initialState);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
@@ -627,7 +627,7 @@ function main (win)
         };
         let addDisabledMenuItem = function (labelName)
         {
-            consoleService.logStringMessage("Sixornot - addDisabledMenuItem: " + labelName);
+            log("Sixornot - addDisabledMenuItem: " + labelName);
             let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
             {
                 menuitem.setAttribute("label", labelName);
@@ -637,7 +637,7 @@ function main (win)
         };
         let addMenuSeparator = function ()
         {
-            consoleService.logStringMessage("Sixornot - addMenuSeparator");
+            log("Sixornot - addMenuSeparator");
             let (menuseparator = doc.createElementNS(NS_XUL, "menuseparator"))
             {
                 popupMenu.appendChild(menuseparator);
@@ -719,8 +719,8 @@ function main (win)
     // Update the contents of the tooltip whenever it is shown
     function updateTooltipContent (evt)
     {
-        consoleService.logStringMessage("Sixornot - updateTooltipContent");
-        consoleService.logStringMessage("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
+        log("Sixornot - updateTooltipContent");
+        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         let tooltip = this;
 
         // Clear previously generated tooltip, if one exists
@@ -736,7 +736,7 @@ function main (win)
 
         let addTitleLine = function (labelName)
         {
-            consoleService.logStringMessage("Sixornot - addTitleLine");
+            log("Sixornot - addTitleLine");
             let row = doc.createElementNS(NS_XUL, "row");
             let label = doc.createElementNS(NS_XUL, "label");
             let value = doc.createElementNS(NS_XUL, "label");
@@ -750,7 +750,7 @@ function main (win)
 
         let addLabeledLine = function (labelName, lineValue, italic)
         {
-            consoleService.logStringMessage("Sixornot - addLabeledLine");
+            log("Sixornot - addLabeledLine");
             let row = doc.createElementNS(NS_XUL, "row");
             let label = doc.createElementNS(NS_XUL, "label");
             let value = doc.createElementNS(NS_XUL, "label");
@@ -783,12 +783,12 @@ function main (win)
         // Add IPv6 address(es) to tooltip with special case if only one
         if (ipv6s.length === 1)
         {
-            consoleService.logStringMessage("Sixornot - ipv6s.length is 1");
+            log("Sixornot - ipv6s.length is 1");
             addLabeledLine(gt("prefix_v6_single"), ipv6s[0]);
         }
         else if (ipv6s.length > 1)
         {
-            consoleService.logStringMessage("Sixornot - ipv6s.length is > 1");
+            log("Sixornot - ipv6s.length is > 1");
             addLabeledLine(gt("prefix_v6_multi"), ipv6s[0]);
             for (i = 1; i < ipv6s.length; i++)
             {
@@ -946,7 +946,7 @@ function startup (aData, aReason)
     resource.setSubstitution("sixornot", alias);
 
     AddonManager.getAddonByID(aData.id, function (addon, data) {
-        consoleService.logStringMessage("Sixornot - startup");
+        log("Sixornot - startup");
 
         // Include libraries
         include(addon.getResourceURI("includes/utils.js").spec);
@@ -960,11 +960,11 @@ function startup (aData, aReason)
         dns_handler.test_typeof_ip6();
         dns_handler.test_is_ip6();
 
-        consoleService.logStringMessage("Sixornot - startup - initLocalisation...");
+        log("Sixornot - startup - initLocalisation...");
         initLocalisation(addon, "sixornot.properties");
 
         // Load image sets
-        consoleService.logStringMessage("Sixornot - startup - loading image sets...");
+        log("Sixornot - startup - loading image sets...");
         // Greyscale
         s6only_16_g = addon.getResourceURI("images/6only_g_16.png").spec;
         s6and4_16_g = addon.getResourceURI("images/6and4_g_16.png").spec;
@@ -989,14 +989,14 @@ function startup (aData, aReason)
         sother_24_c = addon.getResourceURI("images/other_c_24.png").spec;
 
         // Set active image set
-        consoleService.logStringMessage("Sixornot - startup - setting active image set...");
+        log("Sixornot - startup - setting active image set...");
         set_iconset();
 
         // Load into existing windows and set callback to load into any new ones too
-        consoleService.logStringMessage("Sixornot - startup - loading into windows...");
+        log("Sixornot - startup - loading into windows...");
         watchWindows(main);
 
-        consoleService.logStringMessage("Sixornot - startup - setting up prefs observer...");
+        log("Sixornot - startup - setting up prefs observer...");
         let prefs = PREF_BRANCH_SIXORNOT;
         prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.addObserver("", PREF_OBSERVER, false);
@@ -1007,14 +1007,14 @@ function startup (aData, aReason)
 // Reload addon in all windows, e.g. when preferences change
 function reload ()
 {
-    consoleService.logStringMessage("Sixornot - reload");
+    log("Sixornot - reload");
     unload();
     watchWindows(main);
 }
 
 function shutdown (data, reason)
 {
-    consoleService.logStringMessage("Sixornot - shutdown");
+    log("Sixornot - shutdown");
 
     if (reason !== APP_SHUTDOWN)
     {
@@ -1035,13 +1035,13 @@ function shutdown (data, reason)
 
 function install ()
 {
-    consoleService.logStringMessage("Sixornot - install");
+    log("Sixornot - install");
     setInitialPrefs();
 }
 
 function uninstall ()
 {
-    consoleService.logStringMessage("Sixornot - uninstall");
+    log("Sixornot - uninstall");
     // TODO If this is due to an upgrade then don't delete preferences?
     // Some kind of upgrade function to potentially upgrade preference settings may be required
     PREF_BRANCH_SIXORNOT.deleteBranch("");             
@@ -1055,7 +1055,7 @@ function uninstall ()
 // Update preference which determines location of button when loading into new windows
 function toggleCustomize (evt)
 {
-    consoleService.logStringMessage("Sixornot - toggleCustomize");
+    log("Sixornot - toggleCustomize");
     let toolbox = evt.target, toolbarId, nextItemId;
     let button = gbi(toolbox.parentNode, BUTTON_ID);
     if (button)
@@ -1074,23 +1074,23 @@ function toggleCustomize (evt)
 // Return boolean preference value, either from prefs store or from internal defaults
 function get_bool_pref (name)
 {
-    consoleService.logStringMessage("Sixornot - get_bool_pref");
+    log("Sixornot - get_bool_pref");
     try
     {
         return PREF_BRANCH_SIXORNOT.getBoolPref(name);
     }
     catch (e)
     {
-        consoleService.logStringMessage("Sixornot - get_bool_pref error - " + e);
+        log("Sixornot - get_bool_pref error - " + e);
     }
     if (PREFS.hasOwnProperty(name))
     {
-        consoleService.logStringMessage("Sixornot - get_bool_pref returning PREFS[name] : " + PREFS[name]);
+        log("Sixornot - get_bool_pref returning PREFS[name] : " + PREFS[name]);
         return PREFS[name]
     }
     else
     {
-        consoleService.logStringMessage("Sixornot - get_bool_pref error - No default preference value!");
+        log("Sixornot - get_bool_pref error - No default preference value!");
     }
 }
 
@@ -1118,7 +1118,7 @@ function gbi (node, childId)
 // Set up initial values for preferences
 function setInitialPrefs ()
 {
-    consoleService.logStringMessage("Sixornot - setInitialPrefs");
+    log("Sixornot - setInitialPrefs");
     let branch = PREF_BRANCH_SIXORNOT;
     for (let [key, val] in Iterator(PREFS))
     {
@@ -1138,7 +1138,7 @@ function setInitialPrefs ()
 }
 
 // Returns a string version of an exception object with its stack trace
-function parseException (e)
+function parse_exception (e)
 {
     if (!e)
     {
@@ -1150,26 +1150,12 @@ function parseException (e)
     }
     else
     {
-        return String(e) + " \n" + cleanExceptionStack(e.stack);
-    }
-}
-// Undo conversion of resource:// urls into file:// urls in exceptions
-function cleanExceptionStack (stack)
-{
-    try
-    {
-        const shortPath = "resource://sixornot/";
-        const longPath = ioService.newChannel(shortPath, null, null).URI.spec;
-        return stack.replace(new RegExp(longPath, "ig"), shortPath);
-    }
-    catch (e)
-    {
-        return stack;
+        return String(e) + " \n" + e.stack;
     }
 }
 
 // String modification
-function truncateBeforeFirstChar (str, character)
+/* function truncateBeforeFirstChar (str, character)
 {
     let pos = str.indexOf(character);
     return (pos !== -1) ? str.substring(0, pos) : str.valueOf();
@@ -1178,8 +1164,8 @@ function truncateAfterLastChar (str, character)
 {
     let pos = str.lastIndexOf(character);
     return (pos !== -1) ? str.substring(pos + 1) : str.valueOf();
-}
-function cropTrailingChar (str, character)
+} */
+function crop_trailing_char (str, character)
 {
     return (str.charAt(str.length - 1) === character) ? str.slice(0, str.length - 1) : str.valueOf();
 }
@@ -1225,20 +1211,21 @@ defineLazyGetter("threadManager", function() {
                      .getService(Components.interfaces.nsIThreadManager);
 });
 
+function log (message, level)
+{
+    // Three log levels, 0 = critical, 1 = normal, 2 = verbose
+    // Default level is 1
+    level = level || 1;
+    // If preference unset, default to 1 (normal) level
+    if (level <= 1)
+    {
+        consoleService.logStringMessage(message);
+    }
+}
 
 // The DNS Handler which does most of the work of the extension
 var dns_handler =
 {
-    AF_UNSPEC: null,
-    AF_INET: null,
-    AF_INET6: null,
-    AF_LINK: null,
-    library: null,
-    sockaddr: null,
-    addrinfo: null,
-    getaddrinfo: null,
-    ifaddrs: null,
-    getifaddrs: null,
     remote_ctypes: false,
     local_ctypes: false,
 
@@ -1249,7 +1236,7 @@ var dns_handler =
 
     init : function ()
     {
-        consoleService.logStringMessage("Sixornot - dns_handler - init");
+        log("Sixornot - dns_handler - init");
         // Import ctypes module (not needed, this is all handled by our worker)
         // Cu.import("resource://gre/modules/ctypes.jsm");
 
@@ -1279,7 +1266,7 @@ var dns_handler =
 
     shutdown : function ()
     {
-        consoleService.logStringMessage("Sixornot - dns_handler - shutdown");
+        log("Sixornot - dns_handler - shutdown");
         // Shutdown async resolver
         this.worker.postMessage([-1, 0, null]);
     },
@@ -1413,11 +1400,11 @@ var dns_handler =
             let result = this.is_ip6(tests[i][0]);
             if (result === tests[i][1])
             {
-                consoleService.logStringMessage("Sixornot - test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+                log("Sixornot - test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
             }
             else
             {
-                consoleService.logStringMessage("Sixornot - test_is_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
+                log("Sixornot - test_is_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
                 overall = false;
             }
         }
@@ -1455,11 +1442,11 @@ var dns_handler =
             let result = this.normalise_ip6(tests[i][0]);
             if (result === tests[i][1])
             {
-                consoleService.logStringMessage("Sixornot - test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+                log("Sixornot - test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result);
             }
             else
             {
-                consoleService.logStringMessage("Sixornot - test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
+                log("Sixornot - test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
                 overall = false;
             }
         }
@@ -1511,11 +1498,11 @@ var dns_handler =
             let result = this.typeof_ip6(tests[i][0]);
             if (result === tests[i][1])
             {
-                consoleService.logStringMessage("Sixornot - test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+                log("Sixornot - test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
             }
             else
             {
-                consoleService.logStringMessage("Sixornot - test_typeof_ip6, failed test value: " + tests[i][0] + ", expected result: " + i[1] + ", actual result: " + result);
+                log("Sixornot - test_typeof_ip6, failed test value: " + tests[i][0] + ", expected result: " + i[1] + ", actual result: " + result);
                 overall = false;
             }
         }
@@ -1588,7 +1575,7 @@ var dns_handler =
     // Return the IP address(es) of the local host
     resolve_local_async : function (callback)
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:resolve_local_async");
+        log("Sixornot - dns_handler:resolve_local_async");
         if (this.local_ctypes)
         {
             // If remote resolution is happening via ctypes...
@@ -1603,7 +1590,7 @@ var dns_handler =
 
     _local_ctypes_async : function (callback)
     {
-        consoleService.logStringMessage("Sixornot - _local_ctypes_async - resolving local host");
+        log("Sixornot - _local_ctypes_async - resolving local host");
         // This uses dns_worker to do the work asynchronously
 
         let new_callback_id = this.add_callback_id(callback);
@@ -1616,7 +1603,7 @@ var dns_handler =
     // Proxy to _remote_firefox_async since it does much the same thing
     _local_firefox_async : function (callback)
     {
-        consoleService.logStringMessage("Sixornot - _local_firefox_async - resolving local host");
+        log("Sixornot - _local_firefox_async - resolving local host");
         return this._remote_firefox_async(dnsService.myHostName, callback);
     },
 
@@ -1625,8 +1612,8 @@ var dns_handler =
     // This should return an object which can be used to cancel the pending request
     resolve_remote_async : function (host, callback)
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:resolve_remote_async");
-        consoleService.logStringMessage("Sixornot - dns_handler:resolve_remote_async, typeof callback: " + typeof callback);
+        log("Sixornot - dns_handler:resolve_remote_async");
+        log("Sixornot - dns_handler:resolve_remote_async, typeof callback: " + typeof callback);
         if (this.remote_ctypes)
         {
             // If remote resolution is happening via ctypes...
@@ -1645,7 +1632,7 @@ var dns_handler =
     // Return index of this.callback_ids for a specified callback_id
     find_callback_by_id : function (callback_id)
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:find_callback_by_id: " + callback_id);
+        log("Sixornot - dns_handler:find_callback_by_id: " + callback_id);
         // Callback IDs is an array of 2-item arrays - [ID, callback]
         // Search array for item with ID, if found remove it
         let f = function (a)
@@ -1659,15 +1646,15 @@ var dns_handler =
     // Search this.callback_ids for the ID in question, remove it if it exists
     remove_callback_id : function (callback_id)
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:remove_callback_id: " + callback_id);
-        consoleService.logStringMessage("Sixornot - dns_handler:remove_callback_id, array is: " + this.callback_ids.toSource());
+        log("Sixornot - dns_handler:remove_callback_id: " + callback_id);
+        log("Sixornot - dns_handler:remove_callback_id, array is: " + this.callback_ids.toSource());
         let i = this.find_callback_by_id(callback_id);
-        consoleService.logStringMessage("Sixornot - dns_handler:remove_callback_id, i is: " + i);
+        log("Sixornot - dns_handler:remove_callback_id, i is: " + i);
         if (i !== -1)
         {
             // Return the callback function
             let j = this.callback_ids.splice(i, 1);
-            consoleService.logStringMessage("Sixornot - dns_handler:remove_callback_id, j is: " + j.toSource());
+            log("Sixornot - dns_handler:remove_callback_id, j is: " + j.toSource());
 //            return this.callback_ids.splice(i, 1)[1];
             return j[0][1];
         }
@@ -1702,7 +1689,7 @@ var dns_handler =
 
     _remote_ctypes_async : function (host, callback)
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:_remote_ctypes_async");
+        log("Sixornot - dns_handler:_remote_ctypes_async");
         // This uses dns_worker to do the work asynchronously
 
         let new_callback_id = this.add_callback_id(callback);
@@ -1714,7 +1701,7 @@ var dns_handler =
 
     _remote_firefox_async : function (host, callback)
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:_remote_firefox_async");
+        log("Sixornot - dns_handler:_remote_firefox_async");
 
         let my_callback =
         {
@@ -1730,12 +1717,12 @@ var dns_handler =
                 {
                     if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST)
                     {
-                        consoleService.logStringMessage("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, unknown host");
+                        log("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, unknown host");
                         callback(["FAIL"]);
                     }
                     else
                     {
-                        consoleService.logStringMessage("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, status: " + nsstatus);
+                        log("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, status: " + nsstatus);
                         callback(["FAIL"]);
                     }
                     // Address was not found in DNS for some reason
@@ -1758,7 +1745,7 @@ var dns_handler =
         }
         catch (e)
         {
-            Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
+            Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
             callback(["FAIL"]);
             return null;
         }
@@ -1767,7 +1754,7 @@ var dns_handler =
     // Called by worker to pass information back to main thread
     onworkermessage : function (evt)
     {
-        consoleService.logStringMessage("Sixornot - dns_handler:onworkermessage - message is: " + evt.data);
+        log("Sixornot - dns_handler:onworkermessage - message is: " + evt.data);
         // evt.data is the information passed back
         // This is an array: [callback_id, request_id, data]
         // data will usually be a list of IP addresses
@@ -1787,7 +1774,7 @@ var dns_handler =
         else if (evt.data[1] === 1 || evt.data[1] === 2)
         {
             let callback = this.remove_callback_id(evt.data[0]);
-            consoleService.logStringMessage("Sixornot - dns_handler:onworkermessage, typeof callback: " + typeof callback);
+            log("Sixornot - dns_handler:onworkermessage, typeof callback: " + typeof callback);
             // Execute callback
             if (callback)
             {
@@ -1801,12 +1788,15 @@ var dns_handler =
     {
         try
         {
-            request.cancel(Components.results.NS_ERROR_ABORT);
+            if (request)
+            {
+                request.cancel(Components.results.NS_ERROR_ABORT);
+            }
         }
         catch (e)
         {
             // TODO - Maybe hide this exception?
-            Components.utils.reportError("Sixornot EXCEPTION: " + parseException(e));
+            Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
         }
     },
 

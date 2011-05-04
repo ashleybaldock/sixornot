@@ -22,8 +22,37 @@
 
 let consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
 
+function log (message, level)
+{
+    // Three log levels, 0 = critical, 1 = normal, 2 = verbose
+    // Default level is 1
+    level = level || 1;
+    // If preference unset, default to 1 (normal) level
+    if (level <= 1)
+    {
+        consoleService.logStringMessage(message);
+    }
+}
 
-consoleService.logStringMessage("Sixornot(dns_worker)");
+// Returns a string version of an exception object with its stack trace
+function parse_exception (e)
+{
+    if (!e)
+    {
+        return "";
+    }
+    else if (!e.stack)
+    {
+        return String(e);
+    }
+    else
+    {
+        return String(e) + " \n" + e.stack;
+    }
+}
+
+
+log("Sixornot(dns_worker)");
 
 // Data is an array
 // [callback_id, request_id, data]
@@ -36,15 +65,15 @@ consoleService.logStringMessage("Sixornot(dns_worker)");
 var reqids =
 {
     shutdown: 0,        // Shut down DNS resolver, must be last request!
-    remotelookup: 1,
-    locallookup: 2,
+    remotelookup: 1,    // Perform dns.resolve_remote lookup
+    locallookup: 2,     // Perform dns.resolve_local lookup
     checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
     checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
 }
 
 onmessage = function (evt)
 {
-    consoleService.logStringMessage("Sixornot(dns_worker) - onmessage: " + evt.data.toSource());
+    log("Sixornot(dns_worker) - onmessage: " + evt.data.toSource());
     if (evt.data && evt.data[1])
     {
         let dispatch = [];
@@ -87,18 +116,18 @@ var dns =
 
     check_remote : function ()
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - dns:check_remote, value: " + this.remote_ctypes);
+        log("Sixornot(dns_worker) - dns:check_remote, value: " + this.remote_ctypes);
         return this.remote_ctypes;
     },
     check_local : function ()
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - dns:check_local, value: " + this.local_ctypes);
+        log("Sixornot(dns_worker) - dns:check_local, value: " + this.local_ctypes);
         return this.local_ctypes;
     },
 
     init : function ()
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - dns:init");
+        log("Sixornot(dns_worker) - dns:init");
         // Import ctypes module (not needed within a ChromeWorker)
         // Cu.import("resource://gre/modules/ctypes.jsm");
 
@@ -108,7 +137,7 @@ var dns =
             this.library = ctypes.open(this.osx_library);
             try
             {
-                consoleService.logStringMessage("Sixornot(dns_worker) - Running on OSX, opened library: '" + this.osx_library + "'");
+                log("Sixornot(dns_worker) - Running on OSX, opened library: '" + this.osx_library + "'");
                 // On OSX use ctypes functionality to resolve both remote and local addresses
                 // On this platform getaddrinfo w/ local hostname doesn't always return all local addresses
                 // So we need to use getifaddr to do this
@@ -229,16 +258,16 @@ var dns =
                 }
                 catch (e)
                 {
-                    consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init ctypes local resolver, falling back to Firefox method for local addresses (WARNING: May not work if DNS isn't configured for local host)");
-                    Components.utils.reportError("Sixornot(dns_worker) EXCEPTION: " + parseException(e));
+                    log("Sixornot(dns_worker) - Unable to init ctypes local resolver, falling back to Firefox method for local addresses (WARNING: May not work if DNS isn't configured for local host)", 0);
+                    log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                     // If we've got this far then remote resolution should still work, so only disable local ctypes resolution
                     this.local_ctypes = false;
                 }
             }
             catch (e)
             {
-                consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init ctypes resolvers, falling back to Firefox method for local and remote addresses");
-                Components.utils.reportError("Sixornot(dns_worker) EXCEPTION: " + parseException(e));
+                log("Sixornot(dns_worker) - Unable to init ctypes resolvers, falling back to Firefox method for local and remote addresses");
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.library.close();
                 this.remote_ctypes = false;
                 this.local_ctypes = false;
@@ -246,13 +275,13 @@ var dns =
         }
         catch(e)
         {
-            consoleService.logStringMessage("Sixornot(dns_worker) - Not running on OSX");
+            log("Sixornot(dns_worker) - Not running on OSX");
             try
             {
                 this.library = ctypes.open(this.win_library);
                 try
                 {
-                    consoleService.logStringMessage("Sixornot(dns_worker) - Running on Windows XP+, opened library: '" + this.win_library + "'");
+                    log("Sixornot(dns_worker) - Running on Windows XP+, opened library: '" + this.win_library + "'");
                     // On Windows resolve remote IPs via ctypes method, but use Firefox method to find local addresses since this always works on Windows
                     this.remote_ctypes = true;
                     this.local_ctypes = false;
@@ -353,8 +382,8 @@ var dns =
                 }
                 catch (e)
                 {
-                    consoleService.logStringMessage("Sixornot(dns_worker) - Unable to init ctypes resolver, falling back to firefox");
-                    Components.utils.reportError("Sixornot(dns_worker) EXCEPTION: " + parseException(e));
+                    log("Sixornot(dns_worker) - Unable to init ctypes resolver, falling back to firefox");
+                    log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                     this.library.close();
                     this.remote_ctypes = false;
                     this.local_ctypes = false;
@@ -362,19 +391,19 @@ var dns =
             }
             catch (e)
             {
-                consoleService.logStringMessage("Sixornot(dns_worker) - Not running on Windows XP+");
+                log("Sixornot(dns_worker) - Not running on Windows XP+");
                 // Here we should degrade down to using Firefox's builtin methods
-                consoleService.logStringMessage("Sixornot(dns_worker) - Native resolver not supported on this platform, falling back to builtin");
+                log("Sixornot(dns_worker) - Native resolver not supported on this platform, falling back to builtin");
                 this.remote_ctypes = false;
                 this.local_ctypes = false;
             }
         }
-        consoleService.logStringMessage("Sixornot(dns_worker) - dns:init completed");
+        log("Sixornot(dns_worker) - dns:init completed");
     },
 
     shutdown : function ()
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - shutdown");
+        log("Sixornot(dns_worker) - shutdown");
         if (this.remote_ctypes || this.local_ctypes)
         {
             // Shutdown ctypes library
@@ -387,7 +416,7 @@ var dns =
     // Converts a sockaddr structure to a string representation of its address
     sockaddr_to_str : function (sockaddr)
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - sockaddr_to_str");
+        log("Sixornot(dns_worker) - sockaddr_to_str");
         let dispatch = [];
         dispatch[this.AF_INET] = this._af_inet_to_str;
         dispatch[this.AF_INET6] = this._af_inet6_to_str;
@@ -405,7 +434,7 @@ var dns =
 
     _af_inet_to_str : function (sockaddr)
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - _af_inet_to_str");
+        log("Sixornot(dns_worker) - _af_inet_to_str");
         // Cast to sockaddr_in
         let sockaddr_in = ctypes.cast(sockaddr, this.sockaddr_in);
         // Read IP address value as 32bit number
@@ -416,7 +445,7 @@ var dns =
     },
     _af_inet6_to_str : function (sockaddr)
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - _af_inet6_to_str");
+        log("Sixornot(dns_worker) - _af_inet6_to_str");
         // Cast to sockaddr_in6
         let sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
         // Convert to hex quad notation + return string
@@ -433,7 +462,7 @@ var dns =
     },
     _af_link_to_str : function (sockaddr)
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - _af_link_to_str");
+        log("Sixornot(dns_worker) - _af_link_to_str");
         // Cast to ???
         // Read MAC address value
         // Convert to MAC format with '-' separators + return string
@@ -442,7 +471,7 @@ var dns =
 
     resolve_local : function ()
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local - resolving local host");
+        log("Sixornot(dns_worker) - resolve_local - resolving local host");
 
         let first_addr = this.ifaddrs();
         let first_addr_ptr = first_addr.address();
@@ -450,7 +479,7 @@ var dns =
 
         if (first_addr_ptr.isNull())
         {
-            consoleService.logStringMessage("Sixornot(dns_worker) - resolve_local - Got no results from getifaddrs");
+            log("Sixornot(dns_worker) - resolve_local - Got no results from getifaddrs");
             return ["FAIL"];
         }
 
@@ -474,14 +503,14 @@ var dns =
             i = i.ifa_next.contents;
         }
 
-        consoleService.logStringMessage("Sixornot(dns_worker) - Found the following addresses: " + addresses);
+        log("Sixornot(dns_worker) - Found the following addresses: " + addresses);
         return addresses.slice();
     },
 
     // Proxy to ctypes getaddrinfo functionality
     resolve_remote : function (host)
     {
-        consoleService.logStringMessage("Sixornot(dns_worker) - resolve_remote - resolving host: " + host);
+        log("Sixornot(dns_worker) - resolve_remote - resolving host: " + host);
 
         // Debugging - TODO if needed split this into function that creates addrinfo with flags etc.
         let hints = this.addrinfo();
@@ -498,7 +527,7 @@ var dns =
 //        let ret = this.getaddrinfo(host, null, null, retVal.address());
         if (first_addr_ptr.isNull())
         {
-            consoleService.logStringMessage("Sixornot(dns_worker) - resolve_remote - Unable to resolve host, got no results from getaddrinfo");
+            log("Sixornot(dns_worker) - resolve_remote - Unable to resolve host, got no results from getaddrinfo");
             return ["FAIL"];
         }
 
@@ -522,7 +551,7 @@ var dns =
             i = i.ai_next.contents;
         }
 
-        consoleService.logStringMessage("Sixornot(dns_worker) - Found the following addresses: " + addresses);
+        log("Sixornot(dns_worker) - Found the following addresses: " + addresses);
         return addresses.slice();
 
     }
@@ -530,6 +559,6 @@ var dns =
 
 
 // Set up DNS (load ctypes modules etc.)
-consoleService.logStringMessage("Sixornot(dns_worker) - calling dns.init");
+log("Sixornot(dns_worker) - calling dns.init");
 dns.init();
 
