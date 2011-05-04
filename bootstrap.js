@@ -942,12 +942,18 @@ function startup (aData, aReason)
     // Set up resource URI alias
     let resource = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
     let alias = Services.io.newFileURI(aData.installPath);
+    if (!aData.installPath.isDirectory())
+    {
+        alias = Services.io.newURI("jar:" + alias.spec + "!/", null, null);
+    }
     resource.setSubstitution("sixornot", alias);
 
     AddonManager.getAddonByID(aData.id, function (addon, data) {
         log("Sixornot - startup");
 
         // Include libraries
+        log("Sixornot - startup - " + addon.getResourceURI("includes/utils.js").spec);
+        log("Sixornot - startup - " + addon.getResourceURI("includes/locale.js").spec);
         include(addon.getResourceURI("includes/utils.js").spec);
         include(addon.getResourceURI("includes/locale.js").spec);
 
