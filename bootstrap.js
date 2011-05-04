@@ -819,7 +819,6 @@ function main (win)
         }
 
         // Append local IP address information
-        // TODO - Convert other functions to this form
         let v6_italic = function (ip6_address)
         {
             return dns_handler.typeof_ip6(ip6_address) !== "global";
