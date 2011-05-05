@@ -314,10 +314,13 @@ function main (win)
     /* Poll for content change to ensure this is updated on all pages including errors */
     function pollForContentChange ()
     {
+        log("Sixornot - main:pollForContentChange", 3);
         try
         {
             if (contentDoc !== win.content.document)
+            {
                 updateState();
+            }
         }
         catch (e)
         {
@@ -325,29 +328,30 @@ function main (win)
         }
     }
 
-    /* Updates icon/tooltip etc. state if needed - called by the polling loop */
+    // Updates icon/tooltip etc. state if needed - called by the polling loop
+    // TODO - This whole process needs a rethink - needs a better workflow
     function updateState ()
     {
-        log("Sixornot - updateState");
+        var addressIcon, toolbarButton, set_icon, onReturnedIPs ;
+        log("Sixornot - main:updateState", 2);
 
-        let addressIcon = gbi(doc, ADDRESS_IMG_ID);
-        let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
+        addressIcon = gbi(doc, ADDRESS_IMG_ID);
+        toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
 
         contentDoc = win.content.document;
         url = contentDoc.location.href;
         host = "";
-        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
         ipv6s = [];
         ipv4s = [];
         localipv6s = [];
         localipv4s = [];
-        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
 
         // If we've changed pages before completing a lookup, then abort the old request first
         dns_handler.cancel_request(dns_request);
         dns_request = null;
 
-        let set_icon = function (icon)
+        // TODO - this is duplicated with the one in update_icon - move out?
+        set_icon = function (icon)
         {
             // If this is null, address icon isn't showing
             if (addressIcon !== null)
@@ -399,44 +403,45 @@ function main (win)
             return;
         }
 
-        let onReturnedIPs = function (remoteips)
+        onReturnedIPs = function (remoteips)
         {
-            log("Sixornot - onReturnedIPs");
+            var onReturnedLocalIPs;
+            log("Sixornot - main:updateState:onReturnedIPs", 2);
             dns_request = null;
 
             // DNS lookup failed
+            // TODO - we should still perform local lookup at this point?
             if (remoteips[0] === "FAIL")
             {
                 set_icon(sother_16);
                 specialLocation = ["lookuperror"];
-                log("Sixornot - DNS lookup failed");
                 return;
             }
 
-            log("Sixornot - remoteips is: " + remoteips + "; typeof remoteips is: " + typeof remoteips);
+            log("Sixornot - main:updateState:onReturnedIPs - remoteips is: " + remoteips + "; typeof remoteips is: " + typeof remoteips, 2);
 
             // Parse list of IPs for IPv4/IPv6
             ipv6s = remoteips.filter(dns_handler.is_ip6);
             ipv4s = remoteips.filter(dns_handler.is_ip4);
 
-            log("Sixornot - found remote IP addresses, trying local next");
+            log("Sixornot - main:updateState:onReturnedIPs - found remote IP addresses, trying local next", 2);
 
             // Update our local IP addresses (need these for the update_icon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
 
-            let onReturnedLocalIPs = function (localips)
+            onReturnedLocalIPs = function (localips)
             {
-                log("Sixornot - onReturnedLocalIPs");
+                log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs", 2);
                 dns_request = null;
 
-                log("Sixornot - localips is: " + localips + "; typeof localips is: " + typeof localips);
+                log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs - localips is: " + localips + "; typeof localips is: " + typeof localips);
                 // Parse list of local IPs for IPv4/IPv6
                 localipv6s = localips.filter(function (a) {
                     return dns_handler.is_ip6(a) && dns_handler.typeof_ip6(a) !== "localhost"; });
                 localipv4s = localips.filter(function (a) {
                     return dns_handler.is_ip4(a) && dns_handler.typeof_ip4(a) !== "localhost"; });
 
-                log("Sixornot - found local IP addresses");
+                log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs - found local IP addresses");
 
                 // This must now work as we have a valid IP address
                 update_icon();
