@@ -64,30 +64,30 @@
 /*
     Constants and global variables
 */
-const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
-Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource://gre/modules/AddonManager.jsm");
+// Import needed code modules
+Components.utils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource://gre/modules/AddonManager.jsm");
 
-const NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
-const BUTTON_ID     = "sixornot-buttonid",
-      ADDRESS_BOX_ID = "sixornot-addressboxid",
-      ADDRESS_IMG_ID = "sixornot-addressimageid",
-      TOOLTIP_ID = "sixornot-tooltipid",
-      ADDRESS_MENU_ID = "sixornot-addressmenuid",
-      TOOLBAR_MENU_ID = "sixornot-toolbarmenuid",
-      PREF_TOOLBAR  = "toolbar",
-      PREF_NEXTITEM = "nextitem";
+var NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+var BUTTON_ID       = "sixornot-buttonid",
+    ADDRESS_BOX_ID  = "sixornot-addressboxid",
+    ADDRESS_IMG_ID  = "sixornot-addressimageid",
+    TOOLTIP_ID      = "sixornot-tooltipid",
+    ADDRESS_MENU_ID = "sixornot-addressmenuid",
+    TOOLBAR_MENU_ID = "sixornot-toolbarmenuid",
+    PREF_TOOLBAR    = "toolbar",
+    PREF_NEXTITEM   = "nextitem";
 
-const PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
+var PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
 
-const PREFS = {
+var PREFS = {
     nextitem:           "bookmarks-menu-button-container",
     toolbar:            "nav-bar",
     showaddressicon:    false,
     use_greyscale:      false
 };
 
-let PREF_OBSERVER = {
+var PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         log("Sixornot - prefs observer");
         log("aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData);
@@ -130,14 +130,14 @@ let PREF_OBSERVER = {
     Unknown                     other_16.png, other_24.png
 */
 // Colour icons
-let s6only_16_c = "", s6and4_16_c = "", s4pot6_16_c = "", s4only_16_c = "", sother_16_c = "";
-let s6only_24_c = "", s6and4_24_c = "", s4pot6_24_c = "", s4only_24_c = "", sother_24_c = "";
+var s6only_16_c = "", s6and4_16_c = "", s4pot6_16_c = "", s4only_16_c = "", sother_16_c = "",
+    s6only_24_c = "", s6and4_24_c = "", s4pot6_24_c = "", s4only_24_c = "", sother_24_c = "",
 // Greyscale icons
-let s6only_16_g = "", s6and4_16_g = "", s4pot6_16_g = "", s4only_16_g = "", sother_16_g = "";
-let s6only_24_g = "", s6and4_24_g = "", s4pot6_24_g = "", s4only_24_g = "", sother_24_g = "";
+    s6only_16_g = "", s6and4_16_g = "", s4pot6_16_g = "", s4only_16_g = "", sother_16_g = "",
+    s6only_24_g = "", s6and4_24_g = "", s4pot6_24_g = "", s4only_24_g = "", sother_24_g = "",
 // Current icons
-let s6only_16 = "",   s6and4_16 = "",   s4pot6_16 = "",   s4only_16 = "",   sother_16 = "";
-let s6only_24 = "",   s6and4_24 = "",   s4pot6_24 = "",   s4only_24 = "",   sother_24 = "";
+    s6only_16 = "",   s6and4_16 = "",   s4pot6_16 = "",   s4only_16 = "",   sother_16 = "",
+    s6only_24 = "",   s6and4_24 = "",   s4pot6_24 = "",   s4only_24 = "",   sother_24 = "";
 
 (function(global) global.include = function include(src) (
     Services.scriptloader.loadSubScript(src, global)))(this);
@@ -213,7 +213,7 @@ function main (win)
         // Add event listeners
         win.addEventListener("online", onChangedOnlineStatus, false);
         win.addEventListener("offline", onChangedOnlineStatus, false);
-        win.addEventListener("aftercustomization", toggleCustomize, false);
+        win.addEventListener("aftercustomization", toggle_customise, false);
     }
     // Add address bar icon only if desired by preferences
     if (get_bool_pref("showaddressicon"))
@@ -276,7 +276,7 @@ function main (win)
         win.clearInterval(pollLoopID);
 
         // Clear event handlers
-        win.removeEventListener("aftercustomization", toggleCustomize, false);
+        win.removeEventListener("aftercustomization", toggle_customise, false);
         win.removeEventListener("offline", onChangedOnlineStatus, false);
         win.removeEventListener("online", onChangedOnlineStatus, false);
         tooltip.removeEventListener("popupshowing", updateTooltipContent, false);
@@ -569,7 +569,7 @@ function main (win)
         {
             log("Sixornot - onMenuCommand, goto web page");
             // Add tab to most recent window, regardless of where this function was called from
-            let currentWindow = getCurrentWindow();
+            let currentWindow = get_current_window();
             currentWindow.focus();
             let currentBrowser = currentWindow.getBrowser();
             currentBrowser.selectedTab = currentBrowser.addTab(commandString);
@@ -905,6 +905,7 @@ function main (win)
 // Image set is either colour or greyscale
 function set_iconset ()
 {
+    log("Sixornot - set_iconset", 2);
     // If use_greyscale is set to true, load grey icons, otherwise load default set
     if (get_bool_pref("use_greyscale"))
     {
@@ -939,17 +940,20 @@ function set_iconset ()
 */
 function startup (aData, aReason)
 {
+    var resource, alias;
+    log("Sixornot - startup - reason: " + aReason, 0);
     // Set up resource URI alias
-    let resource = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
-    let alias = Services.io.newFileURI(aData.installPath);
+    resource = Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
+    alias = Services.io.newFileURI(aData.installPath);
     if (!aData.installPath.isDirectory())
     {
         alias = Services.io.newURI("jar:" + alias.spec + "!/", null, null);
     }
     resource.setSubstitution("sixornot", alias);
 
-    AddonManager.getAddonByID(aData.id, function (addon, data) {
-        log("Sixornot - startup");
+    AddonManager.getAddonByID(aData.id, function (addon, data)
+    {
+        var prefs;
 
         // Include libraries
         log("Sixornot - startup - " + addon.getResourceURI("includes/utils.js").spec);
@@ -1002,7 +1006,7 @@ function startup (aData, aReason)
         watchWindows(main);
 
         log("Sixornot - startup - setting up prefs observer...");
-        let prefs = PREF_BRANCH_SIXORNOT;
+        prefs = PREF_BRANCH_SIXORNOT;
         prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.addObserver("", PREF_OBSERVER, false);
 
@@ -1012,16 +1016,17 @@ function startup (aData, aReason)
 // Reload addon in all windows, e.g. when preferences change
 function reload ()
 {
-    log("Sixornot - reload");
+    log("Sixornot - reload", 1);
     unload();
     watchWindows(main);
 }
 
-function shutdown (data, reason)
+function shutdown (aData, aReason)
 {
-    log("Sixornot - shutdown");
+    var prefs, resource;
+    log("Sixornot - shutdown - reason: " + aReason, 0);
 
-    if (reason !== APP_SHUTDOWN)
+    if (aReason !== APP_SHUTDOWN)
     {
         // Unload all UI via init-time unload() callbacks
         unload();
@@ -1029,24 +1034,24 @@ function shutdown (data, reason)
         // Shutdown dns_handler
         dns_handler.shutdown();
 
-        let prefs = PREF_BRANCH_SIXORNOT;
+        prefs = PREF_BRANCH_SIXORNOT;
         prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.removeObserver("", PREF_OBSERVER);
 
-        let resource = Services.io.getProtocolHandler("resource").QueryInterface(Ci.nsIResProtocolHandler);
+        resource = Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
         resource.setSubstitution("sixornot", null);
     }
 }
 
-function install ()
+function install (aData, aReason)
 {
-    log("Sixornot - install");
-    setInitialPrefs();
+    log("Sixornot - install - reason: " + aReason, 0);
+    set_initial_prefs();
 }
 
-function uninstall ()
+function uninstall (aData, aReason)
 {
-    log("Sixornot - uninstall");
+    log("Sixornot - uninstall - reason: " + aReason, 0);
     // TODO If this is due to an upgrade then don't delete preferences?
     // Some kind of upgrade function to potentially upgrade preference settings may be required
     PREF_BRANCH_SIXORNOT.deleteBranch("");             
@@ -1058,17 +1063,18 @@ function uninstall ()
 */
 
 // Update preference which determines location of button when loading into new windows
-function toggleCustomize (evt)
+function toggle_customise (evt)
 {
-    log("Sixornot - toggleCustomize");
-    let toolbox = evt.target, toolbarId, nextItemId;
-    let button = gbi(toolbox.parentNode, BUTTON_ID);
+    var toolbox, button, b_parent;
+    log("Sixornot - toggle_customise");
+    toolbox = evt.target, toolbarId, nextItemId;
+    button = gbi(toolbox.parentNode, BUTTON_ID);
     if (button)
     {
-        let parent = button.parentNode, nextItem = button.nextSibling;
-        if (parent && parent.localName === "toolbar")
+        let b_parent = button.parentNode, nextItem = button.nextSibling;
+        if (b_parent && b_parent.localName === "toolbar")
         {
-            toolbarId = parent.id;
+            toolbarId = b_parent.id;
             nextItemId = nextItem && nextItem.id;
         }
     }
@@ -1079,28 +1085,28 @@ function toggleCustomize (evt)
 // Return boolean preference value, either from prefs store or from internal defaults
 function get_bool_pref (name)
 {
-    log("Sixornot - get_bool_pref");
+    log("Sixornot - get_bool_pref - name: " + name, 2);
     try
     {
         return PREF_BRANCH_SIXORNOT.getBoolPref(name);
     }
     catch (e)
     {
-        log("Sixornot - get_bool_pref error - " + e);
+        log("Sixornot - get_bool_pref error - " + e, 0);
     }
     if (PREFS.hasOwnProperty(name))
     {
-        log("Sixornot - get_bool_pref returning PREFS[name] : " + PREFS[name]);
+        log("Sixornot - get_bool_pref returning PREFS[name] : " + PREFS[name], 2);
         return PREFS[name]
     }
     else
     {
-        log("Sixornot - get_bool_pref error - No default preference value!");
+        log("Sixornot - get_bool_pref error - No default preference value for requested preference: " + name, 0);
     }
 }
 
 // Return the current browser window
-function getCurrentWindow ()
+function get_current_window ()
 {
     return Components.classes["@mozilla.org/appshell/window-mediator;1"]
                      .getService(Components.interfaces.nsIWindowMediator)
@@ -1108,24 +1114,26 @@ function getCurrentWindow ()
 }
 
 // Proxy to getElementById
-function gbi (node, childId)
+function gbi (node, child_id)
 {
+    log("Sixornot - gbi - node: " + node + ", child_id: " + child_id, 2);
     if (node.getElementById)
     {
-        return node.getElementById(childId);
+        return node.getElementById(child_id);
     }
     else
     {
-        return node.querySelector("#" + childId);
+        return node.querySelector("#" + child_id);
     }
 }
 
 // Set up initial values for preferences
-function setInitialPrefs ()
+function set_initial_prefs ()
 {
-    log("Sixornot - setInitialPrefs");
-    let branch = PREF_BRANCH_SIXORNOT;
-    for (let [key, val] in Iterator(PREFS))
+    var branch, key, val;
+    log("Sixornot - set_initial_prefs", 2);
+    branch = PREF_BRANCH_SIXORNOT;
+    for ([key, val] in Iterator(PREFS))
     {
         if (typeof val === "boolean")
         {
@@ -1145,6 +1153,7 @@ function setInitialPrefs ()
 // Returns a string version of an exception object with its stack trace
 function parse_exception (e)
 {
+    log("Sixornot - parse_exception", 2);
     if (!e)
     {
         return "";
@@ -1216,6 +1225,7 @@ defineLazyGetter("threadManager", function() {
                      .getService(Components.interfaces.nsIThreadManager);
 });
 
+// Log a message to error console, but only if it is important enough
 function log (message, level)
 {
     // Three log levels, 0 = critical, 1 = normal, 2 = verbose
@@ -1228,6 +1238,7 @@ function log (message, level)
     }
 }
 
+
 // The DNS Handler which does most of the work of the extension
 var dns_handler =
 {
@@ -1239,45 +1250,51 @@ var dns_handler =
 
     worker: null,
 
+
+    /*
+        Startup/shutdown functions for dns_handler - call init before using!
+    */
     init : function ()
     {
-        log("Sixornot - dns_handler - init");
-        // Import ctypes module (not needed, this is all handled by our worker)
-        // Cu.import("resource://gre/modules/ctypes.jsm");
+        var self;
+        log("Sixornot - dns_handler - init", 1);
 
         // Initialise ChromeWorker which will be used to do DNS lookups either via ctypes or dnsService
         this.worker = workerFactory.newChromeWorker("resource://sixornot/includes/dns_worker.js");
 
-  	    // Shim to get 'this' to refer to dns_handler, not the
-  	    // worker, when a message is received.
-  	    var self = this;
-  	    this.worker.onmessage = function (evt) {
-  	        self.onworkermessage.call(self, evt);
-  	    };
+        // Shim to get 'this' to refer to dns_handler, not the
+        // worker, when a message is received.
+        self = this;
+        this.worker.onmessage = function (evt) {
+            self.onworkermessage.call(self, evt);
+        };
 
         // Check whether to use ctypes methods for remote hosts
-  	    this.worker.postMessage([-1, 3, null]);
+        this.worker.postMessage([-1, 3, null]);
         // Check whether to use ctypes methods for local hosts
-  	    this.worker.postMessage([-1, 4, null]);
+        this.worker.postMessage([-1, 4, null]);
 
         // Set up request map, which will map async requests to their callbacks
         this.callback_ids = [];
         this.next_callback_id = 0;
         // Every time a request is processed its callback is added to the callback_ids
         // When a request is completed the callback_ids can be queried to find the correct callback to call
-        // Then the callback is removed from the array and called
-
     },
 
     shutdown : function ()
     {
-        log("Sixornot - dns_handler - shutdown");
+        log("Sixornot - dns_handler:shutdown", 1);
         // Shutdown async resolver
         this.worker.postMessage([-1, 0, null]);
     },
 
+
+    /*
+        IP Address utility functions
+    */
     validate_ip4 : function (ip_address)
     {
+        log("Sixornot - dns_handler:validate_ip4: " + ip_address, 2);
         // TODO - Write this function if needed, extensive validation of IPv4 address
         return false;
     },
@@ -1285,57 +1302,61 @@ var dns_handler =
     // Quick check for address family, not a validator (see validate_ip4)
     is_ip4 : function (ip_address)
     {
+        log("Sixornot - dns_handler:is_ip4 " + ip_address, 2);
         return (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
     },
 
+    // Return the type of an IPv6 address
+    /*
+        -- For IPv4 addresses types are (from RFC 3330) --
+
+        Address Block             Present Use                       Reference
+        ---------------------------------------------------------------------
+        0.0.0.0/8            "This" Network                 [RFC1700, page 4]
+        10.0.0.0/8           Private-Use Networks                   [RFC1918]
+        14.0.0.0/8           Public-Data Networks         [RFC1700, page 181]
+        24.0.0.0/8           Cable Television Networks                    --
+        39.0.0.0/8           Reserved but subject
+                               to allocation                       [RFC1797]
+        127.0.0.0/8          Loopback                       [RFC1700, page 5]
+        128.0.0.0/16         Reserved but subject
+                               to allocation                             --
+        169.254.0.0/16       Link Local                                   --
+        172.16.0.0/12        Private-Use Networks                   [RFC1918]
+        191.255.0.0/16       Reserved but subject
+                               to allocation                             --
+        192.0.0.0/24         Reserved but subject
+                               to allocation                             --
+        192.0.2.0/24         Test-Net
+        192.88.99.0/24       6to4 Relay Anycast                     [RFC3068]
+        192.168.0.0/16       Private-Use Networks                   [RFC1918]
+        198.18.0.0/15        Network Interconnect
+                               Device Benchmark Testing            [RFC2544]
+        223.255.255.0/24     Reserved but subject
+                               to allocation                             --
+        224.0.0.0/4          Multicast                              [RFC3171]
+        240.0.0.0/4          Reserved for Future Use        [RFC1700, page 4]
+
+        route           0.0.0.0/8                                   Starts with 0
+        local           127.0.0.0/24                                Starts with 127
+        rfc1918         10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16   Starts with 10, 172.16-31, 192.168
+        linklocal       169.254.0.0/16                              Starts with 169.254
+        reserved        240.0.0.0/4                                 Starts with 240-255
+        documentation   192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24   Starts with 192.0.2, 198.51.100, 203.0.113
+        6to4relay       192.88.99.0/24                              Starts with 192.88.99
+        benchmark       198.18.0.0/15                               Starts with 198.18, 198.19
+        multicast       224.0.0.0/4                                 Starts with 224-239
+    */
     typeof_ip4 : function (ip_address)
     {
+        var split_address;
+        log("Sixornot - dns_handler:typeof_ip4 " + ip_address, 2);
         // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
         if (!dns_handler.is_ip4(ip_address))
         {
             return false;
         }
-        // For IPv4 addresses types are (from RFC 3330)
-        /*
-           Address Block             Present Use                       Reference
-           ---------------------------------------------------------------------
-           0.0.0.0/8            "This" Network                 [RFC1700, page 4]
-           10.0.0.0/8           Private-Use Networks                   [RFC1918]
-           14.0.0.0/8           Public-Data Networks         [RFC1700, page 181]
-           24.0.0.0/8           Cable Television Networks                    --
-           39.0.0.0/8           Reserved but subject
-                                   to allocation                       [RFC1797]
-           127.0.0.0/8          Loopback                       [RFC1700, page 5]
-           128.0.0.0/16         Reserved but subject
-                                   to allocation                             --
-           169.254.0.0/16       Link Local                                   --
-           172.16.0.0/12        Private-Use Networks                   [RFC1918]
-           191.255.0.0/16       Reserved but subject
-                                   to allocation                             --
-           192.0.0.0/24         Reserved but subject
-                                   to allocation                             --
-           192.0.2.0/24         Test-Net
-           192.88.99.0/24       6to4 Relay Anycast                     [RFC3068]
-           192.168.0.0/16       Private-Use Networks                   [RFC1918]
-           198.18.0.0/15        Network Interconnect
-                                   Device Benchmark Testing            [RFC2544]
-           223.255.255.0/24     Reserved but subject
-                                   to allocation                             --
-           224.0.0.0/4          Multicast                              [RFC3171]
-           240.0.0.0/4          Reserved for Future Use        [RFC1700, page 4]
-        */
-        /*
-            route           0.0.0.0/8                                   Starts with 0
-            local           127.0.0.0/24                                Starts with 127
-            rfc1918         10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16   Starts with 10, 172.16-31, 192.168
-            linklocal       169.254.0.0/16                              Starts with 169.254
-            reserved        240.0.0.0/4                                 Starts with 240-255
-            documentation   192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24   Starts with 192.0.2, 198.51.100, 203.0.113
-            6to4relay       192.88.99.0/24                              Starts with 192.88.99
-            benchmark       198.18.0.0/15                               Starts with 198.18, 198.19
-            multicast       224.0.0.0/4                                 Starts with 224-239
-        */
-        let split_address = ip_address.split(".").map(Number);
+        split_address = ip_address.split(".").map(Number);
         if (split_address[0] === 0)
         {
             return "route";
@@ -1384,8 +1405,9 @@ var dns_handler =
 
     test_is_ip6 : function ()
     {
-        let overall = true;
-        let tests = [
+        var overall, tests, i, result;
+        overall = true;
+        tests = [
                         ["::",                                      true],
                         ["::1",                                     true],
                         ["fe80::fa22:22ff:fee8:2222",               true],
@@ -1398,11 +1420,11 @@ var dns_handler =
                         ["blah",                                    false],
                         [":::",                                     false],
                         [":",                                       false],
-                        ["1::2::3",                                 false],
+                        ["1::2::3",                                 false]
                     ];
-        for (let i = 0; i < tests.length; i++)
+        for (i = 0; i < tests.length; i++)
         {
-            let result = this.is_ip6(tests[i][0]);
+            result = this.is_ip6(tests[i][0]);
             if (result === tests[i][1])
             {
                 log("Sixornot - test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
@@ -1418,6 +1440,7 @@ var dns_handler =
 
     validate_ip6 : function (ip_address)
     {
+        log("Sixornot - dns_handler:validate_ip6: " + ip_address, 2);
         // TODO - Write this function if needed, extensive validation of IPv6 address
         return false;
     },
@@ -1425,13 +1448,15 @@ var dns_handler =
     // Quick check for address family, not a validator (see validate_ip6)
     is_ip6 : function (ip_address)
     {
+        log("Sixornot - dns_handler:is_ip6: " + ip_address, 2);
         return (ip_address.indexOf(":") !== -1);
     },
 
     test_normalise_ip6 : function ()
     {
-        let overall = true;
-        let tests = [
+        var overall, tests, i, result;
+        overall = true;
+        tests = [
                         ["::",                                      "0000:0000:0000:0000:0000:0000:0000:0000"],
                         ["::1",                                     "0000:0000:0000:0000:0000:0000:0000:0001"],
                         ["fe80::fa22:22ff:fee8:2222",               "fe80:0000:0000:0000:fa22:22ff:fee8:2222"],
@@ -1440,18 +1465,18 @@ var dns_handler =
                         ["2:0::1:2",                                "0002:0000:0000:0000:0000:0000:0001:0002"],
                         ["2001:8b1:1fe4:1::2222",                   "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
                         ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
-                        ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"],
+                        ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"]
                     ];
-        for (let i = 0; i < tests.length; i++)
+        for (i = 0; i < tests.length; i++)
         {
-            let result = this.normalise_ip6(tests[i][0]);
+            result = this.normalise_ip6(tests[i][0]);
             if (result === tests[i][1])
             {
-                log("Sixornot - test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+                log("Sixornot - test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result, 1);
             }
             else
             {
-                log("Sixornot - test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
+                log("Sixornot - test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result, 1);
                 overall = false;
             }
         }
@@ -1461,20 +1486,22 @@ var dns_handler =
     // Expand IPv6 address into long version
     normalise_ip6 : function (ip6_address)
     {
+        var sides, left_parts, right_parts, middle, outarray, pad_left;
+        log("Sixornot - dns_handler:normalise_ip6: " + ip6_address, 2);
         // Split by instances of ::
-        let sides = ip6_address.split("::");
+        sides = ip6_address.split("::");
         // Split remaining sections by instances of :
-        let left_parts = sides[0].split(":");
-        let right_parts = sides[1] && sides[1].split(":") || [];
+        left_parts = sides[0].split(":");
+        right_parts = sides[1] && (sides[1].split(":") || []);
 
-        let middle = ["0", "0", "0", "0", "0", "0", "0", "0"].slice(0, 8 - left_parts.length - right_parts.length);
-        let outarray = Array.concat(left_parts, middle, right_parts);
+        middle = ["0", "0", "0", "0", "0", "0", "0", "0"].slice(0, 8 - left_parts.length - right_parts.length);
+        outarray = Array.concat(left_parts, middle, right_parts);
 
         // Pad each component to 4 char length with zeros to left (and convert to lowercase)
-        let pad_left = function (str)
+        pad_left = function (str)
         {
             return ("0000" + str).slice(-4);
-        }
+        };
 
         return outarray.map(pad_left).join(":").toLowerCase();
     },
@@ -1482,8 +1509,9 @@ var dns_handler =
     // Unit test suite for typeof_ip6 function, returns false if a test fails
     test_typeof_ip6 : function ()
     {
-        let overall = true;
-        let tests = [
+        var overall, tests, i, result;
+        overall = true;
+        tests = [
                         ["::", "unspecified"],
                         ["::1", "localhost"],
                         ["fe80::fa22:22ff:fee8:2222", "linklocal"],
@@ -1496,11 +1524,11 @@ var dns_handler =
                         ["192.168.2.1", false],
                         ["blah", false],
                         [":", false],
-                        ["...", false],
+                        ["...", false]
                     ];
-        for (let i = 0; i < tests.length; i++)
+        for (i = 0; i < tests.length; i++)
         {
-            let result = this.typeof_ip6(tests[i][0]);
+            result = this.typeof_ip6(tests[i][0]);
             if (result === tests[i][1])
             {
                 log("Sixornot - test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
@@ -1515,15 +1543,33 @@ var dns_handler =
     },
 
     // Return the type of an IPv6 address
+    /*
+        -- For IPv6 addresses types are: --
+        unspecified     ::/128                                          All zeros
+        local           ::1/128         0000:0000:0000:0000:0000:0000:0000:0001
+        linklocal       fe80::/10                                       Starts with fe8, fe9, fea, feb
+        sitelocal       fec0::/10   (deprecated)                        Starts with fec, fed, fee, fef
+        uniquelocal     fc00::/7    (similar to RFC1918 addresses)      Starts with: fc or fd
+        pdmulticast     ff00::/8                                        Starts with ff
+        v4transition    ::ffff:0:0/96 (IPv4-mapped)                     Starts with 0000:0000:0000:0000:0000:ffff
+                        ::ffff:0:0:0/96 (Stateless IP/ICMP Translation) Starts with 0000:0000:0000:0000:ffff:0000
+                        0064:ff9b::/96 ("Well-Known" prefix)            Starts with 0064:ff9b:0000:0000:0000:0000
+        6to4            2002::/16                                       Starts with 2002
+        teredo          2001::/32                                       Starts with 2001:0000
+        benchmark       2001:2::/48                                     Starts with 2001:0002:0000
+        documentation   2001:db8::/32                                   Starts with 2001:0db8
+    */
     typeof_ip6 : function (ip_address)
     {
+        var norm_address;
+        log("Sixornot - dns_handler:typeof_ip6: " + ip_address, 2);
         // 1. Check IP version, return false if v4
         if (!dns_handler.is_ip6(ip_address))
         {
             return false;
         }
         // 2. Normalise address, return false if normalisation fails
-        let norm_address = dns_handler.normalise_ip6(ip_address);
+        norm_address = dns_handler.normalise_ip6(ip_address);
         // 3. Compare against type patterns
         if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0000")
         {
@@ -1559,24 +1605,12 @@ var dns_handler =
         }
         // If no other type then address is global
         return "global";
-        // For IPv6 addresses types are:
-        /*
-            unspecified     ::/128                                          All zeros
-            local           ::1/128         0000:0000:0000:0000:0000:0000:0000:0001
-            linklocal       fe80::/10                                       Starts with fe8, fe9, fea, feb
-            sitelocal       fec0::/10   (deprecated)                        Starts with fec, fed, fee, fef
-            uniquelocal     fc00::/7    (similar to RFC1918 addresses)      Starts with: fc or fd
-            pdmulticast     ff00::/8                                        Starts with ff
-            v4transition    ::ffff:0:0/96 (IPv4-mapped)                     Starts with 0000:0000:0000:0000:0000:ffff
-                            ::ffff:0:0:0/96 (Stateless IP/ICMP Translation) Starts with 0000:0000:0000:0000:ffff:0000
-                            0064:ff9b::/96 ("Well-Known" prefix)            Starts with 0064:ff9b:0000:0000:0000:0000
-            6to4            2002::/16                                       Starts with 2002
-            teredo          2001::/32                                       Starts with 2001:0000
-            benchmark       2001:2::/48                                     Starts with 2001:0002:0000
-            documentation   2001:db8::/32                                   Starts with 2001:0db8
-        */
     },
 
+
+    /*
+        Finding local IP address(es)
+    */
     // Return the IP address(es) of the local host
     resolve_local_async : function (callback)
     {
@@ -1595,10 +1629,11 @@ var dns_handler =
 
     _local_ctypes_async : function (callback)
     {
-        log("Sixornot - _local_ctypes_async - resolving local host");
+        var new_callback_id;
+        log("Sixornot - dns_handler:_local_ctypes_async - selecting resolver for local host lookup", 2);
         // This uses dns_worker to do the work asynchronously
 
-        let new_callback_id = this.add_callback_id(callback);
+        new_callback_id = this.add_callback_id(callback);
 
         this.worker.postMessage([new_callback_id, 2, null]);
 
@@ -1608,17 +1643,18 @@ var dns_handler =
     // Proxy to _remote_firefox_async since it does much the same thing
     _local_firefox_async : function (callback)
     {
-        log("Sixornot - _local_firefox_async - resolving local host");
+        log("Sixornot - dns_handler:_local_firefox_async - resolving local host using Firefox builtin method", 2);
         return this._remote_firefox_async(dnsService.myHostName, callback);
     },
 
 
+    /*
+        Finding remote IP address(es)
+    */
     // Resolve IP address(es) of a remote host using DNS
-    // This should return an object which can be used to cancel the pending request
     resolve_remote_async : function (host, callback)
     {
-        log("Sixornot - dns_handler:resolve_remote_async");
-        log("Sixornot - dns_handler:resolve_remote_async, typeof callback: " + typeof callback);
+        log("Sixornot - dns_handler:resolve_remote_async - host: " + host + ", callback: " + callback, 2);
         if (this.remote_ctypes)
         {
             // If remote resolution is happening via ctypes...
@@ -1631,73 +1667,13 @@ var dns_handler =
         }
     },
 
-
-
-
-    // Return index of this.callback_ids for a specified callback_id
-    find_callback_by_id : function (callback_id)
-    {
-        log("Sixornot - dns_handler:find_callback_by_id: " + callback_id);
-        // Callback IDs is an array of 2-item arrays - [ID, callback]
-        // Search array for item with ID, if found remove it
-        let f = function (a)
-        {
-            return a[0];
-        };
-        // Returns -1 if ID not found
-        return this.callback_ids.map(f).indexOf(callback_id);
-    },
-
-    // Search this.callback_ids for the ID in question, remove it if it exists
-    remove_callback_id : function (callback_id)
-    {
-        log("Sixornot - dns_handler:remove_callback_id: " + callback_id);
-        log("Sixornot - dns_handler:remove_callback_id, array is: " + this.callback_ids.toSource());
-        let i = this.find_callback_by_id(callback_id);
-        log("Sixornot - dns_handler:remove_callback_id, i is: " + i);
-        if (i !== -1)
-        {
-            // Return the callback function
-            let j = this.callback_ids.splice(i, 1);
-            log("Sixornot - dns_handler:remove_callback_id, j is: " + j.toSource());
-//            return this.callback_ids.splice(i, 1)[1];
-            return j[0][1];
-        }
-        // If ID not found, return false
-        return false;
-    },
-
-    // Add a callback to the callback_ids array with the next available ID
-    add_callback_id : function (callback)
-    {
-        // Use next available callback ID, return that ID
-        this.next_callback_id = this.next_callback_id + 1;
-        this.callback_ids.push([this.next_callback_id, callback]);
-        return this.next_callback_id;
-    },
-
-    make_cancel_obj : function (callback_id)
-    {
-        let obj =
-        {
-            cancel : function ()
-            {
-                // Remove ID from callback_ids if it exists there
-                dns_handler.remove_callback_id(callback_id);
-            }
-        }
-        return obj;
-    },
-
-
-
-
     _remote_ctypes_async : function (host, callback)
     {
-        log("Sixornot - dns_handler:_remote_ctypes_async");
+        var new_callback_id;
+        log("Sixornot - dns_handler:_remote_ctypes_async - host: " + host + ", callback: " + callback, 2);
         // This uses dns_worker to do the work asynchronously
 
-        let new_callback_id = this.add_callback_id(callback);
+        new_callback_id = this.add_callback_id(callback);
 
         this.worker.postMessage([new_callback_id, 1, host]);
 
@@ -1706,12 +1682,14 @@ var dns_handler =
 
     _remote_firefox_async : function (host, callback)
     {
-        log("Sixornot - dns_handler:_remote_firefox_async");
+        var my_callback;
+        log("Sixornot - dns_handler:_remote_firefox_async - host: " + host + ", callback: " + callback, 2);
 
-        let my_callback =
+        my_callback =
         {
             onLookupComplete : function (nsrequest, dnsresponse, nsstatus)
             {
+                var ip_addresses;
                 // Request has been cancelled - ignore
                 if (nsstatus === Components.results.NS_ERROR_ABORT)
                 {
@@ -1722,19 +1700,19 @@ var dns_handler =
                 {
                     if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST)
                     {
-                        log("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, unknown host");
+                        log("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, unknown host", 1);
                         callback(["FAIL"]);
                     }
                     else
                     {
-                        log("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, status: " + nsstatus);
+                        log("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, status: " + nsstatus, 1);
                         callback(["FAIL"]);
                     }
                     // Address was not found in DNS for some reason
                     return;  
                 }
                 // Otherwise address was found
-                let ip_addresses = [];
+                ip_addresses = [];
                 while (dnsresponse.hasMore())
                 {
                     ip_addresses.push(dnsresponse.getNextAddrAsString());
@@ -1743,7 +1721,6 @@ var dns_handler =
                 callback(ip_addresses);
             }
         };
-
         try
         {
             return dnsService.asyncResolve(host, 0, my_callback, threadManager.currentThread);
@@ -1756,10 +1733,73 @@ var dns_handler =
         }
     },
 
+
+    /*
+        ctypes dns callback handling functions
+    */
+    // Index this.callback_ids and return required callback
+    find_callback_by_id : function (callback_id)
+    {
+        var f;
+        log("Sixornot - dns_handler:find_callback_by_id - callback_id: " + callback_id, 2);
+        // Callback IDs is an array of 2-item arrays - [ID, callback]
+        f = function (a)
+        {
+            return a[0];
+        };
+        // Returns -1 if ID not found
+        return this.callback_ids.map(f).indexOf(callback_id);
+    },
+
+    // Search this.callback_ids for the ID in question, remove it if it exists
+    remove_callback_id : function (callback_id)
+    {
+        var i;
+        log("Sixornot - dns_handler:remove_callback_id - callback_id: " + callback_id, 2);
+        i = this.find_callback_by_id(callback_id);
+        if (i !== -1)
+        {
+            // Return the callback function
+            return this.callback_ids.splice(i, 1)[0][1];
+        }
+        // If ID not found, return false
+        return false;
+    },
+
+    // Add a callback to the callback_ids array with the next available ID
+    add_callback_id : function (callback)
+    {
+        log("Sixornot - dns_handler:add_callback_id - callback: " + callback, 2);
+        // Use next available callback ID, return that ID
+        this.next_callback_id = this.next_callback_id + 1;
+        this.callback_ids.push([this.next_callback_id, callback]);
+        return this.next_callback_id;
+    },
+
+    make_cancel_obj : function (callback_id)
+    {
+        var obj;
+        log("Sixornot - dns_handler:make_cancel_obj - callback_id: " + callback_id, 2);
+        obj =
+        {
+            cancel : function ()
+            {
+                // Remove ID from callback_ids if it exists there
+                dns_handler.remove_callback_id(callback_id);
+            }
+        };
+        return obj;
+    },
+
+
+    /*
+        Recieve and act on messages from Worker
+    */
     // Called by worker to pass information back to main thread
     onworkermessage : function (evt)
     {
-        log("Sixornot - dns_handler:onworkermessage - message is: " + evt.data);
+        var callback;
+        log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 2);
         // evt.data is the information passed back
         // This is an array: [callback_id, request_id, data]
         // data will usually be a list of IP addresses
@@ -1778,8 +1818,8 @@ var dns_handler =
         // remotelookup/locallookup, find correct callback and call it
         else if (evt.data[1] === 1 || evt.data[1] === 2)
         {
-            let callback = this.remove_callback_id(evt.data[0]);
-            log("Sixornot - dns_handler:onworkermessage, typeof callback: " + typeof callback);
+            callback = this.remove_callback_id(evt.data[0]);
+            log("Sixornot - dns_handler:onworkermessage, typeof callback: " + typeof callback, 1);
             // Execute callback
             if (callback)
             {
@@ -1788,11 +1828,18 @@ var dns_handler =
         }
     },
 
-    // Cancels an active DNS lookup request
+
+    /*
+        Misc.
+    */
+
+    // Cancels an active ctypes DNS lookup request currently being actioned by Worker
     cancel_request : function (request)
     {
+        log("Sixornot - dns_handler:cancel_request - request: " + request, 2);
         try
         {
+            // This function can be called with request as a null or undefined value
             if (request)
             {
                 request.cancel(Components.results.NS_ERROR_ABORT);
@@ -1800,7 +1847,6 @@ var dns_handler =
         }
         catch (e)
         {
-            // TODO - Maybe hide this exception?
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
         }
     },
@@ -1808,17 +1854,21 @@ var dns_handler =
     // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
     is_proxied_dns : function (url)
     {
-        var uri = ioService.newURI(url, null, null);
-        var proxyinfo = proxyService.resolve(uri, 0);  // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
-        return (proxyinfo !== null) && (proxyinfo.flags & proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
+        var uri, proxyinfo;
+        log("Sixornot - dns_handler:is_proxied_dns - url: " + url, 2);
+        uri = ioService.newURI(url, null, null);
+        // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
+        proxyinfo = proxyService.resolve(uri, 0);
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
-    },
+        return (proxyinfo !== null) && (proxyinfo.flags & proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
+    }
 
 /*
     // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
     to_hex : function (int_string)
     {
-        let hex = Number(int_string).toString(16);
+        var hex;
+        hex = Number(int_string).toString(16);
         if (hex.length < 2)
         {
             hex = "0" + hex;
