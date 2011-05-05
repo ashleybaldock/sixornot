@@ -359,7 +359,7 @@ function main (win)
 
         // Tries to update icon based on protocol type (e.g. for local pages which don't need to be looked up)
         // If this fails returns false and we need to do lookup
-        if (updateIcon())
+        if (update_icon())
         {
             return;
         }
@@ -421,7 +421,7 @@ function main (win)
 
             log("Sixornot - found remote IP addresses, trying local next");
 
-            // Update our local IP addresses (need these for the updateIcon phase, and they ought to be up-to-date)
+            // Update our local IP addresses (need these for the update_icon phase, and they ought to be up-to-date)
             // Should do this via an async process to avoid blocking (but getting local IPs should be really quick!)
 
             let onReturnedLocalIPs = function (localips)
@@ -439,7 +439,7 @@ function main (win)
                 log("Sixornot - found local IP addresses");
 
                 // This must now work as we have a valid IP address
-                updateIcon();
+                update_icon();
             };
 
             dns_request = dns_handler.resolve_local_async(onReturnedLocalIPs);
@@ -457,24 +457,26 @@ function main (win)
         }
 
         // Ideally just hitting the DNS cache here
-//        onReturnedIPs(dns_handler.resolve_remote_async(host));
         dns_request = dns_handler.resolve_remote_async(host, onReturnedIPs);
     }
 
 
-    /* Update the status icon state (icon & tooltip)
-       Returns true if it's done and false if unknown */
-    function updateIcon ()
+    // Update the status icon state (icon & tooltip)
+    // Returns true if it's done and false if unknown
+    function update_icon ()
     {
-        log("Sixornot - updateIcon");
-        let addressIcon = gbi(doc, ADDRESS_IMG_ID);
-        let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
+        var addressIcon, toolbarButton, loc_options;
+        log("Sixornot - main:update_icon", 2);
+        addressIcon = gbi(doc, ADDRESS_IMG_ID);
+        toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
 
-        let loc_options = ["file:", "data:", "about:", "chrome:", "resource:"];
+        loc_options = ["file:", "data:", "about:", "chrome:", "resource:"];
 
-        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
+        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ", 2);
+
         function set_icon (icon)
         {
+            log("Sixornot - main:update_icon:set_icon - icon: " + icon, 2);
             // If this is null, address icon isn't showing
             if (addressIcon !== null)
             {
@@ -551,10 +553,11 @@ function main (win)
     // Look up appropriate action by ID and perform that action
     function onMenuCommand (evt)
     {
-        log("Sixornot - onMenuCommand");
+        var commandID, commandString, currentWindow, currentBrowser, toggle;
+        log("Sixornot - main:onMenuCommand");
 
-        let commandID = evt.target.value.substring(0,5);
-        let commandString = evt.target.value.substring(5);
+        commandID = evt.target.value.substring(0,5);
+        commandString = evt.target.value.substring(5);
         // Actions
         // "prefs" - Open preferences
         // "copyc" - Copy text to clipboard
@@ -562,23 +565,23 @@ function main (win)
         // "taddr" - Show or hide the address bar icon
         if (commandID === "copyc")
         {
-            log("Sixornot - onMenuCommand, copy to clipboard");
+            log("Sixornot - main:onMenuCommand - copy to clipboard", 2);
             clipboardHelper.copyString(commandString);
         }
         else if (commandID === "gotow")
         {
-            log("Sixornot - onMenuCommand, goto web page");
+            log("Sixornot - main:onMenuCommand - goto web page", 2);
             // Add tab to most recent window, regardless of where this function was called from
-            let currentWindow = get_current_window();
+            currentWindow = get_current_window();
             currentWindow.focus();
-            let currentBrowser = currentWindow.getBrowser();
+            currentBrowser = currentWindow.getBrowser();
             currentBrowser.selectedTab = currentBrowser.addTab(commandString);
         }
         else if (commandID === "tbool")
         {
             // Toggle address bar icon visibility
-            let toggle = (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true");
-            log("Sixornot - onMenuCommand, set boolean pref value: " + commandString + " to " + toggle);
+            toggle = (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true");
+            log("Sixornot - main:onMenuCommand - set boolean pref value: " + commandString + " to " + toggle, 2);
             PREF_BRANCH_SIXORNOT.setBoolPref(commandString, toggle);
         }
     }
@@ -685,8 +688,8 @@ function main (win)
         // Produce string containing all IP data for copy
         localstring = Array.concat([dnsService.myHostName], localipv6s, localipv4s).join(", ");
         add_menu_item(dnsService.myHostName + " (localhost)",
-                    gt("tt_copylocalclip"),
-                    "copyc" + localstring);
+                      gt("tt_copylocalclip"),
+                      "copyc" + localstring);
 
         for (i = 0; i < localipv6s.length; i++)
         {
@@ -701,18 +704,18 @@ function main (win)
 
         // Preferences toggle menu items
         add_toggle_menu_item(gt("showaddressicon"),
-                          gt("tt_showaddressicon"),
-                          "tbool" + "showaddressicon",
-                          PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
+                             gt("tt_showaddressicon"),
+                             "tbool" + "showaddressicon",
+                             PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
         add_toggle_menu_item(gt("usegreyscale"),
-                          gt("tt_usegreyscale"),
-                          "tbool" + "use_greyscale",
-                          PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
+                             gt("tt_usegreyscale"),
+                             "tbool" + "use_greyscale",
+                             PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
 
         add_menu_separator();
         add_menu_item(gt("gotowebsite"),
-                    gt("tt_gotowebsite"),
-                    "gotow" + "http://entropy.me.uk/sixornot/");
+                      gt("tt_gotowebsite"),
+                      "gotow" + "http://entropy.me.uk/sixornot/");
     }
 
     // Update the contents of the tooltip whenever it is shown
@@ -1070,7 +1073,7 @@ function toggle_customise (evt)
     button = gbi(toolbox.parentNode, BUTTON_ID);
     if (button)
     {
-        let b_parent = button.parentNode, nextItem = button.nextSibling;
+        b_parent = button.parentNode, nextItem = button.nextSibling;
         if (b_parent && b_parent.localName === "toolbar")
         {
             toolbarId = b_parent.id;
@@ -1170,12 +1173,14 @@ function parse_exception (e)
 // String modification
 /* function truncateBeforeFirstChar (str, character)
 {
-    let pos = str.indexOf(character);
+    var pos;
+    pos = str.indexOf(character);
     return (pos !== -1) ? str.substring(0, pos) : str.valueOf();
 }
 function truncateAfterLastChar (str, character)
 {
-    let pos = str.lastIndexOf(character);
+    var pos;
+    pos = str.lastIndexOf(character);
     return (pos !== -1) ? str.substring(pos + 1) : str.valueOf();
 } */
 function crop_trailing_char (str, character)
