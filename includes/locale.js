@@ -33,7 +33,7 @@ var initLocalisation = (function(global) {
     let regex = /(\w+)-\w+/;
 
     // get user's locale
-    let locale = Cc["@mozilla.org/chrome/chrome-registry;1"].getService(Ci.nsIXULChromeRegistry).getSelectedLocale("global");
+    let locale = Components.classes["@mozilla.org/chrome/chrome-registry;1"].getService(Components.interfaces.nsIXULChromeRegistry).getSelectedLocale("global");
     consoleService.logStringMessage("Sixornot - initLocalisation - detected locale as: " + locale);
 
     function getStr(aStrBundle, aKey)

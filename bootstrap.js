@@ -174,13 +174,13 @@ function main (win)
         // Tooltip setup
         tooltip.setAttribute("id", TOOLTIP_ID);
         // Add event listener for tooltip showing (to update tooltip contents dynamically)
-        tooltip.addEventListener("popupshowing", updateTooltipContent, false);
+        tooltip.addEventListener("popupshowing", update_tooltip_content, false);
 
         // Menu setup
         toolbarPopupMenu.setAttribute("id", TOOLBAR_MENU_ID);
         toolbarPopupMenu.setAttribute("position", "after_start");
         // Add event listener for popupMenu opening (to update popupMenu contents dynamically)
-        toolbarPopupMenu.addEventListener("popupshowing", updateMenuContent, false);
+        toolbarPopupMenu.addEventListener("popupshowing", update_menu_content, false);
         toolbarPopupMenu.addEventListener("command", onMenuCommand, false);
 
         // Iconized button setup
@@ -226,7 +226,7 @@ function main (win)
             addressPopupMenu.setAttribute("id", ADDRESS_MENU_ID);
             addressPopupMenu.setAttribute("position", "after_start");
             // Add event listener for popupMenu opening (to update popupMenu contents dynamically)
-            addressPopupMenu.addEventListener("popupshowing", updateMenuContent, false);
+            addressPopupMenu.addEventListener("popupshowing", update_menu_content, false);
             addressPopupMenu.addEventListener("command", onMenuCommand, false);
 
             // Address bar icon setup
@@ -279,8 +279,8 @@ function main (win)
         win.removeEventListener("aftercustomization", toggle_customise, false);
         win.removeEventListener("offline", onChangedOnlineStatus, false);
         win.removeEventListener("online", onChangedOnlineStatus, false);
-        tooltip.removeEventListener("popupshowing", updateTooltipContent, false);
-        toolbarPopupMenu.removeEventListener("popupshowing", updateMenuContent, false);
+        tooltip.removeEventListener("popupshowing", update_tooltip_content, false);
+        toolbarPopupMenu.removeEventListener("popupshowing", update_menu_content, false);
         toolbarPopupMenu.removeEventListener("command", onMenuCommand, false);
 
         // Remove UI
@@ -300,7 +300,7 @@ function main (win)
             let addressButton = gbi(doc, ADDRESS_BOX_ID);
 
             // Clear event handlers
-            addressPopupMenu.removeEventListener("popupshowing", updateMenuContent, false);
+            addressPopupMenu.removeEventListener("popupshowing", update_menu_content, false);
             addressPopupMenu.removeEventListener("command", onMenuCommand, false);
 
             // Remove UI
@@ -584,11 +584,14 @@ function main (win)
     }
 
     // Update the contents of the popupMenu whenever it is opened
-    function updateMenuContent (evt)
+    // Value of "this" will be the menu (since this is an event handler)
+    function update_menu_content (evt)
     {
-        log("Sixornot - updateMenuContent");
-        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
-        let popupMenu = this;
+        var i, popupMenu, add_menu_item, add_toggle_menu_item, add_disabled_menu_item, add_menu_separator, remotestring, localstring;
+        log("Sixornot - main:update_menu_content", 2);
+        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ", 2);
+        // Set value so that functions within this one can still access correct value of "this"
+        popupMenu = this;
 
         // Clear previously generated popupMenu, if one exists
         while (popupMenu.firstChild)
@@ -601,47 +604,43 @@ function main (win)
         // commandID - string of arbitrary data
         //  first 5 characters determine function call
         //  rest of string (if any) is data to use for function call
-        let addMenuItem = function (labelName, ttText, commandID)
+        add_menu_item = function (labelName, ttText, commandID)
         {
-            log("Sixornot - addMenuItem: " + labelName + ", " + ttText + ", " + commandID);
-            let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
-            {
-                menuitem.setAttribute("label", labelName);
-                menuitem.setAttribute("tooltiptext", ttText);
-                menuitem.setAttribute("value", commandID);
-                popupMenu.appendChild(menuitem);
-            }
+            var menuitem;
+            log("Sixornot - main:update_menu_content:add_menu_item: " + labelName + ", " + ttText + ", " + commandID, 2);
+            menuitem = doc.createElementNS(NS_XUL, "menuitem");
+            menuitem.setAttribute("label", labelName);
+            menuitem.setAttribute("tooltiptext", ttText);
+            menuitem.setAttribute("value", commandID);
+            popupMenu.appendChild(menuitem);
         };
-        let addToggleMenuItem = function (labelName, ttText, commandID, initialState)
+        add_toggle_menu_item = function (labelName, ttText, commandID, initialState)
         {
-            log("Sixornot - addToggleMenuItem: " + labelName + ", " + ttText + ", " + commandID + ", " + initialState);
-            let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
-            {
-                menuitem.setAttribute("label", labelName);
-                menuitem.setAttribute("tooltiptext", ttText);
-                menuitem.setAttribute("value", commandID);
-                menuitem.setAttribute("type", "checkbox");
-                menuitem.setAttribute("checked", initialState);
-                popupMenu.appendChild(menuitem);
-            }
+            var menuitem;
+            log("Sixornot - main:update_menu_content:add_toggle_menu_item: " + labelName + ", " + ttText + ", " + commandID + ", " + initialState, 2);
+            menuitem = doc.createElementNS(NS_XUL, "menuitem");
+            menuitem.setAttribute("label", labelName);
+            menuitem.setAttribute("tooltiptext", ttText);
+            menuitem.setAttribute("value", commandID);
+            menuitem.setAttribute("type", "checkbox");
+            menuitem.setAttribute("checked", initialState);
+            popupMenu.appendChild(menuitem);
         };
-        let addDisabledMenuItem = function (labelName)
+        add_disabled_menu_item = function (labelName)
         {
-            log("Sixornot - addDisabledMenuItem: " + labelName);
-            let (menuitem = doc.createElementNS(NS_XUL, "menuitem"))
-            {
-                menuitem.setAttribute("label", labelName);
-                menuitem.setAttribute("disabled", true);
-                popupMenu.appendChild(menuitem);
-            }
+            var menuitem;
+            log("Sixornot - main:update_menu_content:add_disabled_menu_item: " + labelName, 2);
+            menuitem = doc.createElementNS(NS_XUL, "menuitem")
+            menuitem.setAttribute("label", labelName);
+            menuitem.setAttribute("disabled", true);
+            popupMenu.appendChild(menuitem);
         };
-        let addMenuSeparator = function ()
+        add_menu_separator = function ()
         {
-            log("Sixornot - addMenuSeparator");
-            let (menuseparator = doc.createElementNS(NS_XUL, "menuseparator"))
-            {
-                popupMenu.appendChild(menuseparator);
-            }
+            var menuseparator;
+            log("Sixornot - main:update_menu_content:add_menu_separator", 2);
+            menuseparator = doc.createElementNS(NS_XUL, "menuseparator")
+            popupMenu.appendChild(menuseparator);
         };
 
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
@@ -653,75 +652,77 @@ function main (win)
                 if (ipv4s.indexOf(host) === -1 && ipv6s.indexOf(host) === -1)
                 {
                     // Build string containing list of all IP addresses (for copying to clipboard)
-                    let remotestring = Array.concat([host], ipv6s, ipv4s).join(", ");
-                    addMenuItem(host, gt("tt_copydomclip"), "copyc" + remotestring);
+                    remotestring = Array.concat([host], ipv6s, ipv4s).join(", ");
+                    add_menu_item(host, gt("tt_copydomclip"), "copyc" + remotestring);
                 }
                 else
                 {
                     // In this case there will only ever be one IP address record
-                    addDisabledMenuItem(gt("hostnameisip"));
+                    add_disabled_menu_item(gt("hostnameisip"));
                 }
             }
             else
             {
-                addDisabledMenuItem(gt("nohostnamefound"));
+                add_disabled_menu_item(gt("nohostnamefound"));
             }
 
             for (i = 0; i < ipv6s.length; i++)
             {
-                addMenuItem(ipv6s[i], gt("tt_copyip6clip"), "copyc" + ipv6s[i]);
+                add_menu_item(ipv6s[i], gt("tt_copyip6clip"), "copyc" + ipv6s[i]);
             }
             for (i = 0; i < ipv4s.length; i++)
             {
-                addMenuItem(ipv4s[i], gt("tt_copyip4clip"), "copyc" + ipv4s[i]);
+                add_menu_item(ipv4s[i], gt("tt_copyip4clip"), "copyc" + ipv4s[i]);
             }
         }
         else
         {
-            addDisabledMenuItem(gt("noremoteloaded"));
+            add_disabled_menu_item(gt("noremoteloaded"));
         }
 
-        addMenuSeparator();
+        add_menu_separator();
 
         // Produce string containing all IP data for copy
-        let localstring = Array.concat([dnsService.myHostName], localipv6s, localipv4s).join(", ");
-        addMenuItem(dnsService.myHostName + " (localhost)",
+        localstring = Array.concat([dnsService.myHostName], localipv6s, localipv4s).join(", ");
+        add_menu_item(dnsService.myHostName + " (localhost)",
                     gt("tt_copylocalclip"),
                     "copyc" + localstring);
 
         for (i = 0; i < localipv6s.length; i++)
         {
-            addMenuItem(localipv6s[i], gt("tt_copyip6clip"), "copyc" + localipv6s[i]);
+            add_menu_item(localipv6s[i], gt("tt_copyip6clip"), "copyc" + localipv6s[i]);
         }
         for (i = 0; i < localipv4s.length; i++)
         {
-            addMenuItem(localipv4s[i], gt("tt_copyip4clip"), "copyc" + localipv4s[i]);
+            add_menu_item(localipv4s[i], gt("tt_copyip4clip"), "copyc" + localipv4s[i]);
         }
 
-        addMenuSeparator();
+        add_menu_separator();
 
         // Preferences toggle menu items
-        addToggleMenuItem(gt("showaddressicon"),
+        add_toggle_menu_item(gt("showaddressicon"),
                           gt("tt_showaddressicon"),
                           "tbool" + "showaddressicon",
                           PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
-        addToggleMenuItem(gt("usegreyscale"),
+        add_toggle_menu_item(gt("usegreyscale"),
                           gt("tt_usegreyscale"),
                           "tbool" + "use_greyscale",
                           PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
 
-        addMenuSeparator();
-        addMenuItem(gt("gotowebsite"),
+        add_menu_separator();
+        add_menu_item(gt("gotowebsite"),
                     gt("tt_gotowebsite"),
                     "gotow" + "http://entropy.me.uk/sixornot/");
     }
 
     // Update the contents of the tooltip whenever it is shown
-    function updateTooltipContent (evt)
+    // Value of "this" will be the tooltip (since this is an event handler)
+    function update_tooltip_content (evt)
     {
-        log("Sixornot - updateTooltipContent");
-        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ");
-        let tooltip = this;
+        var tooltip, grid, rows, i, add_tt_title_line, add_tt_labeled_line, v6_italic, v4_italic, extraString, extraLine;
+        log("Sixornot - main:update_tooltip_content", 2);
+        log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ", 2);
+        tooltip = this;
 
         // Clear previously generated tooltip, if one exists
         while (tooltip.firstChild)
@@ -729,17 +730,16 @@ function main (win)
             tooltip.removeChild(tooltip.firstChild);
         }
 
-        let grid = doc.createElement("grid");
-        let rows = doc.createElement("rows");
+        grid = doc.createElement("grid");
+        rows = doc.createElement("rows");
 
-        let i;
-
-        let addTitleLine = function (labelName)
+        add_tt_title_line = function (labelName)
         {
-            log("Sixornot - addTitleLine");
-            let row = doc.createElementNS(NS_XUL, "row");
-            let label = doc.createElementNS(NS_XUL, "label");
-            let value = doc.createElementNS(NS_XUL, "label");
+            var row, label, value;
+            log("Sixornot - main:update_tooltip_content:add_tt_title_line - labelName: " + labelName, 2);
+            row = doc.createElementNS(NS_XUL, "row");
+            label = doc.createElementNS(NS_XUL, "label");
+            value = doc.createElementNS(NS_XUL, "label");
 
             label.setAttribute("value", labelName);
             label.setAttribute("style", "font-weight: bold; text-align: right;");
@@ -748,12 +748,13 @@ function main (win)
             rows.appendChild(row);
         };
 
-        let addLabeledLine = function (labelName, lineValue, italic)
+        add_tt_labeled_line = function (labelName, lineValue, italic)
         {
-            log("Sixornot - addLabeledLine");
-            let row = doc.createElementNS(NS_XUL, "row");
-            let label = doc.createElementNS(NS_XUL, "label");
-            let value = doc.createElementNS(NS_XUL, "label");
+            var row, label, value;
+            log("Sixornot - main:update_tooltip_content:add_tt_labeled_line - labelName: " + labelName + ", lineValue: " + lineValue + ", italic: " + italic, 2);
+            row = doc.createElementNS(NS_XUL, "row");
+            label = doc.createElementNS(NS_XUL, "label");
+            value = doc.createElementNS(NS_XUL, "label");
             // Set defaults
             labelName = labelName || " ";
             lineValue = lineValue || " ";
@@ -772,85 +773,85 @@ function main (win)
 
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
-            addTitleLine(gt("header_remote"), "");
+            add_tt_title_line(gt("header_remote"), "");
         }
 
         if (host !== "")
         {
-            addLabeledLine(gt("prefix_domain"), host);
+            add_tt_labeled_line(gt("prefix_domain"), host);
         }
 
         // Add IPv6 address(es) to tooltip with special case if only one
         if (ipv6s.length === 1)
         {
             log("Sixornot - ipv6s.length is 1");
-            addLabeledLine(gt("prefix_v6_single"), ipv6s[0]);
+            add_tt_labeled_line(gt("prefix_v6_single"), ipv6s[0]);
         }
         else if (ipv6s.length > 1)
         {
             log("Sixornot - ipv6s.length is > 1");
-            addLabeledLine(gt("prefix_v6_multi"), ipv6s[0]);
+            add_tt_labeled_line(gt("prefix_v6_multi"), ipv6s[0]);
             for (i = 1; i < ipv6s.length; i++)
             {
-                addLabeledLine(" ", ipv6s[i]);
+                add_tt_labeled_line(" ", ipv6s[i]);
             }
         }
 
         // Add IPv4 address(es) to tooltip with special case if only one
         if (ipv4s.length === 1)
         {
-            addLabeledLine(gt("prefix_v4_single"), ipv4s[0]);
+            add_tt_labeled_line(gt("prefix_v4_single"), ipv4s[0]);
         }
         else if (ipv4s.length > 1)
         {
-            addLabeledLine(gt("prefix_v4_multi"), ipv4s[0]);
+            add_tt_labeled_line(gt("prefix_v4_multi"), ipv4s[0]);
             for (i = 1; i < ipv4s.length; i++)
             {
-                addLabeledLine(" ", ipv4s[i]);
+                add_tt_labeled_line(" ", ipv4s[i]);
             }
         }
 
         // Add local IP address information if available
         if (localipv4s.length !== 0 || localipv6s.length !== 0)
         {
-            addLabeledLine();
-            addTitleLine(gt("header_local"));
-            addLabeledLine(gt("prefix_host"), dnsService.myHostName);
+            add_tt_labeled_line();
+            add_tt_title_line(gt("header_local"));
+            add_tt_labeled_line(gt("prefix_host"), dnsService.myHostName);
         }
 
         // Append local IP address information
-        let v6_italic = function (ip6_address)
+        v6_italic = function (ip6_address)
         {
             return dns_handler.typeof_ip6(ip6_address) !== "global";
         };
         if (localipv6s.length === 1)
         {
-            addLabeledLine(gt("prefix_v6_single"), localipv6s[0], v6_italic(localipv6s[0]));
+            add_tt_labeled_line(gt("prefix_v6_single"), localipv6s[0], v6_italic(localipv6s[0]));
         }
         else if (localipv6s.length > 1)
         {
-            addLabeledLine(gt("prefix_v6_multi"), localipv6s[0], v6_italic(localipv6s[0]));
+            add_tt_labeled_line(gt("prefix_v6_multi"), localipv6s[0], v6_italic(localipv6s[0]));
             for (i = 1; i < localipv6s.length; i++)
             {
-                addLabeledLine(" ", localipv6s[i], v6_italic(localipv6s[i]));
+                add_tt_labeled_line(" ", localipv6s[i], v6_italic(localipv6s[i]));
             }
         }
 
-        let v4_italic = function (ip4_address)
+        v4_italic = function (ip4_address)
         {
             return ["global", "rfc1918"].indexOf(dns_handler.typeof_ip4(ip4_address)) === -1;
         };
         // Add local IPv4 address(es) to tooltip with special case if only one
         if (localipv4s.length === 1)
         {
-            addLabeledLine(gt("prefix_v4_single"), localipv4s[0], v4_italic(localipv4s[0]));
+            add_tt_labeled_line(gt("prefix_v4_single"), localipv4s[0], v4_italic(localipv4s[0]));
         }
         else if (localipv4s.length > 1)
         {
-            addLabeledLine(gt("prefix_v4_multi"), localipv4s[0], v4_italic(localipv4s[0]));
+            add_tt_labeled_line(gt("prefix_v4_multi"), localipv4s[0], v4_italic(localipv4s[0]));
             for (i = 1; i < localipv4s.length; i++)
             {
-                addLabeledLine(" ", localipv4s[i], v4_italic(localipv4s[i]));
+                add_tt_labeled_line(" ", localipv4s[i], v4_italic(localipv4s[i]));
             }
         }
 
@@ -858,8 +859,6 @@ function main (win)
         // TODO - If a special location is set no need to do any of the IP address stuff!
         if (specialLocation)
         {
-            let extraString, extraLine;
-
             if (specialLocation[0] === "localfile")
             {
                 extraString = gt("other_localfile");
@@ -1492,7 +1491,7 @@ var dns_handler =
         sides = ip6_address.split("::");
         // Split remaining sections by instances of :
         left_parts = sides[0].split(":");
-        right_parts = sides[1] && (sides[1].split(":") || []);
+        right_parts = (sides[1] && sides[1].split(":")) || [];
 
         middle = ["0", "0", "0", "0", "0", "0", "0", "0"].slice(0, 8 - left_parts.length - right_parts.length);
         outarray = Array.concat(left_parts, middle, right_parts);
