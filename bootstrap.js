@@ -89,32 +89,29 @@ var PREFS = {
 
 var PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
-        log("Sixornot - prefs observer");
-        log("aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData);
+        log("Sixornot - PREFS_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
         if (!(aTopic.valueOf() === "nsPref:changed"))
         {
-            log("Sixornot - not a pref change event 1");
+            log("Sixornot - PREFS_OBSERVER - not a pref change event 1", 2);
             return;
         }
         if (!PREFS.hasOwnProperty(aData))
         {
-            log("Sixornot - not a pref change event 2");
+            log("Sixornot - PREFS_OBSERVER - not a pref change event 2", 2);
             return;
         }
 
-        log("Sixornot - prefs observer continues");
-        log("Sixornot - aData is: " + aData);
         // If the changed preference is the addressicon one
         if (aData === "showaddressicon")
         {
-            log("Sixornot - prefs observer - addressicon has changed");
+            log("Sixornot - PREFS_OBSERVER - addressicon has changed", 1);
             // Simply reload all addon's attributes
             reload();
         }
         // If the changed preference is the use_greyscale one
         if (aData === "use_greyscale")
         {
-            log("Sixornot - prefs observer - use_greyscale has changed");
+            log("Sixornot - PREFS_OBSERVER - use_greyscale has changed", 1);
             // Simply switch to a different icon set and reload
             set_iconset();
             reload();
@@ -148,29 +145,45 @@ var s6only_16_c = "", s6and4_16_c = "", s4pot6_16_c = "", s4only_16_c = "", soth
 */
 function main (win)
 {
-    log("Sixornot - main");
+    var contentDoc, url, host, ipv4s, ipv6s, localipv4s, localipv6s,
+        usingv6, specialLocation, dns_request, pollLoopID, doc;
+    log("Sixornot - main", 1);
     // Set up variables for this instance
-    var contentDoc = null;      // Reference to the current page document object
-    var url = "";               // The URL of the current page
-    var host = "";              // The host name of the current URL
-    var ipv4s = [];             // The IP addresses of the current host
-    var ipv6s = [];             // The IP addresses of the current host
-    var localipv6s = [];        // Local IPv6 addresses
-    var localipv4s = [];        // Local IPv4 addresses
-    var usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
-    var specialLocation = null;
-    var dns_request = null;     // Reference to this window's active DNS lookup request
+    contentDoc = null;      // Reference to the current page document object
+    url = "";               // The URL of the current page
+    host = "";              // The host name of the current URL
+    ipv4s = [];             // The IP addresses of the current host
+    ipv6s = [];             // The IP addresses of the current host
+    localipv6s = [];        // Local IPv6 addresses
+    localipv4s = [];        // Local IPv4 addresses
+    usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
+    specialLocation = null;
+    dns_request = null;     // Reference to this window's active DNS lookup request
                                 // There can be only one at a time per window
-    var pollLoopID = win.setInterval(pollForContentChange, 250);
+    pollLoopID = win.setInterval(pollForContentChange, 250);
 
-    let doc = win.document;
+    doc = win.document;
+
+    // Add main UI
+    add_mainui();
+
+    // Add address bar icon only if desired by preferences
+    if (get_bool_pref("showaddressicon"))
+    {
+        add_addressicon();
+    }
 
     // Add tooltip, iconized button and address bar icon to browser window
     // These are created in their own scope, they need to be found again using their IDs for the current window
-    let (tooltip = doc.createElementNS(NS_XUL, "tooltip"),
-         toolbarPopupMenu = doc.createElementNS(NS_XUL, "menupopup"),
-         toolbarButton = doc.createElementNS(NS_XUL, "toolbarbutton"))
+    function add_mainui ()
     {
+        var tooltip, toolbarPopupMenu, toolbarButton, toolbarId, toolbar, nextitem;
+        log("Sixornot - main:add_mainui", 2);
+
+        tooltip = doc.createElementNS(NS_XUL, "tooltip");
+        toolbarPopupMenu = doc.createElementNS(NS_XUL, "menupopup");
+        toolbarButton = doc.createElementNS(NS_XUL, "toolbarbutton");
+
         // Tooltip setup
         tooltip.setAttribute("id", TOOLTIP_ID);
         // Add event listener for tooltip showing (to update tooltip contents dynamically)
@@ -202,11 +215,11 @@ function main (win)
         gbi(doc, "urlbar-icons").appendChild(tooltip);
  
         // Move to location specified in prefs
-        let toolbarId = PREF_BRANCH_SIXORNOT.getCharPref(PREF_TOOLBAR);
-        let toolbar = toolbarId && gbi(doc, toolbarId);
+        toolbarId = PREF_BRANCH_SIXORNOT.getCharPref(PREF_TOOLBAR);
+        toolbar = toolbarId && gbi(doc, toolbarId);
         if (toolbar)
         {
-            let nextItem = gbi(doc, PREF_BRANCH_SIXORNOT.getCharPref(PREF_NEXTITEM));
+            nextItem = gbi(doc, PREF_BRANCH_SIXORNOT.getCharPref(PREF_NEXTITEM));
             toolbar.insertItem(BUTTON_ID, nextItem && nextItem.parentNode.id === toolbarId && nextItem);
         }
 
@@ -214,90 +227,88 @@ function main (win)
         win.addEventListener("online", onChangedOnlineStatus, false);
         win.addEventListener("offline", onChangedOnlineStatus, false);
         win.addEventListener("aftercustomization", toggle_customise, false);
-    }
-    // Add address bar icon only if desired by preferences
-    if (get_bool_pref("showaddressicon"))
-    {
-        let (addressPopupMenu = doc.createElementNS(NS_XUL, "menupopup"),
-             addressIcon = doc.createElementNS(NS_XUL, "image"),
-             addressButton = doc.createElementNS(NS_XUL, "box")) 
-        {
-            // Menu setup
-            addressPopupMenu.setAttribute("id", ADDRESS_MENU_ID);
-            addressPopupMenu.setAttribute("position", "after_start");
-            // Add event listener for popupMenu opening (to update popupMenu contents dynamically)
-            addressPopupMenu.addEventListener("popupshowing", update_menu_content, false);
-            addressPopupMenu.addEventListener("command", onMenuCommand, false);
 
-            // Address bar icon setup
-            addressButton.setAttribute("id", ADDRESS_BOX_ID);
-            addressButton.setAttribute("width", "16");
-            addressButton.setAttribute("height", "16");
-            addressButton.setAttribute("align", "center");
-            addressButton.setAttribute("pack", "center");
-
-            addressIcon.setAttribute("id", ADDRESS_IMG_ID);
-            addressIcon.setAttribute("tooltip", TOOLTIP_ID);
-            addressIcon.setAttribute("popup", ADDRESS_MENU_ID);
-            addressIcon.setAttribute("width", "16");
-            addressIcon.setAttribute("height", "16");
-            addressIcon.setAttribute("src", sother_16);
-
-            // Position the icon
-            let urlbaricons = gbi(doc, "urlbar-icons");
-            let starbutton = gbi(doc, "star-button");
-            addressButton.appendChild(addressIcon);
-            addressButton.appendChild(addressPopupMenu);
-
-            // If star icon visible, insert before it, otherwise just append to urlbaricons
-            if (!starbutton)
-            {
-                urlbaricons.appendChild(addressButton);
-            }
-            else
-            {
-                urlbaricons.insertBefore(addressButton, starbutton);
-            }
-        }
-    }
-
-    // Add a callback to our unload list to remove the UI when addon is disabled
-    unload(function () {
-        log("Sixornot - main:unload");
-        // Cancel any active DNS lookups for this window
-        dns_handler.cancel_request(dns_request);
-
-        // Get UI elements
-        let toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
-        let tooltip = gbi(doc, TOOLTIP_ID);
-        let toolbarPopupMenu = gbi(doc, TOOLBAR_MENU_ID);
-
-        // Clear interval
-        win.clearInterval(pollLoopID);
-
-        // Clear event handlers
-        win.removeEventListener("aftercustomization", toggle_customise, false);
-        win.removeEventListener("offline", onChangedOnlineStatus, false);
-        win.removeEventListener("online", onChangedOnlineStatus, false);
-        tooltip.removeEventListener("popupshowing", update_tooltip_content, false);
-        toolbarPopupMenu.removeEventListener("popupshowing", update_menu_content, false);
-        toolbarPopupMenu.removeEventListener("command", onMenuCommand, false);
-
-        // Remove UI
-        tooltip && tooltip.parentNode.removeChild(tooltip);
-        toolbarPopupMenu && toolbarPopupMenu.parentNode.removeChild(toolbarPopupMenu);
-        toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
-    }, win);
-
-    // If we loaded the address bar icon UI, add a callback to remove it on unload
-    if (get_bool_pref("showaddressicon"))
-    {
+        // Add a callback to our unload list to remove the UI when addon is disabled
         unload(function () {
-            log("Sixornot - address bar unload function");
+            log("Sixornot - Unload main UI for a window...", 2);
+            // Cancel any active DNS lookups for this window
+            dns_handler.cancel_request(dns_request);
+
             // Get UI elements
-            let addressPopupMenu = gbi(doc, ADDRESS_MENU_ID);
-            let addressIcon = gbi(doc, ADDRESS_IMG_ID);
-            let addressButton = gbi(doc, ADDRESS_BOX_ID);
+            /* toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
+            tooltip = gbi(doc, TOOLTIP_ID);
+            toolbarPopupMenu = gbi(doc, TOOLBAR_MENU_ID); */
+
+            // Clear interval
+            win.clearInterval(pollLoopID);
+
+            // Clear event handlers
+            win.removeEventListener("aftercustomization", toggle_customise, false);
+            win.removeEventListener("offline", onChangedOnlineStatus, false);
+            win.removeEventListener("online", onChangedOnlineStatus, false);
+            tooltip.removeEventListener("popupshowing", update_tooltip_content, false);
+            toolbarPopupMenu.removeEventListener("popupshowing", update_menu_content, false);
+            toolbarPopupMenu.removeEventListener("command", onMenuCommand, false);
+
+            // Remove UI
+            tooltip && tooltip.parentNode.removeChild(tooltip);
+            toolbarPopupMenu && toolbarPopupMenu.parentNode.removeChild(toolbarPopupMenu);
+            toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
+        }, win);
+    }
+
+    function add_addressicon ()
+    {
+        var addressPopupMenu, addressIcon, addressButton, urlbaricons, starbutton;
+        log("Sixornot - main:add_addressicon", 2);
+
+        addressPopupMenu = doc.createElementNS(NS_XUL, "menupopup");
+        addressIcon = doc.createElementNS(NS_XUL, "image");
+        addressButton = doc.createElementNS(NS_XUL, "box");
+
+        // Menu setup
+        addressPopupMenu.setAttribute("id", ADDRESS_MENU_ID);
+        addressPopupMenu.setAttribute("position", "after_start");
+        // Add event listener for popupMenu opening (to update popupMenu contents dynamically)
+        addressPopupMenu.addEventListener("popupshowing", update_menu_content, false);
+        addressPopupMenu.addEventListener("command", onMenuCommand, false);
+
+        // Address bar icon setup
+        addressButton.setAttribute("id", ADDRESS_BOX_ID);
+        addressButton.setAttribute("width", "16");
+        addressButton.setAttribute("height", "16");
+        addressButton.setAttribute("align", "center");
+        addressButton.setAttribute("pack", "center");
+
+        addressIcon.setAttribute("id", ADDRESS_IMG_ID);
+        addressIcon.setAttribute("tooltip", TOOLTIP_ID);
+        addressIcon.setAttribute("popup", ADDRESS_MENU_ID);
+        addressIcon.setAttribute("width", "16");
+        addressIcon.setAttribute("height", "16");
+        addressIcon.setAttribute("src", sother_16);
+
+        // Position the icon
+        urlbaricons = gbi(doc, "urlbar-icons");
+        starbutton = gbi(doc, "star-button");
+        addressButton.appendChild(addressIcon);
+        addressButton.appendChild(addressPopupMenu);
+
+        // If star icon visible, insert before it, otherwise just append to urlbaricons
+        if (!starbutton)
+        {
+            urlbaricons.appendChild(addressButton);
+        }
+        else
+        {
+            urlbaricons.insertBefore(addressButton, starbutton);
+        }
+        // Add a callback to unload to remove this icon
+        unload(function () {
+            log("Sixornot - address bar unload function", 2);
+            // Get UI elements
+            /* addressPopupMenu = gbi(doc, ADDRESS_MENU_ID);
+            addressIcon = gbi(doc, ADDRESS_IMG_ID);
+            addressButton = gbi(doc, ADDRESS_BOX_ID); */
 
             // Clear event handlers
             addressPopupMenu.removeEventListener("popupshowing", update_menu_content, false);
@@ -309,7 +320,6 @@ function main (win)
             addressButton && addressButton.parentNode.removeChild(addressButton);
         }, win);
     }
-
 
     /* Poll for content change to ensure this is updated on all pages including errors */
     function pollForContentChange ()
