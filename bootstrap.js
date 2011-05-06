@@ -117,7 +117,7 @@ var PREF_OBSERVER = {
             reload();
         }
     }
-}
+};
 
 /*
     ipv6 only                   6only_16.png, 6only_24.png
@@ -234,11 +234,6 @@ function main (win)
             // Cancel any active DNS lookups for this window
             dns_handler.cancel_request(dns_request);
 
-            // Get UI elements
-            /* toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
-            tooltip = gbi(doc, TOOLTIP_ID);
-            toolbarPopupMenu = gbi(doc, TOOLBAR_MENU_ID); */
-
             // Clear interval
             win.clearInterval(pollLoopID);
 
@@ -251,9 +246,9 @@ function main (win)
             toolbarPopupMenu.removeEventListener("command", onMenuCommand, false);
 
             // Remove UI
-            tooltip && tooltip.parentNode.removeChild(tooltip);
-            toolbarPopupMenu && toolbarPopupMenu.parentNode.removeChild(toolbarPopupMenu);
-            toolbarButton && toolbarButton.parentNode.removeChild(toolbarButton);
+            tooltip.parentNode.removeChild(tooltip);
+            toolbarPopupMenu.parentNode.removeChild(toolbarPopupMenu);
+            toolbarButton.parentNode.removeChild(toolbarButton);
         }, win);
     }
 
@@ -305,19 +300,15 @@ function main (win)
         // Add a callback to unload to remove this icon
         unload(function () {
             log("Sixornot - address bar unload function", 2);
-            // Get UI elements
-            /* addressPopupMenu = gbi(doc, ADDRESS_MENU_ID);
-            addressIcon = gbi(doc, ADDRESS_IMG_ID);
-            addressButton = gbi(doc, ADDRESS_BOX_ID); */
 
             // Clear event handlers
             addressPopupMenu.removeEventListener("popupshowing", update_menu_content, false);
             addressPopupMenu.removeEventListener("command", onMenuCommand, false);
 
             // Remove UI
-            addressPopupMenu && addressPopupMenu.parentNode.removeChild(addressPopupMenu);
-            addressIcon && addressIcon.parentNode.removeChild(addressIcon);
-            addressButton && addressButton.parentNode.removeChild(addressButton);
+            addressPopupMenu.parentNode.removeChild(addressPopupMenu);
+            addressIcon.parentNode.removeChild(addressIcon);
+            addressButton.parentNode.removeChild(addressButton);
         }, win);
     }
 
@@ -469,7 +460,7 @@ function main (win)
                 log("Sixornot - Unable to look up local IP addresses");
                 Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
             } */
-        }
+        };
 
         // Ideally just hitting the DNS cache here
         dns_request = dns_handler.resolve_remote_async(host, onReturnedIPs);
@@ -648,7 +639,7 @@ function main (win)
         {
             var menuitem;
             log("Sixornot - main:update_menu_content:add_disabled_menu_item: " + labelName, 2);
-            menuitem = doc.createElementNS(NS_XUL, "menuitem")
+            menuitem = doc.createElementNS(NS_XUL, "menuitem");
             menuitem.setAttribute("label", labelName);
             menuitem.setAttribute("disabled", true);
             popupMenu.appendChild(menuitem);
@@ -657,7 +648,7 @@ function main (win)
         {
             var menuseparator;
             log("Sixornot - main:update_menu_content:add_menu_separator", 2);
-            menuseparator = doc.createElementNS(NS_XUL, "menuseparator")
+            menuseparator = doc.createElementNS(NS_XUL, "menuseparator");
             popupMenu.appendChild(menuseparator);
         };
 
