@@ -60,34 +60,115 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+// Provided by Firefox:
+/*global Components, Services, APP_SHUTDOWN, AddonManager */
+
+// Provided in included modules:
+/*global gt, unload, watchWindows, initLocalisation */
+
+// Provided in lazy getters
+/*global consoleService, ioService, proxyService, dnsService, clipboardHelper,
+         workerFactory, threadManager */
 
 /*
     Constants and global variables
 */
 // Import needed code modules
+/*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://gre/modules/AddonManager.jsm");
+/*jslint es5: false */
 
-var NS_XUL = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
-var BUTTON_ID       = "sixornot-buttonid",
-    ADDRESS_BOX_ID  = "sixornot-addressboxid",
-    ADDRESS_IMG_ID  = "sixornot-addressimageid",
-    TOOLTIP_ID      = "sixornot-tooltipid",
-    ADDRESS_MENU_ID = "sixornot-addressmenuid",
-    TOOLBAR_MENU_ID = "sixornot-toolbarmenuid",
-    PREF_TOOLBAR    = "toolbar",
-    PREF_NEXTITEM   = "nextitem";
+// Define all used globals
+// Note: Due to execution as a bootstrapless addon these aren't really global
+// but are within the scope of this extension
+var NS_XUL,
+    // ID constants
+    BUTTON_ID,
+    ADDRESS_BOX_ID,
+    ADDRESS_IMG_ID,
+    TOOLTIP_ID,
+    ADDRESS_MENU_ID,
+    TOOLBAR_MENU_ID,
+    PREF_TOOLBAR,
+    PREF_NEXTITEM,
+    // Prefs branch constant
+    PREF_BRANCH_SIXORNOT,
+    // Preferences object (stores defaults)
+    PREFS,
+    // Prefs observer object - TODO - move into function where it is used? no need to be global?
+    PREF_OBSERVER,
+    /*
+        ipv6 only                   6only_16.png, 6only_24.png
+        ipv4+ipv6 w/ local ipv6     6and4_16.png, 6and4_24.png
+        ipv4+ipv6 w/o local ipv6    4pot6_16.png, 4pot6_24.png
+        ipv4 only                   4only_16.png, 4only_24.png
+        Unknown                     other_16.png, other_24.png
+    */
+    // Colour icons - TODO - find a way to have less variables (maybe an object)
+    s6only_16_c, s6and4_16_c, s4pot6_16_c, s4only_16_c, sother_16_c,
+    s6only_24_c, s6and4_24_c, s4pot6_24_c, s4only_24_c, sother_24_c,
+    // Greyscale icons
+    s6only_16_g, s6and4_16_g, s4pot6_16_g, s4only_16_g, sother_16_g,
+    s6only_24_g, s6and4_24_g, s4pot6_24_g, s4only_24_g, sother_24_g,
+    // Current icons
+    s6only_16,   s6and4_16,   s4pot6_16,   s4only_16,   sother_16,
+    s6only_24,   s6and4_24,   s4pot6_24,   s4only_24,   sother_24,
+    // dns_handler
+    dns_handler,
+    // Global functions
+    // Main functionality
+    main,
+    startup,
+    shutdown,
+    install,
+    uninstall,
+    reload,
+    // Utility functions
+    log,
+    set_iconset,
+    toggle_customise,
+    get_bool_pref,
+    get_current_window,
+    gbi,set_initial_prefs,
+    parse_exception,
+    crop_trailing_char,
+    defineLazyGetter;
 
-var PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
+NS_XUL          = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
-var PREFS = {
+BUTTON_ID       = "sixornot-buttonid";
+ADDRESS_BOX_ID  = "sixornot-addressboxid";
+ADDRESS_IMG_ID  = "sixornot-addressimageid";
+TOOLTIP_ID      = "sixornot-tooltipid";
+ADDRESS_MENU_ID = "sixornot-addressmenuid";
+TOOLBAR_MENU_ID = "sixornot-toolbarmenuid";
+PREF_TOOLBAR    = "toolbar";
+PREF_NEXTITEM   = "nextitem";
+
+PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
+
+PREFS = {
     nextitem:           "bookmarks-menu-button-container",
     toolbar:            "nav-bar",
     showaddressicon:    false,
     use_greyscale:      false
 };
 
-var PREF_OBSERVER = {
+// Log a message to error console, but only if it is important enough
+log = function (message, level)
+{
+    // Three log levels, 0 = critical, 1 = normal, 2 = verbose
+    // Default level is 1
+    level = level || 1;
+    // If preference unset, default to 1 (normal) level
+    if (level <= 2)
+    {
+        consoleService.logStringMessage(message);
+    }
+};
+
+PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         log("Sixornot - PREFS_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
         if (aTopic.valueOf() !== "nsPref:changed")
@@ -119,23 +200,6 @@ var PREF_OBSERVER = {
     }
 };
 
-/*
-    ipv6 only                   6only_16.png, 6only_24.png
-    ipv4+ipv6 w/ local ipv6     6and4_16.png, 6and4_24.png
-    ipv4+ipv6 w/o local ipv6    4pot6_16.png, 4pot6_24.png
-    ipv4 only                   4only_16.png, 4only_24.png
-    Unknown                     other_16.png, other_24.png
-*/
-// Colour icons
-var s6only_16_c = "", s6and4_16_c = "", s4pot6_16_c = "", s4only_16_c = "", sother_16_c = "",
-    s6only_24_c = "", s6and4_24_c = "", s4pot6_24_c = "", s4only_24_c = "", sother_24_c = "",
-// Greyscale icons
-    s6only_16_g = "", s6and4_16_g = "", s4pot6_16_g = "", s4only_16_g = "", sother_16_g = "",
-    s6only_24_g = "", s6and4_24_g = "", s4pot6_24_g = "", s4only_24_g = "", sother_24_g = "",
-// Current icons
-    s6only_16 = "",   s6and4_16 = "",   s4pot6_16 = "",   s4only_16 = "",   sother_16 = "",
-    s6only_24 = "",   s6and4_24 = "",   s4pot6_24 = "",   s4only_24 = "",   sother_24 = "";
-
 (function(global) global.include = function include(src) (
     Services.scriptloader.loadSubScript(src, global)))(this);
 
@@ -143,12 +207,15 @@ var s6only_16_c = "", s6and4_16_c = "", s4pot6_16_c = "", s4only_16_c = "", soth
 /*
     Core functionality
 */
-function main (win)
+main = function (win)
 {
     var contentDoc, url, host, ipv4s, ipv6s, localipv4s, localipv6s,
-        usingv6, specialLocation, dns_request, pollLoopID, doc;
+        usingv6, specialLocation, dns_request, pollLoopID, doc,
+        add_mainui, add_addressicon, pollForContentChange, updateState,
+        update_icon, onMenuCommand, update_menu_content, update_tooltip_content,
+        onChangedOnlineStatus;
     log("Sixornot - main", 1);
-    // Set up variables for this instance
+    // Set up initial value of variables for this instance
     contentDoc = null;      // Reference to the current page document object
     url = "";               // The URL of the current page
     host = "";              // The host name of the current URL
@@ -159,25 +226,15 @@ function main (win)
     usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
     specialLocation = null;
     dns_request = null;     // Reference to this window's active DNS lookup request
-                                // There can be only one at a time per window
-    pollLoopID = win.setInterval(pollForContentChange, 250);
-
+                            // There can be only one at a time per window
     doc = win.document;
 
-    // Add main UI
-    add_mainui();
-
-    // Add address bar icon only if desired by preferences
-    if (get_bool_pref("showaddressicon"))
-    {
-        add_addressicon();
-    }
-
     // Add tooltip, iconized button and address bar icon to browser window
-    // These are created in their own scope, they need to be found again using their IDs for the current window
-    function add_mainui ()
+    // These are created in their own scope, they need to be found again
+    // using their IDs for the current window
+    add_mainui = function ()
     {
-        var tooltip, toolbarPopupMenu, toolbarButton, toolbarId, toolbar, nextitem;
+        var tooltip, toolbarPopupMenu, toolbarButton, toolbarId, toolbar, nextItem;
         log("Sixornot - main:add_mainui", 2);
 
         tooltip = doc.createElementNS(NS_XUL, "tooltip");
@@ -250,9 +307,9 @@ function main (win)
             toolbarPopupMenu.parentNode.removeChild(toolbarPopupMenu);
             toolbarButton.parentNode.removeChild(toolbarButton);
         }, win);
-    }
+    };
 
-    function add_addressicon ()
+    add_addressicon = function ()
     {
         var addressPopupMenu, addressIcon, addressButton, urlbaricons, starbutton;
         log("Sixornot - main:add_addressicon", 2);
@@ -310,10 +367,10 @@ function main (win)
             addressIcon.parentNode.removeChild(addressIcon);
             addressButton.parentNode.removeChild(addressButton);
         }, win);
-    }
+    };
 
     /* Poll for content change to ensure this is updated on all pages including errors */
-    function pollForContentChange ()
+    pollForContentChange = function ()
     {
         log("Sixornot - main:pollForContentChange", 3);
         try
@@ -327,11 +384,11 @@ function main (win)
         {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
         }
-    }
+    };
 
     // Updates icon/tooltip etc. state if needed - called by the polling loop
     // TODO - This whole process needs a rethink - needs a better workflow
-    function updateState ()
+    updateState = function ()
     {
         var addressIcon, toolbarButton, set_icon, onReturnedIPs ;
         log("Sixornot - main:updateState", 2);
@@ -464,12 +521,11 @@ function main (win)
 
         // Ideally just hitting the DNS cache here
         dns_request = dns_handler.resolve_remote_async(host, onReturnedIPs);
-    }
-
+    };
 
     // Update the status icon state (icon & tooltip)
     // Returns true if it's done and false if unknown
-    function update_icon ()
+    update_icon = function ()
     {
         var addressIcon, toolbarButton, loc_options;
         log("Sixornot - main:update_icon", 2);
@@ -553,11 +609,11 @@ function main (win)
         }
         specialLocation = null;
         return true;
-    }
+    };
 
     // Called whenever an item on the menu is clicked and bound to each menu item as an event handler
     // Look up appropriate action by ID and perform that action
-    function onMenuCommand (evt)
+    onMenuCommand = function (evt)
     {
         var commandID, commandString, currentWindow, currentBrowser, toggle;
         log("Sixornot - main:onMenuCommand");
@@ -590,11 +646,11 @@ function main (win)
             log("Sixornot - main:onMenuCommand - set boolean pref value: " + commandString + " to " + toggle, 2);
             PREF_BRANCH_SIXORNOT.setBoolPref(commandString, toggle);
         }
-    }
+    };
 
     // Update the contents of the popupMenu whenever it is opened
     // Value of "this" will be the menu (since this is an event handler)
-    function update_menu_content (evt)
+    update_menu_content = function (evt)
     {
         var i, popupMenu, add_menu_item, add_toggle_menu_item, add_disabled_menu_item, add_menu_separator, remotestring, localstring;
         log("Sixornot - main:update_menu_content", 2);
@@ -722,11 +778,11 @@ function main (win)
         add_menu_item(gt("gotowebsite"),
                       gt("tt_gotowebsite"),
                       "gotow" + "http://entropy.me.uk/sixornot/");
-    }
+    };
 
     // Update the contents of the tooltip whenever it is shown
     // Value of "this" will be the tooltip (since this is an event handler)
-    function update_tooltip_content (evt)
+    update_tooltip_content = function (evt)
     {
         var tooltip, grid, rows, i, add_tt_title_line, add_tt_labeled_line, v6_italic, v4_italic, extraString, extraLine;
         log("Sixornot - main:update_tooltip_content", 2);
@@ -900,18 +956,31 @@ function main (win)
 
         grid.appendChild(rows);
         tooltip.appendChild(grid);
-    }
+    };
 
-    // Online/Offline events can trigger multiple times, reset contentDoc so that the next time the timer fires it'll be updated
-    function onChangedOnlineStatus(event)
+    // Online/Offline events can trigger multiple times
+    // reset contentDoc so that the next time the timer fires it'll be updated
+    onChangedOnlineStatus = function (evt)
     {
         contentDoc = null;
+    };
+
+    // Start polling loop responsible for refreshing icon(s)
+    pollLoopID = win.setInterval(pollForContentChange, 250);
+
+    // Add main UI
+    add_mainui();
+
+    // Add address bar icon only if desired by preferences
+    if (get_bool_pref("showaddressicon"))
+    {
+        add_addressicon();
     }
-}
+};
 
 
 // Image set is either colour or greyscale
-function set_iconset ()
+set_iconset = function ()
 {
     log("Sixornot - set_iconset", 2);
     // If use_greyscale is set to true, load grey icons, otherwise load default set
@@ -941,12 +1010,12 @@ function set_iconset ()
         s4only_24 = s4only_24_c;
         sother_24 = sother_24_c;
     }
-}
+};
 
 /*
     bootstrap.js API
 */
-function startup (aData, aReason)
+startup = function (aData, aReason)
 {
     var resource, alias;
     log("Sixornot - startup - reason: " + aReason, 0);
@@ -1019,17 +1088,17 @@ function startup (aData, aReason)
         prefs.addObserver("", PREF_OBSERVER, false);
 
     });
-}
+};
 
 // Reload addon in all windows, e.g. when preferences change
-function reload ()
+reload = function ()
 {
     log("Sixornot - reload", 1);
     unload();
     watchWindows(main);
-}
+};
 
-function shutdown (aData, aReason)
+shutdown = function (aData, aReason)
 {
     var prefs, resource;
     log("Sixornot - shutdown - reason: " + aReason, 0);
@@ -1049,21 +1118,21 @@ function shutdown (aData, aReason)
         resource = Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
         resource.setSubstitution("sixornot", null);
     }
-}
+};
 
-function install (aData, aReason)
+install = function (aData, aReason)
 {
     log("Sixornot - install - reason: " + aReason, 0);
     set_initial_prefs();
-}
+};
 
-function uninstall (aData, aReason)
+uninstall = function (aData, aReason)
 {
     log("Sixornot - uninstall - reason: " + aReason, 0);
     // TODO If this is due to an upgrade then don't delete preferences?
     // Some kind of upgrade function to potentially upgrade preference settings may be required
     PREF_BRANCH_SIXORNOT.deleteBranch("");             
-}
+};
 
 
 /*
@@ -1071,9 +1140,9 @@ function uninstall (aData, aReason)
 */
 
 // Update preference which determines location of button when loading into new windows
-function toggle_customise (evt)
+toggle_customise = function (evt)
 {
-    var toolbox, button, b_parent, toolbarId, nextItemId;
+    var toolbox, button, b_parent, nextItem, toolbarId, nextItemId;
     log("Sixornot - toggle_customise");
     button = gbi(evt.target.parentNode, BUTTON_ID);
     if (button)
@@ -1088,10 +1157,10 @@ function toggle_customise (evt)
     }
     PREF_BRANCH_SIXORNOT.setCharPref(PREF_TOOLBAR,  toolbarId || "");
     PREF_BRANCH_SIXORNOT.setCharPref(PREF_NEXTITEM, nextItemId || "");
-}
+};
 
 // Return boolean preference value, either from prefs store or from internal defaults
-function get_bool_pref (name)
+get_bool_pref = function (name)
 {
     log("Sixornot - get_bool_pref - name: " + name, 2);
     try
@@ -1111,18 +1180,18 @@ function get_bool_pref (name)
     {
         log("Sixornot - get_bool_pref error - No default preference value for requested preference: " + name, 0);
     }
-}
+};
 
 // Return the current browser window
-function get_current_window ()
+get_current_window = function ()
 {
     return Components.classes["@mozilla.org/appshell/window-mediator;1"]
                      .getService(Components.interfaces.nsIWindowMediator)
                      .getMostRecentWindow("navigator:browser");
-}
+};
 
 // Proxy to getElementById
-function gbi (node, child_id)
+gbi = function (node, child_id)
 {
     log("Sixornot - gbi - node: " + node + ", child_id: " + child_id, 2);
     if (node.getElementById)
@@ -1133,19 +1202,10 @@ function gbi (node, child_id)
     {
         return node.querySelector("#" + child_id);
     }
-}
-
-/*
-var PREFS = {
-    nextitem:           "bookmarks-menu-button-container",
-    toolbar:            "nav-bar",
-    showaddressicon:    false,
-    use_greyscale:      false
 };
-*/
 
 // Set up initial values for preferences
-function set_initial_prefs ()
+set_initial_prefs = function ()
 {
     var branch, key, val;
     log("Sixornot - set_initial_prefs", 2);
@@ -1170,10 +1230,10 @@ function set_initial_prefs ()
             }
         }
     }
-}
+};
 
 // Returns a string version of an exception object with its stack trace
-function parse_exception (e)
+parse_exception = function (e)
 {
     log("Sixornot - parse_exception", 2);
     if (!e)
@@ -1188,33 +1248,23 @@ function parse_exception (e)
     {
         return String(e) + " \n" + e.stack;
     }
-}
+};
 
 // String modification
-/* function truncateBeforeFirstChar (str, character)
-{
-    var pos;
-    pos = str.indexOf(character);
-    return (pos !== -1) ? str.substring(0, pos) : str.valueOf();
-}
-function truncateAfterLastChar (str, character)
-{
-    var pos;
-    pos = str.lastIndexOf(character);
-    return (pos !== -1) ? str.substring(pos + 1) : str.valueOf();
-} */
-function crop_trailing_char (str, character)
+crop_trailing_char = function (str, character)
 {
     return (str.charAt(str.length - 1) === character) ? str.slice(0, str.length - 1) : str.valueOf();
-}
+};
 
 
 // Lazy getter services
-var defineLazyGetter = function (getterName, getterFunction)
+defineLazyGetter = function (getterName, getterFunction)
 {
     // The first time this getter is requested it'll decay into the function getterFunction
+    /*jslint nomen: false*/
     this.__defineGetter__(getterName, function ()
         {
+            /*jslint nomen: true*/
             // Remove stale reference to getterFunction
             delete this[getterName];
             // Produce a fresh copy of getterFunction with the correct this applied
@@ -1222,7 +1272,7 @@ var defineLazyGetter = function (getterName, getterFunction)
             return this[getterName];
         }
     );
-}
+};
 
 defineLazyGetter("consoleService", function () {
     return Components.classes["@mozilla.org/consoleservice;1"]
@@ -1253,22 +1303,10 @@ defineLazyGetter("threadManager", function() {
                      .getService(Components.interfaces.nsIThreadManager);
 });
 
-// Log a message to error console, but only if it is important enough
-function log (message, level)
-{
-    // Three log levels, 0 = critical, 1 = normal, 2 = verbose
-    // Default level is 1
-    level = level || 1;
-    // If preference unset, default to 1 (normal) level
-    if (level <= 2)
-    {
-        consoleService.logStringMessage(message);
-    }
-}
 
 
 // The DNS Handler which does most of the work of the extension
-var dns_handler =
+dns_handler =
 {
     remote_ctypes: false,
     local_ctypes: false,
@@ -1646,19 +1684,19 @@ var dns_handler =
         if (this.local_ctypes)
         {
             // If remote resolution is happening via ctypes...
-            return this._local_ctypes_async(callback);
+            return this.local_ctypes_async(callback);
         }
         else
         {
             // Else if using firefox methods
-            return this._local_firefox_async(callback);
+            return this.local_firefox_async(callback);
         }
     },
 
-    _local_ctypes_async : function (callback)
+    local_ctypes_async : function (callback)
     {
         var new_callback_id;
-        log("Sixornot - dns_handler:_local_ctypes_async - selecting resolver for local host lookup", 2);
+        log("Sixornot - dns_handler:local_ctypes_async - selecting resolver for local host lookup", 2);
         // This uses dns_worker to do the work asynchronously
 
         new_callback_id = this.add_callback_id(callback);
@@ -1668,11 +1706,11 @@ var dns_handler =
         return this.make_cancel_obj(new_callback_id);
     },
 
-    // Proxy to _remote_firefox_async since it does much the same thing
-    _local_firefox_async : function (callback)
+    // Proxy to remote_firefox_async since it does much the same thing
+    local_firefox_async : function (callback)
     {
-        log("Sixornot - dns_handler:_local_firefox_async - resolving local host using Firefox builtin method", 2);
-        return this._remote_firefox_async(dnsService.myHostName, callback);
+        log("Sixornot - dns_handler:local_firefox_async - resolving local host using Firefox builtin method", 2);
+        return this.remote_firefox_async(dnsService.myHostName, callback);
     },
 
 
@@ -1686,19 +1724,19 @@ var dns_handler =
         if (this.remote_ctypes)
         {
             // If remote resolution is happening via ctypes...
-            return this._remote_ctypes_async(host, callback);
+            return this.remote_ctypes_async(host, callback);
         }
         else
         {
             // Else if using firefox methods
-            return this._remote_firefox_async(host, callback);
+            return this.remote_firefox_async(host, callback);
         }
     },
 
-    _remote_ctypes_async : function (host, callback)
+    remote_ctypes_async : function (host, callback)
     {
         var new_callback_id;
-        log("Sixornot - dns_handler:_remote_ctypes_async - host: " + host + ", callback: " + callback, 2);
+        log("Sixornot - dns_handler:remote_ctypes_async - host: " + host + ", callback: " + callback, 2);
         // This uses dns_worker to do the work asynchronously
 
         new_callback_id = this.add_callback_id(callback);
@@ -1708,10 +1746,10 @@ var dns_handler =
         return this.make_cancel_obj(new_callback_id);
     },
 
-    _remote_firefox_async : function (host, callback)
+    remote_firefox_async : function (host, callback)
     {
         var my_callback;
-        log("Sixornot - dns_handler:_remote_firefox_async - host: " + host + ", callback: " + callback, 2);
+        log("Sixornot - dns_handler:remote_firefox_async - host: " + host + ", callback: " + callback, 2);
 
         my_callback =
         {
@@ -1728,12 +1766,12 @@ var dns_handler =
                 {
                     if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST)
                     {
-                        log("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, unknown host", 1);
+                        log("Sixornot - dns_handler:remote_firefox_async - resolve host failed, unknown host", 1);
                         callback(["FAIL"]);
                     }
                     else
                     {
-                        log("Sixornot - dns_handler:_remote_firefox_async - resolve host failed, status: " + nsstatus, 1);
+                        log("Sixornot - dns_handler:remote_firefox_async - resolve host failed, status: " + nsstatus, 1);
                         callback(["FAIL"]);
                     }
                     // Address was not found in DNS for some reason
@@ -1888,7 +1926,7 @@ var dns_handler =
         // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
         proxyinfo = proxyService.resolve(uri, 0);
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
-        return (proxyinfo !== null) && (proxyinfo.flags & proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
+        return (proxyinfo !== null) && (proxyinfo.flags && proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
     }
 
 /*
