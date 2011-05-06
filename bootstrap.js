@@ -125,6 +125,7 @@ var NS_XUL,
     uninstall,
     reload,
     // Utility functions
+    include,
     log,
     set_iconset,
     toggle_customise,
@@ -200,8 +201,15 @@ PREF_OBSERVER = {
     }
 };
 
-(function(global) global.include = function include(src) (
-    Services.scriptloader.loadSubScript(src, global)))(this);
+// http://erikvold.com/blog/index.cfm/2011/1/2/restartless-firefox-addons-part-2-includes
+// https://developer.mozilla.org/en/XUL_School/Appendix_D:_Loading_Scripts
+//(function(global) global.include = function include(src) (
+//    Services.scriptloader.loadSubScript(src, global)))(this);
+
+include = function (src)
+{
+    Services.scriptloader.loadSubScript(src, this);
+};
 
 
 /*
