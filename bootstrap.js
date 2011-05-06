@@ -203,8 +203,19 @@ PREF_OBSERVER = {
 
 // http://erikvold.com/blog/index.cfm/2011/1/2/restartless-firefox-addons-part-2-includes
 // https://developer.mozilla.org/en/XUL_School/Appendix_D:_Loading_Scripts
-//(function(global) global.include = function include(src) (
-//    Services.scriptloader.loadSubScript(src, global)))(this);
+/*
+(function(global) global.include = function include(src) (
+    Services.scriptloader.loadSubScript(src, global)))(this);
+
+(function (scope)
+{
+    scope.include = function (src)
+    {
+        Services.scriptloader.loadSubScript(src, scope);
+    };
+}
+)(this);
+*/
 
 include = function (src)
 {
@@ -1041,8 +1052,8 @@ startup = function (aData, aReason)
         var prefs;
 
         // Include libraries
-        log("Sixornot - startup - " + addon.getResourceURI("includes/utils.js").spec);
-        log("Sixornot - startup - " + addon.getResourceURI("includes/locale.js").spec);
+        log("Sixornot - startup - " + addon.getResourceURI("includes/utils.js").spec, 2);
+        log("Sixornot - startup - " + addon.getResourceURI("includes/locale.js").spec, 2);
         include(addon.getResourceURI("includes/utils.js").spec);
         include(addon.getResourceURI("includes/locale.js").spec);
 
@@ -1054,7 +1065,7 @@ startup = function (aData, aReason)
         dns_handler.test_typeof_ip6();
         dns_handler.test_is_ip6();
 
-        log("Sixornot - startup - initLocalisation...");
+        log("Sixornot - startup - initLocalisation...", 2);
         initLocalisation(addon, "sixornot.properties");
 
         // Load image sets
@@ -1083,14 +1094,14 @@ startup = function (aData, aReason)
         sother_24_c = addon.getResourceURI("images/other_c_24.png").spec;
 
         // Set active image set
-        log("Sixornot - startup - setting active image set...");
+        log("Sixornot - startup - setting active image set...", 2);
         set_iconset();
 
         // Load into existing windows and set callback to load into any new ones too
-        log("Sixornot - startup - loading into windows...");
+        log("Sixornot - startup - loading into windows...", 2);
         watchWindows(main);
 
-        log("Sixornot - startup - setting up prefs observer...");
+        log("Sixornot - startup - setting up prefs observer...", 2);
         prefs = PREF_BRANCH_SIXORNOT;
         prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.addObserver("", PREF_OBSERVER, false);
