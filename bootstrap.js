@@ -90,7 +90,7 @@ var PREFS = {
 var PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         log("Sixornot - PREFS_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
-        if (!(aTopic.valueOf() === "nsPref:changed"))
+        if (aTopic.valueOf() !== "nsPref:changed")
         {
             log("Sixornot - PREFS_OBSERVER - not a pref change event 1", 2);
             return;
@@ -675,11 +675,11 @@ function main (win)
                 add_disabled_menu_item(gt("nohostnamefound"));
             }
 
-            for (i = 0; i < ipv6s.length; i++)
+            for (i = 0; i < ipv6s.length; i += 1)
             {
                 add_menu_item(ipv6s[i], gt("tt_copyip6clip"), "copyc" + ipv6s[i]);
             }
-            for (i = 0; i < ipv4s.length; i++)
+            for (i = 0; i < ipv4s.length; i += 1)
             {
                 add_menu_item(ipv4s[i], gt("tt_copyip4clip"), "copyc" + ipv4s[i]);
             }
@@ -697,11 +697,11 @@ function main (win)
                       gt("tt_copylocalclip"),
                       "copyc" + localstring);
 
-        for (i = 0; i < localipv6s.length; i++)
+        for (i = 0; i < localipv6s.length; i += 1)
         {
             add_menu_item(localipv6s[i], gt("tt_copyip6clip"), "copyc" + localipv6s[i]);
         }
-        for (i = 0; i < localipv4s.length; i++)
+        for (i = 0; i < localipv4s.length; i += 1)
         {
             add_menu_item(localipv4s[i], gt("tt_copyip4clip"), "copyc" + localipv4s[i]);
         }
@@ -800,7 +800,7 @@ function main (win)
         {
             log("Sixornot - ipv6s.length is > 1");
             add_tt_labeled_line(gt("prefix_v6_multi"), ipv6s[0]);
-            for (i = 1; i < ipv6s.length; i++)
+            for (i = 1; i < ipv6s.length; i += 1)
             {
                 add_tt_labeled_line(" ", ipv6s[i]);
             }
@@ -814,7 +814,7 @@ function main (win)
         else if (ipv4s.length > 1)
         {
             add_tt_labeled_line(gt("prefix_v4_multi"), ipv4s[0]);
-            for (i = 1; i < ipv4s.length; i++)
+            for (i = 1; i < ipv4s.length; i += 1)
             {
                 add_tt_labeled_line(" ", ipv4s[i]);
             }
@@ -840,7 +840,7 @@ function main (win)
         else if (localipv6s.length > 1)
         {
             add_tt_labeled_line(gt("prefix_v6_multi"), localipv6s[0], v6_italic(localipv6s[0]));
-            for (i = 1; i < localipv6s.length; i++)
+            for (i = 1; i < localipv6s.length; i += 1)
             {
                 add_tt_labeled_line(" ", localipv6s[i], v6_italic(localipv6s[i]));
             }
@@ -858,7 +858,7 @@ function main (win)
         else if (localipv4s.length > 1)
         {
             add_tt_labeled_line(gt("prefix_v4_multi"), localipv4s[0], v4_italic(localipv4s[0]));
-            for (i = 1; i < localipv4s.length; i++)
+            for (i = 1; i < localipv4s.length; i += 1)
             {
                 add_tt_labeled_line(" ", localipv4s[i], v4_italic(localipv4s[i]));
             }
@@ -1073,13 +1073,13 @@ function uninstall (aData, aReason)
 // Update preference which determines location of button when loading into new windows
 function toggle_customise (evt)
 {
-    var toolbox, button, b_parent;
+    var toolbox, button, b_parent, toolbarId, nextItemId;
     log("Sixornot - toggle_customise");
-    toolbox = evt.target, toolbarId, nextItemId;
-    button = gbi(toolbox.parentNode, BUTTON_ID);
+    button = gbi(evt.target.parentNode, BUTTON_ID);
     if (button)
     {
-        b_parent = button.parentNode, nextItem = button.nextSibling;
+        b_parent = button.parentNode;
+        nextItem = button.nextSibling;
         if (b_parent && b_parent.localName === "toolbar")
         {
             toolbarId = b_parent.id;
@@ -1105,7 +1105,7 @@ function get_bool_pref (name)
     if (PREFS.hasOwnProperty(name))
     {
         log("Sixornot - get_bool_pref returning PREFS[name] : " + PREFS[name], 2);
-        return PREFS[name]
+        return PREFS[name];
     }
     else
     {
@@ -1135,25 +1135,39 @@ function gbi (node, child_id)
     }
 }
 
+/*
+var PREFS = {
+    nextitem:           "bookmarks-menu-button-container",
+    toolbar:            "nav-bar",
+    showaddressicon:    false,
+    use_greyscale:      false
+};
+*/
+
 // Set up initial values for preferences
 function set_initial_prefs ()
 {
     var branch, key, val;
     log("Sixornot - set_initial_prefs", 2);
     branch = PREF_BRANCH_SIXORNOT;
-    for ([key, val] in Iterator(PREFS))
+//    for ([key, val] in Iterator(PREFS))
+    for (key in PREFS)
     {
-        if (typeof val === "boolean")
+        if (PREFS.hasOwnProperty(key))
         {
-            branch.setBoolPref(key, val);
-        }
-        else if (typeof val === "number")
-        {
-            branch.setIntPref(key, val);
-        }
-        else if (typeof val === "string")
-        {
-            branch.setCharPref(key, val);
+            val = PREFS[key];
+            if (typeof val === "boolean")
+            {
+                branch.setBoolPref(key, val);
+            }
+            else if (typeof val === "number")
+            {
+                branch.setIntPref(key, val);
+            }
+            else if (typeof val === "string")
+            {
+                branch.setCharPref(key, val);
+            }
         }
     }
 }
@@ -1196,12 +1210,16 @@ function crop_trailing_char (str, character)
 
 
 // Lazy getter services
-function defineLazyGetter (getterName, getterFunction)
+var defineLazyGetter = function (getterName, getterFunction)
 {
+    // The first time this getter is requested it'll decay into the function getterFunction
     this.__defineGetter__(getterName, function ()
         {
+            // Remove stale reference to getterFunction
             delete this[getterName];
-            return this[getterName] = getterFunction.apply(this);
+            // Produce a fresh copy of getterFunction with the correct this applied
+            this[getterName] = getterFunction.apply(this);
+            return this[getterName];
         }
     );
 }
@@ -1242,7 +1260,7 @@ function log (message, level)
     // Default level is 1
     level = level || 1;
     // If preference unset, default to 1 (normal) level
-    if (level <= 1)
+    if (level <= 2)
     {
         consoleService.logStringMessage(message);
     }
@@ -1432,7 +1450,7 @@ var dns_handler =
                         [":",                                       false],
                         ["1::2::3",                                 false]
                     ];
-        for (i = 0; i < tests.length; i++)
+        for (i = 0; i < tests.length; i += 1)
         {
             result = this.is_ip6(tests[i][0]);
             if (result === tests[i][1])
@@ -1477,7 +1495,7 @@ var dns_handler =
                         ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
                         ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"]
                     ];
-        for (i = 0; i < tests.length; i++)
+        for (i = 0; i < tests.length; i += 1)
         {
             result = this.normalise_ip6(tests[i][0]);
             if (result === tests[i][1])
@@ -1536,7 +1554,7 @@ var dns_handler =
                         [":", false],
                         ["...", false]
                     ];
-        for (i = 0; i < tests.length; i++)
+        for (i = 0; i < tests.length; i += 1)
         {
             result = this.typeof_ip6(tests[i][0]);
             if (result === tests[i][1])
