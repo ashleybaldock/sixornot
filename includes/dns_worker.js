@@ -17,12 +17,23 @@
  * 
  * ***** END LICENSE BLOCK ***** */
 
+// Provided by Firefox:
+/*global XPCOM, ctypes, postMessage, close */
+
+// Provided in included modules:
+/*global */
+
+// Provided in lazy getters
+/*global */
+
+
+var consoleService, log, parse_exception, reqids, onmessage, dns;
 
 // Utility functions
 
-let consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
+consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
 
-function log (message, level)
+log = function (message, level)
 {
     // Three log levels, 0 = critical, 1 = normal, 2 = verbose
     // Default level is 1
@@ -32,10 +43,10 @@ function log (message, level)
     {
         consoleService.logStringMessage(message);
     }
-}
+};
 
 // Returns a string version of an exception object with its stack trace
-function parse_exception (e)
+parse_exception = function (e)
 {
     if (!e)
     {
@@ -49,7 +60,7 @@ function parse_exception (e)
     {
         return String(e) + " \n" + e.stack;
     }
-}
+};
 
 
 log("Sixornot(dns_worker)");
@@ -62,21 +73,22 @@ log("Sixornot(dns_worker)");
 // request_id references the type of request, see reqids table
 // data is arbitrary information passed to the request_id function
 
-var reqids =
+reqids =
 {
     shutdown: 0,        // Shut down DNS resolver, must be last request!
     remotelookup: 1,    // Perform dns.resolve_remote lookup
     locallookup: 2,     // Perform dns.resolve_local lookup
     checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
-    checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
-}
+    checklocal: 4       // Check whether ctypes resolver is in use for local lookups
+};
 
 onmessage = function (evt)
 {
+    var dispatch, f, ret;
     log("Sixornot(dns_worker) - onmessage: " + evt.data.toSource());
     if (evt.data && evt.data[1])
     {
-        let dispatch = [];
+        dispatch = [];
         dispatch[reqids.shutdown] = dns.shutdown;
         dispatch[reqids.remotelookup] = dns.resolve_remote;
         dispatch[reqids.locallookup] = dns.resolve_local;
@@ -84,11 +96,11 @@ onmessage = function (evt)
         dispatch[reqids.checklocal] = dns.check_local;
 
         // Use request_id (data[1]) to select function
-        let f = dispatch[evt.data[1]];
+        f = dispatch[evt.data[1]];
         if (f)
         {
             // Need to use function.call so that the value of "this" in the called function is set correctly
-            let ret = f.call(dns, evt.data[2]);
+            ret = f.call(dns, evt.data[2]);
             // Return data to main thread
             postMessage([evt.data[0], evt.data[1], ret]);
         }
@@ -96,7 +108,7 @@ onmessage = function (evt)
 };
 
 // ChromeWorker specific dns functions
-var dns =
+dns =
 {
     AF_UNSPEC: null,
     AF_INET: null,
@@ -125,6 +137,8 @@ var dns =
         return this.local_ctypes;
     },
 
+
+    // TODO - move try-catch blocks into functions for each possible platform
     init : function ()
     {
         log("Sixornot(dns_worker) - dns:init");
@@ -222,7 +236,7 @@ var dns =
                                     {ai_socktype : ctypes.int}, 
                                     {ai_protocol : ctypes.int}, 
                                     {ai_addrlen : ctypes.int}, 
-                                    {ai_cannonname : ctypes.char.ptr}, 
+                                    {ai_canonname : ctypes.char.ptr}, 
                                     {ai_addr : this.sockaddr.ptr}, 
                                     {ai_next : this.addrinfo.ptr}
                                      ]);
@@ -245,13 +259,13 @@ var dns =
                     */
                     this.ifaddrs = ctypes.StructType("ifaddrs");
                     this.ifaddrs.define([
-                                         {ifa_next : this.ifaddrs.ptr}, 
-                                         {ifa_name : ctypes.char.ptr}, 
-                                         {ifa_flags : ctypes.unsigned_int}, 
-                                         {ifa_addr : this.sockaddr.ptr}, 
-                                         {ifa_netmask : this.sockaddr.ptr}, 
-                                         {ifa_dstaddr : this.sockaddr.ptr}, 
-                                         {ifa_data : ctypes.voidptr_t}, 
+                                         {ifa_next : this.ifaddrs.ptr},
+                                         {ifa_name : ctypes.char.ptr},
+                                         {ifa_flags : ctypes.unsigned_int},
+                                         {ifa_addr : this.sockaddr.ptr},
+                                         {ifa_netmask : this.sockaddr.ptr},
+                                         {ifa_dstaddr : this.sockaddr.ptr},
+                                         {ifa_data : ctypes.voidptr_t}
                                         ]);
                     // Set up the ctypes functions we need
                     this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi, ctypes.int, this.ifaddrs.ptr.ptr);
@@ -273,7 +287,7 @@ var dns =
                 this.local_ctypes = false;
             }
         }
-        catch(e)
+        catch (e)
         {
             log("Sixornot(dns_worker) - Not running on OSX");
             try
@@ -374,7 +388,7 @@ var dns =
                                         {ai_socktype : ctypes.int}, 
                                         {ai_protocol : ctypes.int}, 
                                         {ai_addrlen : ctypes.int}, 
-                                        {ai_cannonname : ctypes.char.ptr}, 
+                                        {ai_canonname : ctypes.char.ptr}, 
                                         {ai_addr : this.sockaddr.ptr}, 
                                         {ai_next : this.addrinfo.ptr}]);
                     // Set up the ctypes functions we need
@@ -416,13 +430,14 @@ var dns =
     // Converts a sockaddr structure to a string representation of its address
     sockaddr_to_str : function (sockaddr)
     {
+        var dispatch, f;
         log("Sixornot(dns_worker) - sockaddr_to_str");
-        let dispatch = [];
-        dispatch[this.AF_INET] = this._af_inet_to_str;
-        dispatch[this.AF_INET6] = this._af_inet6_to_str;
-        dispatch[this.AF_LINK] = this._af_link_to_str;
+        dispatch = [];
+        dispatch[this.AF_INET] = this.af_inet_to_str;
+        dispatch[this.AF_INET6] = this.af_inet6_to_str;
+        dispatch[this.AF_LINK] = this.af_link_to_str;
 
-        let f = dispatch[sockaddr.sa_family];
+        f = dispatch[sockaddr.sa_family];
         if (f)
         {
             // Need to use function.call so that the value of "this" in the called function is set correctly
@@ -432,27 +447,33 @@ var dns =
         return false;
     },
 
-    _af_inet_to_str : function (sockaddr)
+    af_inet_to_str : function (sockaddr)
     {
-        log("Sixornot(dns_worker) - _af_inet_to_str");
+        var sockaddr_in, ip4, ip4_address;
+        log("Sixornot(dns_worker) - af_inet_to_str");
         // Cast to sockaddr_in
-        let sockaddr_in = ctypes.cast(sockaddr, this.sockaddr_in);
+        sockaddr_in = ctypes.cast(sockaddr, this.sockaddr_in);
         // Read IP address value as 32bit number
-        let ip4 = sockaddr_in.sin_addr;
+        ip4 = sockaddr_in.sin_addr;
         // Convert to dotted decimal notation + return string
-        // return [ip4 >>> 24, (ip4 << 8) >>> 24, (ip4 << 16) >>> 24, (ip4 << 24) >>> 24].join(".");
-        return [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
+        /*jslint bitwise: false */
+        ip4_address = [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
+        /*jslint bitwise: true */
+        return ip4_address;
     },
-    _af_inet6_to_str : function (sockaddr)
+    af_inet6_to_str : function (sockaddr)
     {
-        log("Sixornot(dns_worker) - _af_inet6_to_str");
+        var sockaddr_in6, i, m, c;
+        log("Sixornot(dns_worker) - af_inet6_to_str");
         // Cast to sockaddr_in6
-        let sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
+        sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
         // Convert to hex quad notation + return string
         // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
         // TODO - replace this horrible code
-        let i = 0, m = "", c = [];
-        for (i = 0; i < sockaddr_in6.sin6_addr.length; i++) {
+        i = 0;
+        m = "";
+        c = [];
+        for (i = 0; i < sockaddr_in6.sin6_addr.length; i += 1) {
             c.push(((Number(sockaddr_in6.sin6_addr[i++]) << 8) + Number(sockaddr_in6.sin6_addr[i])).toString(16));
         }
         return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, function (t) {
@@ -460,9 +481,9 @@ var dns =
             return t;
         }).replace(m || ' ', '::');
     },
-    _af_link_to_str : function (sockaddr)
+    af_link_to_str : function (sockaddr)
     {
-        log("Sixornot(dns_worker) - _af_link_to_str");
+        log("Sixornot(dns_worker) - af_link_to_str");
         // Cast to ???
         // Read MAC address value
         // Convert to MAC format with '-' separators + return string
@@ -471,11 +492,12 @@ var dns =
 
     resolve_local : function ()
     {
+        var first_addr, first_addr_ptr, ret, i, addresses, new_addr;
         log("Sixornot(dns_worker) - resolve_local - resolving local host");
 
-        let first_addr = this.ifaddrs();
-        let first_addr_ptr = first_addr.address();
-        let ret = this.getifaddrs(first_addr_ptr.address());
+        first_addr = this.ifaddrs();
+        first_addr_ptr = first_addr.address();
+        ret = this.getifaddrs(first_addr_ptr.address());
 
         if (first_addr_ptr.isNull())
         {
@@ -483,13 +505,13 @@ var dns =
             return ["FAIL"];
         }
 
-        let i = first_addr_ptr.contents;
-        let addresses = [];
+        i = first_addr_ptr.contents;
+        addresses = [];
 
         // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
         for (;;)
         {
-            let new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
+            new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
 
             // Add to addresses array, check for blank return from get_ip_str, strip duplicates as we go
             if (new_addr && addresses.indexOf(new_addr) === -1)
@@ -510,34 +532,35 @@ var dns =
     // Proxy to ctypes getaddrinfo functionality
     resolve_remote : function (host)
     {
+        var hints, first_addr, first_addr_ptr, ret, i, addresses, new_addr;
         log("Sixornot(dns_worker) - resolve_remote - resolving host: " + host);
 
         // Debugging - TODO if needed split this into function that creates addrinfo with flags etc.
-        let hints = this.addrinfo();
+        hints = this.addrinfo();
         hints.ai_flags = 0x00;
         hints.ai_family = this.AF_UNSPEC;
         hints.ai_socktype = 0;
         hints.ai_protocol = this.IPPROTO_UNSPEC;
         hints.ai_addrlen = 0;
 
-        let first_addr = this.addrinfo();
-        let first_addr_ptr = first_addr.address();
-        let ret = this.getaddrinfo(host, null, hints.address(), first_addr_ptr.address());
+        first_addr = this.addrinfo();
+        first_addr_ptr = first_addr.address();
+        ret = this.getaddrinfo(host, null, hints.address(), first_addr_ptr.address());
         // TODO - Check ret for errors
-//        let ret = this.getaddrinfo(host, null, null, retVal.address());
+//        ret = this.getaddrinfo(host, null, null, retVal.address());
         if (first_addr_ptr.isNull())
         {
             log("Sixornot(dns_worker) - resolve_remote - Unable to resolve host, got no results from getaddrinfo");
             return ["FAIL"];
         }
 
-        let i = first_addr_ptr.contents;
-        let addresses = [];
+        i = first_addr_ptr.contents;
+        addresses = [];
 
         // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
         for (;;)
         {
-            let new_addr = this.sockaddr_to_str(i.ai_addr.contents);
+            new_addr = this.sockaddr_to_str(i.ai_addr.contents);
 
             // Add to addresses array, strip duplicates as we go
             if (addresses.indexOf(new_addr) === -1)
