@@ -159,8 +159,8 @@ dns =
         }
 
         // Post a message back to main thread to indicate availability of ctypes
-        //postMessage([-1, reqids.checkremote, this.remote_ctypes]);
-        //postMessage([-1, reqids.checklocal, this.local_ctypes]);
+        postMessage([-1, reqids.checkremote, this.remote_ctypes]);
+        postMessage([-1, reqids.checklocal, this.local_ctypes]);
 
         log("Sixornot(dns_worker) - dns:init completed");
     },

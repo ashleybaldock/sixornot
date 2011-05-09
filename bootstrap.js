@@ -1354,9 +1354,9 @@ dns_handler =
         };
 
         // Check whether to use ctypes methods for remote hosts
-        this.worker.postMessage([-1, 3, null]);
+        //this.worker.postMessage([-1, 3, null]);
         // Check whether to use ctypes methods for local hosts
-        this.worker.postMessage([-1, 4, null]);
+        //this.worker.postMessage([-1, 4, null]);
 
         // Set up request map, which will map async requests to their callbacks
         this.callback_ids = [];
