@@ -28,15 +28,24 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+// Provided by Firefox:
+/*global Components, Services */
 
-var initLocalisation = (function(global) {
-    let regex = /(\w+)-\w+/;
+// Provided in file which includes this one
+/*global log */
+
+// Note: The anonymous function is immediately invoked with this as the value assigned to global,
+// returning a function which takes two parameters, addon and filename
+var initLocalisation = (function(global)
+{
+    var regex, locale, getStr;
+    regex = /(\w+)-\w+/;
 
     // get user's locale
-    let locale = Components.classes["@mozilla.org/chrome/chrome-registry;1"].getService(Components.interfaces.nsIXULChromeRegistry).getSelectedLocale("global");
-    consoleService.logStringMessage("Sixornot - initLocalisation - detected locale as: " + locale);
+    locale = Components.classes["@mozilla.org/chrome/chrome-registry;1"].getService(Components.interfaces.nsIXULChromeRegistry).getSelectedLocale("global");
+    log("Sixornot - initLocalisation - detected locale as: " + locale, 2);
 
-    function getStr(aStrBundle, aKey)
+    getStr = function (aStrBundle, aKey)
     {
         if (!aStrBundle)
         {
@@ -50,45 +59,45 @@ var initLocalisation = (function(global) {
         {
         }
         return "";
-    }
+    };
 
     return function (addon, filename)
     {
+        var defaultLocale, filepath, defaultBundle, defaultBasicBundle, locale_base, addonsDefaultBundle;
+
         defaultLocale = "en";
-        function filepath (locale)
+
+        filepath = function (locale)
         {
             return addon.getResourceURI("locale/" + locale + "/" + filename).spec;
-        }
+        };
 
-        let defaultBundle = Services.strings.createBundle(filepath(locale));
-        let defaultBasicBundle;
+        defaultBundle = Services.strings.createBundle(filepath(locale));
         // Locale made up of two parts, language code and country code
         // We try to use more specific option first (localeBundle) or less specific second (localeBasicBundle)
         // E.g. locale is "en-US", try to find a file called "en-US/sixornot.properties" first, but fall back to "en/sixornot.properties" if not
-        let (locale_base = locale.match(regex))
+        locale_base = locale.match(regex);
+
+        if (locale_base)
         {
-            if (locale_base)
-            {
-                defaultBasicBundle = Services.strings.createBundle(filepath(locale_base[1]));
-            }
+            defaultBasicBundle = Services.strings.createBundle(filepath(locale_base[1]));
         }
 
-        let addonsDefaultBundle = Services.strings.createBundle(filepath(defaultLocale));
+        addonsDefaultBundle = Services.strings.createBundle(filepath(defaultLocale));
 
-        // Return this function in addon-global scope
+        // Set this function to act in addon-global scope
         // If called with only one argument, return translated string
         // If called with two arguments, return translated string for the locale specified in second argument (if possible)
-        return global.gt = function l10n_underscore (aKey, aLocale)
+        global.gt = function l10n_underscore (aKey, aLocale)
         {
-            let localeBundle, localeBasicBundle;
+            var localeBundle, localeBasicBundle, locale_base;
             if (aLocale)
             {
                 localeBundle = Services.strings.createBundle(filepath(aLocale));
-//                let locale_base = aLocale.match(splitter);
                 // Locale made up of two parts, language code and country code
                 // We try to use more specific option first (localeBundle) or less specific second (localeBasicBundle)
                 // E.g. locale is "en-US", try to find a file called "en-US/sixornot.properties" first, but fall back to "en/sixornot.properties" if not
-                let locale_base = aLocale.match(regex);
+                locale_base = aLocale.match(regex);
                 if (locale_base)
                 {
                     localeBasicBundle = Services.strings.createBundle(filepath(locale_base[1]));
@@ -104,10 +113,10 @@ var initLocalisation = (function(global) {
             // 6. If all else fails, return the string passed in
             return getStr(localeBundle, aKey)
                 || getStr(localeBasicBundle, aKey)
-                || (defaultBundle && (getStr(defaultBundle, aKey) || (defaultBundle = null)))
-                || (defaultBasicBundle && (getStr(defaultBasicBundle, aKey) || (defaultBasicBundle = null)))
+                || (defaultBundle && getStr(defaultBundle, aKey))
+                || (defaultBasicBundle && getStr(defaultBasicBundle, aKey))
                 || getStr(addonsDefaultBundle, aKey)
                 || aKey;
-        }
-    }
-})(this);
+        };
+    };
+}(this));
