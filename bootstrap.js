@@ -1335,6 +1335,14 @@ dns_handler =
 
     worker: null,
 
+    reqids: {
+        shutdown: 0,        // Shut down DNS resolver, must be last request!
+        remotelookup: 1,    // Perform dns.resolve_remote lookup
+        locallookup: 2,     // Perform dns.resolve_local lookup
+        checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
+        checklocal: 4       // Check whether ctypes resolver is in use for local lookups
+    },
+
     /*
         Startup/shutdown functions for dns_handler - call init before using!
     */
@@ -1353,11 +1361,6 @@ dns_handler =
             that.onworkermessage.call(that, evt);
         };
 
-        // Check whether to use ctypes methods for remote hosts
-        //this.worker.postMessage([-1, 3, null]);
-        // Check whether to use ctypes methods for local hosts
-        //this.worker.postMessage([-1, 4, null]);
-
         // Set up request map, which will map async requests to their callbacks
         this.callback_ids = [];
         this.next_callback_id = 0;
@@ -1369,7 +1372,7 @@ dns_handler =
     {
         log("Sixornot - dns_handler:shutdown", 1);
         // Shutdown async resolver
-        this.worker.postMessage([-1, 0, null]);
+        this.worker.postMessage([-1, this.reqids.shutdown, null]);
     },
 
 
@@ -1719,7 +1722,7 @@ dns_handler =
 
         new_callback_id = this.add_callback_id(callback);
 
-        this.worker.postMessage([new_callback_id, 2, null]);
+        this.worker.postMessage([new_callback_id, this.reqids.locallookup, null]);
 
         return this.make_cancel_obj(new_callback_id);
     },
@@ -1759,7 +1762,7 @@ dns_handler =
 
         new_callback_id = this.add_callback_id(callback);
 
-        this.worker.postMessage([new_callback_id, 1, host]);
+        this.worker.postMessage([new_callback_id, this.reqids.remotelookup, host]);
 
         return this.make_cancel_obj(new_callback_id);
     },
