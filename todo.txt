@@ -3,11 +3,16 @@
 Display local DNS name on tooltip                                           - DONE
 Italics for link-local local IPv6                                           - DONE
 Italics for link-local IPv4                                                 - DONE
-Preferences - turn ctypes usage on/off  - Needs a pref, but mechanism to do this is there
+Preferences - turn ctypes usage on/off
             - select greyscale/colour icon set                              - DONE
             - switch address bar icon on/off                                - DONE
+            - add preference for debug level
 Detecting type of IPv6 local address and alter display of icon accordingly  - DONE
 Information added to popup to explain what the icon means?
+
+For tooltip/menu, order IP addresses by type
+Favour better classes of addresses
+Hide special cases, e.g. fe80::1 on OSX
 
 Add 24px icons for larger size buttons                                      - DONE (images there, needs testing on Linux)
 Preference to set whether icon should come before or after the star icon
@@ -26,5 +31,7 @@ Testing
     Unit tests for core functions
     UI testing, full sequence for moving icon, close+reopen to check it stays in the right place
     Install/uninstall/upgrade sequence testing
+    Test on various windows platforms (XP x86, Vista, 7 x86/x64)
+    Test on linux + implement ctypes for linux platforms
 
 Check for == and != in utils/locale script files and replace with === and !==
