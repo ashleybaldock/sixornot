@@ -1327,21 +1327,20 @@ defineLazyGetter("threadManager", function() {
 // The DNS Handler which does most of the work of the extension
 dns_handler =
 {
-    remote_ctypes: false,
-    local_ctypes: false,
+    remote_ctypes: true,
+    local_ctypes: true,
 
     callback_ids: [],
     next_callback_id: 0,
 
     worker: null,
 
-
     /*
         Startup/shutdown functions for dns_handler - call init before using!
     */
     init : function ()
     {
-        var self;
+        var that;
         log("Sixornot - dns_handler - init", 1);
 
         // Initialise ChromeWorker which will be used to do DNS lookups either via ctypes or dnsService
@@ -1349,9 +1348,9 @@ dns_handler =
 
         // Shim to get 'this' to refer to dns_handler, not the
         // worker, when a message is received.
-        self = this;
+        that = this;
         this.worker.onmessage = function (evt) {
-            self.onworkermessage.call(self, evt);
+            that.onworkermessage.call(that, evt);
         };
 
         // Check whether to use ctypes methods for remote hosts
