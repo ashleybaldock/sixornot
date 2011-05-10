@@ -36,7 +36,7 @@
 
 // Note: The anonymous function is immediately invoked with this as the value assigned to global,
 // returning a function which takes two parameters, addon and filename
-var initLocalisation = (function(global)
+var initLocalisation = (function (global)
 {
     var regex, locale, getStr;
     regex = /(\w+)-\w+/;

@@ -38,19 +38,21 @@ var consoleService, log, parse_exception, dns;
 // Used by log to write messages to console
 consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
 
+// TODO - Find a way to have logging level for dns_worker influenced by global preference setting
 log = function (message, level)
 {
     // Three log levels, 0 = critical, 1 = normal, 2 = verbose
     // Default level is 1
     level = level || 1;
     // If preference unset, default to 1 (normal) level
-    if (level <= 1)
+    if (level <= 0)
     {
         consoleService.logStringMessage(message);
     }
 };
 
 // Returns a string version of an exception object with its stack trace
+// TODO - Report exceptions back up to main thread for proper handling
 parse_exception = function (e)
 {
     if (!e)
@@ -66,9 +68,6 @@ parse_exception = function (e)
         return String(e) + " \n" + e.stack;
     }
 };
-
-
-log("Sixornot(dns_worker)", 0);
 
 // Data is an array
 // [callback_id, request_id, data]
@@ -635,9 +634,6 @@ dns =
     }
 };
 
-
 // Set up DNS (load ctypes modules etc.)
-log("Sixornot(dns_worker) - calling dns.init", 1);
 dns.init();
-log("Sixornot(dns_worker) - finished calling dns.init", 0);
 

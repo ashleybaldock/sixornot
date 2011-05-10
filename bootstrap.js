@@ -153,21 +153,59 @@ PREFS = {
     nextitem:           "bookmarks-menu-button-container",
     toolbar:            "nav-bar",
     showaddressicon:    false,
-    use_greyscale:      false
+    greyscaleicons:     false,
+    loglevel:           0
+};
+
+// http://erikvold.com/blog/index.cfm/2011/1/2/restartless-firefox-addons-part-2-includes
+// https://developer.mozilla.org/en/XUL_School/Appendix_D:_Loading_Scripts
+/*
+(function(global) global.include = function include(src) (
+    Services.scriptloader.loadSubScript(src, global)))(this);
+
+(function (scope)
+{
+    scope.include = function (src)
+    {
+        Services.scriptloader.loadSubScript(src, scope);
+    };
+}
+)(this);
+*/
+
+// Function to permit the including of other scripts into this one
+include = function (src)
+{
+    Services.scriptloader.loadSubScript(src, this);
 };
 
 // Log a message to error console, but only if it is important enough
-log = function (message, level)
+log = (function ()
 {
-    // Three log levels, 0 = critical, 1 = normal, 2 = verbose
-    // Default level is 1
-    level = level || 1;
-    // If preference unset, default to 1 (normal) level
-    if (level <= 2)
+    var get_loglevel = function ()
     {
-        consoleService.logStringMessage(message);
-    }
-};
+        try
+        {
+            return PREF_BRANCH_SIXORNOT.getIntPref("loglevel");
+        }
+        catch (e)
+        {
+        }
+        // Fallback hard-coded default
+        return PREFS["loglevel"];
+    };
+    return function (message, level)
+    {
+        // Three log levels, 0 = critical, 1 = normal, 2 = verbose
+        // Default level is 1
+        level = level || 1;
+        // If preference unset, default to 1 (normal) level
+        if (level <= get_loglevel())
+        {
+            consoleService.logStringMessage(message);
+        }
+    };
+}());
 
 PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
@@ -190,36 +228,20 @@ PREF_OBSERVER = {
             // Simply reload all addon's attributes
             reload();
         }
-        // If the changed preference is the use_greyscale one
-        if (aData === "use_greyscale")
+        // If the changed preference is the greyscaleicons one
+        if (aData === "greyscaleicons")
         {
-            log("Sixornot - PREFS_OBSERVER - use_greyscale has changed", 1);
+            log("Sixornot - PREFS_OBSERVER - greyscaleicons has changed", 1);
             // Simply switch to a different icon set and reload
             set_iconset();
             reload();
         }
+        // Update worker process to use new log level?
+        if (aData === "loglevel")
+        {
+            log("Sixornot - PREFS_OBSERVER - loglevel has changed", 1);
+        }
     }
-};
-
-// http://erikvold.com/blog/index.cfm/2011/1/2/restartless-firefox-addons-part-2-includes
-// https://developer.mozilla.org/en/XUL_School/Appendix_D:_Loading_Scripts
-/*
-(function(global) global.include = function include(src) (
-    Services.scriptloader.loadSubScript(src, global)))(this);
-
-(function (scope)
-{
-    scope.include = function (src)
-    {
-        Services.scriptloader.loadSubScript(src, scope);
-    };
-}
-)(this);
-*/
-
-include = function (src)
-{
-    Services.scriptloader.loadSubScript(src, this);
 };
 
 
@@ -788,10 +810,10 @@ main = function (win)
                              gt("tt_showaddressicon"),
                              "tbool" + "showaddressicon",
                              PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
-        add_toggle_menu_item(gt("usegreyscale"),
+        add_toggle_menu_item(gt("greyscaleicons"),
                              gt("tt_usegreyscale"),
-                             "tbool" + "use_greyscale",
-                             PREF_BRANCH_SIXORNOT.getBoolPref("use_greyscale"));
+                             "tbool" + "greyscaleicons",
+                             PREF_BRANCH_SIXORNOT.getBoolPref("greyscaleicons"));
 
         add_menu_separator();
         add_menu_item(gt("gotowebsite"),
@@ -1002,8 +1024,8 @@ main = function (win)
 set_iconset = function ()
 {
     log("Sixornot - set_iconset", 2);
-    // If use_greyscale is set to true, load grey icons, otherwise load default set
-    if (get_bool_pref("use_greyscale"))
+    // If greyscaleicons is set to true, load grey icons, otherwise load default set
+    if (get_bool_pref("greyscaleicons"))
     {
         s6only_16 = s6only_16_g;
         s6and4_16 = s6and4_16_g;
@@ -1052,23 +1074,29 @@ startup = function (aData, aReason)
         var prefs;
 
         // Include libraries
-        log("Sixornot - startup - " + addon.getResourceURI("includes/utils.js").spec, 2);
-        log("Sixornot - startup - " + addon.getResourceURI("includes/locale.js").spec, 2);
+        log("Sixornot - main - including: " + addon.getResourceURI("includes/utils.js").spec, 2);
         include(addon.getResourceURI("includes/utils.js").spec);
+        log("Sixornot - main - including: " + addon.getResourceURI("includes/locale.js").spec, 2);
         include(addon.getResourceURI("includes/locale.js").spec);
 
         // Init dns_handler
         dns_handler.init();
 
         // Run dns_handler tests
-        dns_handler.test_normalise_ip6();
-        dns_handler.test_typeof_ip6();
-        dns_handler.test_is_ip6();
+        // Only run these if debug level is set to 2 or higher
+        if (get_int_pref("loglevel") >= 2)
+        {
+            dns_handler.test_normalise_ip6();
+            dns_handler.test_typeof_ip6();
+            dns_handler.test_is_ip6();
+        }
 
         log("Sixornot - startup - initLocalisation...", 2);
         initLocalisation(addon, "sixornot.properties");
 
         // Load image sets
+        // TODO - Split this all off into a seperate script and include it
+        // TODO - Pre-load images into memory to reduce flicker when switching to one for first time
         log("Sixornot - startup - loading image sets...");
         // Greyscale
         s6only_16_g = addon.getResourceURI("images/6only_g_16.png").spec;
@@ -1102,8 +1130,7 @@ startup = function (aData, aReason)
         watchWindows(main);
 
         log("Sixornot - startup - setting up prefs observer...", 2);
-        prefs = PREF_BRANCH_SIXORNOT;
-        prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
+        prefs = PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.addObserver("", PREF_OBSERVER, false);
 
     });
@@ -1130,8 +1157,8 @@ shutdown = function (aData, aReason)
         // Shutdown dns_handler
         dns_handler.shutdown();
 
-        prefs = PREF_BRANCH_SIXORNOT;
-        prefs = prefs.QueryInterface(Components.interfaces.nsIPrefBranch2);
+        // Remove preferences observer
+        prefs = PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.removeObserver("", PREF_OBSERVER);
 
         resource = Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
@@ -1150,6 +1177,8 @@ uninstall = function (aData, aReason)
     log("Sixornot - uninstall - reason: " + aReason, 0);
     // TODO If this is due to an upgrade then don't delete preferences?
     // Some kind of upgrade function to potentially upgrade preference settings may be required
+    // Upgrade function needs to check each existing setting which is in the current version's list of preferences
+    // and determine if the value needs to be upgraded - this should be simple if the prefs are kept simple...
     PREF_BRANCH_SIXORNOT.deleteBranch("");             
 };
 
@@ -1159,6 +1188,7 @@ uninstall = function (aData, aReason)
 */
 
 // Update preference which determines location of button when loading into new windows
+// TODO - move into closure
 toggle_customise = function (evt)
 {
     var toolbox, button, b_parent, nextItem, toolbarId, nextItemId;
@@ -1178,7 +1208,32 @@ toggle_customise = function (evt)
     PREF_BRANCH_SIXORNOT.setCharPref(PREF_NEXTITEM, nextItemId || "");
 };
 
-// Return boolean preference value, either from prefs store or from internal defaults
+// Return integer preference value, either from prefs branch or internal defaults
+// TODO - move into utils.js
+get_int_pref = function (name)
+{
+    log("Sixornot - get_int_pref - name: " + name, 2);
+    try
+    {
+        return PREF_BRANCH_SIXORNOT.getIntPref(name);
+    }
+    catch (e)
+    {
+        log("Sixornot - get_int_pref error - " + e, 0);
+    }
+    if (PREFS.hasOwnProperty(name))
+    {
+        log("Sixornot - get_int_pref returning PREFS[name] : " + PREFS[name], 2);
+        return PREFS[name];
+    }
+    else
+    {
+        log("Sixornot - get_int_pref error - No default preference value for requested preference: " + name, 0);
+    }
+};
+
+// Return boolean preference value, either from prefs branch or internal defaults
+// TODO - move into utils.js
 get_bool_pref = function (name)
 {
     log("Sixornot - get_bool_pref - name: " + name, 2);
@@ -1202,6 +1257,7 @@ get_bool_pref = function (name)
 };
 
 // Return the current browser window
+// TODO - Move into closure or into utils.js
 get_current_window = function ()
 {
     return Components.classes["@mozilla.org/appshell/window-mediator;1"]
@@ -1224,6 +1280,7 @@ gbi = function (node, child_id)
 };
 
 // Set up initial values for preferences
+// TODO - Move into closure
 set_initial_prefs = function ()
 {
     var branch, key, val;
@@ -1270,6 +1327,7 @@ parse_exception = function (e)
 };
 
 // String modification
+// TODO - Move into utils.js
 crop_trailing_char = function (str, character)
 {
     return (str.charAt(str.length - 1) === character) ? str.slice(0, str.length - 1) : str.valueOf();
