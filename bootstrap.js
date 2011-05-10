@@ -534,11 +534,26 @@ main = function (win)
                 dns_request = null;
 
                 log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs - localips is: " + localips + "; typeof localips is: " + typeof localips);
-                // Parse list of local IPs for IPv4/IPv6
+                log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs - performing filter", 2);
+
                 localipv6s = localips.filter(function (a) {
                     return dns_handler.is_ip6(a) && dns_handler.typeof_ip6(a) !== "localhost"; });
                 localipv4s = localips.filter(function (a) {
                     return dns_handler.is_ip4(a) && dns_handler.typeof_ip4(a) !== "localhost"; });
+
+                log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs - localipv4s: " + localipv4s + ", localipv6s: " + localipv6s, 2);
+                log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs - performing sort", 2);
+                // Parse list of local IPs for IPv6
+                localipv6s.sort(function (a, b) {
+                    return dns_handler.sort_ip6.call(dns_handler, a, b);
+                });
+
+                // Parse list of local IPs for IPv4
+                localipv4s.sort(function (a, b) {
+                    return dns_handler.sort_ip4.call(dns_handler, a, b);
+                });
+
+                log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs - localipv4s: " + localipv4s + ", localipv6s: " + localipv6s, 2);
 
                 log("Sixornot - main:updateState:onReturnedIPs:onReturnedLocalIPs - found local IP addresses");
 
@@ -1448,7 +1463,7 @@ dns_handler =
     is_ip4 : function (ip_address)
     {
         log("Sixornot - dns_handler:is_ip4 " + ip_address, 2);
-        return (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
+        return ip_address && (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
     },
 
     // Return the type of an IPv6 address
@@ -1492,6 +1507,73 @@ dns_handler =
         benchmark       198.18.0.0/15                               Starts with 198.18, 198.19
         multicast       224.0.0.0/4                                 Starts with 224-239
     */
+
+    // Pad an IPv4 address to permit lexicographical sorting
+    pad_ip4 : function (ip4_address)
+    {
+        var pad = function (n)
+        {
+            return ("00" + n).substr(-3);
+        };
+        return ip4_address.split(".").map(pad).join(".");
+    },
+    // Remove leading zeros from IPv4 address
+    unpad_ip4 : function (ip4_address)
+    {
+        var unpad = function (n)
+        {
+            return parseInt(n, 10);
+        };
+        return ip4_address.split(".").map(unpad).join(".");
+    },
+
+    // Sort IPv4 addresses into logical ordering
+    sort_ip4 : function (a, b)
+    {
+        var typeof_a, typeof_b;
+        typeof_a = this.typeof_ip4(a);
+        typeof_b = this.typeof_ip4(b);
+        // addresses of different types have a distinct precedence order
+        // global, rfc1918, [other]
+        if (typeof_a === typeof_b)
+        {
+            // TODO - move padding out of this function so it doesn't happen for every comparison in the sort
+            a = this.pad_ip4(a);
+            b = this.pad_ip4(b);
+            if (a === b)
+            {
+                return 0;   // Identical
+            }
+            else if (a > b)
+            {
+                return 1;   // a > b
+            }
+            return -1;      // b > a
+            // addresses of same type are compared based on their numeric values
+            // e.g. 192.168.2.10 comes before 192.168.20.10
+            // Compare expanded addresses, e.g. 010.011.002.003 with 010.012.001.019
+            // Return -1 if a < b, 0 if a == b, 1 if a > b
+        }
+        // They are not equal
+        else if (typeof_a === "global")
+        {
+            return 1;   // a > b
+        }
+        else if (typeof_b === "global")
+        {
+            return -1;  // b > a
+        }
+        // Neither of them are global
+        else if (typeof_a === "rfc1918")
+        {
+            return 1;   // a > b
+        }
+        else if (typeof_b === "rfc1918")
+        {
+            return -1;  // b > a
+        }
+    },
+
     typeof_ip4 : function (ip_address)
     {
         var split_address;
@@ -1594,7 +1676,7 @@ dns_handler =
     is_ip6 : function (ip_address)
     {
         log("Sixornot - dns_handler:is_ip6: " + ip_address, 2);
-        return (ip_address.indexOf(":") !== -1);
+        return ip_address && (ip_address.indexOf(":") !== -1);
     },
 
     test_normalise_ip6 : function ()
@@ -1704,6 +1786,54 @@ dns_handler =
         benchmark       2001:2::/48                                     Starts with 2001:0002:0000
         documentation   2001:db8::/32                                   Starts with 2001:0db8
     */
+    // Sort IPv6 addresses into logical ordering
+    sort_ip6 : function (a, b)
+    {
+        var typeof_a, typeof_b;
+        typeof_a = this.typeof_ip6(a);
+        typeof_b = this.typeof_ip6(b);
+        // addresses of different types have a distinct precedence order
+        // global, linklocal, [other]
+        if (typeof_a === typeof_b)
+        {
+            // TODO - move normalise out of this function so it doesn't happen for every comparison in the sort
+            a = this.normalise_ip6(a);
+            b = this.normalise_ip6(b);
+            if (a === b)
+            {
+                return 0;   // Identical
+            }
+            else if (a > b)
+            {
+                return 1;   // a > b
+            }
+            return -1;      // b > a
+            // addresses of same type are compared based on their numeric values
+            // e.g. fe80::2001 comes before fe80::2:2001
+            // Comparison can be made lexicographically on normalised address??
+            // Return -1 if a < b, 0 if a == b, 1 if a > b
+        }
+        // They are not equal
+        else if (typeof_a === "global")
+        {
+            return 1;   // a > b
+        }
+        else if (typeof_b === "global")
+        {
+            return -1;  // b > a
+        }
+        // Neither of them are global
+        else if (typeof_a === "linklocal")
+        {
+            return 1;   // a > b
+        }
+        else if (typeof_b === "linklocal")
+        {
+            return -1;  // b > a
+        }
+
+    },
+
     typeof_ip6 : function (ip_address)
     {
         var norm_address;
