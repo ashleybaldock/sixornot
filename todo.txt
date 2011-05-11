@@ -10,6 +10,8 @@ Preferences - turn ctypes usage on/off
 Detecting type of IPv6 local address and alter display of icon accordingly  - DONE
 Information added to popup to explain what the icon means?
 
+Only refresh local address information once every minute
+
 For tooltip/menu, order IP addresses by type
 Favour better classes of addresses
 Hide special cases, e.g. fe80::1 on OSX
@@ -33,5 +35,7 @@ Testing
     Install/uninstall/upgrade sequence testing
     Test on various windows platforms (XP x86, Vista, 7 x86/x64)
     Test on linux + implement ctypes for linux platforms
+
+    Unit tests for dns_handler:sort_ip4 & dns_handler:sort_ip6
 
 Check for == and != in utils/locale script files and replace with === and !==

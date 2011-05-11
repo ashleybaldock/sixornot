@@ -159,10 +159,8 @@ PREFS = {
 
 // http://erikvold.com/blog/index.cfm/2011/1/2/restartless-firefox-addons-part-2-includes
 // https://developer.mozilla.org/en/XUL_School/Appendix_D:_Loading_Scripts
-/*
-(function(global) global.include = function include(src) (
-    Services.scriptloader.loadSubScript(src, global)))(this);
 
+// Function to permit the including of other scripts into this one
 (function (scope)
 {
     scope.include = function (src)
@@ -171,13 +169,6 @@ PREFS = {
     };
 }
 )(this);
-*/
-
-// Function to permit the including of other scripts into this one
-include = function (src)
-{
-    Services.scriptloader.loadSubScript(src, this);
-};
 
 // Log a message to error console, but only if it is important enough
 log = (function ()
@@ -522,6 +513,16 @@ main = function (win)
             // Parse list of IPs for IPv4/IPv6
             ipv6s = remoteips.filter(dns_handler.is_ip6);
             ipv4s = remoteips.filter(dns_handler.is_ip4);
+
+            // Parse list of local IPs for IPv6
+            ipv6s.sort(function (a, b) {
+                return dns_handler.sort_ip6.call(dns_handler, a, b);
+            });
+
+            // Parse list of local IPs for IPv4
+            ipv4s.sort(function (a, b) {
+                return dns_handler.sort_ip4.call(dns_handler, a, b);
+            });
 
             log("Sixornot - main:updateState:onReturnedIPs - found remote IP addresses, trying local next", 2);
 
@@ -1557,20 +1558,20 @@ dns_handler =
         // They are not equal
         else if (typeof_a === "global")
         {
-            return 1;   // a > b
+            return -1;  // a comes before b
         }
         else if (typeof_b === "global")
         {
-            return -1;  // b > a
+            return 1;   // b comes before a
         }
         // Neither of them are global
         else if (typeof_a === "rfc1918")
         {
-            return 1;   // a > b
+            return -1;  // a comes before b
         }
         else if (typeof_b === "rfc1918")
         {
-            return -1;  // b > a
+            return 1;   // b comes before a
         }
     },
 
@@ -1810,26 +1811,26 @@ dns_handler =
             return -1;      // b > a
             // addresses of same type are compared based on their numeric values
             // e.g. fe80::2001 comes before fe80::2:2001
-            // Comparison can be made lexicographically on normalised address??
+            // Comparison can be made lexicographically on normalised address
             // Return -1 if a < b, 0 if a == b, 1 if a > b
         }
         // They are not equal
         else if (typeof_a === "global")
         {
-            return 1;   // a > b
+            return -1;  // a comes before b
         }
         else if (typeof_b === "global")
         {
-            return -1;  // b > a
+            return 1;   // b comes before a
         }
         // Neither of them are global
         else if (typeof_a === "linklocal")
         {
-            return 1;   // a > b
+            return -1;  // a comes before b
         }
         else if (typeof_b === "linklocal")
         {
-            return -1;  // b > a
+            return 1;   // b comes before a
         }
 
     },
