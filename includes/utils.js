@@ -150,13 +150,13 @@ function unload (callback, container)
 {
     // Initialize the array of unloaders on the first usage
     let unloaders = unload.unloaders;
-    if (unloaders === null)
+    if (!unloaders)
     {
         unloaders = unload.unloaders = [];
     }
 
     // Calling with no arguments runs all the unloader callbacks
-    if (callback === null)
+    if (!callback)
     {
         unloaders.slice().forEach(function(unloader) unloader());
         unloaders.length = 0;
@@ -164,7 +164,7 @@ function unload (callback, container)
     }
 
     // The callback is bound to the lifetime of the container if we have one
-    if (container !== null)
+    if (container)
     {
         // Remove the unloader when the container unloads
         container.addEventListener("unload", removeUnloader, false);
