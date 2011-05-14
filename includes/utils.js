@@ -50,7 +50,7 @@ function runOnLoad (window, callback)
         window.removeEventListener("load", arguments.callee, false);
 
         // Now that the window has loaded, only handle browser windows
-        if (window.document.documentElement.getAttribute("windowtype") == "navigator:browser")
+        if (window.document.documentElement.getAttribute("windowtype") === "navigator:browser")
         {
             callback(window);
         }
@@ -83,7 +83,7 @@ function runOnWindows (callback)
     {
         // Only run the watcher immediately if the browser is completely loaded
         let browserWindow = browserWindows.getNext();
-        if (browserWindow.document.readyState == "complete")
+        if (browserWindow.document.readyState === "complete")
         {
             watcher(browserWindow);
         }
@@ -120,7 +120,7 @@ function watchWindows (callback)
     // Watch for new browser windows opening then wait for it to load
     function windowWatcher (subject, topic)
     {
-        if (topic == "domwindowopened")
+        if (topic === "domwindowopened")
         {
             runOnLoad(subject, watcher);
         }
@@ -150,13 +150,13 @@ function unload (callback, container)
 {
     // Initialize the array of unloaders on the first usage
     let unloaders = unload.unloaders;
-    if (unloaders == null)
+    if (unloaders === null)
     {
         unloaders = unload.unloaders = [];
     }
 
     // Calling with no arguments runs all the unloader callbacks
-    if (callback == null)
+    if (callback === null)
     {
         unloaders.slice().forEach(function(unloader) unloader());
         unloaders.length = 0;
@@ -164,7 +164,7 @@ function unload (callback, container)
     }
 
     // The callback is bound to the lifetime of the container if we have one
-    if (container != null)
+    if (container !== null)
     {
         // Remove the unloader when the container unloads
         container.addEventListener("unload", removeUnloader, false);
@@ -195,7 +195,7 @@ function unload (callback, container)
     function removeUnloader ()
     {
         let index = unloaders.indexOf(unloader);
-        if (index != -1)
+        if (index !== -1)
         {
             unloaders.splice(index, 1);
         }
