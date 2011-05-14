@@ -1851,7 +1851,8 @@ dns_handler =
         {
             return "unspecified";
         }
-        if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0001")
+        if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0001"
+         || norm_address === "fe80:0000:0000:0000:0000:0000:0000:0001") // linklocal address of loopback interface on Mac OSX
         {
             return "localhost";
         }
