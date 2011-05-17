@@ -165,6 +165,9 @@ PREFS = {
 {
     scope.include = function (src)
     {
+        // This triggers a warning on AMO validation
+        // This method is only used to import utils.js and locale.js
+        // Which are local to this addon (under include directory)
         Services.scriptloader.loadSubScript(src, scope);
     };
 }
@@ -1083,6 +1086,9 @@ startup = function (aData, aReason)
     {
         alias = Services.io.newURI("jar:" + alias.spec + "!/", null, null);
     }
+    // This triggers a warning on AMO validation
+    // The resource substitution is cleaned up by the addon's shutdown method
+    // Search for "resource.setSubstitution("sixornot", null);"
     resource.setSubstitution("sixornot", alias);
 
     AddonManager.getAddonByID(aData.id, function (addon, data)
@@ -1177,6 +1183,7 @@ shutdown = function (aData, aReason)
         prefs = PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.removeObserver("", PREF_OBSERVER);
 
+        // Remove resource substitution which was set up in startup method
         resource = Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
         resource.setSubstitution("sixornot", null);
     }
