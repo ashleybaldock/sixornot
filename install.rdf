@@ -6,7 +6,7 @@
 
         <em:id>sixornot@entropy.me.uk</em:id>
         <em:name>SixOrNot</em:name>
-        <em:version>0.6.5</em:version>
+        <em:version>0.6.6</em:version>
         <em:description>IPv6 status indicator</em:description>
         <em:type>2</em:type>
 
@@ -29,9 +29,19 @@
                 <!-- Firefox -->
                 <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
                 <em:minVersion>4.0</em:minVersion>
-                <em:maxVersion>4.0.*</em:maxVersion>
+                <em:maxVersion>8.0.*</em:maxVersion>
             </Description>
         </em:targetApplication>
+
+        <em:targetApplication>
+            <Description>
+                <!-- SeaMonkey -->
+                <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id>
+                <em:minVersion>2.2</em:minVersion>
+                <em:maxVersion>2.*</em:maxVersion>
+            </Description>
+        </em:targetApplication>
+
 
     </Description>      
 </RDF>
