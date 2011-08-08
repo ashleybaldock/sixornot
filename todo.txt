@@ -1,5 +1,18 @@
 # TODO
 
+# TODO 0.6.6
+Check if domain is in network.dns.ipv4OnlyDomains list and display v4 only
+Check if network.dns.disableIPv6 is set and display warning/never use blue icon if so (still use orange icon if we detect an AAAA record)
+Add seamonkey support                                                       - DONE
+Localisation override via preference (for testing etc.)                     - DONE
+Add Russion localisation                                                    - DONE
+Upgrade functionality, e.g. don't delete prefs if doing an upgrade          - DONE
+Only refresh local address information once every minute
+JSLint for utils.js
+Preference to set whether icon should come before or after the star icon
+
+
+# 0.6.5
 Display local DNS name on tooltip                                           - DONE
 Italics for link-local local IPv6                                           - DONE
 Italics for link-local IPv4                                                 - DONE
@@ -10,25 +23,12 @@ Preferences - turn ctypes usage on/off
 Detecting type of IPv6 local address and alter display of icon accordingly  - DONE
 Information added to popup to explain what the icon means?
 
-Only refresh local address information once every minute
-
-
-Check if domain is in network.dns.ipv4OnlyDomains list and display v4 only
-Check if network.dns.disableIPv6 is set and display warning/never use blue icon if so (still use orange icon if we detect an AAAA record)
-Add seamonkey support                                                       - DONE
-
-
-
-JSLint for utils.js
-
-Upgrade functionality, e.g. don't delete prefs if doing an upgrade          - DONE
 
 For tooltip/menu, order IP addresses by type                                - DONE
 Favour better classes of addresses                                          - DONE
 Hide special cases, e.g. fe80::1 on OSX                                     - DONE
 
 Add 24px icons for larger size buttons                                      - DONE (images there, needs testing on Linux)
-Preference to set whether icon should come before or after the star icon
 Add greyscale icon set (for OSX platform, but selectable anywhere)          - DONE
 
 Menu on-click of the icon to allow you to copy IP addresses to clipboard    - DONE
