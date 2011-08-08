@@ -12,9 +12,16 @@ Information added to popup to explain what the icon means?
 
 Only refresh local address information once every minute
 
+
+Check if domain is in network.dns.ipv4OnlyDomains list and display v4 only
+Check if network.dns.disableIPv6 is set and display warning/never use blue icon if so (still use orange icon if we detect an AAAA record)
+Add seamonkey support                                                       - DONE
+
+
+
 JSLint for utils.js
 
-Upgrade functionality, e.g. don't delete prefs if doing an upgrade
+Upgrade functionality, e.g. don't delete prefs if doing an upgrade          - DONE
 
 For tooltip/menu, order IP addresses by type                                - DONE
 Favour better classes of addresses                                          - DONE

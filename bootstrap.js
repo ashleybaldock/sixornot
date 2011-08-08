@@ -94,10 +94,12 @@ var NS_XUL,
     PREF_NEXTITEM,
     // Prefs branch constant
     PREF_BRANCH_SIXORNOT,
+    PREF_BRANCH_DNS,
     // Preferences object (stores defaults)
     PREFS,
     // Prefs observer object - TODO - move into function where it is used? no need to be global?
     PREF_OBSERVER,
+    PREF_OBSERVER_DNS,
     /*
         ipv6 only                   6only_16.png, 6only_24.png
         ipv4+ipv6 w/ local ipv6     6and4_16.png, 6and4_24.png
@@ -148,13 +150,15 @@ PREF_TOOLBAR    = "toolbar";
 PREF_NEXTITEM   = "nextitem";
 
 PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
+PREF_BRANCH_DNS      = Services.prefs.getBranch("network.dns.");
 
 PREFS = {
     nextitem:           "bookmarks-menu-button-container",
     toolbar:            "nav-bar",
     showaddressicon:    false,
     greyscaleicons:     false,
-    loglevel:           0
+    loglevel:           0,
+    override_locale:    ""
 };
 
 // http://erikvold.com/blog/index.cfm/2011/1/2/restartless-firefox-addons-part-2-includes
@@ -215,25 +219,48 @@ PREF_OBSERVER = {
             return;
         }
 
-        // If the changed preference is the addressicon one
         if (aData === "showaddressicon")
         {
             log("Sixornot - PREFS_OBSERVER - addressicon has changed", 1);
-            // Simply reload all addon's attributes
             reload();
         }
-        // If the changed preference is the greyscaleicons one
         if (aData === "greyscaleicons")
         {
             log("Sixornot - PREFS_OBSERVER - greyscaleicons has changed", 1);
-            // Simply switch to a different icon set and reload
             set_iconset();
             reload();
         }
-        // Update worker process to use new log level?
+        // TODO Update worker process to use new log level?
         if (aData === "loglevel")
         {
             log("Sixornot - PREFS_OBSERVER - loglevel has changed", 1);
+        }
+        if (aData === "override_locale")
+        {
+            log("Sixornot - PREFS_OBSERVER - override_locale has changed", 1);
+            reload();
+        }
+    }
+};
+
+PREF_OBSERVER_DNS = {
+    observe: function (aSubject, aTopic, aData) {
+        log("Sixornot - PREF_OBSERVER_DNS - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
+        if (aTopic.valueOf() !== "nsPref:changed")
+        {
+            log("Sixornot - PREF_OBSERVER_DNS - not a pref change event 1", 2);
+            return;
+        }
+
+        if (aData === "disableIPv6")
+        {
+            log("Sixornot - PREF_OBSERVER_DNS - disableIPv6 has changed", 1);
+            reload();
+        }
+        if (aData === "ipv4OnlyDomains")
+        {
+            log("Sixornot - PREF_OBSERVER_DNS - ipv4OnlyDomains has changed", 1);
+            reload();
         }
     }
 };
@@ -620,6 +647,16 @@ main = function (win)
         {
             return false;
         }
+
+
+        // If the current domain is specified in the list:
+        // network.dns.ipv4OnlyDomains
+        // Then always display red or orange icon, even if we get IPv6 records back and have a local globally routeable v6 address
+
+        // If network.dns.disableIPv6 is set, display warning message in tooltip and always show red/orange
+
+        // If a proxy is detected, use special proxy icon + display warning in tooltip
+
 
         // Valid URL, valid host etc., ready to update the icon
         if (ipv6s.length === 0)
@@ -1114,7 +1151,8 @@ startup = function (aData, aReason)
         }
 
         log("Sixornot - startup - initLocalisation...", 2);
-        initLocalisation(addon, "sixornot.properties");
+        initLocalisation(addon, "sixornot.properties",
+                         PREF_BRANCH_SIXORNOT.getCharPref("override_locale"));
 
         // Load image sets
         // TODO - Split this all off into a seperate script and include it
@@ -1155,6 +1193,10 @@ startup = function (aData, aReason)
         prefs = PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.addObserver("", PREF_OBSERVER, false);
 
+        log("Sixornot - startup - setting up dns prefs observer...", 2);
+        prefs_dns = PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2);
+        prefs_dns.addObserver("", PREF_OBSERVER_DNS, false);
+
     });
 };
 
@@ -1183,6 +1225,10 @@ shutdown = function (aData, aReason)
         prefs = PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
         prefs.removeObserver("", PREF_OBSERVER);
 
+        // Remove DNS preferences observer
+        prefs = PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2);
+        prefs.removeObserver("", PREF_OBSERVER_DNS);
+
         // Remove resource substitution which was set up in startup method
         resource = Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
         resource.setSubstitution("sixornot", null);
@@ -1202,7 +1248,10 @@ uninstall = function (aData, aReason)
     // Some kind of upgrade function to potentially upgrade preference settings may be required
     // Upgrade function needs to check each existing setting which is in the current version's list of preferences
     // and determine if the value needs to be upgraded - this should be simple if the prefs are kept simple...
-    PREF_BRANCH_SIXORNOT.deleteBranch("");             
+    if (aReason !== ADDON_UPGRADE)
+    {
+        PREF_BRANCH_SIXORNOT.deleteBranch("");
+    }
 };
 
 
