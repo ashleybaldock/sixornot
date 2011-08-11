@@ -106,6 +106,7 @@ dns =
 
     osx_library: "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
     win_library: "Ws2_32.dll",
+    linux_library: "libc.so.6",
 
     reqids: {
         shutdown: 0,        // Shut down DNS resolver, must be last request!
@@ -140,6 +141,10 @@ dns =
         else if (this.load_win())
         {
             log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: WIN, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
+        }
+        else if (this.load_linux())
+        {
+            log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: LINUX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
         }
         else
         {
@@ -422,37 +427,41 @@ dns =
             };
             */
 
-            this.sockaddr = ctypes.StructType("sockaddr", [
-                                {sa_len : ctypes.uint8_t},                      // Total length (1)
-                                {sa_family : ctypes.uint8_t},                   // Address family (1)
-                                {sa_data : ctypes.unsigned_char.array(28)}      // Address value (max possible size) (28)
-                                ]);                                             // (30) - must be larger than sockaddr_in and sockaddr_in6 for type casting to work
-            this.sockaddr_in = ctypes.StructType("sockaddr_in", [
-                                {sin_len : ctypes.uint8_t},                     // Total length (1)
-                                {sin_family : ctypes.uint8_t},                  // Address family (1)
-                                {sin_port : ctypes.uint16_t},                   // Socket port (2)
-                                {sin_addr : ctypes.uint32_t},                   // Address value (or could be struct in_addr) (4)
-                                {sin_zero : ctypes.unsigned_char.array(8)}      // Padding (8)
-                                ]);                                             // (16)
-            this.sockaddr_in6 = ctypes.StructType("sockaddr_in6", [
-                                {sin6_len : ctypes.uint8_t},                    // Total length (1)
-                                {sin6_family : ctypes.uint8_t},                 // Address family (1)
-                                {sin6_port : ctypes.uint16_t},                  // Socket port (2)
-                                {sin6_flowinfo : ctypes.uint32_t},              // IP6 flow information (4)
-                                {sin6_addr : ctypes.uint8_t.array(16)},         // IP6 address value (or could be struct in6_addr) (16)
-                                {sin6_scope_id : ctypes.uint32_t}               // Scope zone index (4)
-                                ]);                                             // (28)
-            this.addrinfo = ctypes.StructType("addrinfo");
+            this.sockaddr     = ctypes.StructType("sockaddr");
+            this.sockaddr_in  = ctypes.StructType("sockaddr_in");
+            this.sockaddr_in6 = ctypes.StructType("sockaddr_in6");
+            this.addrinfo     = ctypes.StructType("addrinfo");
+
+            this.sockaddr.define([
+                { sa_len    : ctypes.uint8_t                 }, // Total length (1)
+                { sa_family : ctypes.uint8_t                 }, // Address family (1)
+                { sa_data   : ctypes.unsigned_char.array(28) }  // Address value (max possible size) (28)
+                ]);                                             // (30) - must be larger than sockaddr_in and sockaddr_in6 for type casting to work
+            this.sockaddr_in.define([
+                { sin_len : ctypes.uint8_t                 },   // Total length (1)
+                { sin_family : ctypes.uint8_t              },   // Address family (1)
+                { sin_port : ctypes.uint16_t               },   // Socket port (2)
+                { sin_addr : ctypes.uint32_t               },   // Address value (or could be struct in_addr) (4)
+                { sin_zero : ctypes.unsigned_char.array(8) }    // Padding (8)
+                ]);                                             // (16)
+            this.sockaddr_in6.define([
+                { sin6_len      : ctypes.uint8_t           },   // Total length (1)
+                { sin6_family   : ctypes.uint8_t           },   // Address family (1)
+                { sin6_port     : ctypes.uint16_t          },   // Socket port (2)
+                { sin6_flowinfo : ctypes.uint32_t          },   // IP6 flow information (4)
+                { sin6_addr     : ctypes.uint8_t.array(16) },   // IP6 address value (or could be struct in6_addr) (16)
+                { sin6_scope_id : ctypes.uint32_t          }    // Scope zone index (4)
+                ]);                                             // (28)
             this.addrinfo.define([
-                                {ai_flags : ctypes.int}, 
-                                {ai_family : ctypes.int}, 
-                                {ai_socktype : ctypes.int}, 
-                                {ai_protocol : ctypes.int}, 
-                                {ai_addrlen : ctypes.int}, 
-                                {ai_canonname : ctypes.char.ptr}, 
-                                {ai_addr : this.sockaddr.ptr}, 
-                                {ai_next : this.addrinfo.ptr}
-                                 ]);
+                { ai_flags     : ctypes.int        }, 
+                { ai_family    : ctypes.int        }, 
+                { ai_socktype  : ctypes.int        }, 
+                { ai_protocol  : ctypes.int        }, 
+                { ai_addrlen   : ctypes.int        }, 
+                { ai_canonname : ctypes.char.ptr   }, 
+                { ai_addr      : this.sockaddr.ptr }, 
+                { ai_next      : this.addrinfo.ptr }
+                ]);
             // Set up the ctypes functions we need
             this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
             this.remote_ctypes = true;
@@ -516,7 +525,7 @@ dns =
             // Here we should degrade down to using Firefox's builtin methods
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e1), 1);
             this.remote_ctypes = false;
-            this.local_ctypes = false;
+            this.local_ctypes  = false;
             return false;
         }
         try
@@ -524,30 +533,30 @@ dns =
             log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library + "'", 1);
             // On Windows resolve remote IPs via ctypes method, but use Firefox method to find local addresses since this always works on Windows
             this.remote_ctypes = true;
-            this.local_ctypes = false;
+            this.local_ctypes  = false;
             // Flags
-            this.AI_PASSIVE = 0x01;
-            this.AI_CANONNAME = 0x02;
-            this.AI_NUMERICHOST = 0x04;
-            this.AI_ALL = 0x0100;
-            this.AI_ADDRCONFIG = 0x0400;
-            this.AI_NON_AUTHORITATIVE = 0x04000;
-            this.AI_SECURE = 0x08000;
+            this.AI_PASSIVE                = 0x01;
+            this.AI_CANONNAME              = 0x02;
+            this.AI_NUMERICHOST            = 0x04;
+            this.AI_ALL                    = 0x0100;
+            this.AI_ADDRCONFIG             = 0x0400;
+            this.AI_NON_AUTHORITATIVE      = 0x04000;
+            this.AI_SECURE                 = 0x08000;
             this.AI_RETURN_PREFERRED_NAMES = 0x10000;
             // Address family
-            this.AF_UNSPEC = 0;
-            this.AF_INET = 2;
-            this.AF_INET6 = 23;
+            this.AF_UNSPEC                 =  0;
+            this.AF_INET                   =  2;
+            this.AF_INET6                  = 23;
             // Socket type
-            this.SOCK_STREAM = 1;
+            this.SOCK_STREAM               =  1;
             /* this.SOCK_DGRAM = 2;
             this.SOCK_RAW = 3;
             this.SOCK_RDM = 4;
             this.SOCK_SEQPACKET = 5; */
             // Protocol
-            this.IPPROTO_UNSPEC = 0;
-            this.IPPROTO_TCP = 6;
-            this.IPPROTO_UDP = 17;
+            this.IPPROTO_UNSPEC            =  0;
+            this.IPPROTO_TCP               =  6;
+            this.IPPROTO_UDP               = 17;
             //this.IPPROTO_RM = 113;
             // Set up the structs we need on Windows XP+
             /*
@@ -590,33 +599,39 @@ dns =
               } u;
             } IN6_ADDR, *PIN6_ADDR, FAR *LPIN6_ADDR;
             */
-            this.sockaddr = ctypes.StructType("sockaddr", [
-                                {sa_family : ctypes.unsigned_short},            // Address family (2)
-                                {sa_data : ctypes.unsigned_char.array(28)}      // Address value (max possible size) (28)
-                                ]);                                             // (30)
-            this.sockaddr_in = ctypes.StructType("sockaddr_in", [
-                                {sin_family : ctypes.short},                    // Address family (2)
-                                {sin_port : ctypes.unsigned_short},             // Socket port (2)
-                                {sin_addr : ctypes.unsigned_long},              // Address value (or could be struct in_addr) (4)
-                                {sin_zero : ctypes.char.array(8)}               // Padding (8)
-                                ]);                                             // (16)
-            this.sockaddr_in6 = ctypes.StructType("sockaddr_in6", [
-                                {sin6_family : ctypes.short},                   // Address family (2)
-                                {sin6_port : ctypes.unsigned_short},            // Socket port (2)
-                                {sin6_flowinfo : ctypes.unsigned_long},         // IP6 flow information (4)
-                                {sin6_addr : ctypes.unsigned_char.array(16)},   // IP6 address value (or could be struct in6_addr) (16)
-                                {sin6_scope_id : ctypes.unsigned_long}          // Scope zone index (4)
-                                ]);                                             // (28)
-            this.addrinfo = ctypes.StructType("addrinfo");
+
+            this.sockaddr     = ctypes.StructType("sockaddr");
+            this.sockaddr_in  = ctypes.StructType("sockaddr_in");
+            this.sockaddr_in6 = ctypes.StructType("sockaddr_in6");
+            this.addrinfo     = ctypes.StructType("addrinfo");
+
+            this.sockaddr.define([
+                { sa_family : ctypes.unsigned_short          },      // Address family (2)
+                { sa_data   : ctypes.unsigned_char.array(28) }       // Address value (max possible size) (28)
+                ]);                                                  // (30)
+            this.sockaddr_in.define([
+                { sin_family : ctypes.short          },              // Address family (2)
+                { sin_port   : ctypes.unsigned_short },              // Socket port (2)
+                { sin_addr   : ctypes.unsigned_long  },              // Address value (or could be struct in_addr) (4)
+                { sin_zero   : ctypes.char.array(8)  }               // Padding (8)
+                ]);                                                  // (16)
+            this.sockaddr_in6.define([
+                { sin6_family   : ctypes.short                   },  // Address family (2)
+                { sin6_port     : ctypes.unsigned_short          },  // Socket port (2)
+                { sin6_flowinfo : ctypes.unsigned_long           },  // IP6 flow information (4)
+                { sin6_addr     : ctypes.unsigned_char.array(16) },  // IP6 address value (or could be struct in6_addr) (16)
+                { sin6_scope_id : ctypes.unsigned_long           }   // Scope zone index (4)
+                ]);                                                  // (28)
             this.addrinfo.define([
-                                {ai_flags : ctypes.int}, 
-                                {ai_family : ctypes.int}, 
-                                {ai_socktype : ctypes.int}, 
-                                {ai_protocol : ctypes.int}, 
-                                {ai_addrlen : ctypes.int}, 
-                                {ai_canonname : ctypes.char.ptr}, 
-                                {ai_addr : this.sockaddr.ptr}, 
-                                {ai_next : this.addrinfo.ptr}]);
+                { ai_flags     : ctypes.int        }, 
+                { ai_family    : ctypes.int        }, 
+                { ai_socktype  : ctypes.int        }, 
+                { ai_protocol  : ctypes.int        }, 
+                { ai_addrlen   : ctypes.int        }, 
+                { ai_canonname : ctypes.char.ptr   }, 
+                { ai_addr      : this.sockaddr.ptr }, 
+                { ai_next      : this.addrinfo.ptr }
+                ]);
             // Set up the ctypes functions we need
             this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
             this.remote_ctypes = true;
@@ -627,9 +642,110 @@ dns =
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e2), 1);
             this.library.close();
             this.remote_ctypes = false;
-            this.local_ctypes = false;
+            this.local_ctypes  = false;
         }
         // Everything worked, advise of success
+        return true;
+    },
+
+    load_linux : function ()
+    {
+        try
+        {
+            this.library = ctypes.open(this.linux_library);
+        }
+        catch (e1)
+        {
+            log("Sixornot(dns_worker) - dns:load_linux - Not running on Linux", 1);
+            // Incorrect platform, return false to allow external logic to go to next platform
+            log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e1), 1);
+            this.remote_ctypes = false;
+            this.local_ctypes  = false;
+            return false;
+        }
+        try
+        {
+            log("Sixornot(dns_worker) - dns:load_linux - Running on Linux, opened library: '" + this.linux_library + "'", 1);
+            // On Linux use ctypes functionality to resolve both remote and local addresses
+            // On this platform getaddrinfo w/ local hostname doesn't always return all local addresses
+            // So we need to use getifaddr to do this
+            this.remote_ctypes = true;
+            this.local_ctypes  = true;
+            // Address family
+            this.AF_UNSPEC =  0;
+            this.AF_INET   =  2;
+            this.AF_INET6  = 10;
+
+            this.sockaddr     = ctypes.StructType("sockaddr");
+            this.sockaddr_in  = ctypes.StructType("sockaddr_in");
+            this.sockaddr_in6 = ctypes.StructType("sockaddr_in6");
+            this.addrinfo     = ctypes.StructType("addrinfo");
+
+            this.sockaddr.define([
+                { sa_family : ctypes.uint16_t                }, // Address family (1)
+                { sa_data   : ctypes.unsigned_char.array(28) }  // Address value (max possible size) (28)
+                ]);                                             // (30) - must be larger than sockaddr_in and sockaddr_in6 for type casting to work
+            this.sockaddr_in.define([
+                { sin_family : ctypes.uint16_t      },          // Address family (1)
+                { sin_port   : ctypes.uint16_t      },          // Socket port (2)
+                { sin_addr   : ctypes.uint32_t      },          // Address value (or could be struct in_addr) (4)
+                { sin_zero   : ctypes.char.array(8) }           // Padding (8)
+                ]);                                             // (16)
+            this.sockaddr_in6.define([
+                { sin6_family   : ctypes.uint16_t          },   // Address family (1)
+                { sin6_port     : ctypes.uint16_t          },   // Socket port (2)
+                { sin6_flowinfo : ctypes.uint32_t          },   // IP6 flow information (4)
+                { sin6_addr     : ctypes.uint8_t.array(16) },   // IP6 address value (or could be struct in6_addr) (16)
+                { sin6_scope_id : ctypes.uint32_t          }    // Scope zone index (4)
+                ]);                                             // (28)
+            this.addrinfo.define([
+                { ai_flags     : ctypes.int        }, 
+                { ai_family    : ctypes.int        }, 
+                { ai_socktype  : ctypes.int        }, 
+                { ai_protocol  : ctypes.int        }, 
+                { ai_addrlen   : ctypes.int        }, 
+                { ai_canonname : ctypes.char.ptr   }, 
+                { ai_addr      : this.sockaddr.ptr }, 
+                { ai_next      : this.addrinfo.ptr }
+                ]);
+            // Set up the ctypes functions we need
+            this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
+            this.remote_ctypes = true;
+        }
+        catch (e2)
+        {
+            log("Sixornot(dns_worker) - dns:load_linux - Unable to init ctypes remote resolver, falling back to Firefox method for remote addresses", 1);
+            log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e2), 1);
+            this.remote_ctypes = false;
+        }
+        // Try to initialise getifaddrs
+        try
+        {
+            // Used for local address lookup
+            /*
+            */
+            this.ifaddrs = ctypes.StructType("ifaddrs");
+            this.ifaddrs.define([
+                 { ifa_next    : this.ifaddrs.ptr    },
+                 { ifa_name    : ctypes.char.ptr     },
+                 { ifa_flags   : ctypes.unsigned_int },
+                 { ifa_addr    : this.sockaddr.ptr   },
+                 { ifa_netmask : this.sockaddr.ptr   },
+                 { ifa_dstaddr : this.sockaddr.ptr   },
+                 { ifa_data    : ctypes.voidptr_t    }
+                 ]);
+            // Set up the ctypes functions we need
+            this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi, ctypes.int, this.ifaddrs.ptr.ptr);
+            this.local_ctypes = true;
+        }
+        catch (e3)
+        {
+            log("Sixornot(dns_worker) - dns:load_linux - Unable to init ctypes local resolver, falling back to Firefox method for local addresses (WARNING: May not work if DNS isn't configured for local host)", 1);
+            log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e3), 1);
+            // If we've got this far then remote resolution should still work, so only disable local ctypes resolution
+            this.local_ctypes = false;
+        }
+        // Initialisation for this platform complete
         return true;
     }
 };
