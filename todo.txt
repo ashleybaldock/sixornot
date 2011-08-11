@@ -10,6 +10,19 @@ Upgrade functionality, e.g. don't delete prefs if doing an upgrade          - DO
 Only refresh local address information once every minute
 JSLint for utils.js
 Preference to set whether icon should come before or after the star icon
+Implement Windows-specific resolver method for use by XP x86
+Add option to show/hide local IP addresses (on by default)
+
+# TODO 0.7
+Remote mode - simple check of local->remote IPv6 connectivity by requesting a page from a webservice
+E.g. ipv6.sixornot.com/ipv4.sixornot.com
+This will be optional (and off by default)
+Needs update to privacy policy etc., state that aggregate statistics may be gathered but no personally identifiable information sent
+Also state that no details of the sites you visit are sent
+
+
+Firefox resolver same on XP, Vista, 7 and probably Linux
+OSX one does give you v6 addresses when you wouldn't otherwise get them so still useful on this platform
 
 
 # 0.6.5
