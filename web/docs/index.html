@@ -28,6 +28,12 @@
     <li><a href="#Interface_Settings">Configurable Settings</a></li>
     </ul>
 </li>
+<li><a href="#OSSpecific">Operating System specific information</a>
+    <ul>
+    <li><a href="#OSSpecific_WindowsXP">Windows XP</a></li>
+    <li><a href="#OSSpecific_Linux">Linux</a></li>
+    </ul>
+</li>
 <li><a href="#IPConcepts">IP Address Concepts</a></li>
 <li><a href="#FurtherReading">Further Reading</a></li>
 <li><a href="#AnyOtherQuestions">Any Other Questions</a></li>
@@ -80,6 +86,28 @@
     <pre>extensions.sixornot.use_greyscale</pre>
 
     <p>The other two sixornot settings control the location of the button and should not be changed manually.</p>
+
+<h2><a name="OSSpecific"></a>Operating System specific information<a href="#Menu">Menu</a></h2>
+
+<p>Due to the use of OS native DNS resolution and local address detection SixOrNot can behave differently on different operating systems running Firefox. Additionally support for IPv6 varies between OSes and some special steps are needed to enable it in some cases. See below for information on your OS.</p>
+
+    <h3><a name="OSSpecific_WindowsXP"></a>Windows XP<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>Windows XP supports IPv6 from SP2, however SixOrNot only supports Windows XP SP3. On Windows XP SP3 IPv6 needs to be manually installed. This can be done by using the command:</p>
+
+    <pre>netsh interface ipv6 install</pre>
+
+    <p>The interface will then autoconfigure an IPv6 address, or, if autoconfiguration can't work for some reason manual configuration will be needed. See this Microsoft article for more information on configuring IPv6 in Windows XP: <a href="http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/sag_ip_v6_imp_config_meth.mspx?mfr=true">IPv6 configuration methods</a>.</p>
+
+    <p>Please note: If the Windows XP IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation.</p>
+
+    <p>SixOrNot currently will not detect the local IPv6 address on Windows XP, a fix for this will be put into version 0.6.6. This has the result that even if a remote site is IPv6-enabled and you have a globally routable IPv6 address configured the icon will display only as yellow (IPv6 available but probably not in use).</p>
+
+    <h3><a name="OSSpecific_Linux"></a>Linux<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>SixOrNot has currently only been tested under Ubuntu Linux (version 11.04). If you are experiencing problems with SixOrNot on a Linux distribution other than this please get in touch with me and I'll try to fix it for your distribution.</p>
+
+    <p>Currently SixOrNot will not accurately detect IP address information on Linux. A fix for this will be put into version 0.6.6.</p>
 
 
 <h2><a name="IPConcepts"></a>IP Address Concepts<a href="#Menu">Menu</a></h2>
