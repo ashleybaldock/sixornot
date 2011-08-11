@@ -30,7 +30,10 @@
 </li>
 <li><a href="#OSSpecific">Operating System specific information</a>
     <ul>
-    <li><a href="#OSSpecific_WindowsXP">Windows XP</a></li>
+    <li><a href="#OSSpecific_OSX">Mac OSX</a></li>
+    <li><a href="#OSSpecific_Windows7Vista">Windows 7/Windows Vista</a></li>
+    <li><a href="#OSSpecific_Windows2003">Windows XP x64/Windows Server 2003</a></li>
+    <li><a href="#OSSpecific_WindowsXPx86">Windows XP x86</a></li>
     <li><a href="#OSSpecific_Linux">Linux</a></li>
     </ul>
 </li>
@@ -91,17 +94,35 @@
 
 <p>Due to the use of OS native DNS resolution and local address detection SixOrNot can behave differently on different operating systems running Firefox. Additionally support for IPv6 varies between OSes and some special steps are needed to enable it in some cases. See below for information on your OS.</p>
 
-    <h3><a name="OSSpecific_WindowsXP"></a>Windows XP<a href="#OSSpecific">Operating System specific information</a></h3>
+    <h3><a name="OSSpecific_OSX"></a>Mac OSX<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>Windows XP supports IPv6 from SP2, however SixOrNot only supports Windows XP SP3. On Windows XP SP3 IPv6 needs to be manually installed. This can be done by using the command:</p>
+    <p>SixOrNot is fully compatible with OSX 10.6 and 10.7. IPv6 is enabled by default in these versions of the operating system and no special configuration should be needed for full functionality.</p>
+
+    <h3><a name="OSSpecific_Windows7Vista"></a>Windows 7/Windows Vista<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>SixOrNot is fully compatible with Windows 7 and Windows Vista SP2. <b>Please note:</b> No remote IPv6 addresses can be looked up unless your local machine has at least one non-linklocal IPv6 address. This is due to limitations of the operating system - AAAA records (IPv6 DNS records) are only returned by the OS if it has a non-linklocal IPv6 address. If you have no local IPv6 connectivity but still want to see when a remote site could potentially be reached via IPv6 then a workaround is to configure your machine with a manual IPv6 address, for example use a Site-Local address (fec0::/10, e.g. fec0::1) with no default route. This is enough to get the OS to provide you with AAAA record responses.</p>
+
+    <h3><a name="OSSpecific_Windows2003"></a>Windows XP x64/Windows Server 2003<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>SixOrNot is fully compatible with Windows XP x64 and Windows Server 2003 (x86 and x64). On all these operating systems IPv6 must be manually installed. This can be done by using the command:</p>
 
     <pre>netsh interface ipv6 install</pre>
 
-    <p>The interface will then autoconfigure an IPv6 address, or, if autoconfiguration can't work for some reason manual configuration will be needed. See this Microsoft article for more information on configuring IPv6 in Windows XP: <a href="http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/sag_ip_v6_imp_config_meth.mspx?mfr=true">IPv6 configuration methods</a>.</p>
+    <p>The interface will then autoconfigure an IPv6 address, or, if autoconfiguration can't work for some reason manual configuration will be needed. See this Microsoft article for more information on configuring IPv6 in Windows XP x64/Windows Server 2003: <a href="http://support.microsoft.com/kb/325449">How to install and configure IP version 6 in Windows Server 2003 Enterprise Server</a>.</p>
 
-    <p>Please note: If the Windows XP IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation.</p>
+    <p>Please note: If the Windows XP x64/Windows Server 2003 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation.</p>
 
-    <p>SixOrNot currently will not detect the local IPv6 address on Windows XP, a fix for this will be put into version 0.6.6. This has the result that even if a remote site is IPv6-enabled and you have a globally routable IPv6 address configured the icon will display only as yellow (IPv6 available but probably not in use).</p>
+    <h3><a name="OSSpecific_WindowsXPx86"></a>Windows XP x86<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>Windows XP x86 supports IPv6 from SP2, however SixOrNot only supports Windows XP x86 SP3. On Windows XP x86 SP3 IPv6 needs to be manually installed. This can be done by using the command:</p>
+
+    <pre>netsh interface ipv6 install</pre>
+
+    <p>The interface will then autoconfigure an IPv6 address, or, if autoconfiguration can't work for some reason manual configuration will be needed. See this Microsoft article for more information on configuring IPv6 in Windows XP x86: <a href="http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/sag_ip_v6_imp_config_meth.mspx?mfr=true">IPv6 configuration methods</a>.</p>
+
+    <p>Please note: If the Windows XP x86 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation.</p>
+
+    <p><b>Known Issue:</b> SixOrNot currently will not detect the local IPv6 address on Windows XP x86, a fix for this will be put into version 0.6.6. This has the result that even if a remote site is IPv6-enabled and you have a globally routable IPv6 address configured the icon will display only as yellow (IPv6 available but probably not in use).</p>
 
     <h3><a name="OSSpecific_Linux"></a>Linux<a href="#OSSpecific">Operating System specific information</a></h3>
 
