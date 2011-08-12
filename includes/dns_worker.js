@@ -670,7 +670,7 @@ dns =
             // On Linux use ctypes functionality to resolve both remote and local addresses
             // On this platform getaddrinfo w/ local hostname doesn't always return all local addresses
             // So we need to use getifaddr to do this
-            this.remote_ctypes = true;
+            this.remote_ctypes = false;
             this.local_ctypes  = true;
             // Address family
             this.AF_UNSPEC =  0;
@@ -713,7 +713,7 @@ dns =
                 ]);
             // Set up the ctypes functions we need
             this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-            this.remote_ctypes = true;
+            this.remote_ctypes = false;
         }
         catch (e2)
         {
