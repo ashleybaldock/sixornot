@@ -313,7 +313,8 @@ dns =
         hints.ai_flags = 0x00;
         hints.ai_family = this.AF_UNSPEC;
         hints.ai_socktype = 0;
-        hints.ai_protocol = this.IPPROTO_UNSPEC;
+//        hints.ai_protocol = this.IPPROTO_UNSPEC;
+        hints.ai_protocol = 0;
         hints.ai_addrlen = 0;
 
         first_addr = this.addrinfo();
@@ -675,6 +676,8 @@ dns =
             this.AF_UNSPEC =  0;
             this.AF_INET   =  2;
             this.AF_INET6  = 10;
+            // Protocol
+            this.IPPROTO_UNSPEC            =  0;
 
             this.sockaddr     = ctypes.StructType("sockaddr");
             this.sockaddr_in  = ctypes.StructType("sockaddr_in");
