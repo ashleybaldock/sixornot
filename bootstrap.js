@@ -274,7 +274,7 @@ PREF_OBSERVER_DNS = {
 main = function (win)
 {
     var contentDoc, url, host, ipv4s, ipv6s, localipv4s, localipv6s,
-        usingv6, specialLocation, dns_request, pollLoopID, doc,
+        specialLocation, dns_request, pollLoopID, doc,
         add_mainui, add_addressicon, pollForContentChange, updateState,
         update_icon, onMenuCommand, update_menu_content, update_tooltip_content,
         onChangedOnlineStatus;
@@ -287,7 +287,6 @@ main = function (win)
     ipv6s = [];             // The IP addresses of the current host
     localipv6s = [];        // Local IPv6 addresses
     localipv4s = [];        // Local IPv4 addresses
-    usingv6 = null;         // True if we can connect to the site using IPv6, false otherwise
     specialLocation = null;
     dns_request = null;     // Reference to this window's active DNS lookup request
                             // There can be only one at a time per window
@@ -497,7 +496,7 @@ main = function (win)
         } 
         catch (e)
         {
-            log("Sixornot - Unable to look up host");
+            log("Sixornot - Unable to determine host from page URL");
         }
         if (host === "")
         {
@@ -595,17 +594,6 @@ main = function (win)
             };
 
             dns_request = dns_handler.resolve_local_async(onReturnedLocalIPs);
-
-            /* let localips = [];
-            try
-            {
-                localips = dns_handler.resolve_local_async();
-            }
-            catch (e)
-            {
-                log("Sixornot - Unable to look up local IP addresses");
-                Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
-            } */
         };
 
         // Ideally just hitting the DNS cache here
@@ -689,6 +677,12 @@ main = function (win)
                 if (localipv6s.length === 0)
                 {
                     // Site has a v6 address, but we do not, so we're probably not using v6 to connect
+                    set_icon(s4pot6_16);
+                }
+                else if (dns_handler.is_ip4only_domain(host))
+                {
+                    // Site has v6, but is in the list of sites to connect to via v4, so display orange icon
+                    // Tooltip should show warning about this!
                     set_icon(s4pot6_16);
                 }
                 else
@@ -899,17 +893,24 @@ main = function (win)
 
         add_tt_title_line = function (labelName)
         {
-            var row, label, value;
+            var label, value;
             log("Sixornot - main:update_tooltip_content:add_tt_title_line - labelName: " + labelName, 2);
-            row = doc.createElementNS(NS_XUL, "row");
             label = doc.createElementNS(NS_XUL, "label");
-            value = doc.createElementNS(NS_XUL, "label");
 
             label.setAttribute("value", labelName);
             label.setAttribute("style", "font-weight: bold; text-align: right;");
-            row.appendChild(value);
-            row.appendChild(label);
-            rows.appendChild(row);
+            rows.appendChild(label);
+        };
+
+        add_tt_warning_line = function (labelName)
+        {
+            var label, value;
+            log("Sixornot - main:update_tooltip_content:add_tt_warning_line - labelName: " + labelName, 2);
+            label = doc.createElementNS(NS_XUL, "label");
+
+            label.setAttribute("value", labelName);
+            label.setAttribute("style", "font-weight: bold; text-align: left; color: #F00;");
+            rows.appendChild(label);
         };
 
         add_tt_labeled_line = function (labelName, lineValue, italic)
@@ -940,8 +941,17 @@ main = function (win)
             add_tt_title_line(gt("header_remote"), "");
         }
 
+        if (dns_handler.is_ip6_disabled())
+        {
+            add_tt_warning_line(gt("warn_ip6_disabled"));
+        }
+
         if (host !== "")
         {
+            if (dns_handler.is_ip4only_domain(host))
+            {
+                add_tt_warning_line(gt("warn_ip4only_domain"));
+            }
             add_tt_labeled_line(gt("prefix_domain"), host);
         }
 
@@ -1954,6 +1964,31 @@ dns_handler =
         return "global";
     },
 
+    /*
+        Returns value of preference network.dns.disableIPv6
+    */
+    is_ip6_disabled : function ()
+    {
+        return Services.prefs.getBoolPref("network.dns.disableIPv6");
+    },
+
+    /*
+        Returns true if the domain specified is in the list of IPv4-only domains
+    */
+    is_ip4only_domain : function (domain)
+    {
+        var ip4onlydomains, i;
+        ip4onlydomains = Services.prefs.getCharPref("network.dns.ipv4OnlyDomains").replace(/\s+/g, "").toLowerCase().split(",");
+        domain = domain.toLowerCase();
+        for (i = 0; i < ip4onlydomains.length; i += 1)
+        {
+            if (domain === ip4onlydomains[i])
+            {
+                return true;
+            }
+        }
+        return false;
+    },
 
     /*
         Finding local IP address(es)

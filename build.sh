@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script builds the SixOrNot addon ready for distribution
-version="0.6.5"
+version="0.6.6"
 
 # Create build directory by version
 mkdir ../dist/$version
@@ -23,7 +23,9 @@ cp includes/dns_worker.js ../dist/$version/src/includes/
 # Copy locale(s)
 mkdir ../dist/$version/src/locale
 mkdir ../dist/$version/src/locale/en
+mkdir ../dist/$version/src/locale/ru
 cp locale/en/sixornot.properties ../dist/$version/src/locale/en/
+cp locale/ru/sixornot.properties ../dist/$version/src/locale/ru/
 
 # Create .zip file from build directory (with .xpi file extension)
 cd ../dist/$version/src/
