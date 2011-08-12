@@ -31,7 +31,9 @@
 
 
 // Global variables defined by this script
-var consoleService, log, parse_exception, dns;
+var consoleService, log, parse_exception, dns, loglevel;
+
+loglevel = 0;
 
 // Utility functions
 
@@ -45,7 +47,7 @@ log = function (message, level)
     // Default level is 1
     level = level || 1;
     // If preference unset, default to 1 (normal) level
-    if (level <= 0)
+    if (level <= loglevel)
     {
         consoleService.logStringMessage(message);
     }
@@ -80,8 +82,28 @@ parse_exception = function (e)
 // If you do var onmessage this doesn't function properly
 onmessage = function (evt)
 {
-    log("Sixornot(dns_worker) - onmessage: " + evt.toSource(), 2);
-    if (evt.data && evt.data[1])
+    log("Sixornot(dns_worker) - onmessage: " + evt.toSource(), 1);
+    // Special case messages should be handled here
+    if (evt.data && evt.data[1] && evt.data[1] === 255)
+    {
+        // 255 = init message
+        // Set up DNS (load ctypes modules etc.)
+        dns.init();
+        // Post back message to indicate whether init was successful
+        // Init also posts back messages to indicate specific success
+        postMessage([-1, 255, true]);
+    }
+    else if (evt.data && evt.data[1] && evt.data[1] === 254)
+    {
+        // 254 = loglevel message
+        // Set logging level to specified level
+        loglevel = evt.data[2];
+        log("Sixornot(dns_worker) - loglevel set to: " + evt.data[2], 1);
+        // Return and indicate success
+        postMessage([-1, 254, true]);
+    }
+    // All other codes should be passed through to dns for processing
+    else if (evt.data && evt.data[1])
     {
         dns.dispatch_message(evt.data);
     }
@@ -753,6 +775,4 @@ dns =
     }
 };
 
-// Set up DNS (load ctypes modules etc.)
-dns.init();
 

@@ -7,10 +7,15 @@ Add seamonkey support                                                       - DO
 Localisation override via preference (for testing etc.)                     - DONE
 Add Russion localisation                                                    - DONE
 Upgrade functionality, e.g. don't delete prefs if doing an upgrade          - DONE
-Only refresh local address information once every minute
+Loglevel setting for dns_worker                                             - DONE
+Implement Windows-specific resolver method for use by XP x86
+Remove ctypes lookup for Windows (no point to it)
+Linux support (needs testing and cleanup)
+
+# TODO 0.6.7
+Only refresh local address information once every minute - put on a seperate timer?
 JSLint for utils.js
 Preference to set whether icon should come before or after the star icon
-Implement Windows-specific resolver method for use by XP x86
 Add option to show/hide local IP addresses (on by default)
 
 # TODO 0.7

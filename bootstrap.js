@@ -234,6 +234,8 @@ PREF_OBSERVER = {
         if (aData === "loglevel")
         {
             log("Sixornot - PREFS_OBSERVER - loglevel has changed", 1);
+            // Ensure dns_worker is at the same loglevel
+            dns_handler.set_worker_loglevel(PREF_BRANCH_SIXORNOT.getIntPref("loglevel"))
         }
         if (aData === "override_locale")
         {
@@ -1470,7 +1472,9 @@ dns_handler =
         remotelookup: 1,    // Perform dns.resolve_remote lookup
         locallookup: 2,     // Perform dns.resolve_local lookup
         checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
-        checklocal: 4       // Check whether ctypes resolver is in use for local lookups
+        checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
+        loglevel: 254,      // Set the logging level of the ctypes resolver
+        init: 255           // Initialise dns in the worker
     },
 
     /*
@@ -1496,6 +1500,16 @@ dns_handler =
         this.next_callback_id = 0;
         // Every time a request is processed its callback is added to the callback_ids
         // When a request is completed the callback_ids can be queried to find the correct callback to call
+        // Any message which doesn't need a callback association should be sent with a callback ID of -1
+
+        // Finally set the logging level appropriately and call init
+        this.worker.postMessage([-1, this.reqids.loglevel, PREF_BRANCH_SIXORNOT.getIntPref("loglevel")]);
+        this.worker.postMessage([-1, this.reqids.init, null]);
+    },
+
+    set_worker_loglevel : function (newloglevel)
+    {
+        this.worker.postMessage([-1, this.reqids.loglevel, newloglevel]);
     },
 
     shutdown : function ()
@@ -2139,17 +2153,25 @@ dns_handler =
         // Look up correct callback in callback_ids array
 
         // checkremote, set remote ctypes status
-        if (evt.data[1] === 3)
+        if (evt.data[1] === this.reqids.checkremote)
         {
             this.remote_ctypes = evt.data[2];
         }
         // checklocal, set local ctypes status
-        else if (evt.data[1] === 4)
+        else if (evt.data[1] === this.reqids.checklocal)
         {
             this.local_ctypes = evt.data[2];
         }
+        else if (evt.data[1] === this.reqids.init)
+        {
+            log("Sixornot - dns_handler:onworkermessage - init ack received", 2);
+        }
+        else if (evt.data[1] === this.reqids.loglevel)
+        {
+            log("Sixornot - dns_handler:onworkermessage - loglevel change ack received", 2);
+        }
         // remotelookup/locallookup, find correct callback and call it
-        else if (evt.data[1] === 1 || evt.data[1] === 2)
+        else if (evt.data[1] === this.reqids.remotelookup || evt.data[1] === this.reqids.locallookup)
         {
             callback = this.remove_callback_id(evt.data[0]);
             log("Sixornot - dns_handler:onworkermessage, typeof callback: " + typeof callback, 1);
