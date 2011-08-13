@@ -328,49 +328,118 @@ dns =
     resolve_remote : function (host)
     {
         var hints, first_addr, first_addr_ptr, ret, i, addresses, new_addr;
+        var hints4, first_addr4, first_addr_ptr4, ret4;
         log("Sixornot(dns_worker) - dns:resolve_remote - resolving host: " + host, 2);
 
+  // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
+  //
+  // The following comment in <winsock2.h> is the best documentation I found
+  // on AI_ADDRCONFIG for Windows:
+  //   Flags used in "hints" argument to getaddrinfo()
+  //       - AI_ADDRCONFIG is supported starting with Vista
+  //       - default is AI_ADDRCONFIG ON whether the flag is set or not
+  //         because the performance penalty in not having ADDRCONFIG in
+  //         the multi-protocol stack environment is severe;
+  //         this defaulting may be disabled by specifying the AI_ALL flag,
+  //         in that case AI_ADDRCONFIG must be EXPLICITLY specified to
+  //         enable ADDRCONFIG behavior
+  //
+  // Not only is AI_ADDRCONFIG unnecessary, but it can be harmful.  If the
+  // computer is not connected to a network, AI_ADDRCONFIG causes getaddrinfo
+  // to fail with WSANO_DATA (11004) for "localhost", probably because of the
+  // following note on AI_ADDRCONFIG in the MSDN getaddrinfo page:
+  //   The IPv4 or IPv6 loopback address is not considered a valid global
+  //   address.
+  // See http://crbug.com/5234.
+
         // Debugging - TODO if needed split this into function that creates addrinfo with flags etc.
+        // IPv6 lookup
         hints = this.addrinfo();
-        hints.ai_flags = 0x00;
+        hints.ai_flags = this.AI_ALL;
         hints.ai_family = this.AF_UNSPEC;
         hints.ai_socktype = 0;
-//        hints.ai_protocol = this.IPPROTO_UNSPEC;
         hints.ai_protocol = 0;
         hints.ai_addrlen = 0;
 
         first_addr = this.addrinfo();
         first_addr_ptr = first_addr.address();
         ret = this.getaddrinfo(host, null, hints.address(), first_addr_ptr.address());
+        log("Sixornot(dns_worker) - " + ret, 0)
+
+        // IPv4 lookup
+        hints4 = this.addrinfo();
+        hints4.ai_flags = 0x00;
+        hints4.ai_family = this.AF_INET;
+        hints4.ai_socktype = 0;
+        hints4.ai_protocol = 0;
+        hints4.ai_addrlen = 0;
+
+        first_addr4 = this.addrinfo();
+        first_addr_ptr4 = first_addr4.address();
+        ret4 = this.getaddrinfo(host, null, hints4.address(), first_addr_ptr4.address());
+        log("Sixornot(dns_worker) - " + ret4, 0)
+
         // TODO - Check ret for errors
 //        ret = this.getaddrinfo(host, null, null, retVal.address());
-        if (first_addr_ptr.isNull())
+
+        // If we got no addresses of either kind then return failure
+        if (first_addr_ptr.isNull() && first_addr_ptr4.isNull())
         {
             log("Sixornot(dns_worker) - dns:resolve_remote - Unable to resolve host, got no results from getaddrinfo", 1);
             return ["FAIL"];
         }
 
-        i = first_addr_ptr.contents;
+        // Parse all addresses into array to return
         addresses = [];
 
-        // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-        for (;;)
+        if (!first_addr_ptr.isNull())
         {
-            new_addr = this.sockaddr_to_str(i.ai_addr.contents);
+            log("Sixornot(dns_worker) - v6 addresses are not null", 0);
+            i = first_addr_ptr.contents;
+            // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
+            for (;;)
+            {
+                new_addr = this.sockaddr_to_str(i.ai_addr.contents);
+                log("Sixornot(dns_worker) - new_addr is: " + new_addr, 0);
 
-            // Add to addresses array, strip duplicates as we go
-            if (addresses.indexOf(new_addr) === -1)
-            {
-                addresses.push(new_addr);
+                // Add to addresses array, strip duplicates as we go
+                if (addresses.indexOf(new_addr) === -1)
+                {
+                    addresses.push(new_addr);
+                }
+                if (i.ai_next.isNull())
+                {
+                    break;
+                }
+                i = i.ai_next.contents;
             }
-            if (i.ai_next.isNull())
-            {
-                break;
-            }
-            i = i.ai_next.contents;
         }
+        log("Sixornot(dns_worker) - " + addresses, 0)
+        if (!first_addr_ptr4.isNull())
+        {
+            log("Sixornot(dns_worker) - v4 addresses are not null", 0);
+            i = first_addr_ptr4.contents;
+            // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
+            for (;;)
+            {
+                new_addr = this.sockaddr_to_str(i.ai_addr.contents);
+                log("Sixornot(dns_worker) - new_addr is: " + new_addr, 0);
 
-        log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 2);
+                // Add to addresses array, strip duplicates as we go
+                if (addresses.indexOf(new_addr) === -1)
+                {
+                    addresses.push(new_addr);
+                }
+                if (i.ai_next.isNull())
+                {
+                    break;
+                }
+                i = i.ai_next.contents;
+            }
+        }
+        log("Sixornot(dns_worker) - " + addresses, 0)
+
+        log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
         return addresses.slice();
 
     },
@@ -555,6 +624,7 @@ dns =
         {
             log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library + "'", 1);
             // On Windows resolve remote IPs via ctypes method, but use Firefox method to find local addresses since this always works on Windows
+            // (It doesn't work on Windows XP!)
             this.remote_ctypes = true;
             this.local_ctypes  = false;
             // Flags
