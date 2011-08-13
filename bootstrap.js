@@ -136,7 +136,12 @@ var NS_XUL,
     gbi,set_initial_prefs,
     parse_exception,
     crop_trailing_char,
-    defineLazyGetter;
+    defineLazyGetter,
+    // Global objects
+    xulRuntime;
+
+
+    xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService( Components.interfaces.nsIXULRuntime );
 
 NS_XUL          = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
@@ -1483,6 +1488,7 @@ dns_handler =
         locallookup: 2,     // Perform dns.resolve_local lookup
         checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
         checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
+        os: 253,            // Set the operating system
         loglevel: 254,      // Set the logging level of the ctypes resolver
         init: 255           // Initialise dns in the worker
     },
@@ -1514,7 +1520,7 @@ dns_handler =
 
         // Finally set the logging level appropriately and call init
         this.worker.postMessage([-1, this.reqids.loglevel, PREF_BRANCH_SIXORNOT.getIntPref("loglevel")]);
-        this.worker.postMessage([-1, this.reqids.init, null]);
+        this.worker.postMessage([-1, this.reqids.init, xulRuntime.OS.toLowerCase()]);
     },
 
     set_worker_loglevel : function (newloglevel)

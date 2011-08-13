@@ -88,7 +88,7 @@ onmessage = function (evt)
     {
         // 255 = init message
         // Set up DNS (load ctypes modules etc.)
-        dns.init();
+        dns.init(evt.data[2]);
         // Post back message to indicate whether init was successful
         // Init also posts back messages to indicate specific success
         postMessage([-1, 255, true]);
@@ -125,6 +125,7 @@ dns =
     getifaddrs: null,
     remote_ctypes: false,
     local_ctypes: false,
+    os: null,
 
     osx_library: "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
     win_library: "Ws2_32.dll",
@@ -149,28 +150,33 @@ dns =
         return this.local_ctypes;
     },
 
-    init : function ()
+    init : function (operatingsystem)
     {
         log("Sixornot(dns_worker) - dns:init");
-        // Import ctypes module (not needed within a ChromeWorker)
-        // Cu.import("resource://gre/modules/ctypes.jsm");
 
-        // Try each platform until one returns true
-        if (this.load_osx())
+        this.os = operatingsystem;
+
+        // OS specific sections
+        switch(this.os)
         {
-            log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: OSX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
-        }
-        else if (this.load_win())
-        {
-            log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: WIN, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
-        }
-        else if (this.load_linux())
-        {
-            log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: LINUX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
-        }
-        else
-        {
-            log("Sixornot(dns_worker) - Unknown platform - unable to init ctypes resolver, falling back to firefox");
+            case "darwin":
+                this.load_osx();
+                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: OSX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
+                break;
+
+            case "linux":
+                this.load_linux();
+                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: LINUX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
+                break;
+
+            case "winnt":
+                this.load_win();
+                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: WIN, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
+                break;
+
+            default:
+                log("Sixornot(dns_worker) - Unknown platform - unable to init ctypes resolver, falling back to firefox");
+                break;
         }
 
         // Post a message back to main thread to indicate availability of ctypes
@@ -290,38 +296,51 @@ dns =
         var first_addr, first_addr_ptr, ret, i, addresses, new_addr;
         log("Sixornot(dns_worker) - dns:resolve_local", 2);
 
-        first_addr = this.ifaddrs();
-        first_addr_ptr = first_addr.address();
-        ret = this.getifaddrs(first_addr_ptr.address());
-
-        if (first_addr_ptr.isNull())
+        switch(this.os)
         {
-            log("Sixornot(dns_worker) - dns:resolve_local - Got no results from getifaddrs", 1);
-            return ["FAIL"];
-        }
+            case "darwin":
+            case "linux":
+            case "winnt":
+                first_addr = this.ifaddrs();
+                first_addr_ptr = first_addr.address();
+                ret = this.getifaddrs(first_addr_ptr.address());
 
-        i = first_addr_ptr.contents;
-        addresses = [];
+                if (first_addr_ptr.isNull())
+                {
+                    log("Sixornot(dns_worker) - dns:resolve_local - Got no results from getifaddrs", 1);
+                    return ["FAIL"];
+                }
 
-        // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-        for (;;)
-        {
-            new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
+                i = first_addr_ptr.contents;
+                addresses = [];
 
-            // Add to addresses array, check for blank return from get_ip_str, strip duplicates as we go
-            if (new_addr && addresses.indexOf(new_addr) === -1)
-            {
-                addresses.push(new_addr);
-            }
-            if (i.ifa_next.isNull())
-            {
+                // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
+                for (;;)
+                {
+                    new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
+
+                    // Add to addresses array, check for blank return from get_ip_str, strip duplicates as we go
+                    if (new_addr && addresses.indexOf(new_addr) === -1)
+                    {
+                        addresses.push(new_addr);
+                    }
+                    if (i.ifa_next.isNull())
+                    {
+                        break;
+                    }
+                    i = i.ifa_next.contents;
+                }
+
+                log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
+                return addresses.slice();
                 break;
-            }
-            i = i.ifa_next.contents;
+
+            default:
+                log("Sixornot(dns_worker) - dns:resolve_local - Unknown operating system!");
+                return ["FAIL"];
+                break;
         }
 
-        log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
-        return addresses.slice();
     },
 
     // Proxy to ctypes getaddrinfo functionality
@@ -331,117 +350,112 @@ dns =
         var hints4, first_addr4, first_addr_ptr4, ret4;
         log("Sixornot(dns_worker) - dns:resolve_remote - resolving host: " + host, 2);
 
-  // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
-  //
-  // The following comment in <winsock2.h> is the best documentation I found
-  // on AI_ADDRCONFIG for Windows:
-  //   Flags used in "hints" argument to getaddrinfo()
-  //       - AI_ADDRCONFIG is supported starting with Vista
-  //       - default is AI_ADDRCONFIG ON whether the flag is set or not
-  //         because the performance penalty in not having ADDRCONFIG in
-  //         the multi-protocol stack environment is severe;
-  //         this defaulting may be disabled by specifying the AI_ALL flag,
-  //         in that case AI_ADDRCONFIG must be EXPLICITLY specified to
-  //         enable ADDRCONFIG behavior
-  //
-  // Not only is AI_ADDRCONFIG unnecessary, but it can be harmful.  If the
-  // computer is not connected to a network, AI_ADDRCONFIG causes getaddrinfo
-  // to fail with WSANO_DATA (11004) for "localhost", probably because of the
-  // following note on AI_ADDRCONFIG in the MSDN getaddrinfo page:
-  //   The IPv4 or IPv6 loopback address is not considered a valid global
-  //   address.
-  // See http://crbug.com/5234.
 
-        // Debugging - TODO if needed split this into function that creates addrinfo with flags etc.
-        // IPv6 lookup
-        hints = this.addrinfo();
-        hints.ai_flags = this.AI_ALL;
-        hints.ai_family = this.AF_UNSPEC;
-        hints.ai_socktype = 0;
-        hints.ai_protocol = 0;
-        hints.ai_addrlen = 0;
-
-        first_addr = this.addrinfo();
-        first_addr_ptr = first_addr.address();
-        ret = this.getaddrinfo(host, null, hints.address(), first_addr_ptr.address());
-        log("Sixornot(dns_worker) - " + ret, 0)
-
-        // IPv4 lookup
-        hints4 = this.addrinfo();
-        hints4.ai_flags = 0x00;
-        hints4.ai_family = this.AF_INET;
-        hints4.ai_socktype = 0;
-        hints4.ai_protocol = 0;
-        hints4.ai_addrlen = 0;
-
-        first_addr4 = this.addrinfo();
-        first_addr_ptr4 = first_addr4.address();
-        ret4 = this.getaddrinfo(host, null, hints4.address(), first_addr_ptr4.address());
-        log("Sixornot(dns_worker) - " + ret4, 0)
-
-        // TODO - Check ret for errors
-//        ret = this.getaddrinfo(host, null, null, retVal.address());
-
-        // If we got no addresses of either kind then return failure
-        if (first_addr_ptr.isNull() && first_addr_ptr4.isNull())
+        switch(this.os)
         {
-            log("Sixornot(dns_worker) - dns:resolve_remote - Unable to resolve host, got no results from getaddrinfo", 1);
-            return ["FAIL"];
+            case "darwin":
+            case "linux":
+                first_addr = this.addrinfo();
+                first_addr_ptr = first_addr.address();
+                ret = this.getaddrinfo(host, null, null, first_addr_ptr.address());
+                log("Sixornot(dns_worker) - " + ret, 0)
+                // If we got no addresses of either kind then return failure
+                if (first_addr_ptr.isNull())
+                {
+                    log("Sixornot(dns_worker) - dns:resolve_remote - Unable to resolve host, got no results from getaddrinfo", 1);
+                    return ["FAIL"];
+                }
+                // Parse all addresses into array to return
+                addresses = [];
+                i = first_addr_ptr.contents;
+                // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
+                for (;;)
+                {
+                    new_addr = this.sockaddr_to_str(i.ai_addr.contents);
+                    log("Sixornot(dns_worker) - new_addr is: " + new_addr, 0);
+
+                    // Add to addresses array, strip duplicates as we go
+                    if (addresses.indexOf(new_addr) === -1)
+                    {
+                        addresses.push(new_addr);
+                    }
+                    if (i.ai_next.isNull())
+                    {
+                        break;
+                    }
+                    i = i.ai_next.contents;
+                }
+                log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
+                return addresses.slice();
+                break;
+            case "winnt":
+                // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
+                //
+                // The following comment in <winsock2.h> is the best documentation I found
+                // on AI_ADDRCONFIG for Windows:
+                //   Flags used in "hints" argument to getaddrinfo()
+                //       - AI_ADDRCONFIG is supported starting with Vista
+                //       - default is AI_ADDRCONFIG ON whether the flag is set or not
+                //         because the performance penalty in not having ADDRCONFIG in
+                //         the multi-protocol stack environment is severe;
+                //         this defaulting may be disabled by specifying the AI_ALL flag,
+                //         in that case AI_ADDRCONFIG must be EXPLICITLY specified to
+                //         enable ADDRCONFIG behavior
+                //
+                // Not only is AI_ADDRCONFIG unnecessary, but it can be harmful.  If the
+                // computer is not connected to a network, AI_ADDRCONFIG causes getaddrinfo
+                // to fail with WSANO_DATA (11004) for "localhost", probably because of the
+                // following note on AI_ADDRCONFIG in the MSDN getaddrinfo page:
+                //   The IPv4 or IPv6 loopback address is not considered a valid global
+                //   address.
+                // See http://crbug.com/5234.
+                hints = this.addrinfo();
+                hints.ai_flags = this.AI_ALL;
+                hints.ai_family = this.AF_UNSPEC;
+                hints.ai_socktype = 0;
+                hints.ai_protocol = 0;
+                hints.ai_addrlen = 0;
+
+                first_addr = this.addrinfo();
+                first_addr_ptr = first_addr.address();
+                ret = this.getaddrinfo(host, null, hints.address(), first_addr_ptr.address());
+                log("Sixornot(dns_worker) - " + ret, 0)
+
+                // If we got no addresses of either kind then return failure
+                if (first_addr_ptr.isNull())
+                {
+                    log("Sixornot(dns_worker) - dns:resolve_remote - Unable to resolve host, got no results from getaddrinfo", 1);
+                    return ["FAIL"];
+                }
+                // Parse all addresses into array to return
+                addresses = [];
+                i = first_addr_ptr.contents;
+                // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
+                for (;;)
+                {
+                    new_addr = this.sockaddr_to_str(i.ai_addr.contents);
+                    log("Sixornot(dns_worker) - new_addr is: " + new_addr, 0);
+
+                    // Add to addresses array, strip duplicates as we go
+                    if (addresses.indexOf(new_addr) === -1)
+                    {
+                        addresses.push(new_addr);
+                    }
+                    if (i.ai_next.isNull())
+                    {
+                        break;
+                    }
+                    i = i.ai_next.contents;
+                }
+                log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
+                return addresses.slice();
+                break;
+
+            default:
+                log("Sixornot(dns_worker) - dns:resolve_remote - Unknown operating system!");
+                return ["FAIL"];
+                break;
         }
-
-        // Parse all addresses into array to return
-        addresses = [];
-
-        if (!first_addr_ptr.isNull())
-        {
-            log("Sixornot(dns_worker) - v6 addresses are not null", 0);
-            i = first_addr_ptr.contents;
-            // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-            for (;;)
-            {
-                new_addr = this.sockaddr_to_str(i.ai_addr.contents);
-                log("Sixornot(dns_worker) - new_addr is: " + new_addr, 0);
-
-                // Add to addresses array, strip duplicates as we go
-                if (addresses.indexOf(new_addr) === -1)
-                {
-                    addresses.push(new_addr);
-                }
-                if (i.ai_next.isNull())
-                {
-                    break;
-                }
-                i = i.ai_next.contents;
-            }
-        }
-        log("Sixornot(dns_worker) - " + addresses, 0)
-        if (!first_addr_ptr4.isNull())
-        {
-            log("Sixornot(dns_worker) - v4 addresses are not null", 0);
-            i = first_addr_ptr4.contents;
-            // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-            for (;;)
-            {
-                new_addr = this.sockaddr_to_str(i.ai_addr.contents);
-                log("Sixornot(dns_worker) - new_addr is: " + new_addr, 0);
-
-                // Add to addresses array, strip duplicates as we go
-                if (addresses.indexOf(new_addr) === -1)
-                {
-                    addresses.push(new_addr);
-                }
-                if (i.ai_next.isNull())
-                {
-                    break;
-                }
-                i = i.ai_next.contents;
-            }
-        }
-        log("Sixornot(dns_worker) - " + addresses, 0)
-
-        log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
-        return addresses.slice();
-
     },
 
     load_osx : function ()
