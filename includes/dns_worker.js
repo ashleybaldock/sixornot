@@ -361,6 +361,49 @@ dns =
                 break;
 
             case "darwin":
+                ifaddr_ptr = this.ifaddrs.ptr();
+                ret = this.getifaddrs(ifaddr_ptr.address());
+
+                if (ret !== 0 || ifaddr_ptr.isNull())
+                {
+                    log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Got no results from getifaddrs", 1);
+                    return ["FAIL"];
+                }
+
+                ifaddr    = ifaddr_ptr.contents;
+                addrbuf   = (ctypes.char.array(128))();
+                addresses = [];
+
+                for (;;)
+                {
+                    switch(ifaddr.ifa_addr.contents.sa_family)
+                    {
+                        case this.AF_INET:
+                            sockaddr = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
+                            this.inet_ntop(sockaddr.sin_family, sockaddr.sin_addr.address(), addrbuf, 128);
+                            addresses.push(addrbuf.readString());
+                            break;
+
+                        case this.AF_INET6:
+                            sockaddr = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
+                            this.inet_ntop(sockaddr.sin6_family, sockaddr.sin6_addr.address(), addrbuf, 128);
+                            addresses.push(addrbuf.readString());
+                            break;
+                    }
+
+                    if (ifaddr.ifa_next.isNull())
+                    {
+                        break;
+                    }
+                    ifaddr = ifaddr.ifa_next.contents;
+                }
+
+                this.freeifaddrs(ifaddr_ptr);
+
+                log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
+                return addresses.slice();
+                break;
+
             case "linux":
                 first_addr = this.ifaddrs();
                 first_addr_ptr = first_addr.address();
@@ -408,11 +451,55 @@ dns =
     resolve_remote : function (host)
     {
         var hints, first_addr, first_addr_ptr, ret, i, addresses, new_addr;
+        var sockaddr, addrinfo, addrbuf;
         log("Sixornot(dns_worker) - dns:resolve_remote - resolving host: " + host, 2);
 
         switch(this.os)
         {
             case "darwin":
+                addrinfo_ptr = this.addrinfo.ptr();
+                ret = this.getaddrinfo(host, null, null, addrinfo_ptr.address());
+
+                if (ret !== 0 || addrinfo_ptr.isNull())
+                {
+                    log("Sixornot(dns_worker) - dns:resolve_remote(OSX) - Got no results from getaddrinfo", 1);
+                    return ["FAIL"];
+                }
+
+                addrinfo  = addrinfo_ptr.contents;
+                addrbuf   = (ctypes.char.array(128))();
+                addresses = [];
+
+                for (;;)
+                {
+                    switch(addrinfo.ai_addr.contents.sa_family)
+                    {
+                        case this.AF_INET:
+                            sockaddr = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in);
+                            this.inet_ntop(sockaddr.sin_family, sockaddr.sin_addr.address(), addrbuf, 128);
+                            addresses.push(addrbuf.readString());
+                            break;
+
+                        case this.AF_INET6:
+                            sockaddr = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in6);
+                            this.inet_ntop(sockaddr.sin6_family, sockaddr.sin6_addr.address(), addrbuf, 128);
+                            addresses.push(addrbuf.readString());
+                            break;
+                    }
+
+                    if (addrinfo.ai_next.isNull())
+                    {
+                        break;
+                    }
+                    addrinfo = addrinfo.ai_next.contents;
+                }
+
+                this.freeaddrinfo(addrinfo_ptr);
+
+                log("Sixornot(dns_worker) - dns:resolve_remote(OSX) - Found the following addresses: " + addresses, 2);
+                return addresses.slice();
+                break;
+
             case "linux":
                 first_addr = this.addrinfo();
                 first_addr_ptr = first_addr.address();
@@ -475,37 +562,47 @@ dns =
                 hints.ai_protocol = 0;
                 hints.ai_addrlen = 0;
 
-                first_addr = this.addrinfo();
-                first_addr_ptr = first_addr.address();
-                ret = this.getaddrinfo(host, null, hints.address(), first_addr_ptr.address());
-                log("Sixornot(dns_worker) - " + ret, 0)
 
-                // If we got no addresses of either kind then return failure
-                if (first_addr_ptr.isNull())
+                addrinfo_ptr = this.addrinfo.ptr();
+                ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
+
+                if (ret !== 0 || addrinfo_ptr.isNull())
                 {
-                    log("Sixornot(dns_worker) - dns:resolve_remote - Unable to resolve host, got no results from getaddrinfo", 1);
+                    log("Sixornot(dns_worker) - dns:resolve_remote(WIN) - Got no results from getaddrinfo", 1);
                     return ["FAIL"];
                 }
-                // Parse all addresses into array to return
+
+                addrinfo  = addrinfo_ptr.contents;
+                addrbuf   = (ctypes.char.array(128))();
+                addrsize  = ctypes.uint32_t();
                 addresses = [];
-                i = first_addr_ptr.contents;
-                // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
+
                 for (;;)
                 {
-                    new_addr = this.sockaddr_to_str(i.ai_addr.contents);
-                    log("Sixornot(dns_worker) - new_addr is: " + new_addr, 0);
-
-                    // Add to addresses array, strip duplicates as we go
-                    if (addresses.indexOf(new_addr) === -1)
+                    switch(addrinfo.ai_addr.contents.sa_family)
                     {
-                        addresses.push(new_addr);
+                        case this.AF_INET:
+                            addrsize.value = 128;
+                            this.WSAAddressToString(addrinfo.ai_addr, 16, null, addrbuf, addrsize.address());
+                            addresses.push(addrbuf.readString());
+                            break;
+
+                        case this.AF_INET6:
+                            addrsize.value = 128;
+                            this.WSAAddressToString(addrinfo.ai_addr, 28, null, addrbuf, addrsize.address());
+                            addresses.push(addrbuf.readString());
+                            break;
                     }
-                    if (i.ai_next.isNull())
+
+                    if (addrinfo.ai_next.isNull())
                     {
                         break;
                     }
-                    i = i.ai_next.contents;
+                    addrinfo = addrinfo.ai_next.contents;
                 }
+
+                this.freeaddrinfo(addrinfo_ptr);
+
                 log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
                 return addresses.slice();
                 break;
@@ -582,10 +679,10 @@ dns =
             char        sin_zero[8];
         }; */
         this.sockaddr_in.define([
-            { sin_len : ctypes.uint8_t                 },   // Total length (1)
+            { sin_len    : ctypes.uint8_t              },   // Total length (1)
             { sin_family : ctypes.uint8_t              },   // Address family (1)
-            { sin_port : ctypes.uint16_t               },   // Socket port (2)
-            { sin_addr : ctypes.uint32_t               },   // Address value (or could be struct in_addr) (4)
+            { sin_port   : ctypes.uint16_t             },   // Socket port (2)
+            { sin_addr   : ctypes.uint32_t             },   // Address value (4)
             { sin_zero : ctypes.unsigned_char.array(8) }    // Padding (8)
             ]);                                             // (16)
 
@@ -648,11 +745,27 @@ dns =
             ]);
 
         // Set up the ctypes functions we need
+        if (this.local_ctypes || this.remote_ctypes)
+        {
+            try
+            {
+                this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi,
+                    ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.uint32_t);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'inet_ntop' function, local_ctypes and remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.local_ctypes = false;
+                this.remote_ctypes = false;
+            }
+        }
         if (this.remote_ctypes)
         {
             try
             {
-                this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
+                this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi,
+                    ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
             }
             catch (e)
             {
@@ -661,15 +774,44 @@ dns =
                 this.remote_ctypes = false;
             }
         }
+        if (this.remote_ctypes)
+        {
+            try
+            {
+                this.freeaddrinfo = this.library.declare("freeaddrinfo", ctypes.default_abi,
+                    ctypes.int, this.addrinfo.ptr);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'freeaddrinfo' function, remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.remote_ctypes = false;
+            }
+        }
         if (this.local_ctypes)
         {
             try
             {
-                this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi, ctypes.int, this.ifaddrs.ptr.ptr);
+                this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi,
+                    ctypes.int, this.ifaddrs.ptr.ptr);
             }
             catch (e)
             {
                 log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'getifaddrs' function, local_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.local_ctypes = false;
+            }
+        }
+        if (this.local_ctypes)
+        {
+            try
+            {
+                this.freeifaddrs = this.library.declare("freeifaddrs", ctypes.default_abi,
+                    ctypes.void_t, this.ifaddrs.ptr);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'freeifaddrs' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
             }
@@ -909,6 +1051,21 @@ dns =
             catch (e)
             {
                 log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'getaddrinfo' function, remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.remote_ctypes = false;
+            }
+        }
+
+        if (this.remote_ctypes)
+        {
+            try
+            {
+                this.freeaddrinfo = this.library2.declare("freeaddrinfo", ctypes.default_abi,
+                    ctypes.int, this.addrinfo.ptr);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'freeaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
