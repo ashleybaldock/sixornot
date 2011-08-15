@@ -128,7 +128,8 @@ dns =
     os: null,
 
     osx_library: "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation",
-    win_library: "Ws2_32.dll",
+    win_library1: "iphlpapi.dll",
+    win_library2: "Ws2_32.dll",
     linux_library: "libc.so.6",
 
     reqids: {
@@ -192,7 +193,20 @@ dns =
         if (this.remote_ctypes || this.local_ctypes)
         {
             // Shutdown ctypes library
-            this.library.close();
+            switch(this.os)
+            {
+                case "winnt":
+                    this.library1.close();
+                    this.library2.close();
+                    break;
+                case "osx":
+                case "linux":
+                    this.library.close();
+                    break;
+
+                default:
+                    break;
+            }
             // Close worker thread
             close();
         }
@@ -298,9 +312,57 @@ dns =
 
         switch(this.os)
         {
+            case "winnt":
+                adapbuf   = (ctypes.uint8_t.array(8192))();
+                adapsize  = ctypes.unsigned_long(8192);
+                adapflags = this.GAA_FLAG_SKIP_ANYCAST | this.GAA_FLAG_SKIP_MULTICAST  | this.GAA_FLAG_SKIP_DNS_SERVER | this.GAA_FLAG_SKIP_FRIENDLY_NAME;
+
+                ret = this.GetAdaptersAddresses(this.AF_UNSPEC, adapflags, null, adapbuf, adapsize.address());
+
+                if (ret != 0) {
+                    log( LOG_VERBOSE, "Sixornot(dns_worker) - dns:resolve_local - GetAdaptersAddresses failed with exit code: " + ret );
+                    return ["FAIL"];
+                }
+
+                adapter  = ctypes.cast(adapbuf, this.ipAdapterAddresses);
+                addrbuf  = (ctypes.char.array(128))();
+                addrsize = ctypes.uint32_t();
+                addresses = [];
+
+                // Loop through returned addresses and add them to array
+                for (;;) {
+                    if (adapter.IfType != this.IF_TYPE_SOFTWARE_LOOPBACK && adapter.IfType != this.IF_TYPE_TUNNEL && !adapter.FirstUnicastAddress.isNull()) {
+                        address = adapter.FirstUnicastAddress.contents;
+
+                        for (;;) {
+                            switch (address.Address.lpSockaddr.contents.sa_family) {
+                                case this.AF_INET:
+                                case this.AF_INET6:
+                                    addrsize.value = 128;
+                                    this.WSAAddressToString(address.Address.lpSockaddr, address.Address.iSockaddrLength, null, addrbuf, addrsize.address());
+                                    addresses.push(addrbuf.readString());
+                                    break;
+                            }
+
+                            if (address.Next.isNull()) {
+                                break;
+                            }
+                            address = address.Next.contents;
+                        }
+                    }
+
+                    if (adapter.Next.isNull()) {
+                        break;
+                    }
+                    adapter = adapter.Next.contents;
+                }
+
+                log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
+                return addresses.slice();
+                break;
+
             case "darwin":
             case "linux":
-            case "winnt":
                 first_addr = this.ifaddrs();
                 first_addr_ptr = first_addr.address();
                 ret = this.getifaddrs(first_addr_ptr.address());
@@ -621,136 +683,281 @@ dns =
 
     load_win : function ()
     {
+        // On Windows do both local and remote lookups via ctypes
+        this.remote_ctypes = true;
+        this.local_ctypes  = true;
         try
         {
-            this.library = ctypes.open(this.win_library);
+            // Library 1 needed only for local lookup
+            this.library1 = ctypes.open(this.win_library1);
+            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library1 + "'", 1);
         }
-        catch (e1)
+        catch (e)
         {
-            log("Sixornot(dns_worker) - dns:load_win - Not running on Windows XP+", 1);
-            // Here we should degrade down to using Firefox's builtin methods
-            log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e1), 1);
-            this.remote_ctypes = false;
+            log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.win_library1 + "' - local lookup will be disabled", 0);
+            log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.local_ctypes  = false;
-            return false;
         }
         try
         {
-            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library + "'", 1);
-            // On Windows resolve remote IPs via ctypes method, but use Firefox method to find local addresses since this always works on Windows
-            // (It doesn't work on Windows XP!)
-            this.remote_ctypes = true;
-            this.local_ctypes  = false;
-            // Flags
-            this.AI_PASSIVE                = 0x01;
-            this.AI_CANONNAME              = 0x02;
-            this.AI_NUMERICHOST            = 0x04;
-            this.AI_ALL                    = 0x0100;
-            this.AI_ADDRCONFIG             = 0x0400;
-            this.AI_NON_AUTHORITATIVE      = 0x04000;
-            this.AI_SECURE                 = 0x08000;
-            this.AI_RETURN_PREFERRED_NAMES = 0x10000;
-            // Address family
-            this.AF_UNSPEC                 =  0;
-            this.AF_INET                   =  2;
-            this.AF_INET6                  = 23;
-            // Socket type
-            this.SOCK_STREAM               =  1;
-            /* this.SOCK_DGRAM = 2;
-            this.SOCK_RAW = 3;
-            this.SOCK_RDM = 4;
-            this.SOCK_SEQPACKET = 5; */
-            // Protocol
-            this.IPPROTO_UNSPEC            =  0;
-            this.IPPROTO_TCP               =  6;
-            this.IPPROTO_UDP               = 17;
-            //this.IPPROTO_RM = 113;
-            // Set up the structs we need on Windows XP+
-            /*
-            From: http://msdn.microsoft.com/en-us/library/ms740496(v=vs.85).aspx
-            struct sockaddr {
-                    ushort  sa_family;
-                    char    sa_data[14];
-            };
-
-            struct sockaddr_in {
-                    short   sin_family;
-                    u_short sin_port;
-                    struct  in_addr sin_addr;
-                    char    sin_zero[8];
-            };
-            struct sockaddr_in6 {
-                    short   sin6_family;
-                    u_short sin6_port;
-                    u_long  sin6_flowinfo;
-                    struct  in6_addr sin6_addr;
-                    u_long  sin6_scope_id;
-            };
-            // From: http://msdn.microsoft.com/en-us/library/ms738571(v=VS.85).aspx
-            typedef struct in_addr {
-              union {
-                struct {
-                  u_char s_b1,s_b2,s_b3,s_b4;
-                } S_un_b;
-                struct {
-                  u_short s_w1,s_w2;
-                } S_un_w;
-                u_long S_addr;
-              } S_un;
-            } IN_ADDR, *PIN_ADDR, FAR *LPIN_ADDR;
-            From: http://msdn.microsoft.com/en-us/library/ms738560(v=VS.85).aspx
-            typedef struct in6_addr {
-              union {
-                u_char  Byte[16];
-                u_short Word[8];
-              } u;
-            } IN6_ADDR, *PIN6_ADDR, FAR *LPIN6_ADDR;
-            */
-
-            this.sockaddr     = ctypes.StructType("sockaddr");
-            this.sockaddr_in  = ctypes.StructType("sockaddr_in");
-            this.sockaddr_in6 = ctypes.StructType("sockaddr_in6");
-            this.addrinfo     = ctypes.StructType("addrinfo");
-
-            this.sockaddr.define([
-                { sa_family : ctypes.unsigned_short          },      // Address family (2)
-                { sa_data   : ctypes.unsigned_char.array(28) }       // Address value (max possible size) (28)
-                ]);                                                  // (30)
-            this.sockaddr_in.define([
-                { sin_family : ctypes.short          },              // Address family (2)
-                { sin_port   : ctypes.unsigned_short },              // Socket port (2)
-                { sin_addr   : ctypes.unsigned_long  },              // Address value (or could be struct in_addr) (4)
-                { sin_zero   : ctypes.char.array(8)  }               // Padding (8)
-                ]);                                                  // (16)
-            this.sockaddr_in6.define([
-                { sin6_family   : ctypes.short                   },  // Address family (2)
-                { sin6_port     : ctypes.unsigned_short          },  // Socket port (2)
-                { sin6_flowinfo : ctypes.unsigned_long           },  // IP6 flow information (4)
-                { sin6_addr     : ctypes.unsigned_char.array(16) },  // IP6 address value (or could be struct in6_addr) (16)
-                { sin6_scope_id : ctypes.unsigned_long           }   // Scope zone index (4)
-                ]);                                                  // (28)
-            this.addrinfo.define([
-                { ai_flags     : ctypes.int        }, 
-                { ai_family    : ctypes.int        }, 
-                { ai_socktype  : ctypes.int        }, 
-                { ai_protocol  : ctypes.int        }, 
-                { ai_addrlen   : ctypes.int        }, 
-                { ai_canonname : ctypes.char.ptr   }, 
-                { ai_addr      : this.sockaddr.ptr }, 
-                { ai_next      : this.addrinfo.ptr }
-                ]);
-            // Set up the ctypes functions we need
-            this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-            this.remote_ctypes = true;
+            // Library 2 needed for local and remote lookup
+            this.library2 = ctypes.open(this.win_library2);
+            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library2 + "'", 1);
         }
-        catch (e2)
+        catch (e)
         {
-            log("Sixornot(dns_worker) - dns:load_win - Unable to init ctypes resolver, falling back to firefox", 1);
-            log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e2), 1);
-            this.library.close();
+            log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.win_library2 + "' - local and remote lookup will be disabled", 0);
+            log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.remote_ctypes = false;
             this.local_ctypes  = false;
         }
+
+        // Flags
+        this.AI_PASSIVE                  = 0x01;
+        this.AI_CANONNAME                = 0x02;
+        this.AI_NUMERICHOST              = 0x04;
+        this.AI_ALL                      = 0x0100;
+        this.AI_ADDRCONFIG               = 0x0400;
+        this.AI_NON_AUTHORITATIVE        = 0x04000;
+        this.AI_SECURE                   = 0x08000;
+        this.AI_RETURN_PREFERRED_NAMES   = 0x10000;
+        // Address family
+        this.AF_UNSPEC                   = 0;
+        this.AF_INET                     = 2;
+        this.AF_INET6                    = 23;
+        // Socket type
+        this.SOCK_STREAM                 = 1;
+        this.SOCK_DGRAM                  = 2;
+        this.SOCK_RAW                    = 3;
+        this.SOCK_RDM                    = 4;
+        this.SOCK_SEQPACKET              = 5;
+        // Protocol
+        this.IPPROTO_UNSPEC              = 0;
+        this.IPPROTO_TCP                 = 6;
+        this.IPPROTO_UDP                 = 17;
+        this.IPPROTO_RM                  = 113;
+        // Adaptor flags
+        this.GAA_FLAG_SKIP_UNICAST       = 0x0001;
+        this.GAA_FLAG_SKIP_ANYCAST       = 0x0002;
+        this.GAA_FLAG_SKIP_MULTICAST     = 0x0004;
+        this.GAA_FLAG_SKIP_DNS_SERVER    = 0x0008;
+        this.GAA_FLAG_SKIP_FRIENDLY_NAME = 0x0020;
+
+        this.IF_TYPE_SOFTWARE_LOOPBACK   =  24;
+        this.IF_TYPE_TUNNEL              = 131;
+
+        // Define ctypes structures
+        this.sockaddr                = ctypes.StructType("sockaddr");
+        this.sockaddr_in             = ctypes.StructType("sockaddr_in");
+        this.sockaddr_in6            = ctypes.StructType("sockaddr_in6");
+        this.addrinfo                = ctypes.StructType("addrinfo");
+        this.ipAdapterAddresses      = ctypes.StructType("_IP_ADAPTER_ADDRESSES");
+        this.ipAdapterUnicastAddress = ctypes.StructType("_IP_ADAPTER_UNICAST_ADDRESS");
+        this.socketAddress           = ctypes.StructType("_SOCKET_ADDRESS");
+
+        // Set up the structs we need on Windows XP+
+        /*
+        From: http://msdn.microsoft.com/en-us/library/ms738560(v=VS.85).aspx
+        typedef struct in6_addr {
+          union {
+            u_char  Byte[16];
+            u_short Word[8];
+          } u;
+        } IN6_ADDR, *PIN6_ADDR, FAR *LPIN6_ADDR;
+        */
+
+        /* From: http://msdn.microsoft.com/en-us/library/ms740496(v=vs.85).aspx
+        struct sockaddr {
+            ushort  sa_family;
+            char    sa_data[14];
+        }; */
+        this.sockaddr.define([
+            { sa_family : ctypes.unsigned_short          },      // Address family (2)
+            { sa_data   : ctypes.unsigned_char.array(28) }       // Address value (max possible size) (28)
+            ]);                                                  // (30)
+
+        /* From: http://msdn.microsoft.com/en-us/library/ms740496(v=vs.85).aspx
+        struct sockaddr_in {
+            short   sin_family;
+            u_short sin_port;
+            struct  in_addr sin_addr;
+            char    sin_zero[8];
+        }; */
+        this.sockaddr_in.define([
+            { sin_family : ctypes.short          },              // Address family (2)
+            { sin_port   : ctypes.unsigned_short },              // Socket port (2)
+            { sin_addr   : ctypes.unsigned_long  },              // Address value (or could be struct in_addr) (4)
+            { sin_zero   : ctypes.char.array(8)  }               // Padding (8)
+            ]);                                                  // (16)
+
+        /* From: http://msdn.microsoft.com/en-us/library/ms740496(v=vs.85).aspx
+        struct sockaddr_in6 {
+            short   sin6_family;
+            u_short sin6_port;
+            u_long  sin6_flowinfo;
+            struct  in6_addr sin6_addr;
+            u_long  sin6_scope_id;
+        }; */
+        this.sockaddr_in6.define([
+            { sin6_family   : ctypes.short                   },  // Address family (2)
+            { sin6_port     : ctypes.unsigned_short          },  // Socket port (2)
+            { sin6_flowinfo : ctypes.unsigned_long           },  // IP6 flow information (4)
+            { sin6_addr     : ctypes.unsigned_char.array(16) },  // IP6 address value (or could be struct in6_addr) (16)
+            { sin6_scope_id : ctypes.unsigned_long           }   // Scope zone index (4)
+            ]);                                                  // (28)
+
+        /* From: http://msdn.microsoft.com/en-us/library/ms737530(v=vs.85).aspx
+        struct addrinfo {
+            int              ai_flags;
+            int              ai_family;
+            int              ai_socktype;
+            int              ai_protocol;
+            size_t           ai_addrlen;
+            char             *ai_canonname;
+            struct sockaddr  *ai_addr;
+            struct addrinfo  *ai_next;
+        }; */
+        this.addrinfo.define([
+            { ai_flags     : ctypes.int        },                // Flags for getaddrinfo options
+            { ai_family    : ctypes.int        },                // Address family (UNSPEC, INET, INET6)
+            { ai_socktype  : ctypes.int        },                // Socket type (STREAM, DGRAM, RAW, RDM, SEQPACKET)
+            { ai_protocol  : ctypes.int        },                // Protocol type (TCP, UDP, RM)
+            { ai_addrlen   : ctypes.int        },                // Length in bytes of buffer pointed to by ai_addr member
+            { ai_canonname : ctypes.char.ptr   },                // Canonical name for host (if requested)
+            { ai_addr      : this.sockaddr.ptr },                // Pointer to sockaddr structure
+            { ai_next      : this.addrinfo.ptr }                 // Pointer to next addrinfo structure in linked list
+            ]);
+
+        // Used for local address lookup
+        /* From: http://msdn.microsoft.com/en-us/library/aa366058(v=vs.85).aspx
+        struct _IP_ADAPTER_ADDRESSES {
+            union {
+                ULONGLONG Alignment;
+                struct {
+                    ULONG   Length;
+                    DWORD   IfIndex;
+                };
+            };
+            struct _IP_ADAPTER_ADDRESSES    *Next;
+            PCHAR                            AdapterName;
+            PIP_ADAPTER_UNICAST_ADDRESS      FirstUnicastAddress;
+            PIP_ADAPTER_ANYCAST_ADDRES       FirstAnycastAddress;   // Padding 1
+            PIP_ADAPTER_MULTICAST_ADDRESS    FirstMulticastAddress; // Padding 1
+            PIP_ADAPTER_DNS_SERVER_ADDRESS   FirstDnsServerAddress; // Padding 1
+            PWCHAR                           DnsSuffix;             // Padding 1
+            PWCHAR                           Description;           // Padding 1
+            PWCHAR                           FriendlyName;          // Padding 1
+            BYTE                             PhysicalAddress[8];    // Padding 2
+            DWORD                            PhysicalAddressLength; // Padding 3
+            DWORD                            Flags;                 // Padding 3
+            DWORD                            Mtu;                   // Padding 3
+            DWORD                            IfType;
+            // Remaining members not implemented (not needed)
+        }; */
+        this.ipAdapterAddresses.define([
+            { alignment           : ctypes.uint64_t                  },
+            { Next                : this.ipAdapterAddresses.ptr      },
+            { AdapterName         : ctypes.char.ptr                  },
+            { FirstUnicastAddress : this.ipAdapterUnicastAddress.ptr },
+            { padding_1           : ctypes.voidptr_t.array(6)        },
+            { padding_2           : ctypes.uint8_t.array(8)          },
+            { padding_3           : ctypes.uint32_t.array(3)         },
+            { IfType              : ctypes.uint32_t                  }
+            ]);
+
+        /* From: http://msdn.microsoft.com/en-us/library/ms740507(v=vs.85).aspx
+        struct _SOCKET_ADDRESS {
+            LPSOCKADDR  lpSockaddr;
+            INT         iSockaddrLength;
+        }; */
+        // Note: must be defined before _IP_ADAPTER_UNICAST_ADDRESS
+        this.socketAddress.define([
+            { lpSockaddr      : this.sockaddr.ptr },
+            { iSockaddrLength : ctypes.int        }
+            ]);
+
+        /* From: http://msdn.microsoft.com/en-us/library/aa366066(v=vs.85).aspx
+        struct _IP_ADAPTER_UNICAST_ADDRESS {
+            union {
+                struct {
+                    ULONG   Length;
+                    DWORD   Flags;
+                };
+            };
+            struct _IP_ADAPTER_UNICAST_ADDRESS *Next;
+            SOCKET_ADDRESS                      Address;
+            // Remaining members not implemented (not needed)
+        }; */
+        this.ipAdapterUnicastAddress.define([
+            { Length  : ctypes.uint32_t                  },
+            { Flags   : ctypes.uint32_t                  },
+            { Next    : this.ipAdapterUnicastAddress.ptr },
+            { Address : this.socketAddress               }
+        ]);
+
+        if (this.remote_ctypes)
+        {
+            try
+            {
+                // Set up the ctypes functions we need
+                this.getaddrinfo = this.library2.declare("getaddrinfo", ctypes.default_abi,
+                    ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'getaddrinfo' function, remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.remote_ctypes = false;
+            }
+        }
+
+        if (this.local_ctypes)
+        {
+            // Try to initialise WSAAddressToString (Windows method for producing string representation of IP address)
+            try
+            {
+                this.WSAAddressToString = this.library2.declare("WSAAddressToStringA",
+                    ctypes.winapi_abi, ctypes.int, this.sockaddr.ptr, ctypes.uint32_t,
+                    ctypes.voidptr_t, ctypes.char.ptr, ctypes.uint32_t.ptr );
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'WSAAddressToString' function, local_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.library1.close();
+                this.local_ctypes = false;
+            }
+        }
+        if (this.local_ctypes)
+        {
+            // Try to initialise GetAdaptorAddresses (Windows method for obtaining interface IP addresses)
+            try
+            {
+                this.GetAdaptersAddresses = this.library1.declare("GetAdaptersAddresses",
+                    ctypes.winapi_abi, ctypes.unsigned_long, ctypes.unsigned_long,
+                    ctypes.unsigned_long, ctypes.voidptr_t, ctypes.uint8_t.ptr,
+                    ctypes.unsigned_long.ptr);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'GetAdaptorAddresses' function, local_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
+                this.local_ctypes = false;
+            }
+        }
+
+        // If initialisation failed then close appropriate libraries
+        if (!this.local_ctypes && this.library1)
+        {
+            this.library1.close();
+            this.library1 = null;
+        }
+        if (!this.local_ctypes && !this.remote_ctypes && this.library2)
+        {
+            this.library2.close();
+            this.library2 = null;
+        }
+
         // Everything worked, advise of success
         return true;
     },
