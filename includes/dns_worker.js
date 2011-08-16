@@ -649,6 +649,7 @@ dns = {
                 this.remote_ctypes = false;
             }
         }
+
         if (this.remote_ctypes)
         {
             try
@@ -677,6 +678,7 @@ dns = {
                 this.remote_ctypes = false;
             }
         }
+
         if (this.local_ctypes)
         {
             try
@@ -1126,6 +1128,22 @@ dns = {
              ]);
 
         // Set up the ctypes functions we need
+        if (this.local_ctypes || this.remote_ctypes)
+        {
+            try
+            {
+                this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi,
+                    ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.uint32_t);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'inet_ntop' function, local_ctypes and remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.local_ctypes = false;
+                this.remote_ctypes = false;
+            }
+        }
+
         if (this.remote_ctypes)
         {
             try
@@ -1139,6 +1157,21 @@ dns = {
                 this.remote_ctypes = false;
             }
         }
+        if (this.remote_ctypes)
+        {
+            try
+            {
+                this.freeaddrinfo = this.library.declare("freeaddrinfo", ctypes.default_abi,
+                    ctypes.int, this.addrinfo.ptr);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'freeaddrinfo' function, remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.remote_ctypes = false;
+            }
+        }
+
         if (this.local_ctypes)
         {
             try
@@ -1148,6 +1181,20 @@ dns = {
             catch (e)
             {
                 log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'getifaddrs' function, local_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
+                this.local_ctypes = false;
+            }
+        }
+        if (this.local_ctypes)
+        {
+            try
+            {
+                this.freeifaddrs = this.library.declare("freeifaddrs", ctypes.default_abi,
+                    ctypes.void_t, this.ifaddrs.ptr);
+            }
+            catch (e)
+            {
+                log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'freeifaddrs' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
             }
