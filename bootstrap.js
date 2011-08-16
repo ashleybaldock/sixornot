@@ -163,7 +163,8 @@ PREFS = {
     showaddressicon:    false,
     greyscaleicons:     false,
     loglevel:           0,
-    override_locale:    ""
+    override_locale:    "",
+    showallips:         false
 };
 
 // http://erikvold.com/blog/index.cfm/2011/1/2/restartless-firefox-addons-part-2-includes
@@ -246,6 +247,10 @@ PREF_OBSERVER = {
         {
             log("Sixornot - PREFS_OBSERVER - override_locale has changed", 1);
             reload();
+        }
+        if (aData === "showallips")
+        {
+            log("Sixornot - PREFS_OBSERVER - showallips has changed", 1);
         }
     }
 };
@@ -750,7 +755,7 @@ main = function (win)
     // Value of "this" will be the menu (since this is an event handler)
     update_menu_content = function (evt)
     {
-        var i, popupMenu, add_menu_item, add_toggle_menu_item, add_disabled_menu_item, add_menu_separator, remotestring, localstring;
+        var i, popupMenu, add_menu_item, add_toggle_menu_item, add_disabled_menu_item, add_menu_separator, remotestring, localstring, test_global4, test_global6;
         log("Sixornot - main:update_menu_content", 2);
         log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ", 2);
         // Set value so that functions within this one can still access correct value of "this"
@@ -806,6 +811,15 @@ main = function (win)
             popupMenu.appendChild(menuseparator);
         };
 
+        test_global4 = function (item)
+        {
+            return ["global", "rfc1918"].indexOf(dns_handler.typeof_ip4(item)) !== -1;
+        };
+        test_global6 = function (item)
+        {
+            return dns_handler.typeof_ip6(item) === "global";
+        };
+
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
             if (host !== "")
@@ -846,18 +860,30 @@ main = function (win)
         add_menu_separator();
 
         // Produce string containing all IP data for copy
-        localstring = Array.concat([dnsService.myHostName], localipv6s, localipv4s).join(", ");
+        // TODO - check showallips, only build array of global IPs here
+        if (get_bool_pref("showallips"))
+        {
+            l6_filtered = localipv6s;
+            l4_filtered = localipv4s;
+        }
+        else
+        {
+            l6_filtered = localipv6s.filter(test_global6);
+            l4_filtered = localipv4s.filter(test_global4);
+        }
+        localstring = Array.concat([dnsService.myHostName],
+                                   l6_filtered, l4_filtered).join(", ");
         add_menu_item(dnsService.myHostName + " (localhost)",
                       gt("tt_copylocalclip"),
                       "copyc" + localstring);
 
-        for (i = 0; i < localipv6s.length; i += 1)
+        for (i = 0; i < l6_filtered.length; i += 1)
         {
-            add_menu_item(localipv6s[i], gt("tt_copyip6clip"), "copyc" + localipv6s[i]);
+            add_menu_item(l6_filtered[i], gt("tt_copyip6clip"), "copyc" + l6_filtered[i]);
         }
-        for (i = 0; i < localipv4s.length; i += 1)
+        for (i = 0; i < l4_filtered.length; i += 1)
         {
-            add_menu_item(localipv4s[i], gt("tt_copyip4clip"), "copyc" + localipv4s[i]);
+            add_menu_item(l4_filtered[i], gt("tt_copyip4clip"), "copyc" + l4_filtered[i]);
         }
 
         add_menu_separator();
@@ -871,6 +897,10 @@ main = function (win)
                              gt("tt_usegreyscale"),
                              "tbool" + "greyscaleicons",
                              PREF_BRANCH_SIXORNOT.getBoolPref("greyscaleicons"));
+        add_toggle_menu_item(gt("showallips"),
+                             gt("tt_showallips"),
+                             "tbool" + "showallips",
+                             PREF_BRANCH_SIXORNOT.getBoolPref("showallips"));
 
         add_menu_separator();
         add_menu_item(gt("gotowebsite"),
@@ -882,7 +912,7 @@ main = function (win)
     // Value of "this" will be the tooltip (since this is an event handler)
     update_tooltip_content = function (evt)
     {
-        var tooltip, grid, rows, i, add_tt_title_line, add_tt_labeled_line, v6_italic, v4_italic, extraString, extraLine;
+        var tooltip, grid, rows, i, add_tt_title_line, add_tt_labeled_line, extraString, extraLine, test_global4, test_global6;
         log("Sixornot - main:update_tooltip_content", 2);
         log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ", 2);
         tooltip = this;
@@ -941,6 +971,16 @@ main = function (win)
             rows.appendChild(row);
         };
 
+        test_global4 = function (item)
+        {
+            return ["global", "rfc1918"].indexOf(dns_handler.typeof_ip4(item)) !== -1;
+        };
+        test_global6 = function (item)
+        {
+            return dns_handler.typeof_ip6(item) === "global";
+        };
+
+
         if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "")
         {
             add_tt_title_line(gt("header_remote"), "");
@@ -990,47 +1030,49 @@ main = function (win)
             }
         }
 
+        if (get_bool_pref("showallips"))
+        {
+            l6_filtered = localipv6s;
+            l4_filtered = localipv4s;
+        }
+        else
+        {
+            l6_filtered = localipv6s.filter(test_global6);
+            l4_filtered = localipv4s.filter(test_global4);
+        }
         // Add local IP address information if available
-        if (localipv4s.length !== 0 || localipv6s.length !== 0)
+        if (l4_filtered.length !== 0 || l6_filtered.length !== 0)
         {
             add_tt_labeled_line();
             add_tt_title_line(gt("header_local"));
             add_tt_labeled_line(gt("prefix_host"), dnsService.myHostName);
         }
 
-        // Append local IP address information
-        v6_italic = function (ip6_address)
+        // Add local IPv6 address(es) to tooltip with special case if only one
+        if (l6_filtered.length === 1)
         {
-            return dns_handler.typeof_ip6(ip6_address) !== "global";
-        };
-        if (localipv6s.length === 1)
-        {
-            add_tt_labeled_line(gt("prefix_v6_single"), localipv6s[0], v6_italic(localipv6s[0]));
+            add_tt_labeled_line(gt("prefix_v6_single"), l6_filtered[0], test_global6(!l6_filtered[0]));
         }
-        else if (localipv6s.length > 1)
+        else if (l6_filtered.length > 1)
         {
-            add_tt_labeled_line(gt("prefix_v6_multi"), localipv6s[0], v6_italic(localipv6s[0]));
-            for (i = 1; i < localipv6s.length; i += 1)
+            add_tt_labeled_line(gt("prefix_v6_multi"), l6_filtered[0], test_global6(!l6_filtered[0]));
+            for (i = 1; i < l6_filtered.length; i += 1)
             {
-                add_tt_labeled_line(" ", localipv6s[i], v6_italic(localipv6s[i]));
+                add_tt_labeled_line(" ", l6_filtered[i], test_global6(!l6_filtered[i]));
             }
         }
 
-        v4_italic = function (ip4_address)
-        {
-            return ["global", "rfc1918"].indexOf(dns_handler.typeof_ip4(ip4_address)) === -1;
-        };
         // Add local IPv4 address(es) to tooltip with special case if only one
-        if (localipv4s.length === 1)
+        if (l4_filtered.length === 1)
         {
-            add_tt_labeled_line(gt("prefix_v4_single"), localipv4s[0], v4_italic(localipv4s[0]));
+            add_tt_labeled_line(gt("prefix_v4_single"), l4_filtered[0], test_global4(!l4_filtered[0]));
         }
-        else if (localipv4s.length > 1)
+        else if (l4_filtered.length > 1)
         {
-            add_tt_labeled_line(gt("prefix_v4_multi"), localipv4s[0], v4_italic(localipv4s[0]));
-            for (i = 1; i < localipv4s.length; i += 1)
+            add_tt_labeled_line(gt("prefix_v4_multi"), l4_filtered[0], test_global4(!l4_filtered[0]));
+            for (i = 1; i < l4_filtered.length; i += 1)
             {
-                add_tt_labeled_line(" ", localipv4s[i], v4_italic(localipv4s[i]));
+                add_tt_labeled_line(" ", l4_filtered[i], test_global4(!l4_filtered[i]));
             }
         }
 

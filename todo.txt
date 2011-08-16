@@ -12,7 +12,7 @@ Loglevel setting for dns_worker                                             - DO
 Implement Windows-specific resolver method for use by XP x86                - DONE (Needs testing)
 Linux support (needs testing and cleanup)
 Fix Windows ctypes support so that it always returns remote v6 results      - DONE
-Add option to show/hide non-global IP addresses (on by default)
+Add option to show/hide non-global IP addresses (on by default)             - DONE
 
 # TODO 0.6.7
 Only refresh local address information once every minute - put on a seperate timer?
@@ -26,9 +26,7 @@ This will be optional (and off by default)
 Needs update to privacy policy etc., state that aggregate statistics may be gathered but no personally identifiable information sent
 Also state that no details of the sites you visit are sent
 
-
-Firefox resolver same on XP, Vista, 7 and probably Linux
-OSX one does give you v6 addresses when you wouldn't otherwise get them so still useful on this platform
+Also add external address detection via external server??
 
 
 # 0.6.5
