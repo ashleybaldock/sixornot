@@ -163,7 +163,7 @@ PREFS = {
     showaddressicon:    false,
     greyscaleicons:     false,
     loglevel:           0,
-    override_locale:    "",
+    overridelocale:     "",
     showallips:         false
 };
 
@@ -243,9 +243,9 @@ PREF_OBSERVER = {
             // Ensure dns_worker is at the same loglevel
             dns_handler.set_worker_loglevel(PREF_BRANCH_SIXORNOT.getIntPref("loglevel"))
         }
-        if (aData === "override_locale")
+        if (aData === "overridelocale")
         {
-            log("Sixornot - PREFS_OBSERVER - override_locale has changed", 1);
+            log("Sixornot - PREFS_OBSERVER - overridelocale has changed", 1);
             reload();
         }
         if (aData === "showallips")
@@ -1211,7 +1211,7 @@ startup = function (aData, aReason)
 
         log("Sixornot - startup - initLocalisation...", 2);
         initLocalisation(addon, "sixornot.properties",
-                         PREF_BRANCH_SIXORNOT.getCharPref("override_locale"));
+                         PREF_BRANCH_SIXORNOT.getCharPref("overridelocale"));
 
         // Load image sets
         // TODO - Split this all off into a seperate script and include it
@@ -1414,26 +1414,35 @@ gbi = function (node, child_id)
 // TODO - Move into closure
 set_initial_prefs = function ()
 {
-    var branch, key, val;
+    var key, val;
     log("Sixornot - set_initial_prefs", 2);
-    branch = PREF_BRANCH_SIXORNOT;
 //    for ([key, val] in Iterator(PREFS))
     for (key in PREFS)
     {
         if (PREFS.hasOwnProperty(key))
         {
+            // Preserve pre-existing values for preferences in case user has modified them
             val = PREFS[key];
             if (typeof val === "boolean")
             {
-                branch.setBoolPref(key, val);
+                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID)
+                {
+                    PREF_BRANCH_SIXORNOT.setBoolPref(key, val);
+                }
             }
             else if (typeof val === "number")
             {
-                branch.setIntPref(key, val);
+                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID)
+                {
+                    PREF_BRANCH_SIXORNOT.setIntPref(key, val);
+                }
             }
             else if (typeof val === "string")
             {
-                branch.setCharPref(key, val);
+                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID)
+                {
+                    PREF_BRANCH_SIXORNOT.setCharPref(key, val);
+                }
             }
         }
     }
@@ -2019,6 +2028,7 @@ dns_handler =
     {
         return Services.prefs.getBoolPref("network.dns.disableIPv6");
     },
+
 
     /*
         Returns true if the domain specified is in the list of IPv4-only domains

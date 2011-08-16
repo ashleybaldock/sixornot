@@ -61,15 +61,15 @@ var initLocalisation = (function (global)
         return "";
     };
 
-    return function (addon, filename, override_locale)
+    return function (addon, filename, overridelocale)
     {
         var defaultLocale, filepath, defaultBundle, defaultBasicBundle, locale_base, addonsDefaultBundle;
 
         defaultLocale = "en";
 
-        if (override_locale !== "")
+        if (overridelocale !== "")
         {
-            locale = override_locale;
+            locale = overridelocale;
         }
 
         filepath = function (locale)
