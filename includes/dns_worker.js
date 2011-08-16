@@ -379,14 +379,14 @@ dns =
                     switch(ifaddr.ifa_addr.contents.sa_family)
                     {
                         case this.AF_INET:
-                            sockaddr = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
-                            this.inet_ntop(sockaddr.sin_family, sockaddr.sin_addr.address(), addrbuf, 128);
+                            sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
+                            this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
                             addresses.push(addrbuf.readString());
                             break;
 
                         case this.AF_INET6:
-                            sockaddr = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
-                            this.inet_ntop(sockaddr.sin6_family, sockaddr.sin6_addr.address(), addrbuf, 128);
+                            sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
+                            this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
                             addresses.push(addrbuf.readString());
                             break;
                     }
@@ -475,14 +475,14 @@ dns =
                     switch(addrinfo.ai_addr.contents.sa_family)
                     {
                         case this.AF_INET:
-                            sockaddr = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in);
-                            this.inet_ntop(sockaddr.sin_family, sockaddr.sin_addr.address(), addrbuf, 128);
+                            sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in);
+                            this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
                             addresses.push(addrbuf.readString());
                             break;
 
                         case this.AF_INET6:
-                            sockaddr = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in6);
-                            this.inet_ntop(sockaddr.sin6_family, sockaddr.sin6_addr.address(), addrbuf, 128);
+                            sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in6);
+                            this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
                             addresses.push(addrbuf.readString());
                             break;
                     }
