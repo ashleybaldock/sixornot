@@ -287,7 +287,10 @@ dns = {
                                 case this.AF_INET6:
                                     addrsize.value = 128;
                                     this.WSAAddressToString(address.Address.lpSockaddr, address.Address.iSockaddrLength, null, addrbuf, addrsize.address());
-                                    addresses.push(addrbuf.readString());
+                                    if (addresses.indexOf(addrbuf.readString()) === -1)
+                                    {
+                                        addresses.push(addrbuf.readString());
+                                    }
                                     break;
                             }
 
@@ -330,13 +333,19 @@ dns = {
                         case this.AF_INET:
                             sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
                             this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
-                            addresses.push(addrbuf.readString());
+                            if (addresses.indexOf(addrbuf.readString()) === -1)
+                            {
+                                addresses.push(addrbuf.readString());
+                            }
                             break;
 
                         case this.AF_INET6:
                             sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
                             this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
-                            addresses.push(addrbuf.readString());
+                            if (addresses.indexOf(addrbuf.readString()) === -1)
+                            {
+                                addresses.push(addrbuf.readString());
+                            }
                             break;
                     }
 
@@ -398,13 +407,19 @@ dns = {
                         case this.AF_INET:
                             sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in);
                             this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
-                            addresses.push(addrbuf.readString());
+                            if (addresses.indexOf(addrbuf.readString()) === -1)
+                            {
+                                addresses.push(addrbuf.readString());
+                            }
                             break;
 
                         case this.AF_INET6:
                             sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in6);
                             this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
-                            addresses.push(addrbuf.readString());
+                            if (addresses.indexOf(addrbuf.readString()) === -1)
+                            {
+                                addresses.push(addrbuf.readString());
+                            }
                             break;
                     }
 
@@ -469,13 +484,19 @@ dns = {
                         case this.AF_INET:
                             addrsize.value = 128;
                             this.WSAAddressToString(addrinfo.ai_addr, 16, null, addrbuf, addrsize.address());
-                            addresses.push(addrbuf.readString());
+                            if (addresses.indexOf(addrbuf.readString()) === -1)
+                            {
+                                addresses.push(addrbuf.readString());
+                            }
                             break;
 
                         case this.AF_INET6:
                             addrsize.value = 128;
                             this.WSAAddressToString(addrinfo.ai_addr, 28, null, addrbuf, addrsize.address());
-                            addresses.push(addrbuf.readString());
+                            if (addresses.indexOf(addrbuf.readString()) === -1)
+                            {
+                                addresses.push(addrbuf.readString());
+                            }
                             break;
                     }
 
