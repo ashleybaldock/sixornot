@@ -589,17 +589,28 @@ dns = {
             { sin6_scope_id : ctypes.uint32_t          }    // Scope zone index (4)
             ]);                                             // (28)
 
-        /*
+        /* From: http://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man3/getaddrinfo.3.html
+        struct addrinfo {
+            int              ai_flags;
+            int              ai_family;
+            int              ai_socktype;
+            int              ai_protocol;
+            socklen_t        ai_addrlen;
+            struct sockaddr *ai_addr; 
+            char            *ai_canonname;
+            struct addrinfo *ai_next; 
+        };
+        But this is incorrect!
         */
         this.addrinfo.define([
-            { ai_flags     : ctypes.int        }, 
-            { ai_family    : ctypes.int        }, 
-            { ai_socktype  : ctypes.int        }, 
-            { ai_protocol  : ctypes.int        }, 
-            { ai_addrlen   : ctypes.int        }, 
-            { ai_canonname : ctypes.char.ptr   }, 
-            { ai_addr      : this.sockaddr.ptr }, 
-            { ai_next      : this.addrinfo.ptr }
+            { ai_flags     : ctypes.int        },  // input flags
+            { ai_family    : ctypes.int        },  // protocol family for socket
+            { ai_socktype  : ctypes.int        },  // socket type
+            { ai_protocol  : ctypes.int        },  // protocol for socket
+            { ai_addrlen   : ctypes.int        },  // length of socket-address
+            { ai_canonname : ctypes.char.ptr   },  // canonical name for service location
+            { ai_addr      : this.sockaddr.ptr },  // socket-address for socket
+            { ai_next      : this.addrinfo.ptr }   // pointer to next in list
             ]);
 
         /* From /usr/include/ifaddrs.h
@@ -1065,21 +1076,45 @@ dns = {
             { sin6_scope_id : ctypes.uint32_t          }    // Scope zone index (4)
             ]);                                             // (28)
 
-        /*
-        */
+        /* From: http://www.kernel.org/doc/man-pages/online/pages/man3/getaddrinfo.3.html
+        struct addrinfo {
+            int              ai_flags;
+            int              ai_family;
+            int              ai_socktype;
+            int              ai_protocol;
+            size_t           ai_addrlen;
+            struct sockaddr *ai_addr;
+            char            *ai_canonname;
+            struct addrinfo *ai_next;
+        }; */
         this.addrinfo.define([
             { ai_flags     : ctypes.int        }, 
             { ai_family    : ctypes.int        }, 
             { ai_socktype  : ctypes.int        }, 
             { ai_protocol  : ctypes.int        }, 
             { ai_addrlen   : ctypes.int        }, 
-            { ai_canonname : ctypes.char.ptr   }, 
             { ai_addr      : this.sockaddr.ptr }, 
+            { ai_canonname : ctypes.char.ptr   }, 
             { ai_next      : this.addrinfo.ptr }
             ]);
 
-        /*
-        */
+        /* From: http://www.kernel.org/doc/man-pages/online/pages/man3/getifaddrs.3.html
+           struct ifaddrs {
+               struct ifaddrs  *ifa_next;    // Next item in list
+               char            *ifa_name;    // Name of interface
+               unsigned int     ifa_flags;   // Flags from SIOCGIFFLAGS
+               struct sockaddr *ifa_addr;    // Address of interface
+               struct sockaddr *ifa_netmask; // Netmask of interface
+               union {
+                   struct sockaddr *ifu_broadaddr;
+                                    // Broadcast address of interface
+                   struct sockaddr *ifu_dstaddr;
+                                    // Point-to-point destination address
+               } ifa_ifu;
+           #define              ifa_broadaddr ifa_ifu.ifu_broadaddr
+           #define              ifa_dstaddr   ifa_ifu.ifu_dstaddr
+               void            *ifa_data;    // Address-specific data
+           }; */
         this.ifaddrs.define([
              { ifa_next    : this.ifaddrs.ptr    },
              { ifa_name    : ctypes.char.ptr     },
