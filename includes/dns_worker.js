@@ -371,8 +371,15 @@ dns = {
         {
             case "darwin":
             case "linux":
+                hints = this.addrinfo();
+                hints.ai_flags = 0x0;
+                hints.ai_family = this.AF_UNSPEC;
+                hints.ai_socktype = 0;
+                hints.ai_protocol = 0;
+                hints.ai_addrlen = 0;
+
                 addrinfo_ptr = this.addrinfo.ptr();
-                ret = this.getaddrinfo(host, null, null, addrinfo_ptr.address());
+                ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
 
                 if (ret > 0 || addrinfo_ptr.isNull())
                 {
