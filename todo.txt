@@ -9,8 +9,8 @@ Localisation override via preference (for testing etc.)                     - DO
 Add Russion localisation                                                    - DONE
 Upgrade functionality, e.g. don't delete prefs if doing an upgrade          - DONE
 Loglevel setting for dns_worker                                             - DONE
-Implement Windows-specific resolver method for use by XP x86                - DONE (Needs testing)
-Linux support (needs testing and cleanup)
+Implement Windows-specific resolver method for use by XP x86                - DONE
+Linux support (needs testing and cleanup)                                   - DONE
 Fix Windows ctypes support so that it always returns remote v6 results      - DONE
 Add option to show/hide non-global IP addresses (on by default)             - DONE
 
