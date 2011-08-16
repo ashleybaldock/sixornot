@@ -27,7 +27,7 @@
 /*global */
 
 // JSLint parameters
-/*jslint white: false */
+/*jslint white: true */
 
 
 // Global variables defined by this script
@@ -42,6 +42,7 @@ consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
 
 log = function (message, level)
 {
+    "use strict";
     // Three log levels, 0 = critical, 1 = normal, 2 = verbose
     // Default level is 1
     level = level || 1;
@@ -56,6 +57,7 @@ log = function (message, level)
 // TODO - Report exceptions back up to main thread for proper handling
 parse_exception = function (e)
 {
+    "use strict";
     if (!e)
     {
         return "";
@@ -81,6 +83,7 @@ parse_exception = function (e)
 // If you do var onmessage this doesn't function properly
 onmessage = function (evt)
 {
+    "use strict";
     log("Sixornot(dns_worker) - onmessage: " + evt.toSource(), 1);
     // Special case messages should be handled here
     if (evt.data && evt.data[1] && evt.data[1] === 255)
@@ -110,8 +113,10 @@ onmessage = function (evt)
 
 
 // ChromeWorker specific dns functions
-dns =
-{
+// Wrapper function to enable use strict en-mass for all contained functions
+dns = (function () {
+"use strict";
+return {
     AF_UNSPEC: null,
     AF_INET: null,
     AF_INET6: null,
@@ -243,7 +248,6 @@ dns =
         dispatch = [];
         dispatch[this.AF_INET] = this.af_inet_to_str;
         dispatch[this.AF_INET6] = this.af_inet6_to_str;
-        dispatch[this.AF_LINK] = this.af_link_to_str;
 
         f = dispatch[sockaddr.sa_family];
         if (f)
@@ -264,9 +268,9 @@ dns =
         // Read IP address value as 32bit number
         ip4 = sockaddr_in.sin_addr;
         // Convert to dotted decimal notation + return string
-        /*jslint bitwise: false */
-        ip4_address = [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
         /*jslint bitwise: true */
+        ip4_address = [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
+        /*jslint bitwise: false */
         return ip4_address;
     },
     af_inet6_to_str : function (sockaddr)
@@ -282,9 +286,9 @@ dns =
         c = [];
         for (i = 0; i < sockaddr_in6.sin6_addr.length; i += 2)
         {
-            /*jslint bitwise: false */
-            c.push(((sockaddr_in6.sin6_addr[i] << 8) + sockaddr_in6.sin6_addr[i + 1]).toString(16));
             /*jslint bitwise: true */
+            c.push(((sockaddr_in6.sin6_addr[i] << 8) + sockaddr_in6.sin6_addr[i + 1]).toString(16));
+            /*jslint bitwise: false */
         }
         // TODO - clean up this code to make it more readable
         // TODO - split this functionality off into separate function to compress IPv6 addresses
@@ -295,18 +299,11 @@ dns =
         };
         return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, m_or_t).replace(m || ' ', '::');
     },
-    af_link_to_str : function (sockaddr)
-    {
-        log("Sixornot(dns_worker) - dns:af_link_to_str", 2);
-        // Cast to ???
-        // Read MAC address value
-        // Convert to MAC format with '-' separators + return string
-        return false;
-    },
 
     resolve_local : function ()
     {
-        var first_addr, first_addr_ptr, ret, i, addresses, new_addr;
+        var first_addr, first_addr_ptr, ret, i, addresses, new_addr, sa, address,
+            ifaddr, ifaddr_ptr, adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_local", 2);
 
         switch(this.os)
@@ -314,12 +311,15 @@ dns =
             case "winnt":
                 adapbuf   = (ctypes.uint8_t.array(8192))();
                 adapsize  = ctypes.unsigned_long(8192);
+                /*jslint bitwise: true */
                 adapflags = this.GAA_FLAG_SKIP_ANYCAST | this.GAA_FLAG_SKIP_MULTICAST  | this.GAA_FLAG_SKIP_DNS_SERVER | this.GAA_FLAG_SKIP_FRIENDLY_NAME;
+                /*jslint bitwise: false */
 
                 ret = this.GetAdaptersAddresses(this.AF_UNSPEC, adapflags, null, adapbuf, adapsize.address());
 
-                if (ret != 0) {
-                    log( LOG_VERBOSE, "Sixornot(dns_worker) - dns:resolve_local - GetAdaptersAddresses failed with exit code: " + ret );
+                if (ret > 0)
+                {
+                    log("Sixornot(dns_worker) - dns:resolve_local - GetAdaptersAddresses failed with exit code: " + ret, 1);
                     return ["FAIL"];
                 }
 
@@ -329,12 +329,16 @@ dns =
                 addresses = [];
 
                 // Loop through returned addresses and add them to array
-                for (;;) {
-                    if (adapter.IfType != this.IF_TYPE_SOFTWARE_LOOPBACK && adapter.IfType != this.IF_TYPE_TUNNEL && !adapter.FirstUnicastAddress.isNull()) {
+                for (;;)
+                {
+                    if (adapter.IfType !== this.IF_TYPE_SOFTWARE_LOOPBACK && adapter.IfType !== this.IF_TYPE_TUNNEL && !adapter.FirstUnicastAddress.isNull())
+                    {
                         address = adapter.FirstUnicastAddress.contents;
 
-                        for (;;) {
-                            switch (address.Address.lpSockaddr.contents.sa_family) {
+                        for (;;)
+                        {
+                            switch (address.Address.lpSockaddr.contents.sa_family)
+                            {
                                 case this.AF_INET:
                                 case this.AF_INET6:
                                     addrsize.value = 128;
@@ -343,7 +347,8 @@ dns =
                                     break;
                             }
 
-                            if (address.Next.isNull()) {
+                            if (address.Next.isNull())
+                            {
                                 break;
                             }
                             address = address.Next.contents;
@@ -358,15 +363,15 @@ dns =
 
                 log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
-                break;
 
             case "darwin":
+            case "linux":
                 ifaddr_ptr = this.ifaddrs.ptr();
                 ret = this.getifaddrs(ifaddr_ptr.address());
 
-                if (ret !== 0 || ifaddr_ptr.isNull())
+                if (ret > 0 || ifaddr_ptr.isNull())
                 {
-                    log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Got no results from getifaddrs", 1);
+                    log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Got no results from getifaddrs", 1);
                     return ["FAIL"];
                 }
 
@@ -402,9 +407,7 @@ dns =
 
                 log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
-                break;
-
-            case "linux":
+/*
                 first_addr = this.ifaddrs();
                 first_addr_ptr = first_addr.address();
                 ret = this.getifaddrs(first_addr_ptr.address());
@@ -437,12 +440,10 @@ dns =
 
                 log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
-                break;
-
+*/
             default:
                 log("Sixornot(dns_worker) - dns:resolve_local - Unknown operating system!");
                 return ["FAIL"];
-                break;
         }
 
     },
@@ -450,19 +451,20 @@ dns =
     // Proxy to ctypes getaddrinfo functionality
     resolve_remote : function (host)
     {
-        var hints, first_addr, first_addr_ptr, ret, i, addresses, new_addr;
-        var sockaddr, addrinfo, addrbuf;
+        var hints, first_addr, first_addr_ptr, ret, i, addresses, new_addr,
+            addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_remote - resolving host: " + host, 2);
 
         switch(this.os)
         {
             case "darwin":
+            case "linux":
                 addrinfo_ptr = this.addrinfo.ptr();
                 ret = this.getaddrinfo(host, null, null, addrinfo_ptr.address());
 
-                if (ret !== 0 || addrinfo_ptr.isNull())
+                if (ret > 0 || addrinfo_ptr.isNull())
                 {
-                    log("Sixornot(dns_worker) - dns:resolve_remote(OSX) - Got no results from getaddrinfo", 1);
+                    log("Sixornot(dns_worker) - dns:resolve_remote(OSX/Linux) - Got no results from getaddrinfo", 1);
                     return ["FAIL"];
                 }
 
@@ -498,13 +500,11 @@ dns =
 
                 log("Sixornot(dns_worker) - dns:resolve_remote(OSX) - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
-                break;
 
-            case "linux":
-                first_addr = this.addrinfo();
+/*                first_addr = this.addrinfo();
                 first_addr_ptr = first_addr.address();
                 ret = this.getaddrinfo(host, null, null, first_addr_ptr.address());
-                log("Sixornot(dns_worker) - " + ret, 0)
+                log("Sixornot(dns_worker) - " + ret, 0);
                 // If we got no addresses of either kind then return failure
                 if (first_addr_ptr.isNull())
                 {
@@ -533,7 +533,7 @@ dns =
                 }
                 log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
                 return addresses.slice();
-                break;
+*/
             case "winnt":
                 // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
                 //
@@ -566,7 +566,7 @@ dns =
                 addrinfo_ptr = this.addrinfo.ptr();
                 ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
 
-                if (ret !== 0 || addrinfo_ptr.isNull())
+                if (ret > 0 || addrinfo_ptr.isNull())
                 {
                     log("Sixornot(dns_worker) - dns:resolve_remote(WIN) - Got no results from getaddrinfo", 1);
                     return ["FAIL"];
@@ -605,17 +605,16 @@ dns =
 
                 log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
                 return addresses.slice();
-                break;
 
             default:
                 log("Sixornot(dns_worker) - dns:resolve_remote - Unknown operating system!");
                 return ["FAIL"];
-                break;
         }
     },
 
     load_osx : function ()
     {
+        var e;
         // On Mac OSX do both local and remote lookups via ctypes
         this.remote_ctypes = true;
         this.local_ctypes  = true;
@@ -830,6 +829,7 @@ dns =
 
     load_win : function ()
     {
+        var e;
         // On Windows do both local and remote lookups via ctypes
         this.remote_ctypes = true;
         this.local_ctypes  = true;
@@ -1124,6 +1124,7 @@ dns =
 
     load_linux : function ()
     {
+        var e;
         // On Linux do both local and remote lookups via ctypes
         this.remote_ctypes = true;
         this.local_ctypes  = true;
@@ -1247,5 +1248,6 @@ dns =
         return true;
     }
 };
+}());
 
 

@@ -1,22 +1,23 @@
 # TODO
 
 # TODO 0.6.6
-Check if domain is in network.dns.ipv4OnlyDomains list and display v4 only
-Check if network.dns.disableIPv6 is set and display warning/never use blue icon if so (still use orange icon if we detect an AAAA record)
+Check if domain is in network.dns.ipv4OnlyDomains list and display v4 only  - DONE
+Check if network.dns.disableIPv6 is set and display warning/never use blue
+    icon if so (still use orange icon if we detect an AAAA record)          - DONE
 Add seamonkey support                                                       - DONE
 Localisation override via preference (for testing etc.)                     - DONE
 Add Russion localisation                                                    - DONE
 Upgrade functionality, e.g. don't delete prefs if doing an upgrade          - DONE
 Loglevel setting for dns_worker                                             - DONE
-Implement Windows-specific resolver method for use by XP x86
-Remove ctypes lookup for Windows (no point to it)
+Implement Windows-specific resolver method for use by XP x86                - DONE (Needs testing)
 Linux support (needs testing and cleanup)
+Fix Windows ctypes support so that it always returns remote v6 results      - DONE
+Add option to show/hide non-global IP addresses (on by default)
 
 # TODO 0.6.7
 Only refresh local address information once every minute - put on a seperate timer?
 JSLint for utils.js
 Preference to set whether icon should come before or after the star icon
-Add option to show/hide local IP addresses (on by default)
 
 # TODO 0.7
 Remote mode - simple check of local->remote IPv6 connectivity by requesting a page from a webservice
