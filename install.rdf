@@ -30,7 +30,7 @@
 
         <!-- Localisation: https://developer.mozilla.org/en/Localizing_extension_descriptions -->
    
-        <em:homepageURL>http://www.entropy.me.uk/sixornot/</em:homepageURL>
+        <em:homepageURL>http://entropy.me.uk/sixornot/</em:homepageURL>
 
         <!-- <em:optionsURL>resource://sixornot/content/options.xul</em:optionsURL> -->
 
