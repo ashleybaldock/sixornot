@@ -114,9 +114,7 @@ onmessage = function (evt)
 
 // ChromeWorker specific dns functions
 // Wrapper function to enable use strict en-mass for all contained functions
-dns = (function () {
-"use strict";
-return {
+dns = {
     AF_UNSPEC: null,
     AF_INET: null,
     AF_INET6: null,
@@ -146,17 +144,20 @@ return {
 
     check_remote : function ()
     {
+        "use strict";
         log("Sixornot(dns_worker) - dns:check_remote, value: " + this.remote_ctypes);
         return this.remote_ctypes;
     },
     check_local : function ()
     {
+        "use strict";
         log("Sixornot(dns_worker) - dns:check_local, value: " + this.local_ctypes);
         return this.local_ctypes;
     },
 
     init : function (operatingsystem)
     {
+        "use strict";
         log("Sixornot(dns_worker) - dns:init");
 
         this.os = operatingsystem;
@@ -193,6 +194,7 @@ return {
 
     shutdown : function ()
     {
+        "use strict";
         log("Sixornot(dns_worker) - shutdown");
         if (this.remote_ctypes || this.local_ctypes)
         {
@@ -219,6 +221,7 @@ return {
     // Select correct function to execute based on ID code sent by main thread
     dispatch_message : function (message)
     {
+        "use strict";
         var dispatch, f, ret;
         log("Sixornot(dns_worker) - dns:dispatch_message: " + message.toSource(), 2);
 
@@ -240,68 +243,9 @@ return {
         }
     },
 
-    // Converts a sockaddr structure to a string representation of its address
-    sockaddr_to_str : function (sockaddr)
-    {
-        var dispatch, f;
-        log("Sixornot(dns_worker) - dns:sockaddr_to_str", 2);
-        dispatch = [];
-        dispatch[this.AF_INET] = this.af_inet_to_str;
-        dispatch[this.AF_INET6] = this.af_inet6_to_str;
-
-        f = dispatch[sockaddr.sa_family];
-        if (f)
-        {
-            // Need to use function.call so that the value of "this" in the called function is set correctly
-            return f.call(this, sockaddr);
-        }
-        // Unknown address family, return false
-        return false;
-    },
-
-    af_inet_to_str : function (sockaddr)
-    {
-        var sockaddr_in, ip4, ip4_address;
-        log("Sixornot(dns_worker) - dns:af_inet_to_str", 2);
-        // Cast to sockaddr_in
-        sockaddr_in = ctypes.cast(sockaddr, this.sockaddr_in);
-        // Read IP address value as 32bit number
-        ip4 = sockaddr_in.sin_addr;
-        // Convert to dotted decimal notation + return string
-        /*jslint bitwise: true */
-        ip4_address = [(ip4 << 24) >>> 24, (ip4 << 16) >>> 24, (ip4 << 8) >>> 24, ip4 >>> 24].join(".");
-        /*jslint bitwise: false */
-        return ip4_address;
-    },
-    af_inet6_to_str : function (sockaddr)
-    {
-        var sockaddr_in6, i, m, c, m_or_t;
-        log("Sixornot(dns_worker) - dns:af_inet6_to_str", 2);
-        // Cast to sockaddr_in6
-        sockaddr_in6 = ctypes.cast(sockaddr, this.sockaddr_in6);
-        // Convert to hex quad notation + return string
-        // This code adapted from this example: http://phpjs.org/functions/inet_ntop:882
-        i = 0;
-        m = "";
-        c = [];
-        for (i = 0; i < sockaddr_in6.sin6_addr.length; i += 2)
-        {
-            /*jslint bitwise: true */
-            c.push(((sockaddr_in6.sin6_addr[i] << 8) + sockaddr_in6.sin6_addr[i + 1]).toString(16));
-            /*jslint bitwise: false */
-        }
-        // TODO - clean up this code to make it more readable
-        // TODO - split this functionality off into separate function to compress IPv6 addresses
-        m_or_t = function (t)
-        {
-            m = (t.length > m.length) ? t : m;
-            return t;
-        };
-        return c.join(':').replace(/((^|:)0(?=:|$))+:?/g, m_or_t).replace(m || ' ', '::');
-    },
-
     resolve_local : function ()
     {
+        "use strict";
         var first_addr, first_addr_ptr, ret, i, addresses, new_addr, sa, address,
             ifaddr, ifaddr_ptr, adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_local", 2);
@@ -407,40 +351,7 @@ return {
 
                 log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
-/*
-                first_addr = this.ifaddrs();
-                first_addr_ptr = first_addr.address();
-                ret = this.getifaddrs(first_addr_ptr.address());
 
-                if (first_addr_ptr.isNull())
-                {
-                    log("Sixornot(dns_worker) - dns:resolve_local - Got no results from getifaddrs", 1);
-                    return ["FAIL"];
-                }
-
-                i = first_addr_ptr.contents;
-                addresses = [];
-
-                // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-                for (;;)
-                {
-                    new_addr = this.sockaddr_to_str(i.ifa_addr.contents);
-
-                    // Add to addresses array, check for blank return from get_ip_str, strip duplicates as we go
-                    if (new_addr && addresses.indexOf(new_addr) === -1)
-                    {
-                        addresses.push(new_addr);
-                    }
-                    if (i.ifa_next.isNull())
-                    {
-                        break;
-                    }
-                    i = i.ifa_next.contents;
-                }
-
-                log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
-                return addresses.slice();
-*/
             default:
                 log("Sixornot(dns_worker) - dns:resolve_local - Unknown operating system!");
                 return ["FAIL"];
@@ -451,6 +362,7 @@ return {
     // Proxy to ctypes getaddrinfo functionality
     resolve_remote : function (host)
     {
+        "use strict";
         var hints, first_addr, first_addr_ptr, ret, i, addresses, new_addr,
             addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_remote - resolving host: " + host, 2);
@@ -501,39 +413,6 @@ return {
                 log("Sixornot(dns_worker) - dns:resolve_remote(OSX) - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
 
-/*                first_addr = this.addrinfo();
-                first_addr_ptr = first_addr.address();
-                ret = this.getaddrinfo(host, null, null, first_addr_ptr.address());
-                log("Sixornot(dns_worker) - " + ret, 0);
-                // If we got no addresses of either kind then return failure
-                if (first_addr_ptr.isNull())
-                {
-                    log("Sixornot(dns_worker) - dns:resolve_remote - Unable to resolve host, got no results from getaddrinfo", 1);
-                    return ["FAIL"];
-                }
-                // Parse all addresses into array to return
-                addresses = [];
-                i = first_addr_ptr.contents;
-                // Loop over the addresses retrieved by ctypes calls and transfer all of them into a javascript array
-                for (;;)
-                {
-                    new_addr = this.sockaddr_to_str(i.ai_addr.contents);
-                    log("Sixornot(dns_worker) - new_addr is: " + new_addr, 0);
-
-                    // Add to addresses array, strip duplicates as we go
-                    if (addresses.indexOf(new_addr) === -1)
-                    {
-                        addresses.push(new_addr);
-                    }
-                    if (i.ai_next.isNull())
-                    {
-                        break;
-                    }
-                    i = i.ai_next.contents;
-                }
-                log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
-                return addresses.slice();
-*/
             case "winnt":
                 // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
                 //
@@ -561,7 +440,6 @@ return {
                 hints.ai_socktype = 0;
                 hints.ai_protocol = 0;
                 hints.ai_addrlen = 0;
-
 
                 addrinfo_ptr = this.addrinfo.ptr();
                 ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
@@ -614,6 +492,7 @@ return {
 
     load_osx : function ()
     {
+        "use strict";
         var e;
         // On Mac OSX do both local and remote lookups via ctypes
         this.remote_ctypes = true;
@@ -829,6 +708,7 @@ return {
 
     load_win : function ()
     {
+        "use strict";
         var e;
         // On Windows do both local and remote lookups via ctypes
         this.remote_ctypes = true;
@@ -1124,6 +1004,7 @@ return {
 
     load_linux : function ()
     {
+        "use strict";
         var e;
         // On Linux do both local and remote lookups via ctypes
         this.remote_ctypes = true;
@@ -1248,6 +1129,4 @@ return {
         return true;
     }
 };
-}());
-
 
