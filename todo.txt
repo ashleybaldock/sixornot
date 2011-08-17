@@ -18,6 +18,8 @@ Add option to show/hide non-global IP addresses (on by default)             - DO
 Only refresh local address information once every minute - put on a seperate timer?
 JSLint for utils.js
 Preference to set whether icon should come before or after the star icon
+Preferences dialog/pane for Firefox 7 - https://developer.mozilla.org/en/Extensions/Inline_Options
+Compatibility with FreeBSD
 
 # TODO 0.7
 Remote mode - simple check of local->remote IPv6 connectivity by requesting a page from a webservice
