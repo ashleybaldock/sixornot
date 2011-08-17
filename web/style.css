@@ -6,7 +6,7 @@ body
 
 div.header
 {
-    background-color: #c4d4d4;
+    background-color: #C6D6FF;
     background-image: url("sixornot_6only_c_128.png");
     background-repeat: no-repeat;
     background-position: center right;
@@ -20,12 +20,16 @@ h1
     padding: 0.5em;
     padding-bottom: 0.2em;
     margin: 0;
+    clear: both;
 }
 
 h2
 {
-    background-color: #78a16f;
+    background-color: #618EFF;
+/*    background-color: #0044F8; */
     padding: 0.5em;
+    clear: both;
+    color: #FFF;
 }
 
 h2.menu
@@ -39,14 +43,22 @@ h2 a, h3 a
     display: block;
     float: right;
     text-align: right;
-    color: black;
+    color: #FFF;
+}
+h2 a:hover, h3 a:hover
+{
+    color: #618EFF;
+    background-color: #FFF;
+    text-decoration: none;
 }
 
 h3
 {
-    background-color: #89b87f;
+    background-color: #618EFF;
     margin: 0 0.5em;
     padding: 0.5em;
+    clear: both;
+    color: #FFF;
 }
 
 p
@@ -69,7 +81,7 @@ pre
 {
     margin: 1em 2em;
     padding: 0.5em;
-    background-color: #d5e6e6;
+    background-color: #C6D6FF;
 }
 
 ul.icon_list
@@ -87,6 +99,23 @@ ul.icon_list li
     padding-left: 60px;
     vertical-align: middle;
     min-height: 24px;
+}
+
+img.im_right
+{
+    float: right;
+    clear: both;
+}
+
+img.im_left
+{
+    float: left;
+    clear: both;
+}
+
+img.pad
+{
+    padding: 1em;
 }
 
 li.i_other
@@ -112,4 +141,10 @@ li.i_4pot6
 li.i_4only
 {
     background-image: url("sixornot_4only_cg_24.png");
+}
+
+span.red
+{
+    color: #F00;
+    font-weight: bold;
 }

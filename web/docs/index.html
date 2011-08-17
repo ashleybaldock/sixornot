@@ -15,7 +15,7 @@
 
 <div class="header">
 <h1>SixOrNot Online Documentation</h1>
-<p class="version">Version 1.0.0</p>
+<p class="version">Version 0.6.6</p>
 </div>
 
 <h2 class="menu"><a name="Menu"></a>Contents</h2>
@@ -25,6 +25,7 @@
 <li><a href="#Interface">Interface</a>
     <ul>
     <li><a href="#Interface_Icons">Icon Meanings</a></li>
+    <li><a href="#Interface_Warnings">Interface Warnings</a></li>
     <li><a href="#Interface_Settings">Configurable Settings</a></li>
     </ul>
 </li>
@@ -46,7 +47,7 @@
 
 <h2><a name="Introduction"></a>Introduction<a href="#Menu">Menu</a></h2>
 
-<p>SixOrNot is a Firefox extension intended to make it easy for you to identify when the website you're connecting to supports the current generation Internet Protocol (version 6). It does this by checking the site's DNS records and displaying an icon either in the address bar or as a button (which you may place anywhere buttons can usually be placed in Firefox). This icon indicates whether the site currently supports IPv6 (or only the legacy Internet Protocol, IPv4).</p>
+<p>SixOrNot is a Firefox extension intended to make it easy for you to identify when the website you're connecting to supports the current generation Internet Protocol (version 6). It does this by checking the site's DNS records and displaying an icon either in the address bar or as a button (which you may place anywhere buttons can usually be placed in Firefox). This icon indicates whether the site currently supports IPv6 (or only the legacy Internet Protocol, IPv4). SixOrNot also tries to detect the IP addresses of your local machine, it uses these to guess whether you are likely connecting to a remote site using IPv6 or IPv4 and this also affects the icon displayed.</p>
 
 <h2><a name="Installation"></a>Installation<a href="#Menu">Menu</a></h2>
 
@@ -56,11 +57,15 @@
 
 <h2><a name="Interface"></a>Interface<a href="#Menu">Menu</a></h2>
 
-<p>The SixOrNot interface is fairly simple. An icon is displayed either in the address bar near the star icon or as a button. By default the address bar icon is enabled and the button is placed into the button palette which you can access by the standard UI customisation method. Whether accessed through the button or address bar icon the functionality is identical. On mouseover the icon displays a tooltip which shows information about the site you are connecting to. The IPv6/IPv4 addresses of the site are shown in the Remote section along with its domain name. Additionally the IPv6/IPv4 addresses of your own client are shown under the Local section.</p>
+<p>The SixOrNot interface is fairly simple. An icon is displayed either in the address bar near the star icon or as a button. By default the address bar icon is disabled and the button is placed onto the navigation bar. You can move the button anywhere you like by entering the Firefox UI customisation mode and simply dragging it to the desired location. Whether accessed through the button or address bar icon the functionality is identical. On mouseover the icon displays a tooltip which shows information about the site you are connecting to. The IPv6/IPv4 addresses of the site are shown in the Remote section along with its domain name. Additionally the IPv6/IPv4 addresses of your own client are shown under the Local section.</p>
 
 <p>Clicking on either the address bar icon or the button will open a popup menu. This menu allows you to copy IP address information to the clipboard. To copy all the IP addresses for a particular domain click the first entry in the menu (which will show the domain name of the remote site). This will copy the domain name followed by the IP addresses in comma separated format. If you wish to copy an individual IP address select it from the list and only that address will be copied to the clipboard.</p>
 
 <p>The same functionality is available for the local host entries. Below the IP address section are options to configure settings (see the Configurable Settings section below for more details on what these do) and a link to the SixOrNot website where this documentation can be found.</p>
+
+<img src="../sixornot_buttons.png" alt="Screenshot of the SixOrNot address bar icon and button" class="pad" />
+<img src="../sixornot_tooltip_normal_0.6.6.png" alt="Screenshot of the SixOrNot tooltip showing IP addresses" />
+<img src="../sixornot_menu_normal_0.6.6.png" alt="Screenshot of the SixOrNot menu showing options" />
 
     <h3><a name="Interface_Icons"></a>Icon Meanings<a href="#Interface">Interface</a></h3>
 
@@ -74,21 +79,32 @@
     <li class="i_4only">This icon indicates that only A (IPv4) records were returned for the current domain. Either your DNS is not capable of returning AAAA records or (more likely) the domain in question supports only the legacy version of the Internet Protocol suite. Why not ask why they haven't upgraded yet? An example can be found here: <a href="http://ipv4.entropy.me.uk">ipv4.entropy.me.uk</a></li>
     </ul>
 
+    <h3><a name="Interface_Warnings"></a>Interface Warnings<a href="#Interface">Interface</a></h3>
+
+    <p>SixOrNot may display warnings in red text on the tooltip. More detailed explanations of these warnings can be found here.</p>
+
+    <ul>
+    <li><span class="red">Warning: Firefox IPv6 DNS lookups disabled!</span><br />This warning indicates that the Firefox preferences setting "network.dns.disableIPv6" has been set to true. This means that Firefox won't itself lookup IPv6 addresses for any of the domains you visit. Typically there's very little reason to enable this setting. SixOrNot usually uses a different mechanism to lookup DNS records so it will probably still find IPv6 addresses for domains even when this setting is enabled (though it will never display the Green icon in this case). For more information about this Firefox setting see the <a href="http://kb.mozillazine.org/Network.dns.disableIPv6">Mozilla Documentation</a>.</li>
+    <li><span class="red">Warning: Domain is in ipv4OnlyDomains list!</span><br />This warning indicates that the domain you are currently visiting is listed in the "network.dns.ipv4OnlyDomains" setting. This means that Firefox will never attempt to connect using IPv6 to this website, even if it has AAAA records in DNS and your own machine has IPv6 connectivity. SixOrNot will never display the Green icon for these sites but will still show the IPv6 addresses if they are found. More information about this Firefox setting can be found on the <a href="http://kb.mozillazine.org/Network.dns.ipv4OnlyDomains">Mozilla Documentation</a>.</li>
+    </ul>
+
     <h3><a name="Interface_Settings"></a>Configurable Settings<a href="#Interface">Interface</a></h3>
 
-    <p>SixOrNot allows you to configure two settings.</p>
+    <p>SixOrNot allows you to configure the following settings.</p>
 
     <ol>
     <li>Whether or not the address bar icon should be displayed. This is either on or off. This can be configured via the menu either by clicking on the address bar icon or the button. If you turn the address bar icon off and don't see the button try opening the button palette via the standard right-click+"Customise" functionality in Firefox. You can drag the address bar icon from there to anywhere you like on the UI. Note: If you want the address bar icon back you need to switch it on via the button's menu. You can always remove the button again afterwards by dragging it back to the button palette.</li>
     <li>Whether to use the colourful icon set or the greyscale one. This can be switched via either menu at any time. The grey icons don't look quite as good except when being used on Mac OSX with the button (where most buttons are greyscale). They are also good for those with specific accessibility needs where colours aren't a sufficient means of communicating information.</li>
+    <li>Whether to display non-global IP addresses. By default SixOrNot does not show you IP addresses which would not normally be used to connect to remote websites, e.g. linklocal addresses. If you want to see these in the UI then enable this option.</li>
     </ol>
 
-    <p>These two options can also be configured via the following two boolean values in "about:config":</p>
+    <p>These options can also be configured via the following boolean values in "about:config":</p>
 
     <pre>extensions.sixornot.showaddressicon</pre>
-    <pre>extensions.sixornot.use_greyscale</pre>
+    <pre>extensions.sixornot.greyscaleicons</pre>
+    <pre>extensions.sixornot.showallips</pre>
 
-    <p>The other two sixornot settings control the location of the button and should not be changed manually.</p>
+    <p>The other extensions.sixornot settings should not generally be changed manually.</p>
 
 <h2><a name="OSSpecific"></a>Operating System specific information<a href="#Menu">Menu</a></h2>
 
@@ -96,11 +112,11 @@
 
     <h3><a name="OSSpecific_OSX"></a>Mac OSX<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>SixOrNot is fully compatible with OSX 10.6 and 10.7. IPv6 is enabled by default in these versions of the operating system and no special configuration should be needed for full functionality.</p>
+    <p>SixOrNot is fully compatible with OSX 10.6 and 10.7. IPv6 is enabled by default in these versions of the operating system and no special configuration should be needed for full functionality. I have not tested SixOrNot with earlier versions of OSX so if you encounter problems please do let me know.</p>
 
     <h3><a name="OSSpecific_Windows7Vista"></a>Windows 7/Windows Vista<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>SixOrNot is fully compatible with Windows 7 and Windows Vista SP2. <b>Please note:</b> No remote IPv6 addresses can be looked up unless your local machine has at least one non-linklocal IPv6 address. This is due to limitations of the operating system - AAAA records (IPv6 DNS records) are only returned by the OS if it has a non-linklocal IPv6 address. If you have no local IPv6 connectivity but still want to see when a remote site could potentially be reached via IPv6 then a workaround is to configure your machine with a manual IPv6 address, for example use a Site-Local address (fec0::/10, e.g. fec0::1) with no default route. This is enough to get the OS to provide you with AAAA record responses.</p>
+    <p>SixOrNot is fully compatible with Windows 7 and Windows Vista SP2.</p>
 
     <h3><a name="OSSpecific_Windows2003"></a>Windows XP x64/Windows Server 2003<a href="#OSSpecific">Operating System specific information</a></h3>
 
@@ -122,14 +138,9 @@
 
     <p>Please note: If the Windows XP x86 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation.</p>
 
-    <p><b>Known Issue:</b> SixOrNot currently will not detect the local IPv6 address on Windows XP x86, a fix for this will be put into version 0.6.6. This has the result that even if a remote site is IPv6-enabled and you have a globally routable IPv6 address configured the icon will display only as yellow (IPv6 available but probably not in use).</p>
-
     <h3><a name="OSSpecific_Linux"></a>Linux<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>SixOrNot has currently only been tested under Ubuntu Linux (version 11.04). If you are experiencing problems with SixOrNot on a Linux distribution other than this please get in touch with me and I'll try to fix it for your distribution.</p>
-
-    <p>Currently SixOrNot will not accurately detect IP address information on Linux. A fix for this will be put into version 0.6.6.</p>
-
+    <p>SixOrNot has currently only been tested under Ubuntu Linux (version 11.04). It should work on any distribution however. If you are experiencing problems with SixOrNot on a Linux distribution other than this please get in touch with me and I'll try to fix it for your distribution.</p>
 
 <h2><a name="IPConcepts"></a>IP Address Concepts<a href="#Menu">Menu</a></h2>
 
