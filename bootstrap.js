@@ -100,6 +100,7 @@ var NS_XUL,
     // Prefs observer object - TODO - move into function where it is used? no need to be global?
     PREF_OBSERVER,
     PREF_OBSERVER_DNS,
+    HTTP_REQUEST_OBSERVER,
     /*
         ipv6 only                   6only_16.png, 6only_24.png
         ipv4+ipv6 w/ local ipv6     6and4_16.png, 6and4_24.png
@@ -139,6 +140,11 @@ var NS_XUL,
     defineLazyGetter,
     // Global objects
     xulRuntime;
+
+
+var RequestCache = [];
+var RequestWaitingList = [];
+var RequestCallbacks = [];
 
 
     xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService( Components.interfaces.nsIXULRuntime );
@@ -213,45 +219,59 @@ log = (function ()
 
 PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
-        log("Sixornot - PREFS_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
+        log("Sixornot - PREF_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
         if (aTopic.valueOf() !== "nsPref:changed")
         {
-            log("Sixornot - PREFS_OBSERVER - not a pref change event 1", 2);
+            log("Sixornot - PREF_OBSERVER - not a pref change event 1", 2);
             return;
         }
         if (!PREFS.hasOwnProperty(aData))
         {
-            log("Sixornot - PREFS_OBSERVER - not a pref change event 2", 2);
+            log("Sixornot - PREF_OBSERVER - not a pref change event 2", 2);
             return;
         }
 
         if (aData === "showaddressicon")
         {
-            log("Sixornot - PREFS_OBSERVER - addressicon has changed", 1);
+            log("Sixornot - PREF_OBSERVER - addressicon has changed", 1);
             reload();
         }
         if (aData === "greyscaleicons")
         {
-            log("Sixornot - PREFS_OBSERVER - greyscaleicons has changed", 1);
+            log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 1);
             set_iconset();
             reload();
         }
         // TODO Update worker process to use new log level?
         if (aData === "loglevel")
         {
-            log("Sixornot - PREFS_OBSERVER - loglevel has changed", 1);
+            log("Sixornot - PREF_OBSERVER - loglevel has changed", 1);
             // Ensure dns_worker is at the same loglevel
             dns_handler.set_worker_loglevel(PREF_BRANCH_SIXORNOT.getIntPref("loglevel"))
         }
         if (aData === "overridelocale")
         {
-            log("Sixornot - PREFS_OBSERVER - overridelocale has changed", 1);
+            log("Sixornot - PREF_OBSERVER - overridelocale has changed", 1);
             reload();
         }
         if (aData === "showallips")
         {
-            log("Sixornot - PREFS_OBSERVER - showallips has changed", 1);
+            log("Sixornot - PREF_OBSERVER - showallips has changed", 1);
         }
+    },
+
+    get nsIPB2() {
+        return PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
+    },
+
+    register: function () {
+        log("Sixornot - PREF_OBSERVER - register", 2);
+        this.nsIPB2.addObserver("", PREF_OBSERVER, false);
+    },
+   
+    unregister: function () {
+        log("Sixornot - PREF_OBSERVER - unregister", 2);
+        this.nsIPB2.removeObserver("", PREF_OBSERVER);
     }
 };
 
@@ -274,6 +294,204 @@ PREF_OBSERVER_DNS = {
             log("Sixornot - PREF_OBSERVER_DNS - ipv4OnlyDomains has changed", 1);
             reload();
         }
+    },
+
+    get nsIPB2() {
+        return PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2);
+    },
+
+    register: function () {
+        log("Sixornot - PREF_OBSERVER_DNS - register", 2);
+        this.nsIPB2.addObserver("", PREF_OBSERVER_DNS, false);
+    },
+   
+    unregister: function () {
+        log("Sixornot - PREF_OBSERVER_DNS - unregister", 2);
+        this.nsIPB2.removeObserver("", PREF_OBSERVER_DNS);
+    }
+};
+
+
+/* Observes HTTP requests to determine the details of all browser connections */
+var HTTP_REQUEST_OBSERVER = {
+    observe: function (aSubject, aTopic, aData) {
+        var notifcationCallbacks, domWindow, domWindowUtils, domWindowInner, domWindowOuter, original_window, new_page;
+        log("Sixornot - HTTP_REQUEST_OBSERVER - (" + aTopic + ")", 1);
+        if (aTopic === "http-on-examine-response") {
+            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response", 1);
+            http_channel = aSubject.QueryInterface(Components.interfaces.nsIHttpChannel);
+            http_channel_internal = aSubject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
+            try {
+                http_channel_internal.remoteAddress;
+            }
+            catch (e) {
+                log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
+            }
+
+            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.spec + " (" + http_channel_internal.remoteAddress + ")", 1);
+
+
+            // Extract the domain from the URL
+            // Create new entry for this domain in the current window's cache (if not already present)
+            // If already present update the connection IP(s) list (strip duplicates)
+            // Trigger DNS lookup with callback to update DNS records upon completion
+
+            // Fetch DOM window associated with this request
+            var nC = http_channel.notificationCallbacks;
+            if (!nC) {
+                nC = http_channel.loadGroup.notificationCallbacks;
+            }
+            if (!nC) {
+                // Unable to determine which window intiated this http request
+                log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Unable to determine notificationCallbacks for this http_channel", 1);
+                return;
+            }
+
+            try {
+                domWindow = nC.getInterface(Components.interfaces.nsIDOMWindow).top;
+                domWindowUtils = domWin.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
+                domWindowInner = domWinUtils.currentInnerWindowID;
+                domWindowOuter = domWinUtils.outerWindowID;
+
+                original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);
+            }
+            catch (e) {
+                // HTTP response is in response to a non-DOM source - ignore these
+                return;
+            }
+
+            // Detect new page loads by checking if flag LOAD_INITIAL_DOCUMENT_URI is set
+            if (http_channel.loadFlags & Ci.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
+                // What does this identity assignment do in practice? How does this detect new windows?
+                new_page = original_window === original_window.top;
+            }
+
+            // Create a new host entry for this host to add to the cache array
+            new_entry = {
+                host: http_channel.URI.prePath,
+                address: http_channel_internal.remoteAddress,
+                address_family: (channel.remoteAddress.indexOf(":") == -1 ? 4 : 6),
+                mainhost: false,
+                dns: [],
+                dns_cancel: function () {}
+            };
+
+            if (new_page) {
+                // New page, since inner window ID hasn't been set yet we need to store any
+                // new connections until such a time as it is, these get stored in the RequestWaitingList
+                // which is keyed by the outer window ID
+                var hosts = [];
+                if (RequestWaitingList[domWindowOuter]) {
+                    hosts = RequestWaitingList[domWindowOuter];
+                }
+                // If host already in list update IP address if needed
+                hosts.filter(function (element, index, thearray) {
+                    if (element.host === new_entry.host) {
+                        if (element.address !== new_entry.address) {
+                            log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
+                            element.address = new_entry.address;
+                        }
+                    }
+                });
+                // If host not already in list add it
+                if (!hosts.some(function (element, index, thearray) {
+                    log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
+                    hosts.push(new_entry);
+                }));
+                RequestWaitingList[domWindowOuter] = hosts;
+                log("Sixornot - HTTP_REQUEST_OBSERVER - New page load complete", 1);
+            }
+            else {
+                // Not new, inner window ID will be correct by now so add entries to RequestCache
+                var hosts = [];
+                if (RequestCache[domWindowInner]) {
+                    hosts = RequestCache[domWindowInner];
+                }
+                // If host already in list update IP address if needed
+                hosts.filter(function (element, index, thearray) {
+                    if (element.host === new_entry.host) {
+                        if (element.address !== new_entry.address) {
+                            log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
+                            element.address = new_entry.address;
+                        }
+                    }
+                });
+                // If host not already in list add it
+                if (!hosts.some(function (element, index, thearray) {
+                    log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
+                    hosts.push(new_entry);
+                }));
+                RequestCache[domWindowInner] = hosts;
+
+                // Execute callbacks (TODO)
+
+                log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load complete", 1);
+            }
+
+        }
+        else if (aTopic === "content-document-global-created") {
+            log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created", 1);
+            // This signals that the document has been created, initial load completed
+            // This is where entries on the RequestWaitingList get moved to the RequestCache
+            domWindow = aSubject;
+            domWindowUtils = domWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
+            domWindowInner = domWindowUtils.currentInnerWindowID;
+            domWindowOuter = domWindowUtils.outerWindowID;
+
+            log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created: Inner Window ID: " + domWindowInner + ", Outer Window ID: " + domWindowOuter + ", Location: " + domWindow.location, 1);
+
+            if (!RequestWaitingList[domWindowOuter]) {
+                return;
+            }
+
+            if (RequestCache[domWindowInner]) {
+                throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: RequestCache already contains content entries."
+            }
+
+            hosts = RequestWaitingList[domWindowOuter];
+            hosts.unshift(hosts.pop());
+            hosts[0].mainhost = true;
+            RequestCache[domWindowInner] = hosts;
+
+            // Execute callbacks (TODO)
+
+            delete RequestWaitingList[domWindowOuter];
+
+        }
+        else if (aTopic === "inner-window-destroyed") {
+            domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
+            delete RequestCache[domWindowInner];
+            log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 1);
+        }
+        else if (aTopic === "outer-window-destroyed") {
+            domWindowOuter = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
+            delete RequestWaitingList[domWindowOuter];
+            log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 1);
+        }
+        else {
+            log("Sixornot - HTTP_REQUEST_OBSERVER - other, ignored (" + aTopic + ")", 1);
+        }
+    },
+
+    get observer_service() {
+        return Components.classes["@mozilla.org/observer-service;1"]
+                         .getService(Components.interfaces.nsIObserverService);
+    },
+
+    register: function () {
+        log("Sixornot - HTTP_REQUEST_OBSERVER - register", 2);
+        this.observer_service.addObserver(this, "http-on-examine-response", false);
+        this.observer_service.addObserver(this, "content-document-global-created", false);
+        this.observer_service.addObserver(this, "inner-window-destroyed", false);
+        this.observer_service.addObserver(this, "outer-window-destroyed", false);
+    },
+
+    unregister: function () {
+        log("Sixornot - HTTP_REQUEST_OBSERVER - unregister", 2);
+        this.observer_service.removeObserver(this, "http-on-examine-response");
+        this.observer_service.removeObserver(this, "content-document-global-created");
+        this.observer_service.removeObserver(this, "inner-window-destroyed");
+        this.observer_service.removeObserver(this, "outer-window-destroyed");
     }
 };
 
@@ -281,6 +499,12 @@ PREF_OBSERVER_DNS = {
 /*
     Core functionality
 */
+
+// main called for each new window via watchWindows
+// inserts code into browser
+// Listeners which trigger events should occur at the global level above this (e.g. httpeventlistener etc.)
+
+
 main = function (win)
 {
     var contentDoc, url, host, ipv4s, ipv6s, localipv4s, localipv6s,
@@ -1249,12 +1473,13 @@ startup = function (aData, aReason)
         watchWindows(main);
 
         log("Sixornot - startup - setting up prefs observer...", 2);
-        prefs = PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
-        prefs.addObserver("", PREF_OBSERVER, false);
+        PREF_OBSERVER.register();
 
         log("Sixornot - startup - setting up dns prefs observer...", 2);
-        prefs_dns = PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2);
-        prefs_dns.addObserver("", PREF_OBSERVER_DNS, false);
+        PREF_OBSERVER_DNS.register();
+
+        log("Sixornot - startup - setting up http observer...", 2);
+        HTTP_REQUEST_OBSERVER.register();
 
     });
 };
@@ -1280,13 +1505,14 @@ shutdown = function (aData, aReason)
         // Shutdown dns_handler
         dns_handler.shutdown();
 
-        // Remove preferences observer
-        prefs = PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
-        prefs.removeObserver("", PREF_OBSERVER);
+        log("Sixornot - shutdown - removing prefs observer...", 2);
+        PREF_OBSERVER.unregister();
 
-        // Remove DNS preferences observer
-        prefs = PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2);
-        prefs.removeObserver("", PREF_OBSERVER_DNS);
+        log("Sixornot - shutdown - removing dns prefs observer...", 2);
+        PREF_OBSERVER_DNS.unregister();
+
+        log("Sixornot - shutdown - removing http observer...", 2);
+        HTTP_REQUEST_OBSERVER.unregister();
 
         // Remove resource substitution which was set up in startup method
         resource = Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
