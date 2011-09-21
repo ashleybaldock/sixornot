@@ -841,6 +841,8 @@ insert_code = function (win) {
             var hosts = RequestCache[currentTabInnerID];
              
             if (typeof(hosts) === "undefined") {
+                // TODO - fallback to DNS lookup of current name
+                //      - store this in the cache
                 return;
             }
              
@@ -860,13 +862,10 @@ insert_code = function (win) {
         update_state = function (evt) {
             log("Sixornot - insert_code:add_addressicon:update_state - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id, 2);
             // Ignore updates for windows other than this one
-            if (evt.outer_id !== domWindowOuter) {
-                log("Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", domWindowOuter is: " + domWindowOuter, 1);
+            if (evt.outer_id !== currentTabOuterID) {
+                log("Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
                 return;
             }
-
-            // Ignore events for windows other than this one
-            // Filter evt by window ID?? TODO
 
             log("Sixornot - main:add_addressicon - callback: update_state", 1);
             // Do everything needed to update the icon
@@ -876,11 +875,15 @@ insert_code = function (win) {
             var hosts = RequestCache[currentTabInnerID];
              
             if (typeof(hosts) === "undefined") {
+                // TODO - fallback to DNS lookup of current name
+                //      - store this in the cache
+                log("Sixornot - main:add_addressicon - callback: update_state - typeof(hosts) is undefined!", 1);
                 return;
             }
              
             /* The first entry may not always be the main host */
             if (hosts[0].mainhost) {
+                log("Sixornot - main:add_addressicon - callback: update_state - updating icon!", 1);
                 set_icon(get_icon_source(hosts[0]));
             }
         };
