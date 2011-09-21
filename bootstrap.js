@@ -142,6 +142,11 @@ var NS_XUL,
     xulRuntime;
 
 
+var localipv4s = [];
+var localipv6s = [];
+
+
+
 var RequestCache = [];
 var RequestWaitingList = [];
 
@@ -320,23 +325,23 @@ PREF_OBSERVER_DNS = {
 /* Observes HTTP requests to determine the details of all browser connections */
 var HTTP_REQUEST_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
-        var notifcationCallbacks, domWindow, domWindowUtils, domWindowInner, domWindowOuter, original_window, new_page;
+        var notifcationCallbacks, domWindow, domWindowUtils, domWindowInner, domWindowOuter, original_window, new_page, remoteAddress;
         log("Sixornot - HTTP_REQUEST_OBSERVER - (" + aTopic + ")", 1);
-        if (aTopic === "http-on-examine-response") {
+        if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response", 1);
             http_channel = aSubject.QueryInterface(Components.interfaces.nsIHttpChannel);
             http_channel_internal = aSubject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
             try {
                 // TODO in case this fails we should add it, but with a blank address/address_family
                 // And still perform DNS lookup!
-                http_channel_internal.remoteAddress;
+                remoteAddress = http_channel_internal.remoteAddress;
             }
             catch (e) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
+                remoteAddress = "";
             }
 
-            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.spec + " (" + http_channel_internal.remoteAddress + ")", 1);
-
+            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress ? remoteAddress : "FROM_CACHE") + ")", 1);
 
             // Create new entry for this domain in the current window's cache (if not already present)
             // If already present update the connection IP(s) list (strip duplicates)
@@ -377,8 +382,8 @@ var HTTP_REQUEST_OBSERVER = {
             new_entry = {
                 // TODO Should this be hostPort? Since we could connect using v4/v6 on different ports?
                 host: http_channel.URI.host,
-                address: http_channel_internal.remoteAddress,
-                address_family: (http_channel_internal.remoteAddress.indexOf(":") == -1 ? 4 : 6),
+                address: remoteAddress,
+                address_family: (remoteAddress !== "" ? (remoteAddress.indexOf(":") === -1 ? 4 : 6) : 0),
                 mainhost: false,
                 ipv6s: [],
                 ipv4s: [],
@@ -396,7 +401,7 @@ var HTTP_REQUEST_OBSERVER = {
                 // If host already in list update IP address if needed
                 hosts.filter(function (element, index, thearray) {
                     if (element.host === new_entry.host) {
-                        if (element.address !== new_entry.address) {
+                        if (element.address !== new_entry.address && new_entry.address !== "") {
                             log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
@@ -412,8 +417,7 @@ var HTTP_REQUEST_OBSERVER = {
                 }
                 RequestWaitingList[domWindowOuter] = hosts;
                 log("Sixornot - HTTP_REQUEST_OBSERVER - New page load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
-            }
-            else {
+            } else {
                 // Not new, inner window ID will be correct by now so add entries to RequestCache
                 var hosts = [];
                 if (RequestCache[domWindowInner]) {
@@ -422,7 +426,7 @@ var HTTP_REQUEST_OBSERVER = {
                 // If host already in list update IP address if needed
                 hosts.filter(function (element, index, thearray) {
                     if (element.host === new_entry.host) {
-                        if (element.address !== new_entry.address) {
+                        if (element.address !== new_entry.address && new_entry.address !== "") {
                             log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
@@ -438,11 +442,9 @@ var HTTP_REQUEST_OBSERVER = {
                 };
                 RequestCache[domWindowInner] = hosts;
 
-                // Execute callbacks (TODO)
-                /* RequestCallbacks.forEach(function (element) {
-                    log("running callback: " + element, 1);
-                    element(domWindowOuter, new_entry);
-                }); */
+                // TODO Trigger DNS lookup for host with a callback which updates the entry to fill in its' ipv6s and ipv4s fields
+                // This should probably also trigger a change event to force a refresh of any listeners for this window
+
                 // Create a page change event
                 var evt = domWindow.document.createEvent("CustomEvent");
                 evt.initCustomEvent("sixornot-page-change-event", true, true, null);
@@ -454,8 +456,7 @@ var HTTP_REQUEST_OBSERVER = {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
             }
 
-        }
-        else if (aTopic === "content-document-global-created") {
+        } else if (aTopic === "content-document-global-created") {
             log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created", 1);
             // This signals that the document has been created, initial load completed
             // This is where entries on the RequestWaitingList get moved to the RequestCache
@@ -475,15 +476,20 @@ var HTTP_REQUEST_OBSERVER = {
                 throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: RequestCache already contains content entries."
             }
 
+            // aData contains origin, compare
+
+            // TODO does this code really work?!
+            // No it doesn't, need a more intelligent way to work out the main site
+            // Maybe just match it to the URL displayed in the frame when displaying icon?
             hosts = RequestWaitingList[domWindowOuter];
             hosts.unshift(hosts.pop());
             hosts[0].mainhost = true;
             RequestCache[domWindowInner] = hosts;
+            delete RequestCache[domWindowOuter];
 
-            // Execute callbacks (TODO)
-            /* RequestCallbacks.forEach(function (element) {
-                element(domWindowOuter, new_entry);
-            }); */
+            // TODO Trigger DNS lookup for all hosts from the waiting list with a callback which updates the entry to fill in its' ipv6s and ipv4s fields
+            // This should probably also trigger a change event to force a refresh of any listeners for this window
+
             // Create a page change event
             var evt = domWindow.top.document.createEvent("CustomEvent");
             evt.initCustomEvent("sixornot-page-change-event", true, true, null);
@@ -492,18 +498,15 @@ var HTTP_REQUEST_OBSERVER = {
             // Dispatch the event
             var cancelled = domWindow.top.dispatchEvent(evt)
 
-        }
-        else if (aTopic === "inner-window-destroyed") {
+        } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
             delete RequestCache[domWindowInner];
             log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 1);
-        }
-        else if (aTopic === "outer-window-destroyed") {
+        } else if (aTopic === "outer-window-destroyed") {
             domWindowOuter = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
             delete RequestWaitingList[domWindowOuter];
             log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 1);
-        }
-        else {
+        } else {
             log("Sixornot - HTTP_REQUEST_OBSERVER - other, ignored (" + aTopic + ")", 1);
         }
     },
@@ -519,6 +522,10 @@ var HTTP_REQUEST_OBSERVER = {
         this.observer_service.addObserver(this, "content-document-global-created", false);
         this.observer_service.addObserver(this, "inner-window-destroyed", false);
         this.observer_service.addObserver(this, "outer-window-destroyed", false);
+
+        this.observer_service.addObserver(this, "http-on-modify-request", false);
+        this.observer_service.addObserver(this, "http-on-examine-cached-response", false);
+        this.observer_service.addObserver(this, "dom-window-destroyed", false);
     },
 
     unregister: function () {
@@ -527,6 +534,10 @@ var HTTP_REQUEST_OBSERVER = {
         this.observer_service.removeObserver(this, "content-document-global-created");
         this.observer_service.removeObserver(this, "inner-window-destroyed");
         this.observer_service.removeObserver(this, "outer-window-destroyed");
+
+        this.observer_service.removeObserver(this, "http-on-modify-request");
+        this.observer_service.removeObserver(this, "http-on-examine-cached-response");
+        this.observer_service.removeObserver(this, "dom-window-destroyed");
     }
 };
 
@@ -574,7 +585,8 @@ element.removeEventListener("sixornot-page-change-event", function (), false); *
 insert_code = function (win) {
     var doc, onMenuCommand,
         add_mainui, add_addressicon, get_icon_source,
-        update_menu_content, update_tooltip_content;
+        update_menu_content, update_tooltip_content,
+        getCurrentHost;
 
     doc = win.document;
 
@@ -607,6 +619,11 @@ insert_code = function (win) {
             log("Sixornot - main:onMenuCommand - set boolean pref value: " + commandString + " to " + toggle, 2);
             PREF_BRANCH_SIXORNOT.setBoolPref(commandString, toggle);
         }
+    };
+
+    /* Return the host part of the current window's location */
+    getCurrentHost = function () {
+        return win.content.document.location.hostname;
     };
 
     /* Loads the button and tooltip/menu into the current window
@@ -670,23 +687,26 @@ insert_code = function (win) {
 
         // TODO move this up a level to allow other functions to use it
         setCurrentTabIDs = function () {
+            log("Sixornot - insert_code:add_mainui:setCurrentTabIDs", 1);
             var domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
             domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                                 .getInterface(Components.interfaces.nsIDOMWindowUtils);
 
             currentTabInnerID = domWindowUtils.currentInnerWindowID;
             currentTabOuterID = domWindowUtils.outerWindowID;
-
+            log("Sixornot - insert_code:add_mainui:setCurrentTabIDs, outer: " + currentTabOuterID + ", inner: " + currentTabInnerID, 1);
         };
 
-        // TODO update this
+        /* */
         tabselect_handler = function (evt) {
+            log("Sixornot - insert_code:add_mainui:tabselect_handler, previous tab IDs: inner: " + currentTabInnerID + ", outer: " + currentTabOuterID, 1);
             setCurrentTabIDs();
              
             /* Set state appropriately for the new tab. */
             var hosts = RequestCache[currentTabInnerID];
              
             if (typeof(hosts) === "undefined") {
+                // TODO fallback to default behaviour
                 return;
             }
              
@@ -702,18 +722,21 @@ insert_code = function (win) {
               button.setAdditional(AF_INET6, true); */
         };
 
-        //function update_state (updatedOuterID, newentry)
         update_state = function (evt) {
+            log("Sixornot - insert_code:add_mainui:update_state - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id, 1);
+            log("Sixornot - insert_code:add_mainui:update_state, outer: " + currentTabOuterID + ", inner: " + currentTabInnerID, 1);
+            // Set current tab ID before comparison to ensure we match event properties
+            setCurrentTabIDs();
             // Ignore updates for windows other than this one
-            if (updatedOuterID !== domWindowOuter) {
-                log("Callback ID mismatch: updatedOuterID is: " + updatedOuterID + ", domWindowOuter is: " + domWindowOuter, 1);
+            if (evt.outer_id !== currentTabOuterID) {
+                log("Sixornot - insert_code:add_mainui - callback: update_state - Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
                 return;
             }
 
             // Ignore events for windows other than this one
             // Filter evt by window ID?? TODO
 
-            log("Sixornot - main:add_addressicon - callback: update_state", 1);
+            log("Sixornot - main:add_mainui - callback: update_state", 1);
             // Do everything needed to update the icon
             // Call common update method, then do specific updating steps
 
@@ -724,10 +747,13 @@ insert_code = function (win) {
                 return;
             }
              
-            /* The first entry may not always be the main host */
-            if (hosts[0].mainhost) {
-                set_icon(get_icon_source(hosts[0]));
-            }
+            /* Parse array searching for the main host (which matches the current location) */
+            hosts.forEach(function (element, index, thearray) {
+                if (element.host === getCurrentHost()) {
+                    log("Sixornot - main:add_addressicon - callback: update_state - updating icon!", 1);
+                    set_icon(get_icon_source(element));
+                }
+            });
         };
 
         /* We need the current outer tab ID to be set before
@@ -742,9 +768,6 @@ insert_code = function (win) {
             log("Sixornot - Unload main UI for a window...", 2);
             // Cancel any active DNS lookups for this window
             dns_handler.cancel_request(dns_request);
-
-            // Clear interval
-            // win.clearInterval(pollLoopID);
 
             // Clear event handlers
             win.removeEventListener("aftercustomization", toggle_customise, false);
@@ -858,12 +881,14 @@ insert_code = function (win) {
               button.setAdditional(AF_INET6, true); */
         };
 
-        //function update_state (updatedOuterID, newentry)
         update_state = function (evt) {
             log("Sixornot - insert_code:add_addressicon:update_state - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id, 2);
+            log("Sixornot - insert_code:add_addressicon:update_state, outer: " + currentTabOuterID + ", inner: " + currentTabInnerID, 1);
+            // Set current tab ID before comparison to ensure we match event properties
+            setCurrentTabIDs();
             // Ignore updates for windows other than this one
             if (evt.outer_id !== currentTabOuterID) {
-                log("Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
+                log("Sixornot - insert_code:add_addressicon - callback: update_state - Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
                 return;
             }
 
@@ -874,33 +899,26 @@ insert_code = function (win) {
             /* Set state appropriately for the new tab. */
             var hosts = RequestCache[currentTabInnerID];
              
-            if (typeof(hosts) === "undefined") {
+            if (!hosts) {
                 // TODO - fallback to DNS lookup of current name
                 //      - store this in the cache
                 log("Sixornot - main:add_addressicon - callback: update_state - typeof(hosts) is undefined!", 1);
                 return;
             }
              
-            /* The first entry may not always be the main host */
-            if (hosts[0].mainhost) {
-                log("Sixornot - main:add_addressicon - callback: update_state - updating icon!", 1);
-                set_icon(get_icon_source(hosts[0]));
-            }
+            /* Parse array searching for the main host (which matches the current location) */
+            hosts.forEach(function (element, index, thearray) {
+                if (element.host === getCurrentHost()) {
+                    log("Sixornot - main:add_addressicon - callback: update_state - updating icon!", 1);
+                    set_icon(get_icon_source(element));
+                }
+            });
         };
 
         /* We need the current outer tab ID to be set before
            the user has switched tabs for the first time. */
         log("Sixornot - insert_code:add_addressicon - calling setCurrentTabIDs", 2);
         setCurrentTabIDs();
-
-        /* Finally register for updates, when the location changes this function is called
-        RequestCallbacks.push(update_state);
-        // Add callback to unload array to remove this registration for updates
-        unload(function () {
-            RequestCallbacks = RequestCallbacks.filter(function (element) {
-                return element != update_state;    // TODO check this works
-            });
-        }, win, true); */
 
         // Register for page change events
         log("Sixornot - insert_code:add_addressicon - registering listeners", 2);
@@ -1114,34 +1132,60 @@ insert_code = function (win) {
     // Update the contents of the tooltip whenever it is shown
     // Value of "this" will be the tooltip (since this is an event handler)
     update_tooltip_content = function (evt) {
-        var tooltip, grid, rows, i, add_tt_title_line, add_tt_labeled_line, extraString, extraLine, test_global4, test_global6, domWindow, domWindowUtils, domWindowInner, domWindowOuter, hosts;
+        var tooltip, grid, rows, i, add_title_line, add_labeled_line, extraString,
+            extraLine, test_global4, test_global6, domWindow, domWindowUtils,
+            domWindowInner, domWindowOuter, hosts, add_v6_line, add_v4_line, add_host_line,
+            add_line;
         log("Sixornot - main:update_tooltip_content", 2);
         // log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ", 2);
         tooltip = this;
 
-        // New functionality, get IDs for lookup
-        domWindow = win.gBrowser.mCurrentBrowser.contentWindow;
-        domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
-        domWindowInner = domWindowUtils.currentInnerWindowID;
-        domWindowOuter = domWindowUtils.outerWindowID;
+        add_line = function (labelName, labelStyle, valueName, valueStyle) {
+            var row, label, value;
+            log("Sixornot - main:update_tooltip_content:add_v6_line - labelName: " + labelName + ", labelStyle: " + labelStyle + ", valueName: " + valueName + ", valueStyle: " + valueStyle, 2);
+            row = doc.createElementNS(NS_XUL, "row");
+            label = doc.createElementNS(NS_XUL, "label");
+            value = doc.createElementNS(NS_XUL, "label");
 
-        hosts = RequestCache[domWindowInner];
+            label.setAttribute("value", labelName);
+            label.setAttribute("style", labelStyle);
+            value.setAttribute("value", valueName);
+            value.setAttribute("style", valueStyle);
 
-        // First element of hosts will provide IP addresses for tooltip display (detail view)
-        // TODO this function needs completely rewriting!
+            row.appendChild(label);
+            row.appendChild(value);
+            rows.appendChild(row);
+        };
+        add_v6_line = function (address) {
+            add_line(" ", "", address, "color: #0F0;");
+        };
+        add_v4_line = function (address) {
+            add_line(" ", "", address, "color: #F00;");
+        };
+        add_host_line = function (host, address, address_family) {
+            if (address_family === 4) {
+                add_line(host, "", address, "color: #F00;");
+            } else if (address_family === 6) {
+                add_line(host, "", address, "color: #0F0;");
+            } else {
+                // Error invalid family
+                add_line(host, "", "No address", "color: #00F;");
+            }
+        };
+        add_bold_host_line = function (host, address, address_family) {
+            if (address_family === 4) {
+                add_line(host, "font-weight: bold;", address, "color: #F00;");
+            } else if (address_family === 6) {
+                add_line(host, "font-weight: bold;", address, "color: #0F0;");
+            } else {
+                // Invalid family or no address
+                add_line(host, "font-weight: bold;", "No address", "color: #00F;");
+            }
+        };
 
-
-        // Clear previously generated tooltip, if one exists
-        while (tooltip.firstChild) {
-            tooltip.removeChild(tooltip.firstChild);
-        }
-
-        grid = doc.createElement("grid");
-        rows = doc.createElement("rows");
-
-        add_tt_title_line = function (labelName) {
+        add_title_line = function (labelName) {
             var label, value;
-            log("Sixornot - main:update_tooltip_content:add_tt_title_line - labelName: " + labelName, 2);
+            log("Sixornot - main:update_tooltip_content:add_title_line - labelName: " + labelName, 2);
             label = doc.createElementNS(NS_XUL, "label");
 
             label.setAttribute("value", labelName);
@@ -1149,9 +1193,9 @@ insert_code = function (win) {
             rows.appendChild(label);
         };
 
-        add_tt_warning_line = function (labelName) {
+        add_warning_line = function (labelName) {
             var label, value;
-            log("Sixornot - main:update_tooltip_content:add_tt_warning_line - labelName: " + labelName, 2);
+            log("Sixornot - main:update_tooltip_content:add_warning_line - labelName: " + labelName, 2);
             label = doc.createElementNS(NS_XUL, "label");
 
             label.setAttribute("value", labelName);
@@ -1159,9 +1203,9 @@ insert_code = function (win) {
             rows.appendChild(label);
         };
 
-        add_tt_labeled_line = function (labelName, lineValue, italic) {
+        add_labeled_line = function (labelName, lineValue, italic) {
             var row, label, value;
-            log("Sixornot - main:update_tooltip_content:add_tt_labeled_line - labelName: " + labelName + ", lineValue: " + lineValue + ", italic: " + italic, 2);
+            log("Sixornot - main:update_tooltip_content:add_labeled_line - labelName: " + labelName + ", lineValue: " + lineValue + ", italic: " + italic, 2);
             row = doc.createElementNS(NS_XUL, "row");
             label = doc.createElementNS(NS_XUL, "label");
             value = doc.createElementNS(NS_XUL, "label");
@@ -1186,58 +1230,57 @@ insert_code = function (win) {
         test_global6 = function (item) {
             return dns_handler.typeof_ip6(item) === "global";
         };
+        // Clear previously generated tooltip, if one exists
+        while (tooltip.firstChild) {
+            tooltip.removeChild(tooltip.firstChild);
+        }
+
+        grid = doc.createElement("grid");
+        rows = doc.createElement("rows");
+
+        // New functionality, get IDs for lookup
+        domWindow = win.gBrowser.mCurrentBrowser.contentWindow;
+        domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
+        domWindowInner = domWindowUtils.currentInnerWindowID;
+        domWindowOuter = domWindowUtils.outerWindowID;
+
+        hosts = RequestCache[domWindowInner];
+
+        add_host = function (host, index, myarray) {
+            if (host.host === getCurrentHost()) {
+                // Full details
+                add_bold_host_line(host.host, host.address, host.address_family);
+                host.ipv6s.forEach(function (address, index, addresses) {
+                    add_v6_line(address);
+                });
+                host.ipv4s.forEach(function (address, index, addresses) {
+                    add_v4_line(address);
+                });
+            } else {
+                // Summary
+                add_host_line(host.host, host.address, host.address_family);
+            }
+        };
 
 
+        // Warnings
+        if (dns_handler.is_ip6_disabled()) {
+            add_warning_line(gt("warn_ip6_disabled"));
+        }
+
+        /* if (dns_handler.is_ip4only_domain(host)) {       TODO
+            add_warning_line(gt("warn_ip4only_domain"));
+        } */
 
         // New functionality
-        if (typeof(hosts) === "undefined") {
-            add_tt_warning_line("no hosts found, inner ID: " + domWindowInner + ", outer ID: " + domWindowOuter, "");
+        if (!hosts) {
+            add_title_line(gt("header_remote"), "");
+            add_warning_line("no hosts found, inner ID: " + domWindowInner + ", outer ID: " + domWindowOuter, "");
         } else {
-            for (i = 0; i < hosts.length; i++) {
-                add_tt_labeled_line(hosts[i].host, hosts[i].address);
-            }
+            hosts.forEach(add_host);
         }
 
-
-
-
-        if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "") {
-            add_tt_title_line(gt("header_remote"), "");
-        }
-
-        if (dns_handler.is_ip6_disabled()) {
-            add_tt_warning_line(gt("warn_ip6_disabled"));
-        }
-
-        if (host !== "") {
-            if (dns_handler.is_ip4only_domain(host)) {
-                add_tt_warning_line(gt("warn_ip4only_domain"));
-            }
-            add_tt_labeled_line(gt("prefix_domain"), host);
-        }
-
-        // Add IPv6 address(es) to tooltip with special case if only one
-        if (ipv6s.length === 1) {
-            log("Sixornot - ipv6s.length is 1");
-            add_tt_labeled_line(gt("prefix_v6_single"), ipv6s[0]);
-        } else if (ipv6s.length > 1) {
-            log("Sixornot - ipv6s.length is > 1");
-            add_tt_labeled_line(gt("prefix_v6_multi"), ipv6s[0]);
-            for (i = 1; i < ipv6s.length; i += 1) {
-                add_tt_labeled_line(" ", ipv6s[i]);
-            }
-        }
-
-        // Add IPv4 address(es) to tooltip with special case if only one
-        if (ipv4s.length === 1) {
-            add_tt_labeled_line(gt("prefix_v4_single"), ipv4s[0]);
-        } else if (ipv4s.length > 1) {
-            add_tt_labeled_line(gt("prefix_v4_multi"), ipv4s[0]);
-            for (i = 1; i < ipv4s.length; i += 1) {
-                add_tt_labeled_line(" ", ipv4s[i]);
-            }
-        }
-
+        /* Add local IP addresses, only show proper addresses unless setting set */
         if (get_bool_pref("showallips")) {
             l6_filtered = localipv6s;
             l4_filtered = localipv4s;
@@ -1247,34 +1290,34 @@ insert_code = function (win) {
         }
         // Add local IP address information if available
         if (l4_filtered.length !== 0 || l6_filtered.length !== 0) {
-            add_tt_labeled_line();
-            add_tt_title_line(gt("header_local"));
-            add_tt_labeled_line(gt("prefix_host"), dnsService.myHostName);
+            add_labeled_line();
+            add_title_line(gt("header_local"));
+            add_labeled_line(gt("prefix_host"), dnsService.myHostName);
         }
 
         // Add local IPv6 address(es) to tooltip with special case if only one
         if (l6_filtered.length === 1) {
-            add_tt_labeled_line(gt("prefix_v6_single"), l6_filtered[0], test_global6(!l6_filtered[0]));
+            add_labeled_line(gt("prefix_v6_single"), l6_filtered[0], test_global6(!l6_filtered[0]));
         } else if (l6_filtered.length > 1) {
-            add_tt_labeled_line(gt("prefix_v6_multi"), l6_filtered[0], test_global6(!l6_filtered[0]));
+            add_labeled_line(gt("prefix_v6_multi"), l6_filtered[0], test_global6(!l6_filtered[0]));
             for (i = 1; i < l6_filtered.length; i += 1) {
-                add_tt_labeled_line(" ", l6_filtered[i], test_global6(!l6_filtered[i]));
+                add_labeled_line(" ", l6_filtered[i], test_global6(!l6_filtered[i]));
             }
         }
 
         // Add local IPv4 address(es) to tooltip with special case if only one
         if (l4_filtered.length === 1) {
-            add_tt_labeled_line(gt("prefix_v4_single"), l4_filtered[0], test_global4(!l4_filtered[0]));
+            add_labeled_line(gt("prefix_v4_single"), l4_filtered[0], test_global4(!l4_filtered[0]));
         } else if (l4_filtered.length > 1) {
-            add_tt_labeled_line(gt("prefix_v4_multi"), l4_filtered[0], test_global4(!l4_filtered[0]));
+            add_labeled_line(gt("prefix_v4_multi"), l4_filtered[0], test_global4(!l4_filtered[0]));
             for (i = 1; i < l4_filtered.length; i += 1) {
-                add_tt_labeled_line(" ", l4_filtered[i], test_global4(!l4_filtered[i]));
+                add_labeled_line(" ", l4_filtered[i], test_global4(!l4_filtered[i]));
             }
         }
 
         // TODO - Replace this with an array mapping/lookup table
         // TODO - If a special location is set no need to do any of the IP address stuff!
-        if (specialLocation) {
+/*        if (specialLocation) {
             if (specialLocation[0] === "localfile") {
                 extraString = gt("other_localfile");
             } else if (specialLocation[0] === "lookuperror") {
@@ -1294,7 +1337,7 @@ insert_code = function (win) {
                 extraLine.setAttribute("style", "font-style: italic;");
             }
             rows.appendChild(extraLine);
-        }
+        } */
 
         grid.appendChild(rows);
         tooltip.appendChild(grid);
