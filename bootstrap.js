@@ -146,6 +146,40 @@ var localipv4s = [];
 var localipv6s = [];
 
 
+/*
+
+Cache
+
+Request Cache - keyed by ID, list of all hosts contacted per page
+
+Data should be cached at time of retrieval
+Cached http responses don't get IPs, so in these cases the DNS results
+would need to be used instead
+DNS is cached itself, so no need to have a second cache for it
+And the DNS results ought to all be cached since we've been visiting the pages
+
+DNS callbacks should update the arrays which have already been added to the cache
+They should also emit an event for the icons to listen for and update themselves
+
+Deleting an item from the cache should cancel any DNS callbacks currently running
+
+Icons updated when:
+Current tab changes
+New page loaded in etc.
+DNS lookup callback returns
+Show an icon/display tooltip text to indicate that a request for a host was served entirely from the local cache and thus no IP addresses come into play
+
+Bold text/icon to indicate the active connection
+
+Menu should contain submenus for each component of the page to permit copying to clipboard
+
+Replace this all later with a panel which will do both tooltip+menu functionality?
+Or use panel for info + copy addresses, menu for settings?
+Or use the new settings functionality which is available for restartless now?
+
+*/
+
+
 
 var RequestCache = [];
 var RequestWaitingList = [];
@@ -482,8 +516,6 @@ var HTTP_REQUEST_OBSERVER = {
             // No it doesn't, need a more intelligent way to work out the main site
             // Maybe just match it to the URL displayed in the frame when displaying icon?
             hosts = RequestWaitingList[domWindowOuter];
-            hosts.unshift(hosts.pop());
-            hosts[0].mainhost = true;
             RequestCache[domWindowInner] = hosts;
             delete RequestCache[domWindowOuter];
 
@@ -582,13 +614,27 @@ element.addEventListener("sixornot-page-change-event", function (), false);
 element.removeEventListener("sixornot-page-change-event", function (), false); */
 
 
+/* Should be called once for each window of the browser */
 insert_code = function (win) {
     var doc, onMenuCommand,
         add_mainui, add_addressicon, get_icon_source,
         update_menu_content, update_tooltip_content,
+        currentTabInnerID, currentTabOuterID, setCurrentTabIDs,
         getCurrentHost;
 
     doc = win.document;
+
+    // TODO move this up a level to allow other functions to use it
+    setCurrentTabIDs = function () {
+        log("Sixornot - insert_code:setCurrentTabIDs", 1);
+        var domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
+        domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                            .getInterface(Components.interfaces.nsIDOMWindowUtils);
+
+        currentTabInnerID = domWindowUtils.currentInnerWindowID;
+        currentTabOuterID = domWindowUtils.outerWindowID;
+        log("Sixornot - insert_code:setCurrentTabIDs, outer: " + currentTabOuterID + ", inner: " + currentTabInnerID, 1);
+    };
 
     // Called whenever an item on the menu is clicked and bound to each menu item as an event handler
     // Look up appropriate action by ID and perform that action
@@ -630,8 +676,9 @@ insert_code = function (win) {
        and registers unload() callbacks to remove them again */
     add_mainui = function () {
         var tooltip, toolbarPopupMenu, toolbarButton, toolbarId, toolbar,
-            nextItem, tabselect_handler,
-            set_icon, setCurrentTabIDs, tabselect_handler, update_state;
+            nextItem,
+            domWindow, domWindowUtils, domWindowInner, domWindowOuter,
+            page_change_handler, tabselect_handler, update_icon;
         log("Sixornot - insert_code:add_mainui", 2);
 
         tooltip = doc.createElementNS(NS_XUL, "tooltip");
@@ -681,86 +728,67 @@ insert_code = function (win) {
         // win.addEventListener("offline", onChangedOnlineStatus, false); TODO
         win.addEventListener("aftercustomization", toggle_customise, false);
 
-        set_icon = function (source) {
-            toolbarButton.style.listStyleImage = "url('" + source + "')";
-        };
-
-        // TODO move this up a level to allow other functions to use it
-        setCurrentTabIDs = function () {
-            log("Sixornot - insert_code:add_mainui:setCurrentTabIDs", 1);
-            var domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
-            domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                .getInterface(Components.interfaces.nsIDOMWindowUtils);
-
-            currentTabInnerID = domWindowUtils.currentInnerWindowID;
-            currentTabOuterID = domWindowUtils.outerWindowID;
-            log("Sixornot - insert_code:add_mainui:setCurrentTabIDs, outer: " + currentTabOuterID + ", inner: " + currentTabInnerID, 1);
-        };
-
-        /* */
-        tabselect_handler = function (evt) {
-            log("Sixornot - insert_code:add_mainui:tabselect_handler, previous tab IDs: inner: " + currentTabInnerID + ", outer: " + currentTabOuterID, 1);
-            setCurrentTabIDs();
-             
-            /* Set state appropriately for the new tab. */
+        /* Updates the icon to reflect state of the currently displayed page */
+        update_icon = function () {
+            log("Sixornot - insert_code:add_mainui:update_icon", 1);
+            /* Change icon to reflect status of current tab */
             var hosts = RequestCache[currentTabInnerID];
              
-            if (typeof(hosts) === "undefined") {
-                // TODO fallback to default behaviour
-                return;
-            }
-             
-            /* The first entry may not always be the main host */
-            if (hosts[0].mainhost) {
-                set_icon(get_icon_source(hosts[0]));
-            }
-             
-            /* var additionalhosts = hosts.slice(hosts[0].isMainHost ? 1 : 0);
-            if (additionalhosts.some(function(el) el.family == AF_INET))
-              button.setAdditional(AF_INET, true);
-            if (additionalhosts.some(function(el) el.family == AF_INET6))
-              button.setAdditional(AF_INET6, true); */
-        };
-
-        update_state = function (evt) {
-            log("Sixornot - insert_code:add_mainui:update_state - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id, 1);
-            log("Sixornot - insert_code:add_mainui:update_state, outer: " + currentTabOuterID + ", inner: " + currentTabInnerID, 1);
-            // Set current tab ID before comparison to ensure we match event properties
-            setCurrentTabIDs();
-            // Ignore updates for windows other than this one
-            if (evt.outer_id !== currentTabOuterID) {
-                log("Sixornot - insert_code:add_mainui - callback: update_state - Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
-                return;
-            }
-
-            // Ignore events for windows other than this one
-            // Filter evt by window ID?? TODO
-
-            log("Sixornot - main:add_mainui - callback: update_state", 1);
-            // Do everything needed to update the icon
-            // Call common update method, then do specific updating steps
-
-            /* Set state appropriately for the new tab. */
-            var hosts = RequestCache[currentTabInnerID];
-             
-            if (typeof(hosts) === "undefined") {
+            if (!hosts) {
+                // Analyse current location, see if it's not a valid page
+                // TODO - fallback to DNS lookup of current name
+                //      - store this in the cache
+                log("Sixornot - main:add_mainui - callback: update_state - typeof(hosts) is undefined!", 1);
+                set_icon(s_other_16);
                 return;
             }
              
             /* Parse array searching for the main host (which matches the current location) */
             hosts.forEach(function (element, index, thearray) {
                 if (element.host === getCurrentHost()) {
-                    log("Sixornot - main:add_addressicon - callback: update_state - updating icon!", 1);
-                    set_icon(get_icon_source(element));
+                    log("Sixornot - main:add_mainui - callback: update_state - updating icon!", 1);
+                    toolbarButton.style.listStyleImage = "url('" + get_icon_source(element) + "')";
                 }
             });
         };
 
+        /* Called whenever the current window's active tab is changed
+           Calls the update method for the icon */
+        tabselect_handler = function (evt) {
+            log("Sixornot - insert_code:add_mainui:tabselect_handler", 2);
+            setCurrentTabIDs();
+             
+            /* Set state appropriately for the new tab. */
+            var hosts = RequestCache[currentTabInnerID];
+
+            update_icon();
+        };
+
+        /* Called whenever a Sixornot page change event is emitted
+           Calls the update method for the icon, but only if the event applies to us */
+        // TODO bind event to outer window such that we only ever hear events intended for us
+        page_change_handler = function (evt) {
+            log("Sixornot - insert_code:add_mainui:page_change_handler - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            // Set current tab ID before comparison to ensure we match event properties
+            setCurrentTabIDs();
+
+            // Ignore updates for windows other than this one
+            if (evt.outer_id !== currentTabOuterID) {
+                log("Sixornot - insert_code:add_mainui - callback: update_state - Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
+                return;
+            }
+
+            update_icon();
+        };
+
         /* We need the current outer tab ID to be set before
            the user has switched tabs for the first time. */
+        log("Sixornot - insert_code:add_mainui - calling setCurrentTabIDs", 2);
         setCurrentTabIDs();
+
         // Register for page change events
-        win.addEventListener("sixornot-page-change-event", update_state, false);
+        log("Sixornot - insert_code:add_mainui - registering listeners", 2);
+        win.addEventListener("sixornot-page-change-event", page_change_handler, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
 
         // Add a callback to our unload list to remove the UI when addon is disabled
@@ -777,7 +805,7 @@ insert_code = function (win) {
             toolbarPopupMenu.removeEventListener("popupshowing", update_menu_content, false);
             toolbarPopupMenu.removeEventListener("command", onMenuCommand, false);
             // Clear change event handlers
-            win.removeEventListener("sixornot-page-change-event", update_state, false);
+            win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
 
             // Remove UI
@@ -790,8 +818,7 @@ insert_code = function (win) {
     add_addressicon = function () {
         var addressPopupMenu, addressIcon, addressButton, urlbaricons, starbutton,
             domWindow, domWindowUtils, domWindowInner, domWindowOuter,
-            currentTabInnerID, currentTabOuterID,
-            set_icon, setCurrentTabIDs, tabselect_handler, update_state;
+            page_change_handler, tabselect_handler, update_icon;
         log("Sixornot - insert_code:add_addressicon", 2);
 
         addressPopupMenu = doc.createElementNS(NS_XUL, "menupopup");
@@ -841,68 +868,21 @@ insert_code = function (win) {
 
         set_icon = function (source) {
             log("Sixornot - insert_code:add_addressicon:set_icon", 2);
-            addressIcon.src = source;
         };
 
-        // TODO move this up a level to allow other functions to use it
-        setCurrentTabIDs = function () {
-            log("Sixornot - insert_code:add_addressicon:setCurrentTabIDs", 2);
-            var domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
-            domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                .getInterface(Components.interfaces.nsIDOMWindowUtils);
 
-            currentTabInnerID = domWindowUtils.currentInnerWindowID;
-            currentTabOuterID = domWindowUtils.outerWindowID;
-        };
-
-        // TODO update this
-        tabselect_handler = function (evt) {
-            log("Sixornot - insert_code:add_addressicon:tabselect_handler", 2);
-            setCurrentTabIDs();
-             
-            /* Set state appropriately for the new tab. */
-            var hosts = RequestCache[currentTabInnerID];
-             
-            if (typeof(hosts) === "undefined") {
-                // TODO - fallback to DNS lookup of current name
-                //      - store this in the cache
-                return;
-            }
-             
-            /* The first entry may not always be the main host */
-            if (hosts[0].mainhost) {
-                set_icon(get_icon_source(hosts[0]));
-            }
-             
-            /* var additionalhosts = hosts.slice(hosts[0].isMainHost ? 1 : 0);
-            if (additionalhosts.some(function(el) el.family == AF_INET))
-              button.setAdditional(AF_INET, true);
-            if (additionalhosts.some(function(el) el.family == AF_INET6))
-              button.setAdditional(AF_INET6, true); */
-        };
-
-        update_state = function (evt) {
-            log("Sixornot - insert_code:add_addressicon:update_state - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id, 2);
-            log("Sixornot - insert_code:add_addressicon:update_state, outer: " + currentTabOuterID + ", inner: " + currentTabInnerID, 1);
-            // Set current tab ID before comparison to ensure we match event properties
-            setCurrentTabIDs();
-            // Ignore updates for windows other than this one
-            if (evt.outer_id !== currentTabOuterID) {
-                log("Sixornot - insert_code:add_addressicon - callback: update_state - Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
-                return;
-            }
-
-            log("Sixornot - main:add_addressicon - callback: update_state", 1);
-            // Do everything needed to update the icon
-            // Call common update method, then do specific updating steps
-
-            /* Set state appropriately for the new tab. */
+        /* Updates the icon to reflect state of the currently displayed page */
+        update_icon = function () {
+            log("Sixornot - insert_code:add_addressicon:update_icon", 1);
+            /* Change icon to reflect status of current tab */
             var hosts = RequestCache[currentTabInnerID];
              
             if (!hosts) {
+                // Analyse current location, see if it's not a valid page
                 // TODO - fallback to DNS lookup of current name
                 //      - store this in the cache
                 log("Sixornot - main:add_addressicon - callback: update_state - typeof(hosts) is undefined!", 1);
+                set_icon(s_other_16);
                 return;
             }
              
@@ -910,9 +890,38 @@ insert_code = function (win) {
             hosts.forEach(function (element, index, thearray) {
                 if (element.host === getCurrentHost()) {
                     log("Sixornot - main:add_addressicon - callback: update_state - updating icon!", 1);
-                    set_icon(get_icon_source(element));
+                    addressIcon.src = get_icon_source(element);
                 }
             });
+        };
+
+        /* Called whenever the current window's active tab is changed
+           Calls the update method for the icon */
+        tabselect_handler = function (evt) {
+            log("Sixornot - insert_code:add_addressicon:tabselect_handler", 2);
+            setCurrentTabIDs();
+             
+            /* Set state appropriately for the new tab. */
+            var hosts = RequestCache[currentTabInnerID];
+
+            update_icon();
+        };
+
+        /* Called whenever a Sixornot page change event is emitted
+           Calls the update method for the icon, but only if the event applies to us */
+        // TODO bind event to outer window such that we only ever hear events intended for us
+        page_change_handler = function (evt) {
+            log("Sixornot - insert_code:add_addressicon:page_change_handler - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            // Set current tab ID before comparison to ensure we match event properties
+            setCurrentTabIDs();
+
+            // Ignore updates for windows other than this one
+            if (evt.outer_id !== currentTabOuterID) {
+                log("Sixornot - insert_code:add_addressicon - callback: update_state - Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
+                return;
+            }
+
+            update_icon();
         };
 
         /* We need the current outer tab ID to be set before
@@ -922,7 +931,7 @@ insert_code = function (win) {
 
         // Register for page change events
         log("Sixornot - insert_code:add_addressicon - registering listeners", 2);
-        win.addEventListener("sixornot-page-change-event", update_state, false);
+        win.addEventListener("sixornot-page-change-event", page_change_handler, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
 
         // Add a callback to unload to remove this icon
@@ -933,7 +942,7 @@ insert_code = function (win) {
             addressPopupMenu.removeEventListener("popupshowing", update_menu_content, false);
             addressPopupMenu.removeEventListener("command", onMenuCommand, false);
             // Clear change event handlers
-            win.removeEventListener("sixornot-page-change-event", update_state, false);
+            win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
 
             // Remove UI
