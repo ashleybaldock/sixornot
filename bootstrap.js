@@ -186,12 +186,8 @@ var RequestWaitingList = [];
 
 // TODO - periodic refresh of local addresses + store these globally
 
-// All of these are called each time a new request happens
-// This would be better done with a custom event listener!
-var RequestCallbacks = [];
 
-
-    xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService( Components.interfaces.nsIXULRuntime );
+xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService( Components.interfaces.nsIXULRuntime );
 
 NS_XUL          = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
@@ -1363,9 +1359,6 @@ insert_code = function (win) {
     // Create button
     log("Sixornot - insert_code: add mainui", 1);
     add_mainui();
-
-    // Callback added to RequestCallbacks
-    // EventListener added for TabSelect
 
 };
 
