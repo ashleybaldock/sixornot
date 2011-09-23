@@ -355,7 +355,9 @@ PREF_OBSERVER_DNS = {
 /* Observes HTTP requests to determine the details of all browser connections */
 var HTTP_REQUEST_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
-        var notifcationCallbacks, domWindow, domWindowUtils, domWindowInner, domWindowOuter, original_window, new_page, remoteAddress;
+        var notifcationCallbacks, domWindow, domWindowUtils, domWindowInner,
+            domWindowOuter, original_window, new_page, remoteAddress,
+            lookupIPs;
         log("Sixornot - HTTP_REQUEST_OBSERVER - (" + aTopic + ")", 1);
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response", 1);
@@ -417,7 +419,32 @@ var HTTP_REQUEST_OBSERVER = {
                 mainhost: false,
                 ipv6s: [],
                 ipv4s: [],
+                dns_status: "ready",
                 dns_cancel: function () {}
+            };
+
+            /* Create closure containing reference to element and trigger async lookup with callback */
+            lookupIPs = function (entry) {
+                var onReturnedIPs;
+                /* When DNS lookup is completed for a cache entry, update its IP address information */
+                onReturnedIPs = function (remoteips) {
+                    entry.dns_cancel = null;
+                    if (remoteips[0] === "FAIL")
+                    {
+                        entry.ipv6s = [];
+                        entry.ipv4s = [];
+                        entry.dns_status = "failure";
+                    } else {
+                        entry.ipv6s = remoteips.filter(dns_handler.is_ip6);
+                        entry.ipv4s = remoteips.filter(dns_handler.is_ip4);
+                        entry.dns_status = "complete";
+                    }
+                    // Also trigger page change event here to refresh display of IP tooltip TODO
+                };
+                if (entry.dns_cancel) {
+                    entry.dns_cancel();
+                }
+                entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, onReturnedIPs);
             };
 
             if (new_page) {
@@ -435,6 +462,9 @@ var HTTP_REQUEST_OBSERVER = {
                             log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
+                            // TODO - maybe have lookupIPs be a method of the entry object?
+                            lookupIPs(element);
+                            //element.lookupIPs();
                         }
                     }
                 });
@@ -444,6 +474,9 @@ var HTTP_REQUEST_OBSERVER = {
                 })) {
                     log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
                     hosts.push(new_entry);
+                    // Trigger new DNS lookup for the new host entry
+                    lookupIPs(new_entry);
+                    //new_entry.lookupIPs();
                 }
                 RequestWaitingList[domWindowOuter] = hosts;
                 log("Sixornot - HTTP_REQUEST_OBSERVER - New page load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
@@ -460,6 +493,9 @@ var HTTP_REQUEST_OBSERVER = {
                             log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
+                            // TODO - maybe have lookupIPs be a method of the entry object?
+                            lookupIPs(element);
+                            //element.lookupIPs();
                         }
                     }
                 });
@@ -469,11 +505,11 @@ var HTTP_REQUEST_OBSERVER = {
                 })) {
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
                     hosts.push(new_entry);
+                    // Trigger new DNS lookup for the new host entry
+                    lookupIPs(new_entry);
+                    //new_entry.lookupIPs();
                 };
                 RequestCache[domWindowInner] = hosts;
-
-                // TODO Trigger DNS lookup for host with a callback which updates the entry to fill in its' ipv6s and ipv4s fields
-                // This should probably also trigger a change event to force a refresh of any listeners for this window
 
                 // Create a page change event
                 var evt = domWindow.document.createEvent("CustomEvent");
@@ -506,17 +542,8 @@ var HTTP_REQUEST_OBSERVER = {
                 throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: RequestCache already contains content entries."
             }
 
-            // aData contains origin, compare
-
-            // TODO does this code really work?!
-            // No it doesn't, need a more intelligent way to work out the main site
-            // Maybe just match it to the URL displayed in the frame when displaying icon?
-            hosts = RequestWaitingList[domWindowOuter];
-            RequestCache[domWindowInner] = hosts;
-            delete RequestCache[domWindowOuter];
-
-            // TODO Trigger DNS lookup for all hosts from the waiting list with a callback which updates the entry to fill in its' ipv6s and ipv4s fields
-            // This should probably also trigger a change event to force a refresh of any listeners for this window
+            // Move item(s) from waiting list to cache
+            RequestCache[domWindowInner] = RequestWaitingList.splice(domWindowOuter, 1)[0];
 
             // Create a page change event
             var evt = domWindow.top.document.createEvent("CustomEvent");
@@ -1147,7 +1174,7 @@ insert_code = function (win) {
 
         add_line = function (labelName, labelStyle, valueName, valueStyle) {
             var row, label, value;
-            log("Sixornot - main:update_tooltip_content:add_v6_line - labelName: " + labelName + ", labelStyle: " + labelStyle + ", valueName: " + valueName + ", valueStyle: " + valueStyle, 2);
+            log("Sixornot - main:update_tooltip_content:add_line - labelName: " + labelName + ", labelStyle: " + labelStyle + ", valueName: " + valueName + ", valueStyle: " + valueStyle, 2);
             row = doc.createElementNS(NS_XUL, "row");
             label = doc.createElementNS(NS_XUL, "label");
             value = doc.createElementNS(NS_XUL, "label");
@@ -1252,7 +1279,7 @@ insert_code = function (win) {
         hosts = RequestCache[domWindowInner];
 
         add_host = function (host, index, myarray) {
-            if (host.host === getCurrentHost()) {
+            if (true || host.host === getCurrentHost()) {
                 // Full details
                 add_bold_host_line(host.host, host.address, host.address_family);
                 host.ipv6s.forEach(function (address, index, addresses) {
@@ -1413,24 +1440,6 @@ main = function (win)
         // If we've changed pages before completing a lookup, then abort the old request first
         dns_handler.cancel_request(dns_request);
         dns_request = null;
-
-        // TODO - this is duplicated with the one in update_icon - move out?
-        set_icon = function (icon)
-        {
-            // If this is null, address icon isn't showing
-            if (addressIcon !== null)
-            {
-                addressIcon.src = icon;
-            }
-            toolbarButton.style.listStyleImage = "url('" + icon + "')";
-        };
-
-        // Tries to update icon based on protocol type (e.g. for local pages which don't need to be looked up)
-        // If this fails returns false and we need to do lookup
-        if (update_icon())
-        {
-            return;
-        }
 
         // Need to look up host
         try
