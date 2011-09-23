@@ -1275,8 +1275,14 @@ insert_code = function (win) {
             if (true || host.host === getCurrentHost()) {
                 // Full details
                 add_bold_host_line(host.host, host.address, host.address_family);
+                host.ipv6s.sort(function (a, b) {
+                    return dns_handler.sort_ip6.call(dns_handler, a, b);
+                });
                 host.ipv6s.forEach(function (address, index, addresses) {
                     add_v6_line(address);
+                });
+                host.ipv4s.sort(function (a, b) {
+                    return dns_handler.sort_ip4.call(dns_handler, a, b);
                 });
                 host.ipv4s.forEach(function (address, index, addresses) {
                     add_v4_line(address);
