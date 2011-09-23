@@ -60,6 +60,8 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+/*jslint white: true */
+
 // Provided by Firefox:
 /*global Components, Services, APP_SHUTDOWN, AddonManager */
 
@@ -122,6 +124,7 @@ var NS_XUL,
     // Global functions
     // Main functionality
     main,
+    insert_code,
     startup,
     shutdown,
     install,
@@ -133,8 +136,10 @@ var NS_XUL,
     set_iconset,
     toggle_customise,
     get_bool_pref,
+    get_int_pref,
     get_current_window,
-    gbi,set_initial_prefs,
+    gbi,
+    set_initial_prefs,
     parse_exception,
     crop_trailing_char,
     defineLazyGetter,
@@ -186,8 +191,7 @@ var RequestWaitingList = [];
 
 // TODO - periodic refresh of local addresses + store these globally
 
-
-xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService( Components.interfaces.nsIXULRuntime );
+xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService(Components.interfaces.nsIXULRuntime);
 
 NS_XUL          = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
@@ -242,7 +246,7 @@ log = (function ()
         {
         }
         // Fallback hard-coded default
-        return PREFS["loglevel"];
+        return PREFS.loglevel;
     };
     return function (message, level)
     {
@@ -287,7 +291,7 @@ PREF_OBSERVER = {
         {
             log("Sixornot - PREF_OBSERVER - loglevel has changed", 1);
             // Ensure dns_worker is at the same loglevel
-            dns_handler.set_worker_loglevel(PREF_BRANCH_SIXORNOT.getIntPref("loglevel"))
+            dns_handler.set_worker_loglevel(PREF_BRANCH_SIXORNOT.getIntPref("loglevel"));
         }
         if (aData === "overridelocale")
         {
@@ -300,15 +304,13 @@ PREF_OBSERVER = {
         }
     },
 
-    get nsIPB2() {
-        return PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2);
-    },
+    nsIPB2: PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2),
 
     register: function () {
         log("Sixornot - PREF_OBSERVER - register", 2);
         this.nsIPB2.addObserver("", PREF_OBSERVER, false);
     },
-   
+
     unregister: function () {
         log("Sixornot - PREF_OBSERVER - unregister", 2);
         this.nsIPB2.removeObserver("", PREF_OBSERVER);
@@ -336,15 +338,13 @@ PREF_OBSERVER_DNS = {
         }
     },
 
-    get nsIPB2() {
-        return PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2);
-    },
+    nsIPB2: PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2),
 
     register: function () {
         log("Sixornot - PREF_OBSERVER_DNS - register", 2);
         this.nsIPB2.addObserver("", PREF_OBSERVER_DNS, false);
     },
-   
+
     unregister: function () {
         log("Sixornot - PREF_OBSERVER_DNS - unregister", 2);
         this.nsIPB2.removeObserver("", PREF_OBSERVER_DNS);
@@ -357,7 +357,7 @@ var HTTP_REQUEST_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         var notifcationCallbacks, domWindow, domWindowUtils, domWindowInner,
             domWindowOuter, original_window, new_page, remoteAddress,
-            lookupIPs;
+            lookupIPs, http_channel, http_channel_internal, nC, new_entry, hosts, evt, cancelled;
         log("Sixornot - HTTP_REQUEST_OBSERVER - (" + aTopic + ")", 1);
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response", 1);
@@ -373,14 +373,14 @@ var HTTP_REQUEST_OBSERVER = {
                 remoteAddress = "";
             }
 
-            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress ? remoteAddress : "FROM_CACHE") + ")", 1);
+            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
             // Create new entry for this domain in the current window's cache (if not already present)
             // If already present update the connection IP(s) list (strip duplicates)
             // Trigger DNS lookup with callback to update DNS records upon completion
 
             // Fetch DOM window associated with this request
-            var nC = http_channel.notificationCallbacks;
+            nC = http_channel.notificationCallbacks;
             if (!nC) {
                 nC = http_channel.loadGroup.notificationCallbacks;
             }
@@ -405,7 +405,9 @@ var HTTP_REQUEST_OBSERVER = {
             }
 
             // Detect new page loads by checking if flag LOAD_INITIAL_DOCUMENT_URI is set
+            /*jslint bitwise: true */
             if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
+            /*jslint bitwise: false */
                 // What does this identity assignment do in practice? How does this detect new windows?
                 new_page = original_window === original_window.top;
             }
@@ -451,7 +453,7 @@ var HTTP_REQUEST_OBSERVER = {
                 // New page, since inner window ID hasn't been set yet we need to store any
                 // new connections until such a time as it is, these get stored in the RequestWaitingList
                 // which is keyed by the outer window ID
-                var hosts = [];
+                hosts = [];
                 if (RequestWaitingList[domWindowOuter]) {
                     hosts = RequestWaitingList[domWindowOuter];
                 }
@@ -482,7 +484,7 @@ var HTTP_REQUEST_OBSERVER = {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - New page load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
             } else {
                 // Not new, inner window ID will be correct by now so add entries to RequestCache
-                var hosts = [];
+                hosts = [];
                 if (RequestCache[domWindowInner]) {
                     hosts = RequestCache[domWindowInner];
                 }
@@ -508,16 +510,16 @@ var HTTP_REQUEST_OBSERVER = {
                     // Trigger new DNS lookup for the new host entry
                     lookupIPs(new_entry);
                     //new_entry.lookupIPs();
-                };
+                }
                 RequestCache[domWindowInner] = hosts;
 
                 // Create a page change event
-                var evt = domWindow.document.createEvent("CustomEvent");
+                evt = domWindow.document.createEvent("CustomEvent");
                 evt.initCustomEvent("sixornot-page-change-event", true, true, null);
                 evt.outer_id = domWindowOuter;
                 evt.inner_id = domWindowInner;
                 // Dispatch the event
-                var cancelled = domWindow.dispatchEvent(evt)
+                cancelled = domWindow.dispatchEvent(evt);
 
                 log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
             }
@@ -546,12 +548,12 @@ var HTTP_REQUEST_OBSERVER = {
             RequestCache[domWindowInner] = RequestWaitingList.splice(domWindowOuter, 1)[0];
 
             // Create a page change event
-            var evt = domWindow.top.document.createEvent("CustomEvent");
+            evt = domWindow.top.document.createEvent("CustomEvent");
             evt.initCustomEvent("sixornot-page-change-event", true, true, null);
             evt.outer_id = domWindowOuter;
             evt.inner_id = domWindowInner;
             // Dispatch the event
-            var cancelled = domWindow.top.dispatchEvent(evt)
+            cancelled = domWindow.top.dispatchEvent(evt);
 
         } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
@@ -566,10 +568,8 @@ var HTTP_REQUEST_OBSERVER = {
         }
     },
 
-    get observer_service() {
-        return Components.classes["@mozilla.org/observer-service;1"]
-                         .getService(Components.interfaces.nsIObserverService);
-    },
+    observer_service: Components.classes["@mozilla.org/observer-service;1"]
+                         .getService(Components.interfaces.nsIObserverService),
 
     register: function () {
         log("Sixornot - HTTP_REQUEST_OBSERVER - register", 2);
@@ -643,14 +643,15 @@ insert_code = function (win) {
         add_mainui, add_addressicon, get_icon_source,
         update_menu_content, update_tooltip_content,
         currentTabInnerID, currentTabOuterID, setCurrentTabIDs,
-        getCurrentHost;
+        getCurrentHost,
+        domWindow, domWindowUtils;
 
     doc = win.document;
 
     // TODO move this up a level to allow other functions to use it
     setCurrentTabIDs = function () {
         log("Sixornot - insert_code:setCurrentTabIDs", 1);
-        var domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
+        domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
         domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                             .getInterface(Components.interfaces.nsIDOMWindowUtils);
 
@@ -737,7 +738,7 @@ insert_code = function (win) {
 
         // Add tooltip to urlbar (has to be added to something)
         gbi(doc, "urlbar-icons").appendChild(tooltip);
- 
+
         // Move to location specified in prefs
         toolbarId = PREF_BRANCH_SIXORNOT.getCharPref(PREF_TOOLBAR);
         toolbar = toolbarId && gbi(doc, toolbarId);
@@ -756,16 +757,16 @@ insert_code = function (win) {
             log("Sixornot - insert_code:add_mainui:update_icon", 1);
             /* Change icon to reflect status of current tab */
             var hosts = RequestCache[currentTabInnerID];
-             
+
             if (!hosts) {
                 // Analyse current location, see if it's not a valid page
                 // TODO - fallback to DNS lookup of current name
                 //      - store this in the cache
                 log("Sixornot - main:add_mainui - callback: update_state - typeof(hosts) is undefined!", 1);
-                set_icon(s_other_16);
+                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
                 return;
             }
-             
+
             /* Parse array searching for the main host (which matches the current location) */
             hosts.forEach(function (element, index, thearray) {
                 if (element.host === getCurrentHost()) {
@@ -780,7 +781,7 @@ insert_code = function (win) {
         tabselect_handler = function (evt) {
             log("Sixornot - insert_code:add_mainui:tabselect_handler", 2);
             setCurrentTabIDs();
-             
+
             /* Set state appropriately for the new tab. */
             var hosts = RequestCache[currentTabInnerID];
 
@@ -817,9 +818,6 @@ insert_code = function (win) {
         // Add a callback to our unload list to remove the UI when addon is disabled
         unload(function () {
             log("Sixornot - Unload main UI for a window...", 2);
-            // Cancel any active DNS lookups for this window
-            dns_handler.cancel_request(dns_request);
-
             // Clear event handlers
             win.removeEventListener("aftercustomization", toggle_customise, false);
             // win.removeEventListener("offline", onChangedOnlineStatus, false); TODO
@@ -889,26 +887,21 @@ insert_code = function (win) {
             urlbaricons.insertBefore(addressButton, starbutton);
         }
 
-        set_icon = function (source) {
-            log("Sixornot - insert_code:add_addressicon:set_icon", 2);
-        };
-
-
         /* Updates the icon to reflect state of the currently displayed page */
         update_icon = function () {
             log("Sixornot - insert_code:add_addressicon:update_icon", 1);
             /* Change icon to reflect status of current tab */
             var hosts = RequestCache[currentTabInnerID];
-             
+
             if (!hosts) {
                 // Analyse current location, see if it's not a valid page
                 // TODO - fallback to DNS lookup of current name
                 //      - store this in the cache
                 log("Sixornot - main:add_addressicon - callback: update_state - typeof(hosts) is undefined!", 1);
-                set_icon(s_other_16);
+                addressIcon.src = sother_16;
                 return;
             }
-             
+
             /* Parse array searching for the main host (which matches the current location) */
             hosts.forEach(function (element, index, thearray) {
                 if (element.host === getCurrentHost()) {
@@ -923,7 +916,7 @@ insert_code = function (win) {
         tabselect_handler = function (evt) {
             log("Sixornot - insert_code:add_addressicon:tabselect_handler", 2);
             setCurrentTabIDs();
-             
+
             /* Set state appropriately for the new tab. */
             var hosts = RequestCache[currentTabInnerID];
 
@@ -1010,7 +1003,7 @@ insert_code = function (win) {
                     if (localipv6s.length === 0) {
                         // Actual is unknown, DNS is v4 + v6, Local is v4 -> Orange
                         return s4pot6_16;
-                    } else if (dns_handler.is_ip4only_domain(host)) {
+                    } else if (dns_handler.is_ip4only_domain(record.host)) {
                         // Always Orange if ip4only set + we have a local v6
                         return s4pot6_16;
                     } else {
@@ -1445,7 +1438,7 @@ main = function (win)
         try
         {
             host = crop_trailing_char(contentDoc.location.hostname, ".");
-        } 
+        }
         catch (e)
         {
             log("Sixornot - Unable to determine host from page URL");
@@ -1654,10 +1647,6 @@ main = function (win)
         specialLocation = null;
         return true;
     };
-
-
-;
-
 
     // Online/Offline events can trigger multiple times
     // reset contentDoc so that the next time the timer fires it'll be updated
