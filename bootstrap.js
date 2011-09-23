@@ -963,13 +963,10 @@ insert_code = function (win) {
             update_icon();
         };
 
-        /* We need the current outer tab ID to be set before
-           the user has switched tabs for the first time. */
-        log("Sixornot - insert_code:add_addressicon - calling setCurrentTabIDs", 2);
+        /* Ensure tab ID is set upon loading into window */
         setCurrentTabIDs();
 
         // Register for page change events
-        log("Sixornot - insert_code:add_addressicon - registering listeners", 2);
         win.addEventListener("sixornot-page-change-event", page_change_handler, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
 
@@ -1332,8 +1329,6 @@ insert_code = function (win) {
         while (panel.firstChild) {
             panel.removeChild(panel.firstChild);
         }
-
-        add_title_line(gt("header_remote"), "");
 
         if (!hosts) {
             add_warning_line("no hosts found", "");
