@@ -656,7 +656,6 @@ insert_code = function (win) {
     var doc, onMenuCommand,
         create_button, create_addressbaricon, create_panel,
         get_icon_source,
-        update_menu_content, update_tooltip_content,
         currentTabInnerID, currentTabOuterID, setCurrentTabIDs,
         getCurrentHost,
         update_panel;
@@ -963,6 +962,9 @@ insert_code = function (win) {
     };
 
     /* Returns the correct icon source entry for a given record */
+    // TODO
+    // Expand this to account for proxies, cached files etc.
+    // Also account for error conditions, e.g. using v4 with no v4 in DNS
     get_icon_source = function (record) {
         if (record.address_family === 4) {
             if (record.ipv6s.length !== 0) {
@@ -1017,10 +1019,9 @@ insert_code = function (win) {
 
     // Update the contents of the popupMenu whenever it is opened
     // Value of "this" will be the menu (since this is an event handler)
-    update_menu_content = function (evt) {
+/*    update_menu_content = function (evt) {
         var i, popupMenu, add_menu_item, add_toggle_menu_item, add_disabled_menu_item, add_menu_separator, remotestring, localstring, test_global4, test_global6;
         log("Sixornot - main:update_menu_content", 2);
-        // log("Sixornot - ipv4s: " + ipv4s + ", ipv6s: " + ipv6s + ", localipv4s: " + localipv4s + ", localipv6s: " + localipv6s + ", ", 2);
         // Set value so that functions within this one can still access correct value of "this"
         popupMenu = this;
 
@@ -1146,7 +1147,7 @@ insert_code = function (win) {
         add_menu_item(gt("gotowebsite"),
                       gt("tt_gotowebsite"),
                       "gotow" + "http://entropy.me.uk/sixornot/");
-    };
+    }; */
 
     update_panel = function (evt) {
         var panel, grid, rows, hosts,
@@ -1314,142 +1315,15 @@ insert_code = function (win) {
         panel.appendChild(grid);
     };
 
-    // Update the contents of the tooltip whenever it is shown
-    // Value of "this" will be the tooltip (since this is an event handler)
-    update_tooltip_content = function (evt) {
-        var tooltip, grid, rows, i, extraString,
-            extraLine, domWindow, domWindowUtils,
-            domWindowInner, domWindowOuter, hosts, add_host,
-            add_v6_line, add_v4_line, add_host_line, add_bold_host_line,
-            add_warning_line, add_blank_line, add_title_line, add_line,
-            l4_filtered, l6_filtered;
-        log("Sixornot - main:update_tooltip_content", 2);
-
-        tooltip = this;
-
-        add_line = function (labelName, labelStyle, valueName, valueStyle) {
-            var row, label, value;
-            log("Sixornot - main:update_tooltip_content:add_line - labelName: " + labelName + ", labelStyle: " + labelStyle + ", valueName: " + valueName + ", valueStyle: " + valueStyle, 2);
-            // Defaults
-            labelName = labelName || " ";
-            labelStyle = labelStyle || " ";
-            valueName = valueName || null;
-            valueStyle = valueStyle || null;
-            // If value is null, single item line, else 2 item line
-            if (valueName === null) {
-                label = doc.createElementNS(NS_XUL, "label");
-
-                label.setAttribute("value", labelName);
-                label.setAttribute("style", labelStyle);
-
-                rows.appendChild(label);
-            } else {
-                row = doc.createElementNS(NS_XUL, "row");
-                label = doc.createElementNS(NS_XUL, "label");
-                value = doc.createElementNS(NS_XUL, "label");
-
-                label.setAttribute("value", labelName);
-                label.setAttribute("style", labelStyle);
-                value.setAttribute("value", valueName);
-                value.setAttribute("style", valueStyle);
-
-                row.appendChild(label);
-                row.appendChild(value);
-                rows.appendChild(row);
-            }
-        };
-        add_v6_line = function (address) {
-            add_line(" ", "", address, "color: #0F0;");
-        };
-        add_v4_line = function (address) {
-            add_line(" ", "", address, "color: #F00;");
-        };
-        add_host_line = function (host, address, address_family) {
-            log("Sixornot - main:update_tooltip_content:add_host_line", 2);
-            if (address_family === 4) {
-                add_line(host, "", address, "color: #F00;");
-            } else if (address_family === 6) {
-                add_line(host, "", address, "color: #0F0;");
-            } else {
-                // Error invalid family
-                add_line(host, "", "No address", "color: #00F;");
-            }
-        };
-        add_bold_host_line = function (host, address, address_family) {
-            log("Sixornot - main:update_tooltip_content:add_bold_host_line", 2);
-            if (address_family === 4) {
-                add_line(host, "font-weight: bold;", address, "color: #F00;");
-            } else if (address_family === 6) {
-                add_line(host, "font-weight: bold;", address, "color: #0F0;");
-            } else {
-                // Invalid family or no address
-                add_line(host, "font-weight: bold;", "No address", "color: #00F;");
-            }
-        };
-
-        add_title_line = function (labelName) {
-            log("Sixornot - main:update_tooltip_content:add_title_line - labelName: " + labelName, 2);
-            add_line(labelName, "font-weight: bold; text-align: right;");
-        };
-
-        add_warning_line = function (labelName) {
-            log("Sixornot - main:update_tooltip_content:add_warning_line - labelName: " + labelName, 2);
-            add_line(labelName, "font-weight: bold; text-align: left; color: #F00;");
-        };
-
-        add_blank_line = function () {
-            log("Sixornot - main:update_tooltip_content:add_blank_line", 2);
-            add_line("", "");
-        };
-
-
-        // Clear previously generated tooltip, if one exists
-        while (tooltip.firstChild) {
-            tooltip.removeChild(tooltip.firstChild);
-        }
-
-        grid = doc.createElement("grid");
-        rows = doc.createElement("rows");
-
-        // New functionality, get IDs for lookup
-        domWindow = win.gBrowser.mCurrentBrowser.contentWindow;
-        domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
-        domWindowInner = domWindowUtils.currentInnerWindowID;
-        domWindowOuter = domWindowUtils.outerWindowID;
-
-        hosts = RequestCache[domWindowInner];
-
-        add_host = function (host, index, myarray) {
-            if (true || host.host === getCurrentHost()) {
-                // Full details
-                add_bold_host_line(host.host, host.address, host.address_family);
-                host.ipv6s.sort(function (a, b) {
-                    return dns_handler.sort_ip6.call(dns_handler, a, b);
-                });
-                host.ipv6s.forEach(function (address, index, addresses) {
-                    add_v6_line(address);
-                });
-                host.ipv4s.sort(function (a, b) {
-                    return dns_handler.sort_ip4.call(dns_handler, a, b);
-                });
-                host.ipv4s.forEach(function (address, index, addresses) {
-                    add_v4_line(address);
-                });
-            } else {
-                // Summary
-                add_host_line(host.host, host.address, host.address_family);
-            }
-        };
-
-
+/*              OLD tooltip creation function
         // Warnings
         if (dns_handler.is_ip6_disabled()) {
             add_warning_line(gt("warn_ip6_disabled"));
         }
 
-        /* if (dns_handler.is_ip4only_domain(host)) {       TODO
+        if (dns_handler.is_ip4only_domain(host)) {       TODO
             add_warning_line(gt("warn_ip4only_domain"));
-        } */
+        }
 
         add_title_line(gt("header_remote"), "");
         // New functionality
@@ -1459,7 +1333,7 @@ insert_code = function (win) {
             hosts.forEach(add_host);
         }
 
-        /* Add local IP addresses, only show proper addresses unless setting set */
+        // Add local IP addresses, only show proper addresses unless setting set
         if (get_bool_pref("showallips")) {
             l6_filtered = localipv6s;
             l4_filtered = localipv4s;
@@ -1518,10 +1392,6 @@ insert_code = function (win) {
             }
             rows.appendChild(extraLine);
         } */
-
-        grid.appendChild(rows);
-        tooltip.appendChild(grid);
-    };
 
 
     // Create address bar icon
