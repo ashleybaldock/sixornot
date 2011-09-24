@@ -1293,6 +1293,9 @@ insert_code = function (win) {
                 });
             } else {
                 // Summary
+                // TODO check if host.address is in the ipv6s/ipv4s arrays (it should be)
+                // Then subtract 1 from the number of additional addresses for that array
+                // so that we don't display more addresses than actually exist
                 add_summary_line(host.host, host.address, host.address_family,
                                  get_icon_source(host), host.ipv6s.length, host.ipv4s.length);
             }
@@ -1308,8 +1311,14 @@ insert_code = function (win) {
         if (!hosts) {
             add_warning_line("no hosts found", "");
         } else {
+            // TODO add sorting of hosts
+            // TODO always display matching host first in list
             hosts.forEach(add_host);
         }
+
+        // TODO add local address information
+
+        // TODO add settings controls
 
         grid.appendChild(rows);
         panel.appendChild(grid);
@@ -1321,16 +1330,8 @@ insert_code = function (win) {
             add_warning_line(gt("warn_ip6_disabled"));
         }
 
-        if (dns_handler.is_ip4only_domain(host)) {       TODO
+        if (dns_handler.is_ip4only_domain(host)) {
             add_warning_line(gt("warn_ip4only_domain"));
-        }
-
-        add_title_line(gt("header_remote"), "");
-        // New functionality
-        if (!hosts) {
-            add_warning_line("no hosts found, inner ID: " + domWindowInner + ", outer ID: " + domWindowOuter, "");
-        } else {
-            hosts.forEach(add_host);
         }
 
         // Add local IP addresses, only show proper addresses unless setting set
@@ -1367,7 +1368,6 @@ insert_code = function (win) {
             add_blank_line();
             add_title_line(gt("no_local"));
         }
-
 
         // TODO - Replace this with an array mapping/lookup table
         // TODO - If a special location is set no need to do any of the IP address stuff!
