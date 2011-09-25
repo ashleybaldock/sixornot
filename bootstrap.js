@@ -1198,6 +1198,7 @@ insert_code = function (win) {
                 extra4.setAttribute("value", extra4value);
                 extra4.setAttribute("style", extra4style);
 
+                row.appendChild(doc.createElement("label"));
                 row.appendChild(label);
                 row.appendChild(value);
                 row.appendChild(extra6);
@@ -1212,6 +1213,11 @@ insert_code = function (win) {
            Also adds methods for expand/hide behaviour, click to copy etc. */
         var add_remote_line = function (addto, host, detail) {
             var count4 = 0, count6 = 0;
+
+            // List of all rows to hide when not showing detail
+            var detail_rows = [];
+            var summary_rows = [];
+
             // Get counts
             host.ipv6s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
@@ -1223,100 +1229,238 @@ insert_code = function (win) {
                     count4 += 1;
                 }
             });
+
+            /* Show the detailed info rows, hide summary */
+            var show_detail = function (evt) {
+                evt.stopPropagation();
+                summary_rows.forEach(function (row, index, thearray) {
+                    row.setAttribute("hidden", true);
+                });
+                detail_rows.forEach(function (row, index, thearray) {
+                    row.setAttribute("hidden", false);
+                });
+            };
+            /* Hide the detailed info rows, show summary */
+            var hide_detail = function (evt) {
+                evt.stopPropagation();
+                summary_rows.forEach(function (row, index, thearray) {
+                    row.setAttribute("hidden", false);
+                });
+                detail_rows.forEach(function (row, index, thearray) {
+                    row.setAttribute("hidden", true);
+                });
+            };
+
             // Build UI
             // Summary line
-            var count4text = "", count6text = "";
-            if (count6 > 0) {
-                count6text = "[+" + count6 + "]";
-            }
-            if (count4 > 0) {
-                count4text = "[+" + count4 + "]";
-            }
-            var summary_row = doc.createElement("row");
-            // Icon
-            var icon = doc.createElement("image");
-            icon.setAttribute("width", "16");
-            icon.setAttribute("height", "16");
-            icon.setAttribute("src", get_icon_source(host));
-            // Item count
-            var count = doc.createElement("label");
-            if (host.count > 1) {
-                count.setAttribute("value", "(" + host.count + ")");
-            } else {
-                count.setAttribute("value", "");
-            }
-            count.setAttribute("style", "");
-            // Hostname
-            var hostname = doc.createElement("label");
-            hostname.setAttribute("value", host.host);
-            if (host.host === getCurrentHost()) {
-                // Bold
-                hostname.setAttribute("style", "font-weight: bold;");
-            } else {
-                hostname.setAttribute("style", "font-weight: normal;");
-            }
-            // Connection IP
-            var address = doc.createElement("label");
-            if (host.address_family === 6) {
-                hostname.setAttribute("value", host.address);
-                hostname.setAttribute("style", "color: #0F0;");
-            } else if (host.address_family === 4) {
-                hostname.setAttribute("value", host.address);
-                hostname.setAttribute("style", "color: #F00;");
-            } else {
-                hostname.setAttribute("value", "Cached");
-                hostname.setAttribute("style", "color: #00F;");
-            }
-            // Count of additional v4s (click to expand)
-            var c6 = doc.createElement("label");
-            c6.setAttribute("value", count6text);
-            c6.setAttribute("style", "color: #0F0;");
-            // Count of additional v6s (click to expand)
-            var c4 = doc.createElement("label");
-            c4.setAttribute("value", count4text);
-            c4.setAttribute("style", "color: #F00;");
+            var add_summary_line = function () {
+                var summary_row = doc.createElement("row");
+                // Icon
+                var icon = doc.createElement("image");
+                icon.setAttribute("width", "16");
+                icon.setAttribute("height", "16");
+                icon.setAttribute("src", get_icon_source(host));
+                // Item count
+                var count = doc.createElement("label");
+                if (host.count > 1) {
+                    count.setAttribute("value", "(" + host.count + ")");
+                } else {
+                    count.setAttribute("value", "");
+                }
+                count.setAttribute("style", "");
+                // Hostname
+                var hostname = doc.createElement("label");
+                log("hostname set to: " + host.host, 1);
+                hostname.setAttribute("value", host.host);
+                if (host.host === getCurrentHost()) {
+                    // Bold
+                    hostname.setAttribute("style", "font-weight: bold;");
+                } else {
+                    hostname.setAttribute("style", "font-weight: normal;");
+                }
+                // Connection IP (click to copy)
+                var address = doc.createElement("label");
+                if (host.address_family === 6) {
+                    address.setAttribute("value", host.address);
+                    address.setAttribute("style", "color: #0F0;");
+                } else if (host.address_family === 4) {
+                    address.setAttribute("value", host.address);
+                    address.setAttribute("style", "color: #F00;");
+                } else {
+                    address.setAttribute("value", "Cached");
+                    address.setAttribute("style", "color: #00F;");
+                }
+                // Count of additional v6s (click to expand)
+                var c6 = doc.createElement("label");
+                if (count6 > 0) {
+                    c6.setAttribute("value", "[+" + count6 + "]");
+                    c6.setAttribute("style", "color: #0F0;");
+                    c6.addEventListener("click", show_detail, false);
+                } else {
+                    c6.setAttribute("value", "");
+                }
+                // Count of additional v4s (click to expand)
+                var c4 = doc.createElement("label");
+                if (count4 > 0) {
+                    c4.setAttribute("value", "[+" + count4 + "]");
+                    c4.setAttribute("style", "color: #F00;");
+                    c4.addEventListener("click", show_detail, false);
+                } else {
+                    c4.setAttribute("value", "");
+                }
 
-            summary_row.appendChild(icon);
-            summary_row.appendChild(count);
-            summary_row.appendChild(hostname);
-            summary_row.appendChild(address);
-            summary_row.appendChild(c6);
-            summary_row.appendChild(c4);
+                summary_row.appendChild(icon);
+                summary_row.appendChild(count);
+                summary_row.appendChild(hostname);
+                summary_row.appendChild(address);
+                summary_row.appendChild(c6);
+                summary_row.appendChild(c4);
 
-            addto.appendChild(summary_row);
+                addto.appendChild(summary_row);
+                return summary_row;
+            };
 
 
             // Detail line(s)
+            var add_first_detail_line = function () {
+                var row = doc.createElement("row");
+                // Icon
+                var icon = doc.createElement("image");
+                icon.setAttribute("width", "16");
+                icon.setAttribute("height", "16");
+                icon.setAttribute("src", get_icon_source(host));
+                // Item count
+                var count = doc.createElement("label");
+                if (host.count > 1) {
+                    count.setAttribute("value", "(" + host.count + ")");
+                } else {
+                    count.setAttribute("value", "");
+                }
+                count.setAttribute("style", "");
+                // Hostname
+                var hostname = doc.createElement("label");
+                hostname.setAttribute("value", host.host);
+                if (host.host === getCurrentHost()) {
+                    // Bold
+                    hostname.setAttribute("style", "font-weight: bold;");
+                } else {
+                    hostname.setAttribute("style", "font-weight: normal;");
+                }
+                // Connection IP
+                var address = doc.createElement("label");
+                if (host.address_family === 6) {
+                    address.setAttribute("value", host.address);
+                    address.setAttribute("style", "color: #0F0;");
+                } else if (host.address_family === 4) {
+                    address.setAttribute("value", host.address);
+                    address.setAttribute("style", "color: #F00;");
+                } else {
+                    address.setAttribute("value", "Cached");
+                    address.setAttribute("style", "color: #00F;");
+                }
+
+                // Blank to skip column
+                var blank = doc.createElement("label");
+                blank.setAttribute("value", "");
+                // Count of additional v6s (click to expand)
+                var hide = doc.createElement("label");
+                hide.setAttribute("value", "[Hide]");
+                hide.setAttribute("style", "");
+
+                row.appendChild(icon);
+                row.appendChild(count);
+                row.appendChild(hostname);
+                row.appendChild(address);
+                row.appendChild(blank);
+                row.appendChild(hide);
+                hide.addEventListener("click", hide_detail, false);
+
+                addto.appendChild(row);
+                return row;
+            };
+            var add_detail_line = function (add_address) {
+                var row = doc.createElement("row");
+                // Icon (blank)
+                var icon = doc.createElement("image");
+                icon.setAttribute("width", "16");
+                icon.setAttribute("height", "16");
+                icon.setAttribute("src", "");
+                // Item count (blank)
+                var count = doc.createElement("label");
+                count.setAttribute("value", "");
+                // Hostname (blank)
+                var hostname = doc.createElement("label");
+                hostname.setAttribute("value", "");
+                // Current IP (click to copy)
+                var address = doc.createElement("label");
+                if (dns_handler.is_ip6(add_address)) {
+                    address.setAttribute("value", add_address);
+                    address.setAttribute("style", "color: #0F0;");
+                } else if (dns_handler.is_ip4(add_address)) {
+                    address.setAttribute("value", add_address);
+                    address.setAttribute("style", "color: #F00;");
+                } else {
+                    // Should not happen!
+                    address.setAttribute("value", "ERROR");
+                    address.setAttribute("style", "color: #FF0;");
+                }
+
+                row.appendChild(icon);
+                row.appendChild(count);
+                row.appendChild(hostname);
+                row.appendChild(address);
+
+                addto.appendChild(row);
+                return row;
+            };
+
+            log("1", 1);
             host.ipv6s.sort(function (a, b) {
                 return dns_handler.sort_ip6.call(dns_handler, a, b);
-            });
-            host.ipv6s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    add_v6_line(remote_rows, address);
-                }
             });
             host.ipv4s.sort(function (a, b) {
                 return dns_handler.sort_ip4.call(dns_handler, a, b);
             });
-            host.ipv4s.forEach(function (address, index, addresses) {
+
+            log("2", 1);
+            // Actually add the UI
+            summary_rows.push(add_summary_line());
+            log("3", 1);
+            detail_rows.push(add_first_detail_line());
+            log("4", 1);
+
+            host.ipv6s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
-                    add_v4_line(remote_rows, address);
+                    detail_rows.push(add_detail_line(address));
                 }
             });
-                // If first line
-                    // Icon
-                    // Item count
-                    // Hostname
-                    // Connection IP
-                    // blank
-                    // Collapse
-                // Else
-                    // blank
-                    // blank
-                    // blank
-                    // Connection IP
-                    // blank
-                    // blank
+            log("5", 1);
+            host.ipv4s.forEach(function (address, index, addresses) {
+                if (address !== host.address) {
+                    detail_rows.push(add_detail_line(address));
+                }
+            });
+            log("6", 1);
+
+            // Set what is visible by default based on detail parameter
+            if (detail) {
+                summary_rows.forEach(function (row, index, thearray) {
+                    try {
+                        row.setAttribute("hidden", true);
+                    } catch (e) {
+                        log("Exception: " + e, 0);
+                    }
+                });
+            } else {
+                detail_rows.forEach(function (row, index, thearray) {
+                    try {
+                        row.setAttribute("hidden", true);
+                    } catch (e) {
+                        log("Exception: " + e, 0);
+                    }
+                });
+            }
+            log("7", 1);
         };
 
 
@@ -1396,6 +1540,7 @@ insert_code = function (win) {
             add_warning_line(gt("warn_ip4only_domain"));
         } */
 
+        /* Add remote IP address listing */
         add_line(remote_rows, gt("header_remote"), "text-align: center; font-size: smaller;");
 
         if (!hosts) {
@@ -1404,44 +1549,8 @@ insert_code = function (win) {
             // TODO add sorting of hosts
             // TODO always display matching host first in list
             hosts.forEach(function (host, index, myarray) {
-                var count4 = 0, count6 = 0;
-                log("host.host: " + host.host + ", getCurrentHost(): " + getCurrentHost());
-                if (host.host === getCurrentHost()) {
-                    // Full details
-                    add_bold_host_line(remote_rows, host.count,
-                                       host.host, host.address, host.address_family,
-                                       get_icon_source(host));
-                    host.ipv6s.sort(function (a, b) {
-                        return dns_handler.sort_ip6.call(dns_handler, a, b);
-                    });
-                    host.ipv6s.forEach(function (address, index, addresses) {
-                        if (address !== host.address) {
-                            add_v6_line(remote_rows, address);
-                        }
-                    });
-                    host.ipv4s.sort(function (a, b) {
-                        return dns_handler.sort_ip4.call(dns_handler, a, b);
-                    });
-                    host.ipv4s.forEach(function (address, index, addresses) {
-                        if (address !== host.address) {
-                            add_v4_line(remote_rows, address);
-                        }
-                    });
-                } else {
-                    // Summary
-                    host.ipv6s.forEach(function (address, index, addresses) {
-                        if (address !== host.address) {
-                            count6 += 1;
-                        }
-                    });
-                    host.ipv4s.forEach(function (address, index, addresses) {
-                        if (address !== host.address) {
-                            count4 += 1;
-                        }
-                    });
-                    add_summary_line(remote_rows, host.host, host.address, host.address_family,
-                                     get_icon_source(host), count6, count4);
-                }
+                log("host.host: " + host.host + ", getCurrentHost(): " + getCurrentHost(), 1);
+                add_remote_line(remote_rows, host, host.host === getCurrentHost());
             });
         }
 
