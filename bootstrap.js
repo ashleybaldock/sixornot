@@ -722,6 +722,9 @@ insert_code = function (win) {
         panel.setAttribute("hidden", true);
         panel.setAttribute("position", "bottomcenter topright");
 
+        // This must be set so that panel's children don't inherit this style!
+        panel.style.listStyleImage = "none";
+
         // Event listener to update panel contents when it is shown
         panel.addEventListener("popupshowing", update_panel, false);
 
@@ -1150,16 +1153,15 @@ insert_code = function (win) {
     }; */
 
     update_panel = function (evt) {
-        var panel, grid, rows, hosts,
-            get_hosts, add_host, add_v4_line, add_v6_line, add_summary_line,
+        var panel, grid, hosts,
+            l6_filtered, l4_filtered,
+            get_hosts, add_v4_line, add_v6_line, add_summary_line,
             add_bold_host_line, add_title_line, add_warning_line, add_blank_line,
+            add_checkbox, add_url,
             add_summary_line,
             add_line;
         log("Sixornot - main:update_panel", 2);
         panel = this;
-
-        grid = doc.createElement("grid");
-        rows = doc.createElement("rows");
 
         /* Get the hosts list for the current window */
         get_hosts = function () {
@@ -1174,7 +1176,7 @@ insert_code = function (win) {
         };
 
         /* Add a styled line to the panel, including optional icon */
-        add_line = function (labelName, labelStyle, valueName, valueStyle, iconsrc, extraValue) {
+        add_line = function (rows, labelName, labelStyle, valueName, valueStyle, iconsrc, extraValue) {
             var label, value, row, icon, extra;
             log("Sixornot - main:update_panel:add_line - labelName: " + labelName + ", labelStyle: " + labelStyle + ", valueName: " + valueName + ", valueStyle: " + valueStyle, 2);
             // Defaults
@@ -1223,35 +1225,35 @@ insert_code = function (win) {
             }
         };
 
-        add_v6_line = function (address) {
-            add_line(" ", "", address, "color: #0F0;", null);
+        add_v6_line = function (rows, address) {
+            add_line(rows, " ", "", address, "color: #0F0;", null);
         };
-        add_v4_line = function (address) {
-            add_line(" ", "", address, "color: #F00;", null);
+        add_v4_line = function (rows, address) {
+            add_line(rows, " ", "", address, "color: #F00;", null);
         };
         //add_summary_line = function (host, address, address_family) {
         //};
-        add_bold_host_line = function (host, address, address_family, iconsrc) {
+        add_bold_host_line = function (rows, host, address, address_family, iconsrc) {
             if (address_family === 4) {
-                add_line(host, "font-weight: bold;", address, "color: #F00;", iconsrc);
+                add_line(rows, host, "font-weight: bold;", address, "color: #F00;", iconsrc);
             } else if (address_family === 6) {
-                add_line(host, "font-weight: bold;", address, "color: #0F0;", iconsrc);
+                add_line(rows, host, "font-weight: bold;", address, "color: #0F0;", iconsrc);
             } else {
                 // Invalid family or no address
-                add_line(host, "font-weight: bold;", "Cached", "color: #00F;", iconsrc);
+                add_line(rows, host, "font-weight: bold;", "Cached", "color: #00F;", iconsrc);
             }
         };
-        add_title_line = function (labelName) {
-            add_line(labelName, "font-weight: bold; text-align: right;");
+        add_title_line = function (rows, labelName) {
+            add_line(rows, labelName, "font-weight: bold; text-align: right;");
         };
-        add_warning_line = function (labelName) {
-            add_line(labelName, "font-weight: bold; text-align: left; color: #F00;");
+        add_warning_line = function (rows, labelName) {
+            add_line(rows, labelName, "font-weight: bold; text-align: left; color: #F00;");
         };
-        add_blank_line = function () {
-            add_line("", "");
+        add_blank_line = function (rows) {
+            add_line(rows, "", "");
         };
 
-        add_summary_line = function (host, address, address_family, iconsrc, count6, count4) {
+        add_summary_line = function (rows, host, address, address_family, iconsrc, count6, count4) {
             var extra_string = "";
             if (count6 > 0) {
                 extra_string = extra_string + "[+" + count6 + "] ";
@@ -1260,44 +1262,12 @@ insert_code = function (win) {
                 extra_string = extra_string + "[+" + count4 + "] ";
             }
             if (address_family === 4) {
-                add_line(host, "", address, "color: #F00;", iconsrc, extra_string);
+                add_line(rows, host, "", address, "color: #F00;", iconsrc, extra_string);
             } else if (address_family === 6) {
-                add_line(host, "", address, "color: #0F0;", iconsrc, extra_string);
+                add_line(rows, host, "", address, "color: #0F0;", iconsrc, extra_string);
             } else {
                 // Invalid family or no address
-                add_line(host, "", "Cached", "color: #00F;", iconsrc, extra_string);
-            }
-        };
-
-        add_host = function (host, index, myarray) {
-            log("host.host: " + host.host + ", getCurrentHost(): " + getCurrentHost());
-            if (host.host === getCurrentHost()) {
-                // Full details
-                add_bold_host_line(host.host, host.address, host.address_family,
-                                   get_icon_source(host));
-                host.ipv6s.sort(function (a, b) {
-                    return dns_handler.sort_ip6.call(dns_handler, a, b);
-                });
-                host.ipv6s.forEach(function (address, index, addresses) {
-                    if (address !== host.address) {
-                        add_v6_line(address);
-                    }
-                });
-                host.ipv4s.sort(function (a, b) {
-                    return dns_handler.sort_ip4.call(dns_handler, a, b);
-                });
-                host.ipv4s.forEach(function (address, index, addresses) {
-                    if (address !== host.address) {
-                        add_v4_line(address);
-                    }
-                });
-            } else {
-                // Summary
-                // TODO check if host.address is in the ipv6s/ipv4s arrays (it should be)
-                // Then subtract 1 from the number of additional addresses for that array
-                // so that we don't display more addresses than actually exist
-                add_summary_line(host.host, host.address, host.address_family,
-                                 get_icon_source(host), host.ipv6s.length, host.ipv4s.length);
+                add_line(rows, host, "", "Cached", "color: #00F;", iconsrc, extra_string);
             }
         };
 
@@ -1308,31 +1278,64 @@ insert_code = function (win) {
             panel.removeChild(panel.firstChild);
         }
 
+
+        // All local and remote addresses added to a set of rows
+        // These then added to a grid which is added to the vbox which contains
+        //  all the elements for the panel
+        var remote_rows = doc.createElement("rows");
+        var local_rows = doc.createElement("rows");
+
+        // Warnings
+        // TODO add this to the panel before the rows
+        /* if (dns_handler.is_ip6_disabled()) {
+            add_warning_line(gt("warn_ip6_disabled"));
+        } */
+
+        // TODO - this needs to be done for each host we lookup
+        /* if (dns_handler.is_ip4only_domain(host)) {
+            add_warning_line(gt("warn_ip4only_domain"));
+        } */
+
         if (!hosts) {
-            add_warning_line("no hosts found", "");
+            add_warning_line(remote_rows, "no hosts found", "");
         } else {
             // TODO add sorting of hosts
             // TODO always display matching host first in list
-            hosts.forEach(add_host);
+            hosts.forEach(function (host, index, myarray) {
+                log("host.host: " + host.host + ", getCurrentHost(): " + getCurrentHost());
+                if (host.host === getCurrentHost()) {
+                    // Full details
+                    add_bold_host_line(remote_rows,
+                                       host.host, host.address, host.address_family,
+                                       get_icon_source(host));
+                    host.ipv6s.sort(function (a, b) {
+                        return dns_handler.sort_ip6.call(dns_handler, a, b);
+                    });
+                    host.ipv6s.forEach(function (address, index, addresses) {
+                        if (address !== host.address) {
+                            add_v6_line(remote_rows, address);
+                        }
+                    });
+                    host.ipv4s.sort(function (a, b) {
+                        return dns_handler.sort_ip4.call(dns_handler, a, b);
+                    });
+                    host.ipv4s.forEach(function (address, index, addresses) {
+                        if (address !== host.address) {
+                            add_v4_line(remote_rows, address);
+                        }
+                    });
+                } else {
+                    // Summary
+                    // TODO check if host.address is in the ipv6s/ipv4s arrays (it should be)
+                    // Then subtract 1 from the number of additional addresses for that array
+                    // so that we don't display more addresses than actually exist
+                    add_summary_line(remote_rows, host.host, host.address, host.address_family,
+                                     get_icon_source(host), host.ipv6s.length, host.ipv4s.length);
+                }
+            });
         }
 
-        // TODO add local address information
-
-        // TODO add settings controls
-
-        grid.appendChild(rows);
-        panel.appendChild(grid);
-    };
-
-/*              OLD tooltip creation function
-        // Warnings
-        if (dns_handler.is_ip6_disabled()) {
-            add_warning_line(gt("warn_ip6_disabled"));
-        }
-
-        if (dns_handler.is_ip4only_domain(host)) {
-            add_warning_line(gt("warn_ip4only_domain"));
-        }
+        // TODO Trigger async local address resolve, callback should trigger a panel refresh
 
         // Add local IP addresses, only show proper addresses unless setting set
         if (get_bool_pref("showallips")) {
@@ -1348,30 +1351,98 @@ insert_code = function (win) {
         }
         // Add local IP address information if available
         if (l4_filtered.length !== 0 || l6_filtered.length !== 0) {
-            add_blank_line();
-            add_title_line(gt("header_local"));
+            //add_title_line(gt("header_local"));
             l6_filtered.forEach(function (address, index, thearray) {
                 if (index === 0) {
-                    add_bold_host_line(dnsService.myHostName, address, 6);
+                    add_bold_host_line(local_rows, dnsService.myHostName, address, 6, null);
                 } else {
-                    add_v6_line(address);
+                    add_v6_line(local_rows, address);
                 }
             });
             l4_filtered.forEach(function (address, index, thearray) {
                 if (index === 0 && l6_filtered.length < 1) {
-                    add_bold_host_line(dnsService.myHostName, address, 6);
+                    add_bold_host_line(local_rows, dnsService.myHostName, address, 6, null);
                 } else {
-                    add_v4_line(address);
+                    add_v4_line(local_rows, address);
                 }
             });
         } else {
-            add_blank_line();
-            add_title_line(gt("no_local"));
+            add_title_line(local_rows, gt("no_local"));
         }
 
+        var remote_grid = doc.createElement("grid");
+        var local_grid = doc.createElement("grid");
+
+        remote_grid.appendChild(remote_rows);
+        local_grid.appendChild(local_rows);
+
+        var panel_vbox = doc.createElement("vbox");
+        panel_vbox.appendChild(remote_grid);
+        panel_vbox.appendChild(local_grid);
+
+
+        var settingslabel = doc.createElementNS(NS_XUL, "label");
+        settingslabel.setAttribute("value", "Show settings");
+        settingslabel.style.textDecoration = "underline";
+        panel_vbox.appendChild(settingslabel);
+
+        // TODO add settings controls
+
+        add_checkbox = function (label, checked) {
+            var cbox, hbox;
+            cbox = doc.createElement("checkbox");
+            cbox.setAttribute("label", label);
+            cbox.setAttribute("checked", checked);
+            cbox.setAttribute("hidden", true);
+            hbox = doc.createElement("hbox");
+            hbox.appendChild(cbox);
+            panel_vbox.appendChild(hbox);
+            return cbox;
+        };
+
+        // Show icon
+        var setting_icon = add_checkbox("Show addressbar icon", true);
+
+        // Greyscale
+        var setting_grey = add_checkbox("Greyscale mode", true);
+
+        // Show all IPs
+        var setting_show = add_checkbox("Show all local IPs", true);
+
+        var show_settings = function (evt) {
+            // Show the settings UI
+            setting_icon.setAttribute("hidden", false);
+            setting_grey.setAttribute("hidden", false);
+            setting_show.setAttribute("hidden", false);
+            settingslabel.setAttribute("value", "Hide settings");
+            settingslabel.removeEventListener("click", show_settings, false);
+            settingslabel.addEventListener("click", hide_settings, false);
+        };
+        var hide_settings = function (evt) {
+            // Show the settings UI
+            setting_icon.setAttribute("hidden", true);
+            setting_grey.setAttribute("hidden", true);
+            setting_show.setAttribute("hidden", true);
+            settingslabel.setAttribute("value", "Show settings");
+            settingslabel.removeEventListener("click", hide_settings, false);
+            settingslabel.addEventListener("click", show_settings, false);
+        };
+
+        settingslabel.addEventListener("click", show_settings, false);
+
+        add_url = function (url, label) {
+        };
+
+        // Goto website (link)
+        add_url("http://entropy.me.uk/sixornot/", "Goto Sixornot website");
+
+        panel.appendChild(panel_vbox);
+    };
+
+/*              OLD tooltip creation function
         // TODO - Replace this with an array mapping/lookup table
         // TODO - If a special location is set no need to do any of the IP address stuff!
-/*        if (specialLocation) {
+        if (specialLocation) {
             if (specialLocation[0] === "localfile") {
                 extraString = gt("other_localfile");
             } else if (specialLocation[0] === "lookuperror") {
