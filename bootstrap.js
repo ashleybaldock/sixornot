@@ -1214,41 +1214,94 @@ insert_code = function (win) {
         var add_remote_line = function (addto, host, detail) {
             var count4 = 0, count6 = 0;
 
-            // List of all rows to hide when not showing detail
+            /* List of all rows to hide when not showing detail */
             var detail_rows = [];
             var summary_rows = [];
 
-            // Get counts
+            /* Sort the lists of addresses */
+            host.ipv6s.sort(function (a, b) {
+                return dns_handler.sort_ip6.call(dns_handler, a, b);
+            });
+            host.ipv4s.sort(function (a, b) {
+                return dns_handler.sort_ip4.call(dns_handler, a, b);
+            });
+
+            /* Full list of addresses for copy+paste */
+            var copy_full = host.host;
+            if (host.address) {
+                copy_full = copy_full + "," + host.address;
+            }
+
             host.ipv6s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
                     count6 += 1;
+                    copy_full = copy_full + "," + address;
                 }
             });
             host.ipv4s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
                     count4 += 1;
+                    copy_full = copy_full + "," + address;
                 }
             });
+            copy_full = copy_full + "\n";
 
             /* Show the detailed info rows, hide summary */
-            var show_detail = function (evt) {
-                evt.stopPropagation();
-                summary_rows.forEach(function (row, index, thearray) {
-                    row.setAttribute("hidden", true);
-                });
-                detail_rows.forEach(function (row, index, thearray) {
-                    row.setAttribute("hidden", false);
-                });
+            var add_show_detail_listeners = function (element) {
+                element.addEventListener("click", function (evt) {
+                    evt.stopPropagation();
+                    summary_rows.forEach(function (row, index, thearray) {
+                        row.setAttribute("hidden", true);
+                    });
+                    detail_rows.forEach(function (row, index, thearray) {
+                        row.setAttribute("hidden", false);
+                    });
+                }, false);
+                element.addEventListener("mouseover", function (evt) {
+                    element.style.textDecoration = "underline";
+                    evt.target.style.cursor="pointer";
+                }, false);
+                element.addEventListener("mouseout", function (evt) {
+                    evt.target.style.cursor="default";
+                    element.style.textDecoration = "none";
+                }, false);
             };
             /* Hide the detailed info rows, show summary */
-            var hide_detail = function (evt) {
-                evt.stopPropagation();
-                summary_rows.forEach(function (row, index, thearray) {
-                    row.setAttribute("hidden", false);
-                });
-                detail_rows.forEach(function (row, index, thearray) {
-                    row.setAttribute("hidden", true);
-                });
+            var add_hide_detail_listeners = function (element) {
+                element.addEventListener("click", function (evt) {
+                    evt.stopPropagation();
+                    summary_rows.forEach(function (row, index, thearray) {
+                        row.setAttribute("hidden", false);
+                    });
+                    detail_rows.forEach(function (row, index, thearray) {
+                        row.setAttribute("hidden", true);
+                    });
+                }, false);
+                element.addEventListener("mouseover", function (evt) {
+                    element.style.textDecoration = "underline";
+                    evt.target.style.cursor="pointer";
+                }, false);
+                element.addEventListener("mouseout", function (evt) {
+                    evt.target.style.cursor="default";
+                    element.style.textDecoration = "none";
+                }, false);
+            };
+
+            /* Add event handlers to an element to copy a value when it's clicked */
+            var add_copy_on_click = function (element, copytext) {
+                element.addEventListener("click", function (evt) {
+                    evt.stopPropagation();
+                    clipboardHelper.copyString(copytext);
+                    // TODO add confirmation message to main UI to indicate copy worked
+                }, false);
+                element.addEventListener("mouseover", function (evt) {
+                    element.style.textDecoration = "underline";
+                    evt.target.style.cursor="pointer";
+                }, false);
+                element.addEventListener("mouseout", function (evt) {
+                    evt.target.style.cursor="default";
+                    element.style.textDecoration = "none";
+                }, false);
             };
 
             // Build UI
@@ -1278,14 +1331,20 @@ insert_code = function (win) {
                 } else {
                     hostname.setAttribute("style", "font-weight: normal;");
                 }
+                hostname.setAttribute("tooltiptext", gt("tt_copyall"));
+                add_copy_on_click(hostname, copy_full);
                 // Connection IP (click to copy)
                 var address = doc.createElement("label");
                 if (host.address_family === 6) {
                     address.setAttribute("value", host.address);
                     address.setAttribute("style", "color: #0F0;");
+                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                    add_copy_on_click(address, host.address);
                 } else if (host.address_family === 4) {
                     address.setAttribute("value", host.address);
                     address.setAttribute("style", "color: #F00;");
+                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                    add_copy_on_click(address, host.address);
                 } else {
                     address.setAttribute("value", "Cached");
                     address.setAttribute("style", "color: #00F;");
@@ -1295,7 +1354,8 @@ insert_code = function (win) {
                 if (count6 > 0) {
                     c6.setAttribute("value", "[+" + count6 + "]");
                     c6.setAttribute("style", "color: #0F0;");
-                    c6.addEventListener("click", show_detail, false);
+                    add_show_detail_listeners(c6);
+                    c6.setAttribute("tooltiptext", gt("tt_show_detail"));
                 } else {
                     c6.setAttribute("value", "");
                 }
@@ -1304,7 +1364,8 @@ insert_code = function (win) {
                 if (count4 > 0) {
                     c4.setAttribute("value", "[+" + count4 + "]");
                     c4.setAttribute("style", "color: #F00;");
-                    c4.addEventListener("click", show_detail, false);
+                    add_show_detail_listeners(c4);
+                    c4.setAttribute("tooltiptext", gt("tt_show_detail"));
                 } else {
                     c4.setAttribute("value", "");
                 }
@@ -1346,14 +1407,20 @@ insert_code = function (win) {
                 } else {
                     hostname.setAttribute("style", "font-weight: normal;");
                 }
+                hostname.setAttribute("tooltiptext", gt("tt_copyall"));
+                add_copy_on_click(hostname, copy_full);
                 // Connection IP
                 var address = doc.createElement("label");
                 if (host.address_family === 6) {
                     address.setAttribute("value", host.address);
                     address.setAttribute("style", "color: #0F0;");
+                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                    add_copy_on_click(address, host.address);
                 } else if (host.address_family === 4) {
                     address.setAttribute("value", host.address);
                     address.setAttribute("style", "color: #F00;");
+                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                    add_copy_on_click(address, host.address);
                 } else {
                     address.setAttribute("value", "Cached");
                     address.setAttribute("style", "color: #00F;");
@@ -1366,6 +1433,7 @@ insert_code = function (win) {
                 var hide = doc.createElement("label");
                 hide.setAttribute("value", "[Hide]");
                 hide.setAttribute("style", "");
+                hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
 
                 row.appendChild(icon);
                 row.appendChild(count);
@@ -1373,7 +1441,7 @@ insert_code = function (win) {
                 row.appendChild(address);
                 row.appendChild(blank);
                 row.appendChild(hide);
-                hide.addEventListener("click", hide_detail, false);
+                add_hide_detail_listeners(hide);
 
                 addto.appendChild(row);
                 return row;
@@ -1396,9 +1464,13 @@ insert_code = function (win) {
                 if (dns_handler.is_ip6(add_address)) {
                     address.setAttribute("value", add_address);
                     address.setAttribute("style", "color: #0F0;");
+                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                    add_copy_on_click(address, add_address);
                 } else if (dns_handler.is_ip4(add_address)) {
                     address.setAttribute("value", add_address);
                     address.setAttribute("style", "color: #F00;");
+                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                    add_copy_on_click(address, add_address);
                 } else {
                     // Should not happen!
                     address.setAttribute("value", "ERROR");
@@ -1414,33 +1486,20 @@ insert_code = function (win) {
                 return row;
             };
 
-            log("1", 1);
-            host.ipv6s.sort(function (a, b) {
-                return dns_handler.sort_ip6.call(dns_handler, a, b);
-            });
-            host.ipv4s.sort(function (a, b) {
-                return dns_handler.sort_ip4.call(dns_handler, a, b);
-            });
-
-            log("2", 1);
             // Actually add the UI
             summary_rows.push(add_summary_line());
-            log("3", 1);
             detail_rows.push(add_first_detail_line());
-            log("4", 1);
 
             host.ipv6s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
                     detail_rows.push(add_detail_line(address));
                 }
             });
-            log("5", 1);
             host.ipv4s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
                     detail_rows.push(add_detail_line(address));
                 }
             });
-            log("6", 1);
 
             // Set what is visible by default based on detail parameter
             if (detail) {
@@ -1460,7 +1519,6 @@ insert_code = function (win) {
                     }
                 });
             }
-            log("7", 1);
         };
 
 
@@ -1581,7 +1639,7 @@ insert_code = function (win) {
                 });
                 l4_filtered.forEach(function (address, index, thearray) {
                     if (index === 0 && l6_filtered.length < 1) {
-                        local_ips.push(add_bold_host_line(remote_rows, 0, dnsService.myHostName, address, 6, null));
+                        local_ips.push(add_bold_host_line(remote_rows, 0, dnsService.myHostName, address, 4, null));
                     } else {
                         local_ips.push(add_v4_line(remote_rows, address));
                     }
@@ -1607,6 +1665,9 @@ insert_code = function (win) {
         remote_grid.appendChild(remote_rows);
 
         var panel_vbox = doc.createElement("vbox");
+        panel_vbox.setAttribute("flex", "1");
+        panel_vbox.style.overflowY = "auto";
+        panel_vbox.style.overflowX = "hidden";
         panel_vbox.appendChild(remote_grid);
 
 
@@ -1716,6 +1777,18 @@ insert_code = function (win) {
 
         panel.appendChild(panel_vbox);
 
+        log("panel.boxObject.width: " + panel.boxObject.width + ", panel.boxObject.height: " + panel.boxObject.height, 1);
+        log("panel.clientWidth: " + panel.clientWidth + ", panel.clientHeight: " + panel.clientHeight, 1);
+
+        // Special case, if the panel is cut off by the edge of the screen set
+        // min-height property of the main vbox so that it enforces scrollbars
+        // otherwise content will be off screen and inaccessible to the user
+        if (panel_vbox.clientHeight > panel.clientHeight) {
+            panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
+            panel_vbox.setAttribute("width", panel_vbox.clientWidth + 40);
+//            panel.setAttribute("width", panel_vbox.clientWidth + 50);
+        }
+
         // Trigger async local address resolve, callback updates local IP addresses
         var local_dns_request = dns_handler.resolve_local_async(function (localips) {
             localipv6s = localips.filter(function (a) {
@@ -1738,6 +1811,7 @@ insert_code = function (win) {
             });
             log("After removing children");
             local_ips = add_local_ips();
+            //panel_vbox.setAttribute("maxheight", panel.clientHeight);
             log("Done");
         });
 
