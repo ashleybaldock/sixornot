@@ -17,10 +17,6 @@
  * 
  * ***** END LICENSE BLOCK ***** */
 
-/* Portions of this code are based on the Flagfox extension by Dave Garrett.
- * Please see flagfox.net for more information on this extension.
- * */
-
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MIT/X11 License
  * 
