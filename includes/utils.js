@@ -36,100 +36,11 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/**
- * Waits for a browser window to finish loading before running the callback
- *
- * @usage runOnLoad(window, callback): Apply a callback to to run on a window when it loads.
- * @param [function] callback: 1-parameter function that gets a browser window.
- */
-function runOnLoad (window, callback)
-{
-    // Listen for one load event before checking the window type
-    window.addEventListener("load", function ()
-    {
-        window.removeEventListener("load", arguments.callee, false);
 
-        // Now that the window has loaded, only handle browser windows
-        if (window.document.documentElement.getAttribute("windowtype") === "navigator:browser")
-        {
-            callback(window);
-        }
-    }, false);
-}
+/*jslint white: true */
 
-
-/**
- * Add functionality to existing browser windows
- *
- * @usage runOnWindows(callback): Apply a callback to each open browser window.
- * @param [function] callback: 1-parameter function that gets a browser window.
- */
-function runOnWindows (callback)
-{
-    // Wrap the callback in a function that ignores failures
-    function watcher(window) {
-        try
-        {
-            callback(window);
-        }
-        catch(ex)
-        {
-        }
-    }
-
-    // Add functionality to existing windows
-    let browserWindows = Services.wm.getEnumerator("navigator:browser");
-    while (browserWindows.hasMoreElements())
-    {
-        // Only run the watcher immediately if the browser is completely loaded
-        let browserWindow = browserWindows.getNext();
-        if (browserWindow.document.readyState === "complete")
-        {
-            watcher(browserWindow);
-        }
-        // Wait for the window to load before continuing
-        else
-        {
-            runOnLoad(browserWindow, watcher);
-        }
-    }
-}
-
-/**
- * Apply a callback to each open and new browser windows.
- *
- * @usage watchWindows(callback): Apply a callback to each browser window.
- * @param [function] callback: 1-parameter function that gets a browser window.
- */
-function watchWindows (callback)
-{
-    // Wrap the callback in a function that ignores failures
-    function watcher(window) {
-        try
-        {
-            callback(window);
-        }
-        catch(ex)
-        {
-        }
-    }
-
-    // Add functionality to existing windows
-    runOnWindows(callback);
-
-    // Watch for new browser windows opening then wait for it to load
-    function windowWatcher (subject, topic)
-    {
-        if (topic === "domwindowopened")
-        {
-            runOnLoad(subject, watcher);
-        }
-    }
-    Services.ww.registerNotification(windowWatcher);
-
-    // Make sure to stop watching for windows if we're unloading
-    unload(function() Services.ww.unregisterNotification(windowWatcher));
-}
+// Provided by Firefox:
+/*global Components, Services, APP_SHUTDOWN, AddonManager */
 
 /**
  * Save callbacks to run when unloading. Optionally scope the callback to a
@@ -146,66 +57,122 @@ function watchWindows (callback)
  * @param [node] container: Remove the callback when this container unloads.
  * @return [function]: A 0-parameter function that undoes adding the callback.
  */
-function unload (callback, container)
-{
+function unload (callback, container) {
+    "use strict";
+    var remove_unloader, orig_callback, unloaders;
     // Initialize the array of unloaders on the first usage
-    let unloaders = unload.unloaders;
-    if (!unloaders)
-    {
+    unloaders = unload.unloaders;
+    if (!unloaders) {
         unloaders = unload.unloaders = [];
     }
 
     // Calling with no arguments runs all the unloader callbacks
-    if (!callback)
-    {
-        unloaders.slice().forEach(function(unloader) unloader());
+    if (!callback) {
+        unloaders.slice().forEach(function (unloader) {
+            unloader();
+        });
         unloaders.length = 0;
         return;
     }
 
-    // The callback is bound to the lifetime of the container if we have one
-    if (container)
-    {
-        // Remove the unloader when the container unloads
-        container.addEventListener("unload", removeUnloader, false);
-
-        // Wrap the callback to additionally remove the unload listener
-        let origCallback = callback;
-        callback = function()
-        {
-            container.removeEventListener("unload", removeUnloader, false);
-            origCallback();
-        }
-    }
-
-    // Wrap the callback in a function that ignores failures
-    function unloader ()
-    {
-        try
-        {
-            callback();
-        }
-        catch (ex)
-        {
-        }
-    }
-    unloaders.push(unloader);
-
     // Provide a way to remove the unloader
-    function removeUnloader ()
-    {
-        let index = unloaders.indexOf(unloader);
-        if (index !== -1)
-        {
+    remove_unloader = function () {
+        var index = unloaders.indexOf(callback);
+        if (index !== -1) {
             unloaders.splice(index, 1);
         }
+    };
+
+    // The callback is bound to the lifetime of the container if we have one
+    if (container) {
+        // Remove the unloader when the container unloads
+        container.addEventListener("unload", remove_unloader, false);
+
+        // Wrap the callback to additionally remove the unload listener
+        orig_callback = callback;
+        callback = function () {
+            container.removeEventListener("unload", remove_unloader, false);
+            orig_callback();
+        };
     }
-    return removeUnloader;
+
+    unloaders.push(callback);
+
+    return remove_unloader;
+}
+
+/**
+ * Waits for a browser window to finish loading before running the callback
+ *
+ * @usage runOnLoad(window, callback): Apply a callback to to run on a window when it loads.
+ * @param [function] callback: 1-parameter function that gets a browser window.
+ */
+function runOnLoad (win, callback) {
+    // Listen for one load event before checking the window type
+    "use strict";
+    win.addEventListener("load", function load_once () {
+        win.removeEventListener("load", load_once, false);
+
+        // Now that the window has loaded, only handle browser windows
+        if (win.document.documentElement.getAttribute("windowtype") === "navigator:browser") {
+            callback(win);
+        }
+    }, false);
+}
+
+
+/**
+ * Add functionality to existing browser windows
+ *
+ * @usage runOnWindows(callback): Apply a callback to each open browser window.
+ * @param [function] callback: 1-parameter function that gets a browser window.
+ */
+function runOnWindows (callback) {
+    "use strict";
+    var browserWindows, browserWindow;
+    // Add functionality to existing windows
+    browserWindows = Services.wm.getEnumerator("navigator:browser");
+    while (browserWindows.hasMoreElements()) {
+        // Only run the callback immediately if the browser is completely loaded
+        browserWindow = browserWindows.getNext();
+        if (browserWindow.document.readyState === "complete") {
+            callback(browserWindow);
+        } else {
+            // Wait for the window to load before continuing
+            runOnLoad(browserWindow, callback);
+        }
+    }
+}
+
+/**
+ * Apply a callback to each open and new browser windows.
+ *
+ * @usage watchWindows(callback): Apply a callback to each browser window.
+ * @param [function] callback: 1-parameter function that gets a browser window.
+ */
+function watchWindows (callback) {
+    "use strict";
+    // Add functionality to existing windows
+    runOnWindows(callback);
+
+    // Watch for new browser windows opening then wait for it to load
+    function windowWatcher (subject, topic) {
+        if (topic === "domwindowopened") {
+            runOnLoad(subject, callback);
+        }
+    }
+    Services.ww.registerNotification(windowWatcher);
+
+    // Make sure to stop watching for windows if we're unloading
+    unload(function () {
+        Services.ww.unregisterNotification(windowWatcher);
+    });
 }
 
 
 /* Proxy to getElementById */
 function gbi (node, child_id) {
+    "use strict";
     if (node.getElementById) {
         return node.getElementById(child_id);
     } else {
