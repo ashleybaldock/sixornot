@@ -1047,12 +1047,13 @@ insert_code = function (win) {
                         address.setAttribute("style", "color: #000;");
                     }
                     // Count of additional v6s (click to expand)
+                    var counts = doc.createElement("hbox");
                     var c6 = doc.createElement("label");
                     if (count6 > 0) {
                         c6.setAttribute("value", "[+" + count6 + "]");
                         c6.setAttribute("style", "color: #0F0;");
-                        add_show_detail_listeners(c6);
                         c6.setAttribute("tooltiptext", gt("tt_show_detail"));
+                        add_show_detail_listeners(c6);
                     } else {
                         c6.setAttribute("value", "");
                     }
@@ -1061,18 +1062,19 @@ insert_code = function (win) {
                     if (count4 > 0) {
                         c4.setAttribute("value", "[+" + count4 + "]");
                         c4.setAttribute("style", "color: #F00;");
-                        add_show_detail_listeners(c4);
                         c4.setAttribute("tooltiptext", gt("tt_show_detail"));
+                        add_show_detail_listeners(c4);
                     } else {
                         c4.setAttribute("value", "");
                     }
+                    counts.appendChild(c6);
+                    counts.appendChild(c4);
 
                     summary_row.appendChild(icon);
                     summary_row.appendChild(count);
                     summary_row.appendChild(hostname);
                     summary_row.appendChild(address);
-                    summary_row.appendChild(c6);
-                    summary_row.appendChild(c4);
+                    summary_row.appendChild(counts);
 
                     addto.appendChild(summary_row);
                     return summary_row;
@@ -1126,9 +1128,6 @@ insert_code = function (win) {
                         address.setAttribute("style", "color: #000;");
                     }
 
-                    // Blank to skip column
-                    var blank = doc.createElement("label");
-                    blank.setAttribute("value", "");
                     // Count of additional v6s (click to expand)
                     var hide = doc.createElement("label");
                     hide.setAttribute("value", "[Hide]");
@@ -1139,7 +1138,6 @@ insert_code = function (win) {
                     row.appendChild(count);
                     row.appendChild(hostname);
                     row.appendChild(address);
-                    row.appendChild(blank);
                     row.appendChild(hide);
                     add_hide_detail_listeners(hide);
 
