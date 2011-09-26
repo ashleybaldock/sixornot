@@ -108,14 +108,20 @@ var NS_XUL,
         Unknown                     other_16.png, other_24.png
     */
     // Colour icons - TODO - find a way to have less variables (maybe an object)
-    s6only_16_c, s6and4_16_c, s4pot6_16_c, s4only_16_c, sother_16_c,
-    s6only_24_c, s6and4_24_c, s4pot6_24_c, s4only_24_c, sother_24_c,
+    s6only_16_c, s6and4_16_c, s4pot6_16_c, s4only_16_c, sother_16_c, serror_16_c,
+    s6only_24_c, s6and4_24_c, s4pot6_24_c, s4only_24_c, sother_24_c, serror_24_c,
+    s6only_cache_16_c, s4pot6_cache_16_c, s4only_cache_16_c, sother_cache_16_c,
+    s6only_cache_24_c, s4pot6_cache_24_c, s4only_cache_24_c, sother_cache_24_c,
     // Greyscale icons
-    s6only_16_g, s6and4_16_g, s4pot6_16_g, s4only_16_g, sother_16_g,
-    s6only_24_g, s6and4_24_g, s4pot6_24_g, s4only_24_g, sother_24_g,
+    s6only_16_g, s6and4_16_g, s4pot6_16_g, s4only_16_g, sother_16_g, serror_16_g,
+    s6only_24_g, s6and4_24_g, s4pot6_24_g, s4only_24_g, sother_24_g, serror_24_g,
+    s6only_cache_16_g, s4pot6_cache_16_g, s4only_cache_16_g, sother_cache_16_g,
+    s6only_cache_24_g, s4pot6_cache_24_g, s4only_cache_24_g, sother_cache_24_g,
     // Current icons
-    s6only_16,   s6and4_16,   s4pot6_16,   s4only_16,   sother_16,
-    s6only_24,   s6and4_24,   s4pot6_24,   s4only_24,   sother_24,
+    s6only_16,   s6and4_16,   s4pot6_16,   s4only_16,   sother_16, serror_16,
+    s6only_24,   s6and4_24,   s4pot6_24,   s4only_24,   sother_24, serror_24,
+    s6only_cache_16,   s4pot6_cache_16,   s4only_cache_16,   sother_cache_16,
+    s6only_cache_24,   s4pot6_cache_24,   s4only_cache_24,   sother_cache_24,
     // dns_handler
     dns_handler,
     // Global functions
@@ -254,8 +260,14 @@ log = (function ()
     };
 }());
 
+
+/*
+    Sixornot Preferences observer
+    Watches our preferences so that if the user changes them manually we update to reflect the changes
+*/
 PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
+        "use strict";
         log("Sixornot - PREF_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
         if (aTopic.valueOf() !== "nsPref:changed")
         {
@@ -300,18 +312,25 @@ PREF_OBSERVER = {
     nsIPB2: PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2),
 
     register: function () {
+        "use strict";
         log("Sixornot - PREF_OBSERVER - register", 2);
         this.nsIPB2.addObserver("", PREF_OBSERVER, false);
     },
 
     unregister: function () {
+        "use strict";
         log("Sixornot - PREF_OBSERVER - unregister", 2);
         this.nsIPB2.removeObserver("", PREF_OBSERVER);
     }
 };
 
+/*
+    DNS Preferences observer
+    Watches built-in Firefox preferences which have an impact on DNS resolution.
+*/
 PREF_OBSERVER_DNS = {
     observe: function (aSubject, aTopic, aData) {
+        "use strict";
         log("Sixornot - PREF_OBSERVER_DNS - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
         if (aTopic.valueOf() !== "nsPref:changed")
         {
@@ -334,18 +353,23 @@ PREF_OBSERVER_DNS = {
     nsIPB2: PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2),
 
     register: function () {
+        "use strict";
         log("Sixornot - PREF_OBSERVER_DNS - register", 2);
         this.nsIPB2.addObserver("", PREF_OBSERVER_DNS, false);
     },
 
     unregister: function () {
+        "use strict";
         log("Sixornot - PREF_OBSERVER_DNS - unregister", 2);
         this.nsIPB2.removeObserver("", PREF_OBSERVER_DNS);
     }
 };
 
 
-/* Observes HTTP requests to determine the details of all browser connections */
+/*
+    HTTP Request observer
+    Observes all HTTP requests to determine the details of all browser connections
+*/
 var HTTP_REQUEST_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         "use strict";
@@ -411,13 +435,19 @@ var HTTP_REQUEST_OBSERVER = {
                 // TODO Should this be hostPort? Since we could connect using v4/v6 on different ports?
                 host: http_channel.URI.host,
                 address: remoteAddress,
-                address_family: (remoteAddress !== "" ? (remoteAddress.indexOf(":") === -1 ? 4 : 6) : 0),
+                address_family: 0,
                 count: 1,               // Number of connections made to this host
                 ipv6s: [],
                 ipv4s: [],
                 dns_status: "ready",
                 dns_cancel: null
             };
+
+            if (aTopic === "http-on-examine-cached-response") {
+                new_entry.address_family = 2;
+            } else if (remoteAddress !== "") {
+                new_entry.address_family = remoteAddress.indexOf(":") === -1 ? 4 : 6;
+            }
 
             /* Create closure containing reference to element and trigger async lookup with callback */
             lookupIPs = function (entry) {
@@ -783,8 +813,7 @@ insert_code = function (win) {
             }
         };
 
-        // Update preference which determines location of button when loading into new windows
-        // TODO - move into closure
+        /* When button location is customised store the new location in preferences so we can load into the same place next time */
         toggle_customise = function (evt) {
             var button_parent, button_nextitem, toolbar_id, nextitem_id;
             log("Sixornot - insert_code:create_button:toggle_customise");
@@ -986,7 +1015,29 @@ insert_code = function (win) {
                 // Actual is v6, DNS is v4 + v6 -> Green
                 return s6and4_16;
             }
-        } else {
+        } else if (record.address_family === 2) {
+            // address family 2 is cached responses
+            if (record.ipv6s.length === 0) {
+                if (record.ipv4s.length === 0) {
+                    // No addresses, grey cache icon
+                    return sother_cache_16;
+                } else {
+                    // Only v4 addresses from DNS, red cache icon
+                    return s4only_cache_16;
+                }
+            } else {
+                if (record.ipv4s.length === 0) {
+                    // Only v6 addresses from DNS, blue cache icon
+                    return s6only_cache_16;
+                } else {
+                    // Both kinds of addresses from DNS, yellow cache icon
+                    return s4pot6_cache_16;
+                }
+            }
+        } else if (record.address_family === 0) {
+            // This indicates that no addresses were available but request is not cached
+            // Show error icon TODO
+            return serror_16;
             if (record.ipv6s.length === 0) {
                 if (record.ipv4s.length === 0) {
                     // No addresses at all!
@@ -1241,9 +1292,12 @@ insert_code = function (win) {
                     address.setAttribute("style", "color: #F00;");
                     address.setAttribute("tooltiptext", gt("tt_copyaddr"));
                     add_copy_on_click(address, host.address);
-                } else {
+                } else if (host.address_family === 2) {
                     address.setAttribute("value", "Cached");
                     address.setAttribute("style", "color: #00F;");
+                } else {
+                    address.setAttribute("value", "Address Unavailable");
+                    address.setAttribute("style", "color: #000;");
                 }
                 // Count of additional v6s (click to expand)
                 var c6 = doc.createElement("label");
@@ -1317,9 +1371,12 @@ insert_code = function (win) {
                     address.setAttribute("style", "color: #F00;");
                     address.setAttribute("tooltiptext", gt("tt_copyaddr"));
                     add_copy_on_click(address, host.address);
-                } else {
+                } else if (host.address_family === 2) {
                     address.setAttribute("value", "Cached");
                     address.setAttribute("style", "color: #00F;");
+                } else {
+                    address.setAttribute("value", "Address Unavailable");
+                    address.setAttribute("style", "color: #000;");
                 }
 
                 // Blank to skip column
@@ -1814,11 +1871,24 @@ set_iconset = function () {
         s4pot6_16 = s4pot6_16_g;
         s4only_16 = s4only_16_g;
         sother_16 = sother_16_g;
+        serror_16 = serror_16_g;
+
+        s6only_cache_16 = s6only_cache_16_g;
+        s4pot6_cache_16 = s4pot6_cache_16_g;
+        s4only_cache_16 = s4only_cache_16_g;
+        sother_cache_16 = sother_cache_16_g;
+
         s6only_24 = s6only_24_g;
         s6and4_24 = s6and4_24_g;
         s4pot6_24 = s4pot6_24_g;
         s4only_24 = s4only_24_g;
         sother_24 = sother_24_g;
+        serror_24 = serror_24_g;
+
+        s6only_cache_24 = s6only_cache_24_g;
+        s4pot6_cache_24 = s4pot6_cache_24_g;
+        s4only_cache_24 = s4only_cache_24_g;
+        sother_cache_24 = sother_cache_24_g;
     }
     else
     {
@@ -1827,11 +1897,24 @@ set_iconset = function () {
         s4pot6_16 = s4pot6_16_c;
         s4only_16 = s4only_16_c;
         sother_16 = sother_16_c;
+        serror_16 = serror_16_c;
+
+        s6only_cache_16 = s6only_cache_16_c;
+        s4pot6_cache_16 = s4pot6_cache_16_c;
+        s4only_cache_16 = s4only_cache_16_c;
+        sother_cache_16 = sother_cache_16_c;
+
         s6only_24 = s6only_24_c;
         s6and4_24 = s6and4_24_c;
         s4pot6_24 = s4pot6_24_c;
         s4only_24 = s4only_24_c;
         sother_24 = sother_24_c;
+        serror_24 = serror_24_c;
+
+        s6only_cache_24 = s6only_cache_24_c;
+        s4pot6_cache_24 = s4pot6_cache_24_c;
+        s4only_cache_24 = s4only_cache_24_c;
+        sother_cache_24 = sother_cache_24_c;
     }
 };
 
@@ -1887,22 +1970,48 @@ startup = function (aData, aReason) {
         s4pot6_16_g = addon.getResourceURI("images/4pot6_g_16.png").spec;
         s4only_16_g = addon.getResourceURI("images/4only_g_16.png").spec;
         sother_16_g = addon.getResourceURI("images/other_g_16.png").spec;
+        serror_16_g = addon.getResourceURI("images/error_g_16.png").spec;
+
+        s6only_cache_16_g = addon.getResourceURI("images/6only_cache_g_16.png").spec;
+        s4pot6_cache_16_g = addon.getResourceURI("images/4pot6_cache_g_16.png").spec;
+        s4only_cache_16_g = addon.getResourceURI("images/4only_cache_g_16.png").spec;
+        sother_cache_16_g = addon.getResourceURI("images/other_cache_g_16.png").spec;
+
         s6only_24_g = addon.getResourceURI("images/6only_g_24.png").spec;
         s6and4_24_g = addon.getResourceURI("images/6and4_g_24.png").spec;
         s4pot6_24_g = addon.getResourceURI("images/4pot6_g_24.png").spec;
         s4only_24_g = addon.getResourceURI("images/4only_g_24.png").spec;
         sother_24_g = addon.getResourceURI("images/other_g_24.png").spec;
+        serror_24_g = addon.getResourceURI("images/error_g_24.png").spec;
+
+        s6only_cache_24_g = addon.getResourceURI("images/6only_cache_g_24.png").spec;
+        s4pot6_cache_24_g = addon.getResourceURI("images/4pot6_cache_g_24.png").spec;
+        s4only_cache_24_g = addon.getResourceURI("images/4only_cache_g_24.png").spec;
+        sother_cache_24_g = addon.getResourceURI("images/other_cache_g_24.png").spec;
         // Colour
         s6only_16_c = addon.getResourceURI("images/6only_c_16.png").spec;
         s6and4_16_c = addon.getResourceURI("images/6and4_c_16.png").spec;
         s4pot6_16_c = addon.getResourceURI("images/4pot6_c_16.png").spec;
         s4only_16_c = addon.getResourceURI("images/4only_c_16.png").spec;
         sother_16_c = addon.getResourceURI("images/other_c_16.png").spec;
+        serror_16_c = addon.getResourceURI("images/error_c_16.png").spec;
+
+        s6only_cache_16_c = addon.getResourceURI("images/6only_cache_c_16.png").spec;
+        s4pot6_cache_16_c = addon.getResourceURI("images/4pot6_cache_c_16.png").spec;
+        s4only_cache_16_c = addon.getResourceURI("images/4only_cache_c_16.png").spec;
+        sother_cache_16_c = addon.getResourceURI("images/other_cache_c_16.png").spec;
+
         s6only_24_c = addon.getResourceURI("images/6only_c_24.png").spec;
         s6and4_24_c = addon.getResourceURI("images/6and4_c_24.png").spec;
         s4pot6_24_c = addon.getResourceURI("images/4pot6_c_24.png").spec;
         s4only_24_c = addon.getResourceURI("images/4only_c_24.png").spec;
         sother_24_c = addon.getResourceURI("images/other_c_24.png").spec;
+        serror_24_c = addon.getResourceURI("images/error_c_24.png").spec;
+
+        s6only_cache_24_c = addon.getResourceURI("images/6only_cache_c_24.png").spec;
+        s4pot6_cache_24_c = addon.getResourceURI("images/4pot6_cache_c_24.png").spec;
+        s4only_cache_24_c = addon.getResourceURI("images/4only_cache_c_24.png").spec;
+        sother_cache_24_c = addon.getResourceURI("images/other_cache_c_24.png").spec;
 
         // Set active image set
         log("Sixornot - startup - setting active image set...", 2);
