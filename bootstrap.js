@@ -83,9 +83,7 @@ Components.utils.import("resource://gre/modules/AddonManager.jsm");
 var NS_XUL,
     // ID constants
     BUTTON_ID,
-    ADDRESS_BOX_ID,
     ADDRESS_IMG_ID,
-    PANEL_ID,
     PREF_TOOLBAR,
     PREF_NEXTITEM,
     // Prefs branch constant
@@ -191,9 +189,7 @@ xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService(Compon
 NS_XUL          = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
 BUTTON_ID       = "sixornot-buttonid";
-ADDRESS_BOX_ID  = "sixornot-addressboxid";
 ADDRESS_IMG_ID  = "sixornot-addressimageid";
-PANEL_ID        = "sixornot-panelid";
 PREF_TOOLBAR    = "toolbar";
 PREF_NEXTITEM   = "nextitem";
 
@@ -846,6 +842,7 @@ insert_code = function (win) {
             label.setAttribute("value", text);
             label.setAttribute("crop", "none");
             label.setAttribute("style", "text-decoration: underline;");
+            // TODO remove event listeners
             label.addEventListener("click", function (evt) {
                 var currentWindow, currentBrowser;
                 evt.stopPropagation();
@@ -941,6 +938,7 @@ insert_code = function (win) {
                 copy_full = copy_full + "\n";
 
                 /* Show the detailed info rows, hide summary */
+                // TODO cleanup of event handlers
                 var add_show_detail_listeners = function (element) {
                     element.addEventListener("click", function (evt) {
                         evt.stopPropagation();
@@ -961,6 +959,7 @@ insert_code = function (win) {
                     }, false);
                 };
                 /* Hide the detailed info rows, show summary */
+                // TODO cleanup of event handlers
                 var add_hide_detail_listeners = function (element) {
                     element.addEventListener("click", function (evt) {
                         evt.stopPropagation();
@@ -982,6 +981,8 @@ insert_code = function (win) {
                 };
 
                 /* Add event handlers to an element to copy a value when it's clicked */
+                // TODO need to clean up these event handlers when the element is destroyed
+                //  add them to some kind of array for removal...
                 var add_copy_on_click = function (element, copytext) {
                     element.addEventListener("click", function (evt) {
                         evt.stopPropagation();
@@ -1048,27 +1049,24 @@ insert_code = function (win) {
                     }
                     // Count of additional v6s (click to expand)
                     var counts = doc.createElement("hbox");
-                    var c6 = doc.createElement("label");
+                    counts.setAttribute("pack", "center");
                     if (count6 > 0) {
+                        var c6 = doc.createElement("label");
                         c6.setAttribute("value", "[+" + count6 + "]");
                         c6.setAttribute("style", "color: #0F0;");
                         c6.setAttribute("tooltiptext", gt("tt_show_detail"));
                         add_show_detail_listeners(c6);
-                    } else {
-                        c6.setAttribute("value", "");
+                        counts.appendChild(c6);
                     }
                     // Count of additional v4s (click to expand)
-                    var c4 = doc.createElement("label");
                     if (count4 > 0) {
+                        var c4 = doc.createElement("label");
                         c4.setAttribute("value", "[+" + count4 + "]");
                         c4.setAttribute("style", "color: #F00;");
                         c4.setAttribute("tooltiptext", gt("tt_show_detail"));
                         add_show_detail_listeners(c4);
-                    } else {
-                        c4.setAttribute("value", "");
+                        counts.appendChild(c4);
                     }
-                    counts.appendChild(c6);
-                    counts.appendChild(c4);
 
                     summary_row.appendChild(icon);
                     summary_row.appendChild(count);
@@ -1129,16 +1127,21 @@ insert_code = function (win) {
                     }
 
                     // Count of additional v6s (click to expand)
-                    var hide = doc.createElement("label");
-                    hide.setAttribute("value", "[Hide]");
-                    hide.setAttribute("style", "");
-                    hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
+                    var counts = doc.createElement("hbox");
+                    counts.setAttribute("pack", "center");
+                    if (count6 > 0 || count4 > 0) {
+                        var hide = doc.createElement("label");
+                        hide.setAttribute("value", "[Hide]");
+                        hide.setAttribute("style", "");
+                        hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
+                        counts.appendChild(hide);
+                    }
 
                     row.appendChild(icon);
                     row.appendChild(count);
                     row.appendChild(hostname);
                     row.appendChild(address);
-                    row.appendChild(hide);
+                    row.appendChild(counts);
                     add_hide_detail_listeners(hide);
 
                     addto.appendChild(row);
@@ -1251,20 +1254,11 @@ insert_code = function (win) {
             }
 
             // Ensure that if resizing has taken the panel off-screen that we set up scrollbars
+            // TODO must be called whenever the size of the window is changed
             force_scrollbars();
         };
 
-
-        /* Refresh the contents of the panel when a new DNS result comes in */
-        refresh_panel = function (evt) {
-            if (panel.state === "open") {
-                // Ensure "this" value is correct inside event handler
-                update_panel.call(panel, evt);
-            }
-        };
-
         // Panel setup
-        panel.setAttribute("id", PANEL_ID);
         panel.setAttribute("type", "arrow");
         panel.setAttribute("hidden", true);
         panel.setAttribute("position", "bottomcenter topright");
@@ -1490,7 +1484,6 @@ insert_code = function (win) {
         addressBarIcon = doc.createElement("box");
 
         /* Address bar icon setup */
-        addressBarIcon.setAttribute("id", ADDRESS_BOX_ID);
         addressBarIcon.setAttribute("width", "16");
         addressBarIcon.setAttribute("height", "16");
         addressBarIcon.setAttribute("align", "center");
