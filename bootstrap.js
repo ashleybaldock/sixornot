@@ -85,10 +85,7 @@ var NS_XUL,
     BUTTON_ID,
     ADDRESS_BOX_ID,
     ADDRESS_IMG_ID,
-    TOOLTIP_ID,
     PANEL_ID,
-    ADDRESS_MENU_ID,
-    TOOLBAR_MENU_ID,
     PREF_TOOLBAR,
     PREF_NEXTITEM,
     // Prefs branch constant
@@ -196,10 +193,7 @@ NS_XUL          = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul
 BUTTON_ID       = "sixornot-buttonid";
 ADDRESS_BOX_ID  = "sixornot-addressboxid";
 ADDRESS_IMG_ID  = "sixornot-addressimageid";
-TOOLTIP_ID      = "sixornot-tooltipid";
 PANEL_ID        = "sixornot-panelid";
-ADDRESS_MENU_ID = "sixornot-addressmenuid";
-TOOLBAR_MENU_ID = "sixornot-toolbarmenuid";
 PREF_TOOLBAR    = "toolbar";
 PREF_NEXTITEM   = "nextitem";
 
@@ -220,41 +214,31 @@ PREFS = {
 // https://developer.mozilla.org/en/XUL_School/Appendix_D:_Loading_Scripts
 
 // Function to permit the including of other scripts into this one
-(function (scope)
-{
-    scope.include = function (src)
-    {
+(function (scope) {
+    scope.include = function (src) {
         // This triggers a warning on AMO validation
         // This method is only used to import utils.js and locale.js
         // Which are local to this addon (under include directory)
         Services.scriptloader.loadSubScript(src, scope);
     };
-}
-)(this);
+})(this);
 
 // Log a message to error console, but only if it is important enough
-log = (function ()
-{
-    var get_loglevel = function ()
-    {
-        try
-        {
+log = (function () {
+    var get_loglevel = function () {
+        try {
             return PREF_BRANCH_SIXORNOT.getIntPref("loglevel");
+        } catch (e) {
+            // Fallback to hard-coded default
+            return PREFS.loglevel;
         }
-        catch (e)
-        {
-        }
-        // Fallback hard-coded default
-        return PREFS.loglevel;
     };
-    return function (message, level)
-    {
+    return function (message, level) {
         // Three log levels, 0 = critical, 1 = normal, 2 = verbose
         // Default level is 1
         level = level || 1;
         // If preference unset, default to 1 (normal) level
-        if (level <= get_loglevel())
-        {
+        if (level <= get_loglevel()) {
             consoleService.logStringMessage(message);
         }
     };
@@ -269,42 +253,35 @@ PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         "use strict";
         log("Sixornot - PREF_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
-        if (aTopic.valueOf() !== "nsPref:changed")
-        {
+        if (aTopic.valueOf() !== "nsPref:changed") {
             log("Sixornot - PREF_OBSERVER - not a pref change event 1", 2);
             return;
         }
-        if (!PREFS.hasOwnProperty(aData))
-        {
+        if (!PREFS.hasOwnProperty(aData)) {
             log("Sixornot - PREF_OBSERVER - not a pref change event 2", 2);
             return;
         }
 
-        if (aData === "showaddressicon")
-        {
+        if (aData === "showaddressicon") {
             log("Sixornot - PREF_OBSERVER - addressicon has changed", 1);
             reload();
         }
-        if (aData === "greyscaleicons")
-        {
+        if (aData === "greyscaleicons") {
             log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 1);
             set_iconset();
             reload();
         }
         // TODO Update worker process to use new log level?
-        if (aData === "loglevel")
-        {
+        if (aData === "loglevel") {
             log("Sixornot - PREF_OBSERVER - loglevel has changed", 1);
             // Ensure dns_worker is at the same loglevel
             dns_handler.set_worker_loglevel(PREF_BRANCH_SIXORNOT.getIntPref("loglevel"));
         }
-        if (aData === "overridelocale")
-        {
+        if (aData === "overridelocale") {
             log("Sixornot - PREF_OBSERVER - overridelocale has changed", 1);
             reload();
         }
-        if (aData === "showallips")
-        {
+        if (aData === "showallips") {
             log("Sixornot - PREF_OBSERVER - showallips has changed", 1);
         }
     },
@@ -332,19 +309,16 @@ PREF_OBSERVER_DNS = {
     observe: function (aSubject, aTopic, aData) {
         "use strict";
         log("Sixornot - PREF_OBSERVER_DNS - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
-        if (aTopic.valueOf() !== "nsPref:changed")
-        {
+        if (aTopic.valueOf() !== "nsPref:changed") {
             log("Sixornot - PREF_OBSERVER_DNS - not a pref change event 1", 2);
             return;
         }
 
-        if (aData === "disableIPv6")
-        {
+        if (aData === "disableIPv6") {
             log("Sixornot - PREF_OBSERVER_DNS - disableIPv6 has changed", 1);
             reload();
         }
-        if (aData === "ipv4OnlyDomains")
-        {
+        if (aData === "ipv4OnlyDomains") {
             log("Sixornot - PREF_OBSERVER_DNS - ipv4OnlyDomains has changed", 1);
             reload();
         }
@@ -374,9 +348,24 @@ var HTTP_REQUEST_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         "use strict";
         var notifcationCallbacks, domWindow, domWindowUtils, domWindowInner,
-            domWindowOuter, original_window, new_page, remoteAddress,
+            domWindowOuter, original_window, new_page, remoteAddress, send_event,
             lookupIPs, http_channel, http_channel_internal, nC, new_entry, hosts, evt, cancelled;
         log("Sixornot - HTTP_REQUEST_OBSERVER - (" + aTopic + ")", 1);
+
+        /* Create an event of the specified type and dispatch it to the specified element
+           Return boolean indicating if the event has been cancelled */
+        send_event = function (type, target, outer_id, inner_id, subject) {
+            // Create an event to inform listeners that a new page load has started
+            // We do this now since it's only now that we know the innerID of the page
+            var evt = target.top.document.createEvent("CustomEvent");
+            evt.initCustomEvent(type, true, true, null);
+            evt.outer_id = outer_id;
+            evt.inner_id = inner_id;
+            evt.subject = subject;
+            // Dispatch the event
+            return target.top.dispatchEvent(evt);
+        };
+
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response", 1);
             http_channel = aSubject.QueryInterface(Components.interfaces.nsIHttpChannel);
@@ -385,8 +374,7 @@ var HTTP_REQUEST_OBSERVER = {
                 // TODO in case this fails we should add it, but with a blank address/address_family
                 // And still perform DNS lookup!
                 remoteAddress = http_channel_internal.remoteAddress;
-            }
-            catch (e) {
+            } catch (e) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
                 remoteAddress = "";
             }
@@ -415,8 +403,7 @@ var HTTP_REQUEST_OBSERVER = {
                 domWindowOuter = domWindowUtils.outerWindowID;
 
                 original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);
-            }
-            catch (e) {
+            } catch (e) {
                 // HTTP response is in response to a non-DOM source - ignore these
                 log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 1);
                 return;
@@ -454,6 +441,7 @@ var HTTP_REQUEST_OBSERVER = {
                 var onReturnedIPs;
                 /* When DNS lookup is completed for a cache entry, update its IP address information */
                 onReturnedIPs = function (remoteips) {
+                    var evt, cancelled;
                     entry.dns_cancel = null;
                     if (remoteips[0] === "FAIL")
                     {
@@ -465,7 +453,14 @@ var HTTP_REQUEST_OBSERVER = {
                         entry.ipv4s = remoteips.filter(dns_handler.is_ip4);
                         entry.dns_status = "complete";
                     }
-                    // Also trigger page change event here to refresh display of IP tooltip TODO
+                    // Also trigger page change event here to refresh display of IP tooltip
+                    // Create a page change event
+                    evt = domWindow.document.createEvent("CustomEvent");
+                    evt.initCustomEvent("sixornot-dns-lookup-event", true, true, null);
+                    evt.outer_id = domWindowOuter;
+                    evt.inner_id = domWindowInner;
+                    // Dispatch the event
+                    cancelled = domWindow.dispatchEvent(evt);
                 };
                 if (entry.dns_cancel) {
                     entry.dns_cancel();
@@ -474,6 +469,7 @@ var HTTP_REQUEST_OBSERVER = {
             };
 
             if (new_page) {
+                /* PRIMARY PAGE LOAD */
                 // New page, since inner window ID hasn't been set yet we need to store any
                 // new connections until such a time as it is, these get stored in the RequestWaitingList
                 // which is keyed by the outer window ID
@@ -506,8 +502,10 @@ var HTTP_REQUEST_OBSERVER = {
                     //new_entry.lookupIPs();
                 }
                 RequestWaitingList[domWindowOuter] = hosts;
+
                 log("Sixornot - HTTP_REQUEST_OBSERVER - New page load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
             } else {
+                /* SECONDARY PAGE LOAD */
                 // Not new, inner window ID will be correct by now so add entries to RequestCache
                 hosts = [];
                 if (RequestCache[domWindowInner]) {
@@ -516,9 +514,16 @@ var HTTP_REQUEST_OBSERVER = {
                 // If host already in list update IP address if needed
                 hosts.filter(function (element, index, thearray) {
                     if (element.host === new_entry.host) {
+                        // TODO Send element count increase event
+                        // Subject is element host, to permit filtering of events
                         element.count += 1;
+                        send_event("sixornot-count-change-event", domWindow, domWindowOuter, domWindowInner, new_entry.host);
+
                         if (element.address !== new_entry.address && new_entry.address !== "") {
                             log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
+                            // TODO Send element address change event
+                            // Subject is element host, to permit filtering of events
+                            send_event("sixornot-address-change-event", domWindow, domWindowOuter, domWindowInner, new_entry.host);
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
                             // TODO - maybe have lookupIPs be a method of the entry object?
@@ -532,20 +537,15 @@ var HTTP_REQUEST_OBSERVER = {
                     return element.host === new_entry.host;
                 })) {
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
+                    // TODO Send new element event
+                    send_event("sixornot-new-host-event", domWindow, domWindowOuter, domWindowInner, new_entry.host);
+                    // Subject ??
                     hosts.push(new_entry);
                     // Trigger new DNS lookup for the new host entry
                     lookupIPs(new_entry);
                     //new_entry.lookupIPs();
                 }
                 RequestCache[domWindowInner] = hosts;
-
-                // Create a page change event
-                evt = domWindow.document.createEvent("CustomEvent");
-                evt.initCustomEvent("sixornot-page-change-event", true, true, null);
-                evt.outer_id = domWindowOuter;
-                evt.inner_id = domWindowInner;
-                // Dispatch the event
-                cancelled = domWindow.dispatchEvent(evt);
 
                 log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
             }
@@ -573,24 +573,38 @@ var HTTP_REQUEST_OBSERVER = {
             // Move item(s) from waiting list to cache
             RequestCache[domWindowInner] = RequestWaitingList.splice(domWindowOuter, 1)[0];
 
-            // Create a page change event
-            evt = domWindow.top.document.createEvent("CustomEvent");
-            evt.initCustomEvent("sixornot-page-change-event", true, true, null);
-            evt.outer_id = domWindowOuter;
-            evt.inner_id = domWindowInner;
-            // Dispatch the event
-            cancelled = domWindow.top.dispatchEvent(evt);
+            // Create an event to inform listeners that a new page load has started
+            // We do this now since it's only now that we know the innerID of the page
+            send_event("sixornot-page-change-event", domWindow, domWindowOuter, domWindowInner, null);
 
         } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
-            // TODO replace delete with pop of element + cancel of DNS lookup
-            delete RequestCache[domWindowInner];
-            log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 1);
+            // Remove elements for this window and ensure DNS lookups are all cancelled
+            if (RequestCache[domWindowInner]) {
+                log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner + " - removing all items for this inner window...", 1);
+                RequestCache.splice(domWindowInner, 1)[0].forEach(function (element, index, thearray) {
+                    if (element.dns_cancel) {
+                        log("Cancelling DNS...", 1);
+                        element.dns_cancel();
+                    }
+                });
+            } else {
+                log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 1);
+            }
         } else if (aTopic === "outer-window-destroyed") {
             domWindowOuter = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
-            // TODO replace delete with pop of element + cancel of DNS lookup
-            delete RequestWaitingList[domWindowOuter];
-            log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 1);
+            // Remove elements for this window and ensure DNS lookups are all cancelled
+            if (RequestCache[domWindowInner]) {
+                log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter + " - removing all items for this outer window...", 1);
+                RequestWaitingList.splice(domWindowOuter, 1)[0].forEach(function (element, index, thearray) {
+                    if (element.dns_cancel) {
+                        log("Cancelling DNS...", 1);
+                        element.dns_cancel();
+                    }
+                });
+            } else {
+                log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 1);
+            }
         } else {
             log("Sixornot - HTTP_REQUEST_OBSERVER - other, ignored (" + aTopic + ")", 1);
         }
@@ -727,8 +741,529 @@ insert_code = function (win) {
 
     /* Creates and sets up a panel to display information which can then be bound to an icon */
     create_panel = function () {
-        var panel;
+        var panel, refresh_panel;
         panel = doc.createElement("panel");
+        panel.setAttribute("noautohide", true);
+
+        // This contains everything else in the panel, vertical orientation
+        var panel_vbox = doc.createElement("vbox");
+        panel_vbox.setAttribute("flex", "1");
+        panel_vbox.style.overflowY = "auto";
+        panel_vbox.style.overflowX = "hidden";
+        panel.appendChild(panel_vbox);
+
+        // Build containing panel UI
+        var remote_grid = doc.createElement("grid");
+        var remote_rows = doc.createElement("rows");
+        var remote_cols = doc.createElement("columns");
+        // 5 columns wide
+        // icon, count, host, address, extra
+        remote_cols.appendChild(doc.createElement("column"));
+        remote_cols.appendChild(doc.createElement("column"));
+        remote_cols.appendChild(doc.createElement("column"));
+        remote_cols.appendChild(doc.createElement("column"));
+        remote_cols.appendChild(doc.createElement("column"));
+        remote_grid.appendChild(remote_cols);
+        remote_grid.appendChild(remote_rows);
+        panel_vbox.appendChild(remote_grid);
+
+        // Settings UI
+        var settingslabel = doc.createElement("description");
+        settingslabel.setAttribute("value", "Settings");
+        settingslabel.setAttribute("flex", "1");
+        settingslabel.setAttribute("style", "text-align: right; font-size: smaller;");
+
+        var settingssep = doc.createElement("separator");
+        settingssep.setAttribute("orient", "vertical");
+        settingssep.setAttribute("class", "thin");
+
+        var settingstoggle = doc.createElement("description");
+        settingstoggle.setAttribute("value", "[Show]");
+        settingstoggle.setAttribute("flex", "1");
+        settingstoggle.setAttribute("style", "text-decoration: underline; text-align: left; font-size: smaller;");
+        var settingslabel_hbox = doc.createElement("hbox");
+        settingslabel_hbox.appendChild(settingslabel);
+        settingslabel_hbox.appendChild(settingssep);
+        settingslabel_hbox.appendChild(settingstoggle);
+        panel_vbox.appendChild(settingslabel_hbox);
+
+        // Add a checkbox to the settings UI
+        var add_checkbox = function (addto, label, checked) {
+            var cbox, hbox;
+            cbox = doc.createElement("checkbox");
+            cbox.setAttribute("label", label);
+            cbox.setAttribute("checked", checked);
+            cbox.setAttribute("hidden", true);
+            hbox = doc.createElement("hbox");
+            hbox.appendChild(cbox);
+            addto.appendChild(hbox);
+            return cbox;
+        };
+
+        // Show icon
+        var setting_icon = add_checkbox(panel_vbox, "Show addressbar icon", true);
+
+        // Greyscale
+        var setting_grey = add_checkbox(panel_vbox, "Greyscale mode", true);
+
+        // Show all IPs
+        var setting_show = add_checkbox(panel_vbox, "Show all local IPs", true);
+
+        var show_settings = function (evt) {
+            evt.stopPropagation();
+            // Show the settings UI
+            setting_icon.setAttribute("hidden", false);
+            setting_grey.setAttribute("hidden", false);
+            setting_show.setAttribute("hidden", false);
+            settingstoggle.setAttribute("value", "[Hide]");
+            settingstoggle.removeEventListener("click", show_settings, false);
+            settingstoggle.addEventListener("click", hide_settings, false);
+        };
+        var hide_settings = function (evt) {
+            evt.stopPropagation();
+            // Show the settings UI
+            setting_icon.setAttribute("hidden", true);
+            setting_grey.setAttribute("hidden", true);
+            setting_show.setAttribute("hidden", true);
+            settingstoggle.setAttribute("value", "[Show]");
+            settingstoggle.removeEventListener("click", hide_settings, false);
+            settingstoggle.addEventListener("click", show_settings, false);
+        };
+
+        settingstoggle.addEventListener("click", show_settings, false);
+        settingstoggle.addEventListener("mouseover", function (evt) {
+            evt.target.style.cursor="pointer";
+        }, false);
+        settingstoggle.addEventListener("mouseout", function (evt) {
+            evt.target.style.cursor="default";
+        }, false);
+
+        /* Add a clickable URL field */
+        var add_url = function (addto, url, text) {
+            var label, hbox;
+            label = doc.createElement("description");
+
+            label.setAttribute("value", text);
+            label.setAttribute("crop", "none");
+            label.setAttribute("style", "text-decoration: underline;");
+            label.addEventListener("click", function (evt) {
+                var currentWindow, currentBrowser;
+                evt.stopPropagation();
+                panel.hidePopup();
+                // Add tab to most recent window, regardless of where this function was called from
+                currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+                     .getService(Components.interfaces.nsIWindowMediator)
+                     .getMostRecentWindow("navigator:browser");
+                currentWindow.focus();
+                currentBrowser = currentWindow.getBrowser();
+                currentBrowser.selectedTab = currentBrowser.addTab(url);
+            }, false);
+            label.addEventListener("mouseover", function (evt) {
+                evt.target.style.cursor="pointer";
+            }, false);
+            label.addEventListener("mouseout", function (evt) {
+                evt.target.style.cursor="default";
+            }, false);
+            hbox = doc.createElement("hbox");
+            hbox.appendChild(label);
+            hbox.setAttribute("align", "end");
+            addto.appendChild(hbox);
+        };
+
+        // Add link to Sixornot website to UI
+        add_url(panel_vbox, "http://entropy.me.uk/sixornot/", "Goto Sixornot website");
+
+
+
+        /* Functions */
+
+        /* Get the hosts list for the current window */
+        var get_hosts = function () {
+            var domWindow, domWindowUtils, domWindowInner, domWindowOuter;
+            // New functionality, get IDs for lookup
+            domWindow = win.gBrowser.mCurrentBrowser.contentWindow;
+            domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
+            domWindowInner = domWindowUtils.currentInnerWindowID;
+            domWindowOuter = domWindowUtils.outerWindowID;
+
+            return RequestCache[domWindowInner];
+        };
+
+        /* Ensure panel contents visible with scrollbars */
+        var force_scrollbars = function () {
+            if (panel_vbox.clientHeight > panel.clientHeight) {
+                panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
+                panel_vbox.setAttribute("width", panel_vbox.clientWidth + 40);
+            }
+        };
+
+        /* Update all panel contents */
+
+        /* Update local IP contents */
+
+        /* Update remote IP contents */
+        var update_remote_list = function (evt) {
+            /* Add details for a host record, either expanded or hidden
+               Also adds methods for expand/hide behaviour, click to copy etc. */
+            var add_remote_line = function (addto, host, detail) {
+                var count4 = 0, count6 = 0;
+
+                /* List of all rows to hide when not showing detail */
+                var detail_rows = [];
+                var summary_rows = [];
+
+                /* Sort the lists of addresses */
+                host.ipv6s.sort(function (a, b) {
+                    return dns_handler.sort_ip6.call(dns_handler, a, b);
+                });
+                host.ipv4s.sort(function (a, b) {
+                    return dns_handler.sort_ip4.call(dns_handler, a, b);
+                });
+
+                /* Full list of addresses for copy+paste */
+                var copy_full = host.host;
+                if (host.address) {
+                    copy_full = copy_full + "," + host.address;
+                }
+
+                host.ipv6s.forEach(function (address, index, addresses) {
+                    if (address !== host.address) {
+                        count6 += 1;
+                        copy_full = copy_full + "," + address;
+                    }
+                });
+                host.ipv4s.forEach(function (address, index, addresses) {
+                    if (address !== host.address) {
+                        count4 += 1;
+                        copy_full = copy_full + "," + address;
+                    }
+                });
+                copy_full = copy_full + "\n";
+
+                /* Show the detailed info rows, hide summary */
+                var add_show_detail_listeners = function (element) {
+                    element.addEventListener("click", function (evt) {
+                        evt.stopPropagation();
+                        summary_rows.forEach(function (row, index, thearray) {
+                            row.setAttribute("hidden", true);
+                        });
+                        detail_rows.forEach(function (row, index, thearray) {
+                            row.setAttribute("hidden", false);
+                        });
+                    }, false);
+                    element.addEventListener("mouseover", function (evt) {
+                        element.style.textDecoration = "underline";
+                        evt.target.style.cursor="pointer";
+                    }, false);
+                    element.addEventListener("mouseout", function (evt) {
+                        evt.target.style.cursor="default";
+                        element.style.textDecoration = "none";
+                    }, false);
+                };
+                /* Hide the detailed info rows, show summary */
+                var add_hide_detail_listeners = function (element) {
+                    element.addEventListener("click", function (evt) {
+                        evt.stopPropagation();
+                        summary_rows.forEach(function (row, index, thearray) {
+                            row.setAttribute("hidden", false);
+                        });
+                        detail_rows.forEach(function (row, index, thearray) {
+                            row.setAttribute("hidden", true);
+                        });
+                    }, false);
+                    element.addEventListener("mouseover", function (evt) {
+                        element.style.textDecoration = "underline";
+                        evt.target.style.cursor="pointer";
+                    }, false);
+                    element.addEventListener("mouseout", function (evt) {
+                        evt.target.style.cursor="default";
+                        element.style.textDecoration = "none";
+                    }, false);
+                };
+
+                /* Add event handlers to an element to copy a value when it's clicked */
+                var add_copy_on_click = function (element, copytext) {
+                    element.addEventListener("click", function (evt) {
+                        evt.stopPropagation();
+                        clipboardHelper.copyString(copytext);
+                        // TODO add confirmation message to main UI to indicate copy worked
+                    }, false);
+                    element.addEventListener("mouseover", function (evt) {
+                        element.style.textDecoration = "underline";
+                        evt.target.style.cursor="pointer";
+                    }, false);
+                    element.addEventListener("mouseout", function (evt) {
+                        evt.target.style.cursor="default";
+                        element.style.textDecoration = "none";
+                    }, false);
+                };
+
+                // Build UI
+                // Summary line
+                var add_summary_line = function () {
+                    var summary_row = doc.createElement("row");
+                    // Icon
+                    var icon = doc.createElement("image");
+                    icon.setAttribute("width", "16");
+                    icon.setAttribute("height", "16");
+                    icon.setAttribute("src", get_icon_source(host));
+                    // Item count
+                    var count = doc.createElement("label");
+                    if (host.count > 1) {
+                        count.setAttribute("value", "(" + host.count + ")");
+                    } else {
+                        count.setAttribute("value", "");
+                    }
+                    count.setAttribute("style", "");
+                    // Hostname
+                    var hostname = doc.createElement("label");
+                    log("hostname set to: " + host.host, 1);
+                    hostname.setAttribute("value", host.host);
+                    if (host.host === getCurrentHost()) {
+                        // Bold
+                        hostname.setAttribute("style", "font-weight: bold;");
+                    } else {
+                        hostname.setAttribute("style", "font-weight: normal;");
+                    }
+                    hostname.setAttribute("tooltiptext", gt("tt_copyall"));
+                    add_copy_on_click(hostname, copy_full);
+                    // Connection IP (click to copy)
+                    var address = doc.createElement("label");
+                    if (host.address_family === 6) {
+                        address.setAttribute("value", host.address);
+                        address.setAttribute("style", "color: #0F0;");
+                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                        add_copy_on_click(address, host.address);
+                    } else if (host.address_family === 4) {
+                        address.setAttribute("value", host.address);
+                        address.setAttribute("style", "color: #F00;");
+                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                        add_copy_on_click(address, host.address);
+                    } else if (host.address_family === 2) {
+                        address.setAttribute("value", "Cached");
+                        address.setAttribute("style", "color: #00F;");
+                    } else {
+                        address.setAttribute("value", "Address Unavailable");
+                        address.setAttribute("style", "color: #000;");
+                    }
+                    // Count of additional v6s (click to expand)
+                    var c6 = doc.createElement("label");
+                    if (count6 > 0) {
+                        c6.setAttribute("value", "[+" + count6 + "]");
+                        c6.setAttribute("style", "color: #0F0;");
+                        add_show_detail_listeners(c6);
+                        c6.setAttribute("tooltiptext", gt("tt_show_detail"));
+                    } else {
+                        c6.setAttribute("value", "");
+                    }
+                    // Count of additional v4s (click to expand)
+                    var c4 = doc.createElement("label");
+                    if (count4 > 0) {
+                        c4.setAttribute("value", "[+" + count4 + "]");
+                        c4.setAttribute("style", "color: #F00;");
+                        add_show_detail_listeners(c4);
+                        c4.setAttribute("tooltiptext", gt("tt_show_detail"));
+                    } else {
+                        c4.setAttribute("value", "");
+                    }
+
+                    summary_row.appendChild(icon);
+                    summary_row.appendChild(count);
+                    summary_row.appendChild(hostname);
+                    summary_row.appendChild(address);
+                    summary_row.appendChild(c6);
+                    summary_row.appendChild(c4);
+
+                    addto.appendChild(summary_row);
+                    return summary_row;
+                };
+
+
+                // Detail line(s)
+                var add_first_detail_line = function () {
+                    var row = doc.createElement("row");
+                    // Icon
+                    var icon = doc.createElement("image");
+                    icon.setAttribute("width", "16");
+                    icon.setAttribute("height", "16");
+                    icon.setAttribute("src", get_icon_source(host));
+                    // Item count
+                    var count = doc.createElement("label");
+                    if (host.count > 1) {
+                        count.setAttribute("value", "(" + host.count + ")");
+                    } else {
+                        count.setAttribute("value", "");
+                    }
+                    count.setAttribute("style", "");
+                    // Hostname
+                    var hostname = doc.createElement("label");
+                    hostname.setAttribute("value", host.host);
+                    if (host.host === getCurrentHost()) {
+                        // Bold
+                        hostname.setAttribute("style", "font-weight: bold;");
+                    } else {
+                        hostname.setAttribute("style", "font-weight: normal;");
+                    }
+                    hostname.setAttribute("tooltiptext", gt("tt_copyall"));
+                    add_copy_on_click(hostname, copy_full);
+                    // Connection IP
+                    var address = doc.createElement("label");
+                    if (host.address_family === 6) {
+                        address.setAttribute("value", host.address);
+                        address.setAttribute("style", "color: #0F0;");
+                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                        add_copy_on_click(address, host.address);
+                    } else if (host.address_family === 4) {
+                        address.setAttribute("value", host.address);
+                        address.setAttribute("style", "color: #F00;");
+                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                        add_copy_on_click(address, host.address);
+                    } else if (host.address_family === 2) {
+                        address.setAttribute("value", "Cached");
+                        address.setAttribute("style", "color: #00F;");
+                    } else {
+                        address.setAttribute("value", "Address Unavailable");
+                        address.setAttribute("style", "color: #000;");
+                    }
+
+                    // Blank to skip column
+                    var blank = doc.createElement("label");
+                    blank.setAttribute("value", "");
+                    // Count of additional v6s (click to expand)
+                    var hide = doc.createElement("label");
+                    hide.setAttribute("value", "[Hide]");
+                    hide.setAttribute("style", "");
+                    hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
+
+                    row.appendChild(icon);
+                    row.appendChild(count);
+                    row.appendChild(hostname);
+                    row.appendChild(address);
+                    row.appendChild(blank);
+                    row.appendChild(hide);
+                    add_hide_detail_listeners(hide);
+
+                    addto.appendChild(row);
+                    return row;
+                };
+                var add_detail_line = function (add_address) {
+                    var row = doc.createElement("row");
+                    // Icon (blank)
+                    var icon = doc.createElement("image");
+                    icon.setAttribute("width", "16");
+                    icon.setAttribute("height", "16");
+                    icon.setAttribute("src", "");
+                    // Item count (blank)
+                    var count = doc.createElement("label");
+                    count.setAttribute("value", "");
+                    // Hostname (blank)
+                    var hostname = doc.createElement("label");
+                    hostname.setAttribute("value", "");
+                    // Current IP (click to copy)
+                    var address = doc.createElement("label");
+                    if (dns_handler.is_ip6(add_address)) {
+                        address.setAttribute("value", add_address);
+                        address.setAttribute("style", "color: #0F0;");
+                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                        add_copy_on_click(address, add_address);
+                    } else if (dns_handler.is_ip4(add_address)) {
+                        address.setAttribute("value", add_address);
+                        address.setAttribute("style", "color: #F00;");
+                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                        add_copy_on_click(address, add_address);
+                    } else {
+                        // Should not happen!
+                        address.setAttribute("value", "ERROR");
+                        address.setAttribute("style", "color: #FF0;");
+                    }
+
+                    row.appendChild(icon);
+                    row.appendChild(count);
+                    row.appendChild(hostname);
+                    row.appendChild(address);
+
+                    addto.appendChild(row);
+                    return row;
+                };
+
+                // Actually add the UI
+                summary_rows.push(add_summary_line());
+                detail_rows.push(add_first_detail_line());
+
+                host.ipv6s.forEach(function (address, index, addresses) {
+                    if (address !== host.address) {
+                        detail_rows.push(add_detail_line(address));
+                    }
+                });
+                host.ipv4s.forEach(function (address, index, addresses) {
+                    if (address !== host.address) {
+                        detail_rows.push(add_detail_line(address));
+                    }
+                });
+
+                // Set what is visible by default based on detail parameter
+                if (detail) {
+                    summary_rows.forEach(function (row, index, thearray) {
+                        try {
+                            row.setAttribute("hidden", true);
+                        } catch (e) {
+                            log("Exception: " + e, 0);
+                        }
+                    });
+                } else {
+                    detail_rows.forEach(function (row, index, thearray) {
+                        try {
+                            row.setAttribute("hidden", true);
+                        } catch (e) {
+                            log("Exception: " + e, 0);
+                        }
+                    });
+                }
+            };
+
+            var add_line = function (addto, labelName, style) {
+                var label = doc.createElement("label");
+
+                label.setAttribute("value", labelName);
+                label.setAttribute("style", style);
+
+                addto.appendChild(label);
+                return label;
+            };
+            // Add UI for the listing of addresses
+            var hosts = get_hosts();
+
+            // First remove existing UI
+            // TODO - this needs to be done more intelligently, removing listeners etc.
+            while (remote_rows.firstChild) {
+                remote_rows.removeChild(remote_rows.firstChild);
+            }
+
+            add_line(remote_rows, gt("header_remote"), "text-align: center; font-size: smaller;");
+
+            if (!hosts) {
+                add_line(remote_rows, "no hosts found", "font-weight: bold; text-align: left; color: #F00;");
+            } else {
+                // TODO add sorting of hosts
+                // TODO always display matching host first in list
+                hosts.forEach(function (host, index, myarray) {
+                    log("host.host: " + host.host + ", getCurrentHost(): " + getCurrentHost(), 1);
+                    add_remote_line(remote_rows, host, host.host === getCurrentHost());
+                });
+            }
+
+            // Ensure that if resizing has taken the panel off-screen that we set up scrollbars
+            force_scrollbars();
+        };
+
+
+        /* Refresh the contents of the panel when a new DNS result comes in */
+        refresh_panel = function (evt) {
+            if (panel.state === "open") {
+                // Ensure "this" value is correct inside event handler
+                update_panel.call(panel, evt);
+            }
+        };
 
         // Panel setup
         panel.setAttribute("id", PANEL_ID);
@@ -740,13 +1275,23 @@ insert_code = function (win) {
         panel.style.listStyleImage = "none";
 
         // Event listener to update panel contents when it is shown
-        panel.addEventListener("popupshowing", update_panel, false);
+        panel.addEventListener("popupshowing", update_remote_list, false);
+        win.addEventListener("sixornot-page-change-event", update_remote_list, false);
+        win.addEventListener("sixornot-new-host-event", update_remote_list, false);
+        win.addEventListener("sixornot-address-change-event", update_remote_list, false);
+        win.addEventListener("sixornot-count-change-event", update_remote_list, false);
+        win.addEventListener("sixornot-dns-lookup-event", update_remote_list, false);
 
         // Add a callback to our unload list to remove the UI when addon is disabled
         unload(function () {
             log("Sixornot - Unload panel callback", 2);
             // Remove event listeners
-            panel.removeEventListener("popupshowing", update_panel, false);
+            panel.removeEventListener("popupshowing", update_remote_list, false);
+            win.removeEventListener("sixornot-page-change-event", update_remote_list, false);
+            win.removeEventListener("sixornot-new-host-event", update_remote_list, false);
+            win.removeEventListener("sixornot-address-change-event", update_remote_list, false);
+            win.removeEventListener("sixornot-count-change-event", update_remote_list, false);
+            win.removeEventListener("sixornot-dns-lookup-event", update_remote_list, false);
             // Remove UI
             panel.parentNode.removeChild(panel);
         }, win);
@@ -867,6 +1412,7 @@ insert_code = function (win) {
 
         /* Register for page change events */
         win.addEventListener("sixornot-page-change-event", page_change_handler, false);
+        win.addEventListener("sixornot-dns-lookup-event", page_change_handler, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
 
         /* Add a callback to unload to remove the button */
@@ -879,6 +1425,7 @@ insert_code = function (win) {
             // win.removeEventListener("online", onChangedOnlineStatus, false); TODO
             toolbarButton.removeEventListener("click", onclick_toolbarButton, false);
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
+            win.removeEventListener("sixornot-dns-lookup-event", page_change_handler, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
 
             /* Remove UI */
@@ -978,6 +1525,7 @@ insert_code = function (win) {
 
         /* Register for page change events */
         win.addEventListener("sixornot-page-change-event", page_change_handler, false);
+        win.addEventListener("sixornot-dns-lookup-event", page_change_handler, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
 
         /* Add a callback to unload to remove the icon */
@@ -987,6 +1535,7 @@ insert_code = function (win) {
             /* Clear event handlers */
             addressBarIcon.removeEventListener("click", onclick_addressBarIcon, false);
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
+            win.removeEventListener("sixornot-dns-lookup-event", page_change_handler, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
 
             /* Remove UI */
@@ -1083,18 +1632,6 @@ insert_code = function (win) {
         log("Sixornot - main:update_panel", 2);
         panel = this;
 
-        /* Get the hosts list for the current window */
-        get_hosts = function () {
-            var domWindow, domWindowUtils, domWindowInner, domWindowOuter;
-            // New functionality, get IDs for lookup
-            domWindow = win.gBrowser.mCurrentBrowser.contentWindow;
-            domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
-            domWindowInner = domWindowUtils.currentInnerWindowID;
-            domWindowOuter = domWindowUtils.outerWindowID;
-
-            return RequestCache[domWindowInner];
-        };
-
         /* Add a styled line to the panel, including optional icon */
         add_line = function (rows, labelName, labelStyle, valueName, valueStyle,
                              iconsrc, extra6value, extra6style, extra4value, extra4style) {
@@ -1156,323 +1693,6 @@ insert_code = function (win) {
         };
 
 
-        /* Add details for a host record, either expanded or hidden
-           Also adds methods for expand/hide behaviour, click to copy etc. */
-        var add_remote_line = function (addto, host, detail) {
-            var count4 = 0, count6 = 0;
-
-            /* List of all rows to hide when not showing detail */
-            var detail_rows = [];
-            var summary_rows = [];
-
-            /* Sort the lists of addresses */
-            host.ipv6s.sort(function (a, b) {
-                return dns_handler.sort_ip6.call(dns_handler, a, b);
-            });
-            host.ipv4s.sort(function (a, b) {
-                return dns_handler.sort_ip4.call(dns_handler, a, b);
-            });
-
-            /* Full list of addresses for copy+paste */
-            var copy_full = host.host;
-            if (host.address) {
-                copy_full = copy_full + "," + host.address;
-            }
-
-            host.ipv6s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    count6 += 1;
-                    copy_full = copy_full + "," + address;
-                }
-            });
-            host.ipv4s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    count4 += 1;
-                    copy_full = copy_full + "," + address;
-                }
-            });
-            copy_full = copy_full + "\n";
-
-            /* Show the detailed info rows, hide summary */
-            var add_show_detail_listeners = function (element) {
-                element.addEventListener("click", function (evt) {
-                    evt.stopPropagation();
-                    summary_rows.forEach(function (row, index, thearray) {
-                        row.setAttribute("hidden", true);
-                    });
-                    detail_rows.forEach(function (row, index, thearray) {
-                        row.setAttribute("hidden", false);
-                    });
-                }, false);
-                element.addEventListener("mouseover", function (evt) {
-                    element.style.textDecoration = "underline";
-                    evt.target.style.cursor="pointer";
-                }, false);
-                element.addEventListener("mouseout", function (evt) {
-                    evt.target.style.cursor="default";
-                    element.style.textDecoration = "none";
-                }, false);
-            };
-            /* Hide the detailed info rows, show summary */
-            var add_hide_detail_listeners = function (element) {
-                element.addEventListener("click", function (evt) {
-                    evt.stopPropagation();
-                    summary_rows.forEach(function (row, index, thearray) {
-                        row.setAttribute("hidden", false);
-                    });
-                    detail_rows.forEach(function (row, index, thearray) {
-                        row.setAttribute("hidden", true);
-                    });
-                }, false);
-                element.addEventListener("mouseover", function (evt) {
-                    element.style.textDecoration = "underline";
-                    evt.target.style.cursor="pointer";
-                }, false);
-                element.addEventListener("mouseout", function (evt) {
-                    evt.target.style.cursor="default";
-                    element.style.textDecoration = "none";
-                }, false);
-            };
-
-            /* Add event handlers to an element to copy a value when it's clicked */
-            var add_copy_on_click = function (element, copytext) {
-                element.addEventListener("click", function (evt) {
-                    evt.stopPropagation();
-                    clipboardHelper.copyString(copytext);
-                    // TODO add confirmation message to main UI to indicate copy worked
-                }, false);
-                element.addEventListener("mouseover", function (evt) {
-                    element.style.textDecoration = "underline";
-                    evt.target.style.cursor="pointer";
-                }, false);
-                element.addEventListener("mouseout", function (evt) {
-                    evt.target.style.cursor="default";
-                    element.style.textDecoration = "none";
-                }, false);
-            };
-
-            // Build UI
-            // Summary line
-            var add_summary_line = function () {
-                var summary_row = doc.createElement("row");
-                // Icon
-                var icon = doc.createElement("image");
-                icon.setAttribute("width", "16");
-                icon.setAttribute("height", "16");
-                icon.setAttribute("src", get_icon_source(host));
-                // Item count
-                var count = doc.createElement("label");
-                if (host.count > 1) {
-                    count.setAttribute("value", "(" + host.count + ")");
-                } else {
-                    count.setAttribute("value", "");
-                }
-                count.setAttribute("style", "");
-                // Hostname
-                var hostname = doc.createElement("label");
-                log("hostname set to: " + host.host, 1);
-                hostname.setAttribute("value", host.host);
-                if (host.host === getCurrentHost()) {
-                    // Bold
-                    hostname.setAttribute("style", "font-weight: bold;");
-                } else {
-                    hostname.setAttribute("style", "font-weight: normal;");
-                }
-                hostname.setAttribute("tooltiptext", gt("tt_copyall"));
-                add_copy_on_click(hostname, copy_full);
-                // Connection IP (click to copy)
-                var address = doc.createElement("label");
-                if (host.address_family === 6) {
-                    address.setAttribute("value", host.address);
-                    address.setAttribute("style", "color: #0F0;");
-                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                    add_copy_on_click(address, host.address);
-                } else if (host.address_family === 4) {
-                    address.setAttribute("value", host.address);
-                    address.setAttribute("style", "color: #F00;");
-                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                    add_copy_on_click(address, host.address);
-                } else if (host.address_family === 2) {
-                    address.setAttribute("value", "Cached");
-                    address.setAttribute("style", "color: #00F;");
-                } else {
-                    address.setAttribute("value", "Address Unavailable");
-                    address.setAttribute("style", "color: #000;");
-                }
-                // Count of additional v6s (click to expand)
-                var c6 = doc.createElement("label");
-                if (count6 > 0) {
-                    c6.setAttribute("value", "[+" + count6 + "]");
-                    c6.setAttribute("style", "color: #0F0;");
-                    add_show_detail_listeners(c6);
-                    c6.setAttribute("tooltiptext", gt("tt_show_detail"));
-                } else {
-                    c6.setAttribute("value", "");
-                }
-                // Count of additional v4s (click to expand)
-                var c4 = doc.createElement("label");
-                if (count4 > 0) {
-                    c4.setAttribute("value", "[+" + count4 + "]");
-                    c4.setAttribute("style", "color: #F00;");
-                    add_show_detail_listeners(c4);
-                    c4.setAttribute("tooltiptext", gt("tt_show_detail"));
-                } else {
-                    c4.setAttribute("value", "");
-                }
-
-                summary_row.appendChild(icon);
-                summary_row.appendChild(count);
-                summary_row.appendChild(hostname);
-                summary_row.appendChild(address);
-                summary_row.appendChild(c6);
-                summary_row.appendChild(c4);
-
-                addto.appendChild(summary_row);
-                return summary_row;
-            };
-
-
-            // Detail line(s)
-            var add_first_detail_line = function () {
-                var row = doc.createElement("row");
-                // Icon
-                var icon = doc.createElement("image");
-                icon.setAttribute("width", "16");
-                icon.setAttribute("height", "16");
-                icon.setAttribute("src", get_icon_source(host));
-                // Item count
-                var count = doc.createElement("label");
-                if (host.count > 1) {
-                    count.setAttribute("value", "(" + host.count + ")");
-                } else {
-                    count.setAttribute("value", "");
-                }
-                count.setAttribute("style", "");
-                // Hostname
-                var hostname = doc.createElement("label");
-                hostname.setAttribute("value", host.host);
-                if (host.host === getCurrentHost()) {
-                    // Bold
-                    hostname.setAttribute("style", "font-weight: bold;");
-                } else {
-                    hostname.setAttribute("style", "font-weight: normal;");
-                }
-                hostname.setAttribute("tooltiptext", gt("tt_copyall"));
-                add_copy_on_click(hostname, copy_full);
-                // Connection IP
-                var address = doc.createElement("label");
-                if (host.address_family === 6) {
-                    address.setAttribute("value", host.address);
-                    address.setAttribute("style", "color: #0F0;");
-                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                    add_copy_on_click(address, host.address);
-                } else if (host.address_family === 4) {
-                    address.setAttribute("value", host.address);
-                    address.setAttribute("style", "color: #F00;");
-                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                    add_copy_on_click(address, host.address);
-                } else if (host.address_family === 2) {
-                    address.setAttribute("value", "Cached");
-                    address.setAttribute("style", "color: #00F;");
-                } else {
-                    address.setAttribute("value", "Address Unavailable");
-                    address.setAttribute("style", "color: #000;");
-                }
-
-                // Blank to skip column
-                var blank = doc.createElement("label");
-                blank.setAttribute("value", "");
-                // Count of additional v6s (click to expand)
-                var hide = doc.createElement("label");
-                hide.setAttribute("value", "[Hide]");
-                hide.setAttribute("style", "");
-                hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
-
-                row.appendChild(icon);
-                row.appendChild(count);
-                row.appendChild(hostname);
-                row.appendChild(address);
-                row.appendChild(blank);
-                row.appendChild(hide);
-                add_hide_detail_listeners(hide);
-
-                addto.appendChild(row);
-                return row;
-            };
-            var add_detail_line = function (add_address) {
-                var row = doc.createElement("row");
-                // Icon (blank)
-                var icon = doc.createElement("image");
-                icon.setAttribute("width", "16");
-                icon.setAttribute("height", "16");
-                icon.setAttribute("src", "");
-                // Item count (blank)
-                var count = doc.createElement("label");
-                count.setAttribute("value", "");
-                // Hostname (blank)
-                var hostname = doc.createElement("label");
-                hostname.setAttribute("value", "");
-                // Current IP (click to copy)
-                var address = doc.createElement("label");
-                if (dns_handler.is_ip6(add_address)) {
-                    address.setAttribute("value", add_address);
-                    address.setAttribute("style", "color: #0F0;");
-                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                    add_copy_on_click(address, add_address);
-                } else if (dns_handler.is_ip4(add_address)) {
-                    address.setAttribute("value", add_address);
-                    address.setAttribute("style", "color: #F00;");
-                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                    add_copy_on_click(address, add_address);
-                } else {
-                    // Should not happen!
-                    address.setAttribute("value", "ERROR");
-                    address.setAttribute("style", "color: #FF0;");
-                }
-
-                row.appendChild(icon);
-                row.appendChild(count);
-                row.appendChild(hostname);
-                row.appendChild(address);
-
-                addto.appendChild(row);
-                return row;
-            };
-
-            // Actually add the UI
-            summary_rows.push(add_summary_line());
-            detail_rows.push(add_first_detail_line());
-
-            host.ipv6s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    detail_rows.push(add_detail_line(address));
-                }
-            });
-            host.ipv4s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    detail_rows.push(add_detail_line(address));
-                }
-            });
-
-            // Set what is visible by default based on detail parameter
-            if (detail) {
-                summary_rows.forEach(function (row, index, thearray) {
-                    try {
-                        row.setAttribute("hidden", true);
-                    } catch (e) {
-                        log("Exception: " + e, 0);
-                    }
-                });
-            } else {
-                detail_rows.forEach(function (row, index, thearray) {
-                    try {
-                        row.setAttribute("hidden", true);
-                    } catch (e) {
-                        log("Exception: " + e, 0);
-                    }
-                });
-            }
-        };
 
 
         add_v6_line = function (rows, address) {
@@ -1499,7 +1719,13 @@ insert_code = function (win) {
             return add_line(rows, labelName, "font-weight: bold; text-align: right;");
         };
         add_warning_line = function (rows, labelName) {
-            return add_line(rows, labelName, "font-weight: bold; text-align: left; color: #F00;");
+            var label = doc.createElement("label");
+
+            label.setAttribute("value", labelName);
+            label.setAttribute("style", "font-weight: bold; text-align: left; color: #F00;");
+
+            rows.appendChild(label);
+            return label;
         };
         add_blank_line = function (rows) {
             return add_line(rows, "", "");
@@ -1527,19 +1753,6 @@ insert_code = function (win) {
             }
         };
 
-        hosts = get_hosts();
-
-        // Clear previously generated tooltip, if one exists
-        while (panel.firstChild) {
-            panel.removeChild(panel.firstChild);
-        }
-
-
-        // All local and remote addresses added to a set of rows
-        // These then added to a grid which is added to the vbox which contains
-        //  all the elements for the panel
-        var remote_rows = doc.createElement("rows");
-
         // Warnings
         // TODO add this to the panel before the rows
         /* if (dns_handler.is_ip6_disabled()) {
@@ -1551,19 +1764,6 @@ insert_code = function (win) {
             add_warning_line(gt("warn_ip4only_domain"));
         } */
 
-        /* Add remote IP address listing */
-        add_line(remote_rows, gt("header_remote"), "text-align: center; font-size: smaller;");
-
-        if (!hosts) {
-            add_warning_line(remote_rows, "no hosts found", "");
-        } else {
-            // TODO add sorting of hosts
-            // TODO always display matching host first in list
-            hosts.forEach(function (host, index, myarray) {
-                log("host.host: " + host.host + ", getCurrentHost(): " + getCurrentHost(), 1);
-                add_remote_line(remote_rows, host, host.host === getCurrentHost());
-            });
-        }
 
         /* Returns array of rows considered to be local */
         var add_local_ips = function () {
@@ -1603,146 +1803,11 @@ insert_code = function (win) {
             return local_ips;
         };
 
-        var remote_grid = doc.createElement("grid");
-        var remote_cols = doc.createElement("columns");
-
         // Add current local IPs to grid
         var local_ips = add_local_ips();
 
-        remote_cols.appendChild(doc.createElement("column"));
-        remote_cols.appendChild(doc.createElement("column"));
-        remote_cols.appendChild(doc.createElement("column"));
-        remote_cols.appendChild(doc.createElement("column"));
-        remote_cols.appendChild(doc.createElement("column"));
-        remote_grid.appendChild(remote_cols);
-        remote_grid.appendChild(remote_rows);
-
-        var panel_vbox = doc.createElement("vbox");
-        panel_vbox.setAttribute("flex", "1");
-        panel_vbox.style.overflowY = "auto";
-        panel_vbox.style.overflowX = "hidden";
-        panel_vbox.appendChild(remote_grid);
-
-
-        var settingslabel = doc.createElement("description");
-        settingslabel.setAttribute("value", "Settings");
-        settingslabel.setAttribute("flex", "1");
-        settingslabel.setAttribute("style", "text-align: right; font-size: smaller;");
-
-        var settingssep = doc.createElement("separator");
-        settingssep.setAttribute("orient", "vertical");
-        settingssep.setAttribute("class", "thin");
-
-        var settingstoggle = doc.createElement("description");
-        settingstoggle.setAttribute("value", "[Show]");
-        settingstoggle.setAttribute("flex", "1");
-        settingstoggle.setAttribute("style", "text-decoration: underline; text-align: left; font-size: smaller;");
-        var settingslabel_hbox = doc.createElement("hbox");
-        //settingslabel_hbox.setAttribute("style", "border: 1px solid #F00");
-        settingslabel_hbox.appendChild(settingslabel);
-        settingslabel_hbox.appendChild(settingssep);
-        settingslabel_hbox.appendChild(settingstoggle);
-        panel_vbox.appendChild(settingslabel_hbox);
-
-        // TODO add settings controls
-
-        add_checkbox = function (addto, label, checked) {
-            var cbox, hbox;
-            cbox = doc.createElement("checkbox");
-            cbox.setAttribute("label", label);
-            cbox.setAttribute("checked", checked);
-            cbox.setAttribute("hidden", true);
-            hbox = doc.createElement("hbox");
-            hbox.appendChild(cbox);
-            addto.appendChild(hbox);
-            return cbox;
-        };
-
-        // Show icon
-        var setting_icon = add_checkbox(panel_vbox, "Show addressbar icon", true);
-
-        // Greyscale
-        var setting_grey = add_checkbox(panel_vbox, "Greyscale mode", true);
-
-        // Show all IPs
-        var setting_show = add_checkbox(panel_vbox, "Show all local IPs", true);
-
-        var show_settings = function (evt) {
-            evt.stopPropagation();
-            // Show the settings UI
-            setting_icon.setAttribute("hidden", false);
-            setting_grey.setAttribute("hidden", false);
-            setting_show.setAttribute("hidden", false);
-            settingstoggle.setAttribute("value", "[Hide]");
-            settingstoggle.removeEventListener("click", show_settings, false);
-            settingstoggle.addEventListener("click", hide_settings, false);
-        };
-        var hide_settings = function (evt) {
-            evt.stopPropagation();
-            // Show the settings UI
-            setting_icon.setAttribute("hidden", true);
-            setting_grey.setAttribute("hidden", true);
-            setting_show.setAttribute("hidden", true);
-            settingstoggle.setAttribute("value", "[Show]");
-            settingstoggle.removeEventListener("click", hide_settings, false);
-            settingstoggle.addEventListener("click", show_settings, false);
-        };
-
-        settingstoggle.addEventListener("click", show_settings, false);
-        settingstoggle.addEventListener("mouseover", function (evt) {
-            evt.target.style.cursor="pointer";
-        }, false);
-        settingstoggle.addEventListener("mouseout", function (evt) {
-            evt.target.style.cursor="default";
-        }, false);
-
-        add_url = function (addto, url, text) {
-            var label, hbox;
-            label = doc.createElement("description");
-
-            label.setAttribute("value", text);
-            label.setAttribute("crop", "none");
-            label.setAttribute("style", "text-decoration: underline;");
-            label.addEventListener("click", function (evt) {
-                var currentWindow, currentBrowser;
-                evt.stopPropagation();
-                panel.hidePopup();
-                // Add tab to most recent window, regardless of where this function was called from
-                currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-                     .getService(Components.interfaces.nsIWindowMediator)
-                     .getMostRecentWindow("navigator:browser");
-                currentWindow.focus();
-                currentBrowser = currentWindow.getBrowser();
-                currentBrowser.selectedTab = currentBrowser.addTab(url);
-            }, false);
-            label.addEventListener("mouseover", function (evt) {
-                evt.target.style.cursor="pointer";
-            }, false);
-            label.addEventListener("mouseout", function (evt) {
-                evt.target.style.cursor="default";
-            }, false);
-            hbox = doc.createElement("hbox");
-            hbox.appendChild(label);
-            hbox.setAttribute("align", "end");
-            addto.appendChild(hbox);
-        };
-
-        // Goto website (link)
-        add_url(panel_vbox, "http://entropy.me.uk/sixornot/", "Goto Sixornot website");
-
-        panel.appendChild(panel_vbox);
-
         log("panel.boxObject.width: " + panel.boxObject.width + ", panel.boxObject.height: " + panel.boxObject.height, 1);
         log("panel.clientWidth: " + panel.clientWidth + ", panel.clientHeight: " + panel.clientHeight, 1);
-
-        // Special case, if the panel is cut off by the edge of the screen set
-        // min-height property of the main vbox so that it enforces scrollbars
-        // otherwise content will be off screen and inaccessible to the user
-        if (panel_vbox.clientHeight > panel.clientHeight) {
-            panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
-            panel_vbox.setAttribute("width", panel_vbox.clientWidth + 40);
-//            panel.setAttribute("width", panel_vbox.clientWidth + 50);
-        }
 
         // Trigger async local address resolve, callback updates local IP addresses
         var local_dns_request = dns_handler.resolve_local_async(function (localips) {
@@ -2209,8 +2274,7 @@ defineLazyGetter("threadManager", function() {
 
 
 // The DNS Handler which does most of the work of the extension
-dns_handler =
-{
+dns_handler = {
     remote_ctypes: true,
     local_ctypes: true,
 
@@ -2233,8 +2297,7 @@ dns_handler =
     /*
         Startup/shutdown functions for dns_handler - call init before using!
     */
-    init : function ()
-    {
+    init : function () {
         var that;
         log("Sixornot - dns_handler - init", 1);
 
@@ -2260,13 +2323,11 @@ dns_handler =
         this.worker.postMessage([-1, this.reqids.init, xulRuntime.OS.toLowerCase()]);
     },
 
-    set_worker_loglevel : function (newloglevel)
-    {
+    set_worker_loglevel : function (newloglevel) {
         this.worker.postMessage([-1, this.reqids.loglevel, newloglevel]);
     },
 
-    shutdown : function ()
-    {
+    shutdown : function () {
         log("Sixornot - dns_handler:shutdown", 1);
         // Shutdown async resolver
         this.worker.postMessage([-1, this.reqids.shutdown, null]);
@@ -2276,17 +2337,15 @@ dns_handler =
     /*
         IP Address utility functions
     */
-    validate_ip4 : function (ip_address)
-    {
-        log("Sixornot - dns_handler:validate_ip4: " + ip_address, 2);
+    validate_ip4 : function (ip_address) {
+        log("Sixornot - dns_handler:validate_ip4: " + ip_address, 3);
         // TODO - Write this function if needed, extensive validation of IPv4 address
         return false;
     },
 
     // Quick check for address family, not a validator (see validate_ip4)
-    is_ip4 : function (ip_address)
-    {
-        log("Sixornot - dns_handler:is_ip4 " + ip_address, 2);
+    is_ip4 : function (ip_address) {
+        log("Sixornot - dns_handler:is_ip4 " + ip_address, 3);
         return ip_address && (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
     },
 
@@ -2333,34 +2392,28 @@ dns_handler =
     */
 
     // Pad an IPv4 address to permit lexicographical sorting
-    pad_ip4 : function (ip4_address)
-    {
-        var pad = function (n)
-        {
+    pad_ip4 : function (ip4_address) {
+        var pad = function (n) {
             return ("00" + n).substr(-3);
         };
         return ip4_address.split(".").map(pad).join(".");
     },
     // Remove leading zeros from IPv4 address
-    unpad_ip4 : function (ip4_address)
-    {
-        var unpad = function (n)
-        {
+    unpad_ip4 : function (ip4_address) {
+        var unpad = function (n) {
             return parseInt(n, 10);
         };
         return ip4_address.split(".").map(unpad).join(".");
     },
 
     // Sort IPv4 addresses into logical ordering
-    sort_ip4 : function (a, b)
-    {
+    sort_ip4 : function (a, b) {
         var typeof_a, typeof_b;
         typeof_a = this.typeof_ip4(a);
         typeof_b = this.typeof_ip4(b);
         // addresses of different types have a distinct precedence order
         // global, rfc1918, [other]
-        if (typeof_a === typeof_b)
-        {
+        if (typeof_a === typeof_b) {
             // TODO - move padding out of this function so it doesn't happen for every comparison in the sort
             a = this.pad_ip4(a);
             b = this.pad_ip4(b);
@@ -2398,13 +2451,11 @@ dns_handler =
         }
     },
 
-    typeof_ip4 : function (ip_address)
-    {
+    typeof_ip4 : function (ip_address) {
         var split_address;
-        log("Sixornot - dns_handler:typeof_ip4 " + ip_address, 2);
+        log("Sixornot - dns_handler:typeof_ip4 " + ip_address, 3);
         // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
-        if (!dns_handler.is_ip4(ip_address))
-        {
+        if (!dns_handler.is_ip4(ip_address)) {
             return false;
         }
         split_address = ip_address.split(".").map(Number);
@@ -2454,8 +2505,7 @@ dns_handler =
         }
     },
 
-    test_is_ip6 : function ()
-    {
+    test_is_ip6 : function () {
         var overall, tests, i, result;
         overall = true;
         tests = [
@@ -2473,15 +2523,11 @@ dns_handler =
                         [":",                                       false],
                         ["1::2::3",                                 false]
                     ];
-        for (i = 0; i < tests.length; i += 1)
-        {
+        for (i = 0; i < tests.length; i += 1) {
             result = this.is_ip6(tests[i][0]);
-            if (result === tests[i][1])
-            {
+            if (result === tests[i][1]) {
                 log("Sixornot - test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
-            }
-            else
-            {
+            } else {
                 log("Sixornot - test_is_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
                 overall = false;
             }
@@ -2489,22 +2535,19 @@ dns_handler =
         return overall;
     },
 
-    validate_ip6 : function (ip_address)
-    {
-        log("Sixornot - dns_handler:validate_ip6: " + ip_address, 2);
+    validate_ip6 : function (ip_address) {
+        log("Sixornot - dns_handler:validate_ip6: " + ip_address, 3);
         // TODO - Write this function if needed, extensive validation of IPv6 address
         return false;
     },
 
     // Quick check for address family, not a validator (see validate_ip6)
-    is_ip6 : function (ip_address)
-    {
-        log("Sixornot - dns_handler:is_ip6: " + ip_address, 2);
+    is_ip6 : function (ip_address) {
+        log("Sixornot - dns_handler:is_ip6: " + ip_address, 3);
         return ip_address && (ip_address.indexOf(":") !== -1);
     },
 
-    test_normalise_ip6 : function ()
-    {
+    test_normalise_ip6 : function () {
         var overall, tests, i, result;
         overall = true;
         tests = [
@@ -2518,15 +2561,11 @@ dns_handler =
                         ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
                         ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"]
                     ];
-        for (i = 0; i < tests.length; i += 1)
-        {
+        for (i = 0; i < tests.length; i += 1) {
             result = this.normalise_ip6(tests[i][0]);
-            if (result === tests[i][1])
-            {
+            if (result === tests[i][1]) {
                 log("Sixornot - test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result, 1);
-            }
-            else
-            {
+            } else {
                 log("Sixornot - test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result, 1);
                 overall = false;
             }
@@ -2535,10 +2574,9 @@ dns_handler =
     },
 
     // Expand IPv6 address into long version
-    normalise_ip6 : function (ip6_address)
-    {
+    normalise_ip6 : function (ip6_address) {
         var sides, left_parts, right_parts, middle, outarray, pad_left;
-        log("Sixornot - dns_handler:normalise_ip6: " + ip6_address, 2);
+        log("Sixornot - dns_handler:normalise_ip6: " + ip6_address, 3);
         // Split by instances of ::
         sides = ip6_address.split("::");
         // Split remaining sections by instances of :
@@ -2549,8 +2587,7 @@ dns_handler =
         outarray = Array.concat(left_parts, middle, right_parts);
 
         // Pad each component to 4 char length with zeros to left (and convert to lowercase)
-        pad_left = function (str)
-        {
+        pad_left = function (str) {
             return ("0000" + str).slice(-4);
         };
 
@@ -2558,8 +2595,7 @@ dns_handler =
     },
 
     // Unit test suite for typeof_ip6 function, returns false if a test fails
-    test_typeof_ip6 : function ()
-    {
+    test_typeof_ip6 : function () {
         var overall, tests, i, result;
         overall = true;
         tests = [
@@ -2577,15 +2613,11 @@ dns_handler =
                         [":", false],
                         ["...", false]
                     ];
-        for (i = 0; i < tests.length; i += 1)
-        {
+        for (i = 0; i < tests.length; i += 1) {
             result = this.typeof_ip6(tests[i][0]);
-            if (result === tests[i][1])
-            {
+            if (result === tests[i][1]) {
                 log("Sixornot - test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
-            }
-            else
-            {
+            } else {
                 log("Sixornot - test_typeof_ip6, failed test value: " + tests[i][0] + ", expected result: " + i[1] + ", actual result: " + result);
                 overall = false;
             }
@@ -2611,15 +2643,13 @@ dns_handler =
         documentation   2001:db8::/32                                   Starts with 2001:0db8
     */
     // Sort IPv6 addresses into logical ordering
-    sort_ip6 : function (a, b)
-    {
+    sort_ip6 : function (a, b) {
         var typeof_a, typeof_b;
         typeof_a = this.typeof_ip6(a);
         typeof_b = this.typeof_ip6(b);
         // addresses of different types have a distinct precedence order
         // global, linklocal, [other]
-        if (typeof_a === typeof_b)
-        {
+        if (typeof_a === typeof_b) {
             // TODO - move normalise out of this function so it doesn't happen for every comparison in the sort
             a = this.normalise_ip6(a);
             b = this.normalise_ip6(b);
@@ -2658,13 +2688,11 @@ dns_handler =
 
     },
 
-    typeof_ip6 : function (ip_address)
-    {
+    typeof_ip6 : function (ip_address) {
         var norm_address;
-        log("Sixornot - dns_handler:typeof_ip6: " + ip_address, 2);
+        log("Sixornot - dns_handler:typeof_ip6: " + ip_address, 3);
         // 1. Check IP version, return false if v4
-        if (!dns_handler.is_ip6(ip_address))
-        {
+        if (!dns_handler.is_ip6(ip_address)) {
             return false;
         }
         // 2. Normalise address, return false if normalisation fails
@@ -2710,8 +2738,7 @@ dns_handler =
     /*
         Returns value of preference network.dns.disableIPv6
     */
-    is_ip6_disabled : function ()
-    {
+    is_ip6_disabled : function () {
         return Services.prefs.getBoolPref("network.dns.disableIPv6");
     },
 
@@ -2719,8 +2746,7 @@ dns_handler =
     /*
         Returns true if the domain specified is in the list of IPv4-only domains
     */
-    is_ip4only_domain : function (domain)
-    {
+    is_ip4only_domain : function (domain) {
         var ip4onlydomains, i;
         ip4onlydomains = Services.prefs.getCharPref("network.dns.ipv4OnlyDomains").replace(/\s+/g, "").toLowerCase().split(",");
         domain = domain.toLowerCase();
@@ -2738,23 +2764,18 @@ dns_handler =
         Finding local IP address(es)
     */
     // Return the IP address(es) of the local host
-    resolve_local_async : function (callback)
-    {
+    resolve_local_async : function (callback) {
         log("Sixornot - dns_handler:resolve_local_async");
-        if (this.local_ctypes)
-        {
+        if (this.local_ctypes) {
             // If remote resolution is happening via ctypes...
             return this.local_ctypes_async(callback);
-        }
-        else
-        {
+        } else {
             // Else if using firefox methods
             return this.local_firefox_async(callback);
         }
     },
 
-    local_ctypes_async : function (callback)
-    {
+    local_ctypes_async : function (callback) {
         var new_callback_id;
         log("Sixornot - dns_handler:local_ctypes_async - selecting resolver for local host lookup", 2);
         // This uses dns_worker to do the work asynchronously
@@ -2767,8 +2788,7 @@ dns_handler =
     },
 
     // Proxy to remote_firefox_async since it does much the same thing
-    local_firefox_async : function (callback)
-    {
+    local_firefox_async : function (callback) {
         log("Sixornot - dns_handler:local_firefox_async - resolving local host using Firefox builtin method", 2);
         return this.remote_firefox_async(dnsService.myHostName, callback);
     },
@@ -2778,23 +2798,18 @@ dns_handler =
         Finding remote IP address(es)
     */
     // Resolve IP address(es) of a remote host using DNS
-    resolve_remote_async : function (host, callback)
-    {
+    resolve_remote_async : function (host, callback) {
         log("Sixornot - dns_handler:resolve_remote_async - host: " + host + ", callback: " + callback, 2);
-        if (this.remote_ctypes)
-        {
+        if (this.remote_ctypes) {
             // If remote resolution is happening via ctypes...
             return this.remote_ctypes_async(host, callback);
-        }
-        else
-        {
+        } else {
             // Else if using firefox methods
             return this.remote_firefox_async(host, callback);
         }
     },
 
-    remote_ctypes_async : function (host, callback)
-    {
+    remote_ctypes_async : function (host, callback) {
         var new_callback_id;
         log("Sixornot - dns_handler:remote_ctypes_async - host: " + host + ", callback: " + callback, 2);
         // This uses dns_worker to do the work asynchronously
@@ -2806,15 +2821,12 @@ dns_handler =
         return this.make_cancel_obj(new_callback_id);
     },
 
-    remote_firefox_async : function (host, callback)
-    {
+    remote_firefox_async : function (host, callback) {
         var my_callback;
         log("Sixornot - dns_handler:remote_firefox_async - host: " + host + ", callback: " + callback, 2);
 
-        my_callback =
-        {
-            onLookupComplete : function (nsrequest, dnsresponse, nsstatus)
-            {
+        my_callback = {
+            onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
                 var ip_addresses;
                 // Request has been cancelled - ignore
                 if (nsstatus === Components.results.NS_ERROR_ABORT)
@@ -2822,15 +2834,11 @@ dns_handler =
                     return;
                 }
                 // Request has failed for some reason
-                if (nsstatus !== 0 || !dnsresponse || !dnsresponse.hasMore())
-                {
-                    if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST)
-                    {
+                if (nsstatus !== 0 || !dnsresponse || !dnsresponse.hasMore()) {
+                    if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST) {
                         log("Sixornot - dns_handler:remote_firefox_async - resolve host failed, unknown host", 1);
                         callback(["FAIL"]);
-                    }
-                    else
-                    {
+                    } else {
                         log("Sixornot - dns_handler:remote_firefox_async - resolve host failed, status: " + nsstatus, 1);
                         callback(["FAIL"]);
                     }
@@ -2839,20 +2847,16 @@ dns_handler =
                 }
                 // Otherwise address was found
                 ip_addresses = [];
-                while (dnsresponse.hasMore())
-                {
+                while (dnsresponse.hasMore()) {
                     ip_addresses.push(dnsresponse.getNextAddrAsString());
                 }
                 // Call callback for this request with ip_addresses array as argument
                 callback(ip_addresses);
             }
         };
-        try
-        {
+        try {
             return dnsService.asyncResolve(host, 0, my_callback, threadManager.currentThread);
-        }
-        catch (e)
-        {
+        } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
             callback(["FAIL"]);
             return null;
@@ -2864,13 +2868,11 @@ dns_handler =
         ctypes dns callback handling functions
     */
     // Index this.callback_ids and return required callback
-    find_callback_by_id : function (callback_id)
-    {
+    find_callback_by_id : function (callback_id) {
         var f;
         log("Sixornot - dns_handler:find_callback_by_id - callback_id: " + callback_id, 2);
         // Callback IDs is an array of 2-item arrays - [ID, callback]
-        f = function (a)
-        {
+        f = function (a) {
             return a[0];
         };
         // Returns -1 if ID not found
@@ -2878,13 +2880,11 @@ dns_handler =
     },
 
     // Search this.callback_ids for the ID in question, remove it if it exists
-    remove_callback_id : function (callback_id)
-    {
+    remove_callback_id : function (callback_id) {
         var i;
         log("Sixornot - dns_handler:remove_callback_id - callback_id: " + callback_id, 2);
         i = this.find_callback_by_id(callback_id);
-        if (i !== -1)
-        {
+        if (i !== -1) {
             // Return the callback function
             return this.callback_ids.splice(i, 1)[0][1];
         }
@@ -2893,8 +2893,7 @@ dns_handler =
     },
 
     // Add a callback to the callback_ids array with the next available ID
-    add_callback_id : function (callback)
-    {
+    add_callback_id : function (callback) {
         log("Sixornot - dns_handler:add_callback_id - callback: " + callback, 2);
         // Use next available callback ID, return that ID
         this.next_callback_id = this.next_callback_id + 1;
@@ -2902,14 +2901,11 @@ dns_handler =
         return this.next_callback_id;
     },
 
-    make_cancel_obj : function (callback_id)
-    {
+    make_cancel_obj : function (callback_id) {
         var obj;
         log("Sixornot - dns_handler:make_cancel_obj - callback_id: " + callback_id, 2);
-        obj =
-        {
-            cancel : function ()
-            {
+        obj = {
+            cancel : function () {
                 // Remove ID from callback_ids if it exists there
                 dns_handler.remove_callback_id(callback_id);
             }
@@ -2922,8 +2918,7 @@ dns_handler =
         Recieve and act on messages from Worker
     */
     // Called by worker to pass information back to main thread
-    onworkermessage : function (evt)
-    {
+    onworkermessage : function (evt) {
         var callback;
         log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 2);
         // evt.data is the information passed back
@@ -2968,26 +2963,20 @@ dns_handler =
     */
 
     // Cancels an active ctypes DNS lookup request currently being actioned by Worker
-    cancel_request : function (request)
-    {
+    cancel_request : function (request) {
         log("Sixornot - dns_handler:cancel_request - request: " + request, 2);
-        try
-        {
+        try {
             // This function can be called with request as a null or undefined value
-            if (request)
-            {
+            if (request) {
                 request.cancel(Components.results.NS_ERROR_ABORT);
             }
-        }
-        catch (e)
-        {
+        } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
         }
     },
 
     // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
-    is_proxied_dns : function (url)
-    {
+    is_proxied_dns : function (url) {
         var uri, proxyinfo;
         log("Sixornot - dns_handler:is_proxied_dns - url: " + url, 2);
         uri = ioService.newURI(url, null, null);
