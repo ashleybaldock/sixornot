@@ -203,3 +203,14 @@ function unload (callback, container)
     return removeUnloader;
 }
 
+
+/* Proxy to getElementById */
+function gbi (node, child_id) {
+    if (node.getElementById) {
+        return node.getElementById(child_id);
+    } else {
+        return node.querySelector("#" + child_id);
+    }
+}
+
+

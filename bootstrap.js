@@ -62,7 +62,7 @@
 /*global Components, Services, APP_SHUTDOWN, AddonManager */
 
 // Provided in included modules:
-/*global gt, unload, watchWindows, initLocalisation */
+/*global gt, unload, watchWindows, initLocalisation, gbi */
 
 // Provided in lazy getters
 /*global consoleService, ioService, proxyService, dnsService, clipboardHelper,
@@ -130,14 +130,10 @@ var NS_XUL,
     include,
     log,
     set_iconset,
-    toggle_customise,
     get_bool_pref,
     get_int_pref,
-    get_current_window,
-    gbi,
     set_initial_prefs,
     parse_exception,
-    crop_trailing_char,
     defineLazyGetter,
     // Global objects
     xulRuntime;
@@ -171,10 +167,6 @@ Current tab changes
 New page loaded in etc.
 DNS lookup callback returns
 Show an icon/display tooltip text to indicate that a request for a host was served entirely from the local cache and thus no IP addresses come into play
-
-Bold text/icon to indicate the active connection
-
-Menu should contain submenus for each component of the page to permit copying to clipboard
 
 Replace this all later with a panel which will do both tooltip+menu functionality?
 Or use panel for info + copy addresses, menu for settings?
@@ -690,13 +682,6 @@ insert_code = function (win) {
         if (commandID === "copyc") {
             log("Sixornot - main:onMenuCommand - copy to clipboard", 2);
             clipboardHelper.copyString(commandString);
-        } else if (commandID === "gotow") {
-            log("Sixornot - main:onMenuCommand - goto web page", 2);
-            // Add tab to most recent window, regardless of where this function was called from
-            currentWindow = get_current_window();
-            currentWindow.focus();
-            currentBrowser = currentWindow.getBrowser();
-            currentBrowser.selectedTab = currentBrowser.addTab(commandString);
         } else if (commandID === "tbool") {
             // Toggle address bar icon visibility
             toggle = (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true");
@@ -743,7 +728,7 @@ insert_code = function (win) {
     create_button = function () {
         var toolbarButton, toolbarId, toolbar,
             nextItem,
-            onclick_toolbarButton, panel,
+            onclick_toolbarButton, panel, toggle_customise,
             page_change_handler, tabselect_handler, update_icon;
         log("Sixornot - insert_code:create_button", 2);
 
@@ -796,6 +781,23 @@ insert_code = function (win) {
             } else {
                 update_icon();
             }
+        };
+
+        // Update preference which determines location of button when loading into new windows
+        // TODO - move into closure
+        toggle_customise = function (evt) {
+            var button_parent, button_nextitem, toolbar_id, nextitem_id;
+            log("Sixornot - insert_code:create_button:toggle_customise");
+            if (toolbarButton) {
+                button_parent = toolbarButton.parentNode;
+                button_nextitem = toolbarButton.nextSibling;
+                if (button_parent && button_parent.localName === "toolbar") {
+                    toolbar_id = button_parent.id;
+                    nextitem_id = button_nextitem && button_nextitem.id;
+                }
+            }
+            PREF_BRANCH_SIXORNOT.setCharPref(PREF_TOOLBAR,  toolbar_id || "");
+            PREF_BRANCH_SIXORNOT.setCharPref(PREF_NEXTITEM, nextitem_id || "");
         };
 
         /* Create the button */
@@ -1018,109 +1020,7 @@ insert_code = function (win) {
         }
     };
 
-
-    // Update the contents of the popupMenu whenever it is opened
-    // Value of "this" will be the menu (since this is an event handler)
-/*    update_menu_content = function (evt) {
-        var i, popupMenu, add_menu_item, add_toggle_menu_item, add_disabled_menu_item, add_menu_separator, remotestring, localstring, test_global4, test_global6;
-        log("Sixornot - main:update_menu_content", 2);
-        // Set value so that functions within this one can still access correct value of "this"
-        popupMenu = this;
-
-        // Clear previously generated popupMenu, if one exists
-        while (popupMenu.firstChild) {
-            popupMenu.removeChild(popupMenu.firstChild);
-        }
-
-        // labelName - displayed on menu item
-        // ttText - tooltip for menu item
-        // commandID - string of arbitrary data
-        //  first 5 characters determine function call
-        //  rest of string (if any) is data to use for function call
-        add_toggle_menu_item = function (labelName, ttText, commandID, initialState) {
-            var menuitem;
-            log("Sixornot - main:update_menu_content:add_toggle_menu_item: " + labelName + ", " + ttText + ", " + commandID + ", " + initialState, 2);
-            menuitem = doc.createElementNS(NS_XUL, "menuitem");
-            menuitem.setAttribute("label", labelName);
-            menuitem.setAttribute("tooltiptext", ttText);
-            menuitem.setAttribute("value", commandID);
-            menuitem.setAttribute("type", "checkbox");
-            menuitem.setAttribute("checked", initialState);
-            popupMenu.appendChild(menuitem);
-        };
-
-        if (ipv4s.length !== 0 || ipv6s.length !== 0 || host !== "") {
-            if (host !== "") {
-                // If host is an IP address and appears in either array of addresses do not display as hostname
-                // (This would occur if the URL contains an IP address rather than a hostname)
-                if (ipv4s.indexOf(host) === -1 && ipv6s.indexOf(host) === -1) {
-                    // Build string containing list of all IP addresses (for copying to clipboard)
-                    remotestring = Array.concat([host], ipv6s, ipv4s).join(", ");
-                    add_menu_item(host, gt("tt_copydomclip"), "copyc" + remotestring);
-                } else {
-                    // In this case there will only ever be one IP address record
-                    add_disabled_menu_item(gt("hostnameisip"));
-                }
-            } else {
-                add_disabled_menu_item(gt("nohostnamefound"));
-            }
-
-            for (i = 0; i < ipv6s.length; i += 1) {
-                add_menu_item(ipv6s[i], gt("tt_copyip6clip"), "copyc" + ipv6s[i]);
-            }
-            for (i = 0; i < ipv4s.length; i += 1) {
-                add_menu_item(ipv4s[i], gt("tt_copyip4clip"), "copyc" + ipv4s[i]);
-            }
-        } else {
-            add_disabled_menu_item(gt("noremoteloaded"));
-        }
-
-        add_menu_separator();
-
-        // Produce string containing all IP data for copy
-        // TODO - check showallips, only build array of global IPs here
-        if (get_bool_pref("showallips")) {
-            l6_filtered = localipv6s;
-            l4_filtered = localipv4s;
-        } else {
-            l6_filtered = localipv6s.filter(test_global6);
-            l4_filtered = localipv4s.filter(test_global4);
-        }
-        localstring = Array.concat([dnsService.myHostName],
-                                   l6_filtered, l4_filtered).join(", ");
-        add_menu_item(dnsService.myHostName + " (localhost)",
-                      gt("tt_copylocalclip"),
-                      "copyc" + localstring);
-
-        for (i = 0; i < l6_filtered.length; i += 1) {
-            add_menu_item(l6_filtered[i], gt("tt_copyip6clip"), "copyc" + l6_filtered[i]);
-        }
-        for (i = 0; i < l4_filtered.length; i += 1) {
-            add_menu_item(l4_filtered[i], gt("tt_copyip4clip"), "copyc" + l4_filtered[i]);
-        }
-
-        add_menu_separator();
-
-        // Preferences toggle menu items
-        add_toggle_menu_item(gt("showaddressicon"),
-                             gt("tt_showaddressicon"),
-                             "tbool" + "showaddressicon",
-                             PREF_BRANCH_SIXORNOT.getBoolPref("showaddressicon"));
-        add_toggle_menu_item(gt("greyscaleicons"),
-                             gt("tt_usegreyscale"),
-                             "tbool" + "greyscaleicons",
-                             PREF_BRANCH_SIXORNOT.getBoolPref("greyscaleicons"));
-        add_toggle_menu_item(gt("showallips"),
-                             gt("tt_showallips"),
-                             "tbool" + "showallips",
-                             PREF_BRANCH_SIXORNOT.getBoolPref("showallips"));
-
-        add_menu_separator();
-        add_menu_item(gt("gotowebsite"),
-                      gt("tt_gotowebsite"),
-                      "gotow" + "http://entropy.me.uk/sixornot/");
-    }; */
-
+    /* Update the contents of the panel whenever it is shown */
     update_panel = function (evt) {
         var panel, grid, hosts,
             l6_filtered, l4_filtered,
@@ -1751,7 +1651,9 @@ insert_code = function (win) {
                 evt.stopPropagation();
                 panel.hidePopup();
                 // Add tab to most recent window, regardless of where this function was called from
-                currentWindow = get_current_window();
+                currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+                     .getService(Components.interfaces.nsIWindowMediator)
+                     .getMostRecentWindow("navigator:browser");
                 currentWindow.focus();
                 currentBrowser = currentWindow.getBrowser();
                 currentBrowser.selectedTab = currentBrowser.addTab(url);
@@ -1885,39 +1787,9 @@ if (dns_handler.is_proxied_dns(url))
 */
 
 /*
-onReturnedLocalIPs = function (localips) {
-    dns_request = null;
-
-    localipv6s = localips.filter(function (a) {
-        return dns_handler.is_ip6(a) && dns_handler.typeof_ip6(a) !== "localhost"; });
-    localipv4s = localips.filter(function (a) {
-        return dns_handler.is_ip4(a) && dns_handler.typeof_ip4(a) !== "localhost"; });
-
-    // Parse list of local IPs for IPv6
-    localipv6s.sort(function (a, b) {
-        return dns_handler.sort_ip6.call(dns_handler, a, b);
-    });
-
-    // Parse list of local IPs for IPv4
-    localipv4s.sort(function (a, b) {
-        return dns_handler.sort_ip4.call(dns_handler, a, b);
-    });
-
-    // This must now work as we have a valid IP address
-    update_icon();
-};
-
-dns_request = dns_handler.resolve_local_async(onReturnedLocalIPs);
-*/
-
-/*
 // Update the status icon state (icon & tooltip)
 // Returns true if it's done and false if unknown
 update_icon = function () {
-    var addressBarIcon, toolbarButton, loc_options;
-    log("Sixornot - main:update_icon", 2);
-    addressBarIcon = gbi(doc, ADDRESS_IMG_ID);
-    toolbarButton = gbi(doc, BUTTON_ID) || gbi(gbi(doc, "navigator-toolbox").palette, BUTTON_ID);
 
     loc_options = ["file:", "data:", "about:", "chrome:", "resource:"];
 
@@ -2109,129 +1981,60 @@ uninstall = function (aData, aReason) {
     Utility functions
 */
 
-// Update preference which determines location of button when loading into new windows
-// TODO - move into closure
-toggle_customise = function (evt)
-{
-    var toolbox, button, b_parent, nextItem, toolbarId, nextItemId;
-    log("Sixornot - toggle_customise");
-    button = gbi(evt.target.parentNode, BUTTON_ID);
-    if (button)
-    {
-        b_parent = button.parentNode;
-        nextItem = button.nextSibling;
-        if (b_parent && b_parent.localName === "toolbar")
-        {
-            toolbarId = b_parent.id;
-            nextItemId = nextItem && nextItem.id;
-        }
-    }
-    PREF_BRANCH_SIXORNOT.setCharPref(PREF_TOOLBAR,  toolbarId || "");
-    PREF_BRANCH_SIXORNOT.setCharPref(PREF_NEXTITEM, nextItemId || "");
-};
 
 // Return integer preference value, either from prefs branch or internal defaults
 // TODO - move into utils.js
-get_int_pref = function (name)
-{
+get_int_pref = function (name) {
     log("Sixornot - get_int_pref - name: " + name, 2);
-    try
-    {
+    try {
         return PREF_BRANCH_SIXORNOT.getIntPref(name);
-    }
-    catch (e)
-    {
+    } catch (e) {
         log("Sixornot - get_int_pref error - " + e, 0);
     }
-    if (PREFS.hasOwnProperty(name))
-    {
+    if (PREFS.hasOwnProperty(name)) {
         log("Sixornot - get_int_pref returning PREFS[name] : " + PREFS[name], 2);
         return PREFS[name];
-    }
-    else
-    {
+    } else {
         log("Sixornot - get_int_pref error - No default preference value for requested preference: " + name, 0);
     }
 };
 
 // Return boolean preference value, either from prefs branch or internal defaults
 // TODO - move into utils.js
-get_bool_pref = function (name)
-{
+get_bool_pref = function (name) {
     log("Sixornot - get_bool_pref - name: " + name, 2);
-    try
-    {
+    try {
         return PREF_BRANCH_SIXORNOT.getBoolPref(name);
-    }
-    catch (e)
-    {
+    } catch (e) {
         log("Sixornot - get_bool_pref error - " + e, 0);
     }
-    if (PREFS.hasOwnProperty(name))
-    {
+    if (PREFS.hasOwnProperty(name)) {
         log("Sixornot - get_bool_pref returning PREFS[name] : " + PREFS[name], 2);
         return PREFS[name];
-    }
-    else
-    {
+    } else {
         log("Sixornot - get_bool_pref error - No default preference value for requested preference: " + name, 0);
-    }
-};
-
-// Return the current browser window
-// TODO - Move into closure or into utils.js
-get_current_window = function ()
-{
-    return Components.classes["@mozilla.org/appshell/window-mediator;1"]
-                     .getService(Components.interfaces.nsIWindowMediator)
-                     .getMostRecentWindow("navigator:browser");
-};
-
-// Proxy to getElementById
-gbi = function (node, child_id)
-{
-    log("Sixornot - gbi - node: " + node + ", child_id: " + child_id, 2);
-    if (node.getElementById)
-    {
-        return node.getElementById(child_id);
-    }
-    else
-    {
-        return node.querySelector("#" + child_id);
     }
 };
 
 // Set up initial values for preferences
 // TODO - Move into closure
-set_initial_prefs = function ()
-{
+set_initial_prefs = function () {
     var key, val;
     log("Sixornot - set_initial_prefs", 2);
-//    for ([key, val] in Iterator(PREFS))
-    for (key in PREFS)
-    {
-        if (PREFS.hasOwnProperty(key))
-        {
+    for (key in PREFS) {
+        if (PREFS.hasOwnProperty(key)) {
             // Preserve pre-existing values for preferences in case user has modified them
             val = PREFS[key];
-            if (typeof val === "boolean")
-            {
-                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID)
-                {
+            if (typeof val === "boolean") {
+                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
                     PREF_BRANCH_SIXORNOT.setBoolPref(key, val);
                 }
-            }
-            else if (typeof val === "number")
-            {
-                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID)
-                {
+            } else if (typeof val === "number") {
+                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
                     PREF_BRANCH_SIXORNOT.setIntPref(key, val);
                 }
-            }
-            else if (typeof val === "string")
-            {
-                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID)
-                {
+            } else if (typeof val === "string") {
+                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
                     PREF_BRANCH_SIXORNOT.setCharPref(key, val);
                 }
             }
@@ -2240,46 +2043,29 @@ set_initial_prefs = function ()
 };
 
 // Returns a string version of an exception object with its stack trace
-parse_exception = function (e)
-{
+parse_exception = function (e) {
     log("Sixornot - parse_exception", 2);
-    if (!e)
-    {
+    if (!e) {
         return "";
-    }
-    else if (!e.stack)
-    {
+    } else if (!e.stack) {
         return String(e);
-    }
-    else
-    {
+    } else {
         return String(e) + " \n" + e.stack;
     }
 };
 
-// String modification
-// TODO - Move into utils.js
-crop_trailing_char = function (str, character)
-{
-    return (str.charAt(str.length - 1) === character) ? str.slice(0, str.length - 1) : str.valueOf();
-};
-
-
 // Lazy getter services
-defineLazyGetter = function (getterName, getterFunction)
-{
+defineLazyGetter = function (getterName, getterFunction) {
     // The first time this getter is requested it'll decay into the function getterFunction
     /*jslint nomen: false*/
-    this.__defineGetter__(getterName, function ()
-        {
-            /*jslint nomen: true*/
-            // Remove stale reference to getterFunction
-            delete this[getterName];
-            // Produce a fresh copy of getterFunction with the correct this applied
-            this[getterName] = getterFunction.apply(this);
-            return this[getterName];
-        }
-    );
+    this.__defineGetter__(getterName, function () {
+        /*jslint nomen: true*/
+        // Remove stale reference to getterFunction
+        delete this[getterName];
+        // Produce a fresh copy of getterFunction with the correct this applied
+        this[getterName] = getterFunction.apply(this);
+        return this[getterName];
+    });
 };
 
 defineLazyGetter("consoleService", function () {
