@@ -177,6 +177,9 @@ Or use the new settings functionality which is available for restartless now?
 Greyscale mode - apply to text as well as icons
 Specify colours for text as override-able settings in configuration (with nice looking defaults on main OS platforms)
 
+
+TODO - investigate crash on exit - related to DNS resolver??
+
 */
 
 var RequestCache = [];
@@ -478,7 +481,7 @@ var HTTP_REQUEST_OBSERVER = {
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
                             // TODO - maybe have lookupIPs be a method of the entry object?
-                            lookupIPs(element);
+                            //lookupIPs(element);
                             //element.lookupIPs();
                         }
                     }
@@ -490,6 +493,7 @@ var HTTP_REQUEST_OBSERVER = {
                     log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
                     hosts.push(new_entry);
                     // Trigger new DNS lookup for the new host entry
+                    // TODO move this into "content-document-global-created" below since this has a callback which triggers an event which needs to know the innerID
                     lookupIPs(new_entry);
                     //new_entry.lookupIPs();
                 }
@@ -520,7 +524,7 @@ var HTTP_REQUEST_OBSERVER = {
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
                             // TODO - maybe have lookupIPs be a method of the entry object?
-                            lookupIPs(element);
+                            //lookupIPs(element);
                             //element.lookupIPs();
                         }
                     }
@@ -1303,9 +1307,6 @@ insert_code = function (win) {
                     this.header_row.showhide.update();
                     this.header_row.icon.update();
                 },
-                update_icon: function () {
-                    this.header_row.icon.update();
-                },
                 update_count: function () {
                     this.header_row.count.update();
                 },
@@ -1441,8 +1442,7 @@ insert_code = function (win) {
             try {
                 if (!grid_contents.some(function (item, index, items) {
                     if (item.host.host === evt.subject.host) {
-                        log("Sixornot - on_address_change - updating addresses + icon", 1);
-                            item.update_address();
+                        item.update_address();
                         return true;
                     }
                 })) {
@@ -1469,7 +1469,6 @@ insert_code = function (win) {
             try {
                 if (!grid_contents.some(function (item, index, items) {
                     if (item.host.host === evt.subject.host) {
-                        log("Sixornot - on_count_change - updating count", 1);
                         item.update_count();
                         return true;
                     }
@@ -1487,6 +1486,7 @@ insert_code = function (win) {
         // Update icon
         var on_dns_complete = function (evt) {
             log("Sixornot - on_dns_complete", 1);
+            // TODO - unsubscribe from events when panel is closed to avoid this check
             if (panel.state !== "open") {
                 log("Sixornot - on_dns_complete - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
