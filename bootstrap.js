@@ -363,7 +363,6 @@ var HTTP_REQUEST_OBSERVER = {
         };
 
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
-            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response", 1);
             http_channel = aSubject.QueryInterface(Components.interfaces.nsIHttpChannel);
             http_channel_internal = aSubject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
             try {
@@ -401,7 +400,7 @@ var HTTP_REQUEST_OBSERVER = {
                 original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);
             } catch (e) {
                 // HTTP response is in response to a non-DOM source - ignore these
-                log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 1);
+                log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 2);
                 return;
             }
 
@@ -419,6 +418,7 @@ var HTTP_REQUEST_OBSERVER = {
                 host: http_channel.URI.host,
                 address: remoteAddress,
                 address_family: 0,
+                show_detail: true,
                 count: 1,               // Number of connections made to this host
                 ipv6s: [],
                 ipv4s: [],
@@ -451,12 +451,8 @@ var HTTP_REQUEST_OBSERVER = {
                     }
                     // Also trigger page change event here to refresh display of IP tooltip
                     // Create a page change event
-                    evt = domWindow.document.createEvent("CustomEvent");
-                    evt.initCustomEvent("sixornot-dns-lookup-event", true, true, null);
-                    evt.outer_id = domWindowOuter;
-                    evt.inner_id = domWindowInner;
-                    // Dispatch the event
-                    cancelled = domWindow.dispatchEvent(evt);
+                    send_event("sixornot-dns-lookup-event",
+                        domWindow, domWindowOuter, domWindowInner, entry);
                 };
                 if (entry.dns_cancel) {
                     entry.dns_cancel();
@@ -499,7 +495,6 @@ var HTTP_REQUEST_OBSERVER = {
                 }
                 RequestWaitingList[domWindowOuter] = hosts;
 
-                log("Sixornot - HTTP_REQUEST_OBSERVER - New page load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
             } else {
                 /* SECONDARY PAGE LOAD */
                 // Not new, inner window ID will be correct by now so add entries to RequestCache
@@ -513,13 +508,15 @@ var HTTP_REQUEST_OBSERVER = {
                         // TODO Send element count increase event
                         // Subject is element host, to permit filtering of events
                         element.count += 1;
-                        send_event("sixornot-count-change-event", domWindow, domWindowOuter, domWindowInner, new_entry.host);
+                        send_event("sixornot-count-change-event",
+                            domWindow, domWindowOuter, domWindowInner, new_entry);
 
                         if (element.address !== new_entry.address && new_entry.address !== "") {
                             log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
                             // TODO Send element address change event
                             // Subject is element host, to permit filtering of events
-                            send_event("sixornot-address-change-event", domWindow, domWindowOuter, domWindowInner, new_entry.host);
+                            send_event("sixornot-address-change-event",
+                                domWindow, domWindowOuter, domWindowInner, new_entry);
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
                             // TODO - maybe have lookupIPs be a method of the entry object?
@@ -532,9 +529,10 @@ var HTTP_REQUEST_OBSERVER = {
                 if (!hosts.some(function (element, index, thearray) {
                     return element.host === new_entry.host;
                 })) {
-                    log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
+                    log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: new_entry.address: " + new_entry.address + ", ID: " + domWindowInner, 1);
                     // TODO Send new element event
-                    send_event("sixornot-new-host-event", domWindow, domWindowOuter, domWindowInner, new_entry.host);
+                    send_event("sixornot-new-host-event",
+                        domWindow, domWindowOuter, domWindowInner, new_entry);
                     // Subject ??
                     hosts.push(new_entry);
                     // Trigger new DNS lookup for the new host entry
@@ -542,12 +540,9 @@ var HTTP_REQUEST_OBSERVER = {
                     //new_entry.lookupIPs();
                 }
                 RequestCache[domWindowInner] = hosts;
-
-                log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load complete, Outer ID: " + domWindowOuter + ", Inner ID: " + domWindowInner, 1);
             }
 
         } else if (aTopic === "content-document-global-created") {
-            log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created", 1);
             // This signals that the document has been created, initial load completed
             // This is where entries on the RequestWaitingList get moved to the RequestCache
             domWindow = aSubject;
@@ -571,7 +566,8 @@ var HTTP_REQUEST_OBSERVER = {
 
             // Create an event to inform listeners that a new page load has started
             // We do this now since it's only now that we know the innerID of the page
-            send_event("sixornot-page-change-event", domWindow, domWindowOuter, domWindowInner, null);
+            send_event("sixornot-page-change-event",
+                domWindow, domWindowOuter, domWindowInner, RequestCache[domWindowInner][0]);
 
         } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
@@ -601,8 +597,6 @@ var HTTP_REQUEST_OBSERVER = {
             } else {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 1);
             }
-        } else {
-            log("Sixornot - HTTP_REQUEST_OBSERVER - other, ignored (" + aTopic + ")", 1);
         }
     },
 
@@ -763,6 +757,28 @@ insert_code = function (win) {
         remote_grid.appendChild(remote_rows);
         panel_vbox.appendChild(remote_grid);
 
+        // Add "Remote" title
+        var title_remote = doc.createElement("label");
+        title_remote.setAttribute("value", gt("header_remote"));
+        title_remote.setAttribute("style", "text-align: center; font-size: smaller;");
+        remote_rows.appendChild(title_remote);
+        // Add remote title anchor object
+        var remote_anchor = {
+            add_after: function (element) {
+                if (title_remote.nextSibling) {
+                    remote_rows.insertBefore(element, title_remote.nextSibling);
+                } else {
+                    remote_rows.appendChild(element);
+                }
+            }
+        };
+
+        // Add "Local" title (TODO - replace with element with "hide" method)
+        var title_local = doc.createElement("label");
+        title_local.setAttribute("value", gt("header_local"));
+        title_local.setAttribute("style", "text-align: center; font-size: smaller;");
+        remote_rows.appendChild(title_local);
+
         // Settings UI
         var settingslabel = doc.createElement("description");
         settingslabel.setAttribute("value", "Settings");
@@ -915,173 +931,295 @@ insert_code = function (win) {
            and links to that member to reflect its state
            Also takes a reference to the element to add this element after
            e.g. header or the preceeding list item */
-        var new_line = function (host) {
-            /* Create and return a new line item */
-            var create_header_row = function () {
-                var create_showhide = function () {
-                    var count4, count6, hide, hbox;
-                    var create_count4 = function (addto) {
-                        /* Create DOM UI elements */
-                        var c4 = doc.createElement("label");
-                        c4.setAttribute("value", "[+" + count4 + "]");
-                        c4.setAttribute("style", "color: #F00;");
-                        c4.setAttribute("tooltiptext", gt("tt_show_detail"));
-                        addto.add_child(c4);
-                        /* Return object for interacting with DOM element */
-                        return {
-                            update: function () {
-                                var count4 = 0;
-                                host.ipv4s.forEach(function (address, index, addresses) {
-                                    if (address !== host.address) {
-                                        count4 += 1;
-                                    }
-                                });
-                                c4.setAttribute("value", "[+" + count4 + "]");
-                                if (count4 < 1) {
-                                    c4.setAttribute("hidden", true);
-                                }
-                            },
-                            remove: function () {
-                                c4.parentNode.removeChild(c4);
-                            }
-                        };
-                    };
-                    // TODO update on first create, make object, call update() method on it and then return it, saves duplication of the updating code
-                    var create_count6 = function (addto) {
-                        /* Create DOM UI elements */
-                        var c6 = doc.createElement("label");
-                        c6.setAttribute("value", "[+" + count6 + "]");
-                        c6.setAttribute("style", "color: #0F0;");
-                        c6.setAttribute("tooltiptext", gt("tt_show_detail"));
-                        addto.add_child(c6);
-                        return {
-                            update: function () {
-                                var count6 = 0;
-                                host.ipv6s.forEach(function (address, index, addresses) {
-                                    if (address !== host.address) {
-                                        count6 += 1;
-                                    }
-                                });
-                                c6.setAttribute("value", "[+" + count6 + "]");
-                                if (count6 < 1) {
-                                    c6.setAttribute("hidden", true);
-                                }
-                            },
-                            remove: function () {
-                                c6.parentNode.removeChild(c6);
-                            }
-                        };
-                    };
-                    var create_hide = function (addto) {
-                        /* Create DOM UI elements */
-                        var hide = doc.createElement("label");
-                        hide.setAttribute("value", "[Hide]");
-                        hide.setAttribute("style", "");
-                        hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
-                        addto.add_child(hide);
-                        return {
-                            update: function () {
-                                var count6 = 0, count4 = 0;
-                                host.ipv6s.forEach(function (address, index, addresses) {
-                                    if (address !== host.address) {
-                                        count6 += 1;
-                                    }
-                                });
-                                host.ipv4s.forEach(function (address, index, addresses) {
-                                    if (address !== host.address) {
-                                        count4 += 1;
-                                    }
-                                });
-                                hide.setAttribute("hidden", !(host.show_detail && (count6 > 0 || count4 > 0)));
-                            },
-                            remove: function () {
-                                hide.parentNode.removeChild(hide);
-                            }
-                        };
-                    };
-                    var create_hbox = function () {
-                        var hbox = doc.createElement("hbox");
-                        hbox.setAttribute("pack", "center");
-                        return {
-                            // TODO Is this really the best way to add children?! Probably not, seems obtuse, in the case of showhide probably not needed anyway since it acts as a single unit but this problem does need to be solved in general!
-                            add_child: function (child) {
-                                hbox.appendChild(child);
-                            },
-                            update: function () { return; },
-                            remove: function () {
-                                hbox.parentNode.removeChild(hbox);
-                            }
-                        };
-                    };
-                    hbox = create_hbox();
-                    count4 = create_count_4(hbox);
-                    count6 = create_count_6(hbox);
-                    hide = create_hide(hbox);
-                    return {
-                        update: function () {
-                            count4.update();
-                            count6.update();
-                            hide.update();
-                        },
-                        remove: function () {
-                            count4.remove();
-                            count6.remove();
-                            hide.remove();
-                            hbox.remove();
-                        }
-                    };
+        var new_line = function (host, addafter) {
+            log("Sixornot - new_line", 1);
+            var mouseover = function (evt) {
+                evt.target.style.textDecoration = "underline";
+                evt.target.style.cursor="pointer";
+            };
+            var mouseout = function (evt) {
+                evt.target.style.textDecoration = "none";
+                evt.target.style.cursor="default";
+            };
+
+            /* Create and return a new detail line item */
+            var create_detail_row = function (add_address, addafter) {
+                log("Sixornot - create_detail_row", 1);
+                // 3 spacers, address
+                var s1, s2, s3, address, row, update;
+                s1 = doc.createElement("image");
+                s1.setAttribute("width", "16");
+                s1.setAttribute("height", "16");
+                s1.setAttribute("src", "");
+                s2 = doc.createElement("label");
+                s2.setAttribute("value", "");
+                s3 = doc.createElement("label");
+                s3.setAttribute("value", "");
+                address = doc.createElement("label");
+                address.addEventListener("mouseover", mouseover, false);
+                address.addEventListener("mouseout", mouseout, false);
+                // Colouring for field
+                if (dns_handler.is_ip6(add_address)) {
+                    address.setAttribute("value", add_address);
+                    address.setAttribute("style", "color: #0F0;");
+                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                } else if (dns_handler.is_ip4(add_address)) {
+                    address.setAttribute("value", add_address);
+                    address.setAttribute("style", "color: #F00;");
+                    address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                } else {
+                    // Should not happen!
+                    address.setAttribute("value", "ERROR");
+                    address.setAttribute("style", "color: #FF0;");
+                }
+                // Create row
+                row = doc.createElement("row");
+                // Add elements to row
+                row.appendChild(s1);
+                row.appendChild(s2);
+                row.appendChild(s3);
+                row.appendChild(address);
+
+                update = function () {
+                    // Show or hide the row
+                    row.setAttribute("hidden", !(host.show_detail));
                 };
-                var create_icon = function () {
-                    /* Create DOM UI elements */
-                    var icon = doc.createElement("image");
-                    icon.setAttribute("width", "16");
-                    icon.setAttribute("height", "16");
-                    icon.setAttribute("src", get_icon_source(host));
-                    /* Return object for interacting with DOM element */
-                    return {
-                        update: function () {
-                            icon.setAttribute("src", get_icon_source(host));
-                        },
-                        remove: function () {
-                            icon.parentNode.removeChild(icon);
-                        }
-                    };
-                };
-                var create_count = function () {
-                    /* Create DOM UI elements */
-                    var count = doc.createElement("label");
-                    if (host.count > 0) {
-                        count.setAttribute("value", "(" + host.count + ")");
-                    } else {
-                        count.setAttribute("value", "");
-                    }
-                    count.setAttribute("style", "");
-                    /* Return object for interacting with DOM element */
-                    return {
-                        update: function () {
-                            if (host.count > 0) {
-                                count.setAttribute("value", "(" + host.count + ")");
-                            } else {
-                                count.setAttribute("value", "");
-                            }
-                        },
-                        remove: function () {
-                            count.parentNode.removeChild(count);
-                        }
-                    };
-                };
-                var create_hostname = function () {
-                };
-                var create_conip = function () {
-                };
+                /* Update element on create */
+                update();
+                /* Add this element after the last one */
+                addafter.add_after(row);
                 /* Object representing header row of entry */
                 return {
-                    icon: create_icon(),
-                    count: create_count(),
-                    hostname: create_hostname(),
-                    con_ip: create_conip(),
-                    /* Contains counts of additional addresses and an element to permit hiding */
-                    showhide: create_showhide(),
+                    update: update,
+                    remove: function () {
+                        address.removeEventListener("mouseover", mouseover, false);
+                        address.removeEventListener("mouseout", mouseout, false);
+                        row.removeChild(s1);
+                        row.removeChild(s2);
+                        row.removeChild(s3);
+                        row.removeChild(address);
+                        row.parentNode.removeChild(row);
+                    },
+                    add_after: function (element) {
+                        /* Add the element specified immediately after this one in the DOM */
+                        if (row.nextSibling) {
+                            row.parentNode.insertBefore(element, row.nextSibling);
+                        } else {
+                            row.parentNode.appendChild(element);
+                        }
+                    }
+                };
+            };
+
+            /* Create and return a new line item */
+            var create_header_row = function (addafter) {
+                log("Sixornot - create_header_row", 1);
+                var create_showhide = function (addto) {
+                    var c6, c4, hide, hbox, update;
+                    log("Sixornot - create_showhide", 1);
+                    hbox = doc.createElement("hbox");
+                    hbox.setAttribute("pack", "center");
+
+                    /* Create DOM UI elements */
+                    c6 = doc.createElement("label");
+                    c6.setAttribute("style", "color: #0F0;");
+                    c6.setAttribute("tooltiptext", gt("tt_show_detail"));
+                    c4 = doc.createElement("label");
+                    c4.setAttribute("style", "color: #F00;");
+                    c4.setAttribute("tooltiptext", gt("tt_show_detail"));
+                    hide = doc.createElement("label");
+                    hide.setAttribute("value", "[Hide]");
+                    hide.setAttribute("style", "");
+                    hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
+
+                    hbox.appendChild(c6);
+                    hbox.appendChild(c4);
+                    hbox.appendChild(hide);
+
+                    c4.addEventListener("mouseover", mouseover, false);
+                    c4.addEventListener("mouseout", mouseout, false);
+                    c6.addEventListener("mouseover", mouseover, false);
+                    c6.addEventListener("mouseout", mouseout, false);
+                    hide.addEventListener("mouseover", mouseover, false);
+                    hide.addEventListener("mouseout", mouseout, false);
+
+                    update = function () {
+                        var count6 = 0, count4 = 0;
+                        host.ipv6s.forEach(function (address, index, addresses) {
+                            if (address !== host.address) {
+                                count6 += 1;
+                            }
+                        });
+                        host.ipv4s.forEach(function (address, index, addresses) {
+                            if (address !== host.address) {
+                                count4 += 1;
+                            }
+                        });
+                        hide.setAttribute("hidden",
+                            !(host.show_detail && (count6 > 0 || count4 > 0)));
+
+                        c6.setAttribute("value", "[+" + count6 + "]");
+                        c6.setAttribute("hidden",
+                            !(!host.show_detail && count6 > 0));
+
+                        c4.setAttribute("value", "[+" + count4 + "]");
+                        c4.setAttribute("hidden",
+                            !(!host.show_detail && count4 > 0));
+                    };
+                    /* Update elements on create */
+                    update();
+                    addto.appendChild(hbox);
+                    /* Return object for interacting with DOM elements */
+                    return {
+                        update: update,
+                        remove: function () {
+                            c4.removeEventListener("mouseover", mouseover, false);
+                            c4.removeEventListener("mouseout", mouseout, false);
+                            c6.removeEventListener("mouseover", mouseover, false);
+                            c6.removeEventListener("mouseout", mouseout, false);
+                            hide.removeEventListener("mouseover", mouseover, false);
+                            hide.removeEventListener("mouseout", mouseout, false);
+
+                            hbox.removeChild(c4);
+                            hbox.removeChild(c6);
+                            hbox.removeChild(hide);
+                            addto.removeChild(hbox);
+                        }
+                    };
+                };
+                var create_icon = function (addto) {
+                    var icon, update;
+                    log("Sixornot - create_icon", 1);
+                    /* Create DOM UI elements */
+                    icon = doc.createElement("image");
+                    icon.setAttribute("width", "16");
+                    icon.setAttribute("height", "16");
+                    update = function () {
+                        icon.setAttribute("src", get_icon_source(host));
+                    };
+                    /* Update element on create */
+                    update();
+                    addto.appendChild(icon);
+                    /* Return object for interacting with DOM element */
+                    return {
+                        update: update,
+                        remove: function () {
+                            addto.removeChild(icon);
+                        }
+                    };
+                };
+                var create_count = function (addto) {
+                    var count, update;
+                    log("Sixornot - create_count", 1);
+                    /* Create DOM UI elements */
+                    count = doc.createElement("label");
+                    count.addEventListener("mouseover", mouseover, false);
+                    count.addEventListener("mouseout", mouseout, false);
+
+                    update = function () {
+                        if (host.count > 0) {
+                            count.setAttribute("value", "(" + host.count + ")");
+                        } else {
+                            count.setAttribute("value", "");
+                        }
+                    };
+                    /* Update element on create */
+                    update();
+                    addto.appendChild(count);
+                    /* Return object for interacting with DOM element */
+                    return {
+                        update: update,
+                        remove: function () {
+                            count.removeEventListener("mouseover", mouseover, false);
+                            count.removeEventListener("mouseout", mouseout, false);
+                            addto.removeChild(count);
+                        }
+                    };
+                };
+                var create_hostname = function (addto) {
+                    var hostname, update;
+                    log("Sixornot - create_hostname", 1);
+                    /* Create DOM UI elements */
+                    hostname = doc.createElement("label");
+                    hostname.setAttribute("value", host.host);
+                    if (host.host === getCurrentHost()) {
+                        // Bold
+                        hostname.setAttribute("style", "font-weight: bold;");
+                    } else {
+                        hostname.setAttribute("style", "font-weight: normal;");
+                    }
+                    hostname.addEventListener("mouseover", mouseover, false);
+                    hostname.addEventListener("mouseout", mouseout, false);
+
+                    hostname.setAttribute("tooltiptext", gt("tt_copyall"));
+                    update = function () {
+                        // Update the copy+paste text TODO
+                    };
+                    /* Update element on create */
+                    update();
+                    addto.appendChild(hostname);
+                    /* Return object for interacting with DOM element */
+                    return {
+                        update: update,
+                        remove: function () {
+                            hostname.removeEventListener("mouseover", mouseover, false);
+                            hostname.removeEventListener("mouseout", mouseout, false);
+                            addto.removeChild(hostname);
+                        }
+                    };
+                };
+                var create_conip = function (addto) {
+                    var address, update;
+                    log("Sixornot - create_conip", 1);
+                    /* Create DOM UI elements */
+                    address = doc.createElement("label");
+                    address.addEventListener("mouseover", mouseover, false);
+                    address.addEventListener("mouseout", mouseout, false);
+
+                    update = function () {
+                        if (host.address_family === 6) {
+                            address.setAttribute("value", host.address);
+                            address.setAttribute("style", "color: #0F0;");
+                            address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                        } else if (host.address_family === 4) {
+                            address.setAttribute("value", host.address);
+                            address.setAttribute("style", "color: #F00;");
+                            address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                        } else if (host.address_family === 2) {
+                            address.setAttribute("value", "Cached");
+                            address.setAttribute("style", "color: #00F;");
+                        } else {
+                            address.setAttribute("value", "Address Unavailable");
+                            address.setAttribute("style", "color: #000;");
+                        }
+                        // Update the copy+paste text TODO
+                    };
+                    /* Update element on create */
+                    update();
+                    addto.appendChild(address);
+                    /* Return object for interacting with DOM element */
+                    return {
+                        update: update,
+                        remove: function () {
+                            address.removeEventListener("mouseover", mouseover, false);
+                            address.removeEventListener("mouseout", mouseout, false);
+                            addto.removeChild(address);
+                        }
+                    };
+                };
+
+                // Create row
+                var row = doc.createElement("row");
+                /* Add this element after the last one */
+                addafter.add_after(row);
+                //addafter.parentNode.insertAfter(addafter, row);
+                /* Object representing header row of entry */
+                return {
+                    icon: create_icon(row),
+                    count: create_count(row),
+                    hostname: create_hostname(row),
+                    con_ip: create_conip(row),
+                    showhide: create_showhide(row),
                     /* Remove this element and all children */
                     remove: function () {
                         this.icon.remove();
@@ -1089,11 +1227,22 @@ insert_code = function (win) {
                         this.hostname.remove();
                         this.con_ip.remove();
                         this.showhide.remove();
+                        row.parentNode.removeChild(row);
+                    },
+                    add_after: function (element) {
+                        /* Add the element specified immediately after this one in the DOM */
+                        if (row.nextSibling) {
+                            row.parentNode.insertBefore(element, row.nextSibling);
+                        } else {
+                            row.parentNode.appendChild(element);
+                        }
                     }
                 };
             };
+
             /* Return sorted array of detail rows */
-            var create_detail_rows = function () {
+            var create_detail_rows = function (addafter) {
+                log("Sixornot - create_detail_rows", 1);
                 var detail_rows = [];
                 
                 /* Sort the lists of addresses */
@@ -1103,45 +1252,262 @@ insert_code = function (win) {
                 host.ipv4s.sort(function (a, b) {
                     return dns_handler.sort_ip4.call(dns_handler, a, b);
                 });
-                // TODO add_detail_line should return an object rather than a raw dom element
                 host.ipv6s.forEach(function (address, index, addresses) {
                     if (address !== host.address) {
-                        detail_rows.push(add_detail_line(address));
+                        detail_rows.push(create_detail_row(address, detail_rows[0] || addafter));
                     }
                 });
                 host.ipv4s.forEach(function (address, index, addresses) {
                     if (address !== host.address) {
-                        detail_rows.push(add_detail_line(address));
+                        detail_rows.push(create_detail_row(address, detail_rows[0] || addafter));
                     }
                 });
                 return detail_rows;
             };
+            // Bind onclick events here TODO
+            var header_row = create_header_row(addafter);
+            var detail_rows = create_detail_rows(header_row);
+
             return {
-                header_row: create_header_row(),
-                detail_rows: create_detail_rows(),
+                header_row: header_row,
+                detail_rows: detail_rows,
+                host: host,
                 copy_full: "",
                 remove: function () {
+                    header_row.remove();
+                    this.detail_rows.forEach(function (item, index, items) {
+                        item.remove();
+                    });
                 },
                 show_detail: function () {
+                    this.detail_rows.forEach(function (item, index, items) {
+                        item.update();
+                    });
+                    this.header_row.showhide.update();
                 },
                 hide_detail: function () {
+                    this.detail_rows.forEach(function (item, index, items) {
+                        item.update();
+                    });
+                    this.header_row.showhide.update();
+                },
+                update_address: function () {
+                    this.header_row.con_ip.update();
+                    this.header_row.icon.update();
                 },
                 update_ips: function () {
-                    this.detail_rows
+                    this.detail_rows.forEach(function (item, index, items) {
+                        item.remove();
+                    });
+                    this.detail_rows = create_detail_rows(this.header_row);
+                    this.header_row.showhide.update();
+                    this.header_row.icon.update();
                 },
                 update_icon: function () {
+                    this.header_row.icon.update();
                 },
                 update_count: function () {
+                    this.header_row.count.update();
                 },
 
                 /* Return the last element, useful for inserting another element after this one */
                 get_last_element: function () {
-                    return this.detail_rows[-1];
+                    if (this.detail_rows.length > 0) {
+                        return this.detail_rows[this.detail_rows.length - 1];
+                    } else {
+                        return this.header_row;
+                    }
                 },
                 /* Adds the contents of this object after the specified element */
                 add_after: function (element) {
+                    if (row.nextSibling) {
+                        row.parentNode.insertBefore(element, row.nextSibling);
+                    } else {
+                        row.parentNode.appendChild(element);
+                    }
                 }
             };
+        };
+
+        var grid_contents = [];
+
+        var remove_all = function () {
+            log("Sixornot - remove_all", 2);
+            grid_contents.forEach(function (item, index, items) {
+                try {
+                    item.remove();
+                } catch (e) {
+                    log("exception!" + parse_exception(e), 0);
+                }
+            });
+            grid_contents = [];
+
+        };
+        var generate_all = function () {
+            log("Sixornot - generate_all", 2);
+            var hosts = get_hosts();
+
+            hosts.forEach(function (host, index, items) {
+                // For each host in hosts add a line object to the grid_contents array
+                // These will be added to the DOM after the previous one, or after the
+                // anchor element if none have been created yet
+                try {
+                    if (grid_contents.length > 0) {
+                        grid_contents.push(new_line(host, grid_contents[grid_contents.length - 1].get_last_element()));
+                    } else {
+                        grid_contents.push(new_line(host, remote_anchor));
+                    }
+                } catch (e) {
+                    log("exception!" + parse_exception(e), 0);
+                }
+            });
+        };
+
+        // On show panel
+        // If so remove all entries in grid_contents list
+        // Then create a new entry in grid_contents (new_grid_line()) for each element
+        // in the cache matching this page
+        // 
+        var on_show_panel = function (evt) {
+            log("Sixornot - on_show_panel", 1);
+            remove_all();
+            generate_all();
+        };
+
+        // On page change
+        // Check if tab outerID matches event outerID
+        // If so repopulate grid_contents list as per show panel
+        var on_page_change = function (evt) {
+            log("Sixornot - on_page_change", 1);
+            if (panel.state !== "open") {
+                log("Sixornot - on_page_change - skipping (panel is closed)", 1);
+                return;
+            }
+            if (evt.outer_id !== currentTabOuterID) {
+                log("Sixornot - on_page_change - skipping (outer ID mismatch)", 1);
+                return;
+            }
+            remove_all();
+            generate_all();
+        };
+
+        // On new host
+        // Check if innerID matches
+        // Check if mainhost matches
+        // If so add a new host into grid_contents (in correct sort position)
+        var on_new_host = function (evt) {
+            log("Sixornot - on_new_host", 1);
+            if (panel.state !== "open") {
+                log("Sixornot - on_new_host - skipping (panel is closed) - panel.state: " + panel.state, 1);
+                return;
+            }
+            if (evt.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_new_host - skipping (inner ID mismatch) - evt.inner_id: " + evt.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+                return;
+            }
+
+            try {
+                // TODO put this in the right position based on some ordering
+                // TODO since event subject is the host object in question so long as the IDs match we should be ok
+                //  to just use that rather than doing this lookup!
+                log("Sixornot - on_new_host - evt.subject.host: " + evt.subject.host, 1);
+                // For first match for evt.subject.host add a new line
+                // Only do so if a matching host does not exist in the listing already TODO
+                if (grid_contents.length > 0) {
+                    grid_contents.push(new_line(evt.subject, grid_contents[grid_contents.length - 1].get_last_element()));
+                } else {
+                    grid_contents.push(new_line(evt.subject, remote_anchor));
+                }
+            } catch (e) {
+                log("exception!" + parse_exception(e), 0);
+            }
+        };
+
+        // On address change
+        // Check if innerID matches
+        // Check if mainhost matches
+        // If so look up matching host entry in grid_contents + update its connection IP
+        // And update its icon
+        var on_address_change = function (evt) {
+            log("Sixornot - on_address_change", 1);
+            if (panel.state !== "open") {
+                log("Sixornot - on_address_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
+                return;
+            }
+            if (evt.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_address_change - skipping (inner ID mismatch) - evt.inner_id: " + evt.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+                return;
+            }
+            try {
+                if (!grid_contents.some(function (item, index, items) {
+                    if (item.host.host === evt.subject.host) {
+                        log("Sixornot - on_address_change - updating addresses + icon", 1);
+                            item.update_address();
+                        return true;
+                    }
+                })) {
+                        log("Sixornot - on_address_change - matching host not found!", 1);
+                }
+            } catch (e) {
+                log("exception!" + parse_exception(e), 0);
+            }
+        };
+
+        // On count change
+        // Check innerID + mainhost match
+        // Look up matching host entry in grid_contents and update its count
+        var on_count_change = function (evt) {
+            log("Sixornot - on_count_change", 1);
+            if (panel.state !== "open") {
+                log("Sixornot - on_count_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
+                return;
+            }
+            if (evt.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_count_change - skipping (inner ID mismatch) - evt.inner_id: " + evt.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+                return;
+            }
+            try {
+                if (!grid_contents.some(function (item, index, items) {
+                    if (item.host.host === evt.subject.host) {
+                        log("Sixornot - on_count_change - updating count", 1);
+                        item.update_count();
+                        return true;
+                    }
+                })) {
+                        log("Sixornot - on_count_change - matching host not found!", 1);
+                }
+            } catch (e) {
+                log("exception!" + parse_exception(e), 0);
+            }
+        };
+
+        // On DNS lookup completion event
+        // Check innerID + mainhost match
+        // Look up matching host entry + call update_ips() which rebuilds the set of addresses
+        // Update icon
+        var on_dns_complete = function (evt) {
+            log("Sixornot - on_dns_complete", 1);
+            if (panel.state !== "open") {
+                log("Sixornot - on_dns_complete - skipping (panel is closed) - panel.state: " + panel.state, 1);
+                return;
+            }
+            if (evt.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_dns_complete - skipping (inner ID mismatch) - evt.inner_id: " + evt.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+                return;
+            }
+            try {
+                if (!grid_contents.some(function (item, index, items) {
+                    if (item.host.host === evt.subject.host) {
+                        log("Sixornot - on_dns_complete - updating ips and icon", 1);
+                            item.update_ips();
+                        return true;
+                    }
+                })) {
+                        log("Sixornot - on_dns_complete - matching host not found!", 1);
+                }
+            } catch (e) {
+                log("exception!" + parse_exception(e), 0);
+            }
         };
 
 
@@ -1518,23 +1884,23 @@ insert_code = function (win) {
         panel.style.listStyleImage = "none";
 
         // Event listener to update panel contents when it is shown
-        panel.addEventListener("popupshowing", update_remote_list, false);
-        win.addEventListener("sixornot-page-change-event", update_remote_list, false);
-        win.addEventListener("sixornot-new-host-event", update_remote_list, false);
-        win.addEventListener("sixornot-address-change-event", update_remote_list, false);
-        win.addEventListener("sixornot-count-change-event", update_remote_list, false);
-        win.addEventListener("sixornot-dns-lookup-event", update_remote_list, false);
+        panel.addEventListener("popupshowing", on_show_panel, false);
+        win.addEventListener("sixornot-page-change-event", on_page_change, false);
+        win.addEventListener("sixornot-new-host-event", on_new_host, false);
+        win.addEventListener("sixornot-address-change-event", on_address_change, false);
+        win.addEventListener("sixornot-count-change-event", on_count_change, false);
+        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
 
         // Add a callback to our unload list to remove the UI when addon is disabled
         unload(function () {
             log("Sixornot - Unload panel callback", 2);
             // Remove event listeners
-            panel.removeEventListener("popupshowing", update_remote_list, false);
-            win.removeEventListener("sixornot-page-change-event", update_remote_list, false);
-            win.removeEventListener("sixornot-new-host-event", update_remote_list, false);
-            win.removeEventListener("sixornot-address-change-event", update_remote_list, false);
-            win.removeEventListener("sixornot-count-change-event", update_remote_list, false);
-            win.removeEventListener("sixornot-dns-lookup-event", update_remote_list, false);
+            panel.removeEventListener("popupshowing", on_show_panel, false);
+            win.removeEventListener("sixornot-page-change-event", on_page_change, false);
+            win.removeEventListener("sixornot-new-host-event", on_new_host, false);
+            win.removeEventListener("sixornot-address-change-event", on_address_change, false);
+            win.removeEventListener("sixornot-count-change-event", on_count_change, false);
+            win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
             // Remove UI
             panel.parentNode.removeChild(panel);
         }, win);
