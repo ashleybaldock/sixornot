@@ -353,16 +353,65 @@ var HTTP_REQUEST_OBSERVER = {
 
         /* Create an event of the specified type and dispatch it to the specified element
            Return boolean indicating if the event has been cancelled */
-        send_event = function (type, target, outer_id, inner_id, subject) {
+        send_event = function (type, target, subject) {
             // Create an event to inform listeners that a new page load has started
             // We do this now since it's only now that we know the innerID of the page
             var evt = target.top.document.createEvent("CustomEvent");
             evt.initCustomEvent(type, true, true, null);
-            evt.outer_id = outer_id;
-            evt.inner_id = inner_id;
             evt.subject = subject;
             // Dispatch the event
             return target.top.dispatchEvent(evt);
+        };
+
+        /* Prepare and return a new blank entry for the hosts listing */
+        var create_new_entry = function (host, address, cached, origin, inner, outer) {
+            var new_entry = {
+                // TODO Should this be hostPort? Since we could connect using v4/v6 on different ports?
+                host: host,
+                address: address,
+                address_family: 0,
+                show_detail: true,
+                count: 1,
+                ipv6s: [],
+                ipv4s: [],
+                dns_status: "ready",
+                dns_cancel: null,
+                origin: origin,
+                inner_id: inner,
+                outer_id: outer,
+                lookup_ips: function () {
+                    /* Create closure containing reference to element and trigger async lookup with callback */
+                    var entry = this;
+                    var on_returned_ips = function (ips) {
+                        var evt, cancelled;
+                        entry.dns_cancel = null;
+                        if (ips[0] === "FAIL")
+                        {
+                            entry.ipv6s = [];
+                            entry.ipv4s = [];
+                            entry.dns_status = "failure";
+                        } else {
+                            entry.ipv6s = ips.filter(dns_handler.is_ip6);
+                            entry.ipv4s = ips.filter(dns_handler.is_ip4);
+                            entry.dns_status = "complete";
+                        }
+                        // Also trigger page change event here to refresh display of IP tooltip
+                        // Create a page change event
+                        send_event("sixornot-dns-lookup-event", entry.origin, entry);
+                    };
+                    if (entry.dns_cancel) {
+                        entry.dns_cancel();
+                    }
+                    entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, on_returned_ips);
+                }
+            };
+            // TODO move this code into a function executed immediately for address_family item
+            if (cached) {
+                new_entry.address_family = 2;
+            } else if (new_entry.address !== "") {
+                new_entry.address_family = new_entry.address.indexOf(":") === -1 ? 4 : 6;
+            }
+            return new_entry;
         };
 
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
@@ -416,52 +465,10 @@ var HTTP_REQUEST_OBSERVER = {
             }
 
             // Create a new host entry for this host to add to the cache array
-            new_entry = {
-                // TODO Should this be hostPort? Since we could connect using v4/v6 on different ports?
-                host: http_channel.URI.host,
-                address: remoteAddress,
-                address_family: 0,
-                show_detail: true,
-                count: 1,               // Number of connections made to this host
-                ipv6s: [],
-                ipv4s: [],
-                dns_status: "ready",
-                dns_cancel: null
-            };
+            new_entry = create_new_entry(http_channel.URI.host, remoteAddress,
+                aTopic === "http-on-examine-cached-response",
+                domWindow, domWindowInner, domWindowOuter);
 
-            if (aTopic === "http-on-examine-cached-response") {
-                new_entry.address_family = 2;
-            } else if (remoteAddress !== "") {
-                new_entry.address_family = remoteAddress.indexOf(":") === -1 ? 4 : 6;
-            }
-
-            /* Create closure containing reference to element and trigger async lookup with callback */
-            lookupIPs = function (entry) {
-                var onReturnedIPs;
-                /* When DNS lookup is completed for a cache entry, update its IP address information */
-                onReturnedIPs = function (remoteips) {
-                    var evt, cancelled;
-                    entry.dns_cancel = null;
-                    if (remoteips[0] === "FAIL")
-                    {
-                        entry.ipv6s = [];
-                        entry.ipv4s = [];
-                        entry.dns_status = "failure";
-                    } else {
-                        entry.ipv6s = remoteips.filter(dns_handler.is_ip6);
-                        entry.ipv4s = remoteips.filter(dns_handler.is_ip4);
-                        entry.dns_status = "complete";
-                    }
-                    // Also trigger page change event here to refresh display of IP tooltip
-                    // Create a page change event
-                    send_event("sixornot-dns-lookup-event",
-                        domWindow, domWindowOuter, domWindowInner, entry);
-                };
-                if (entry.dns_cancel) {
-                    entry.dns_cancel();
-                }
-                entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, onReturnedIPs);
-            };
 
             if (new_page) {
                 /* PRIMARY PAGE LOAD */
@@ -480,9 +487,6 @@ var HTTP_REQUEST_OBSERVER = {
                             log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
-                            // TODO - maybe have lookupIPs be a method of the entry object?
-                            //lookupIPs(element);
-                            //element.lookupIPs();
                         }
                     }
                 });
@@ -494,8 +498,7 @@ var HTTP_REQUEST_OBSERVER = {
                     hosts.push(new_entry);
                     // Trigger new DNS lookup for the new host entry
                     // TODO move this into "content-document-global-created" below since this has a callback which triggers an event which needs to know the innerID
-                    lookupIPs(new_entry);
-                    //new_entry.lookupIPs();
+                    new_entry.lookup_ips();
                 }
                 RequestWaitingList[domWindowOuter] = hosts;
 
@@ -513,19 +516,16 @@ var HTTP_REQUEST_OBSERVER = {
                         // Subject is element host, to permit filtering of events
                         element.count += 1;
                         send_event("sixornot-count-change-event",
-                            domWindow, domWindowOuter, domWindowInner, new_entry);
+                            domWindow, new_entry);
 
                         if (element.address !== new_entry.address && new_entry.address !== "") {
                             log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
                             // TODO Send element address change event
                             // Subject is element host, to permit filtering of events
                             send_event("sixornot-address-change-event",
-                                domWindow, domWindowOuter, domWindowInner, new_entry);
+                                domWindow, new_entry);
                             element.address = new_entry.address;
                             element.address_family = new_entry.address_family;
-                            // TODO - maybe have lookupIPs be a method of the entry object?
-                            //lookupIPs(element);
-                            //element.lookupIPs();
                         }
                     }
                 });
@@ -536,12 +536,11 @@ var HTTP_REQUEST_OBSERVER = {
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: new_entry.address: " + new_entry.address + ", ID: " + domWindowInner, 1);
                     // TODO Send new element event
                     send_event("sixornot-new-host-event",
-                        domWindow, domWindowOuter, domWindowInner, new_entry);
+                        domWindow, new_entry);
                     // Subject ??
                     hosts.push(new_entry);
                     // Trigger new DNS lookup for the new host entry
-                    lookupIPs(new_entry);
-                    //new_entry.lookupIPs();
+                    new_entry.lookup_ips();
                 }
                 RequestCache[domWindowInner] = hosts;
             }
@@ -571,7 +570,7 @@ var HTTP_REQUEST_OBSERVER = {
             // Create an event to inform listeners that a new page load has started
             // We do this now since it's only now that we know the innerID of the page
             send_event("sixornot-page-change-event",
-                domWindow, domWindowOuter, domWindowInner, RequestCache[domWindowInner][0]);
+                domWindow, RequestCache[domWindowInner][0]);
 
         } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
@@ -1402,8 +1401,8 @@ insert_code = function (win) {
                 log("Sixornot - on_new_host - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
             }
-            if (evt.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_new_host - skipping (inner ID mismatch) - evt.inner_id: " + evt.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.subject.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_new_host - skipping (inner ID mismatch) - evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
             }
 
@@ -1435,8 +1434,8 @@ insert_code = function (win) {
                 log("Sixornot - on_address_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
             }
-            if (evt.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_address_change - skipping (inner ID mismatch) - evt.inner_id: " + evt.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.subject.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_address_change - skipping (inner ID mismatch) - evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
             }
             try {
@@ -1462,8 +1461,8 @@ insert_code = function (win) {
                 log("Sixornot - on_count_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
             }
-            if (evt.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_count_change - skipping (inner ID mismatch) - evt.inner_id: " + evt.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.subject.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_count_change - skipping (inner ID mismatch) - evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
             }
             try {
@@ -1491,8 +1490,8 @@ insert_code = function (win) {
                 log("Sixornot - on_dns_complete - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
             }
-            if (evt.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_dns_complete - skipping (inner ID mismatch) - evt.inner_id: " + evt.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.subject.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_dns_complete - skipping (inner ID mismatch) - evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
             }
             try {
@@ -1957,11 +1956,11 @@ insert_code = function (win) {
         /* Called whenever a Sixornot page change event is emitted
            Calls the update method for the icon, but only if the event applies to us */
         page_change_handler = function (evt) {
-            log("Sixornot - insert_code:create_button:page_change_handler - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            log("Sixornot - insert_code:create_button:page_change_handler - evt.subject.outer_id: " + evt.subject.outer_id + ", evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             setCurrentTabIDs();
             // Ignore updates for windows other than this one
-            if (evt.outer_id !== currentTabOuterID) {
-                log("Sixornot - insert_code:create_button - callback: update_state - Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
+            if (evt.subject.outer_id !== currentTabOuterID) {
+                log("Sixornot - insert_code:create_button - callback: update_state - Callback ID mismatch: evt.subject.outer_id is: " + evt.subject.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
             } else {
                 update_icon();
             }
@@ -2087,11 +2086,11 @@ insert_code = function (win) {
         /* Called whenever a Sixornot page change event is emitted
            Calls the update method for the icon, but only if the event applies to us */
         page_change_handler = function (evt) {
-            log("Sixornot - insert_code:create_addressbaricon:page_change_handler - evt.outer_id: " + evt.outer_id + ", evt.inner_id: " + evt.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            log("Sixornot - insert_code:create_addressbaricon:page_change_handler - evt.subject.outer_id: " + evt.subject.outer_id + ", evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             setCurrentTabIDs();
             // Ignore updates for windows other than this one
-            if (evt.outer_id !== currentTabOuterID) {
-                log("Sixornot - insert_code:create_addressbaricon - callback: update_state - Callback ID mismatch: evt.outer_id is: " + evt.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
+            if (evt.subject.outer_id !== currentTabOuterID) {
+                log("Sixornot - insert_code:create_addressbaricon - callback: update_state - Callback ID mismatch: evt.subject.outer_id is: " + evt.subject.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
             } else {
                 update_icon();
             }
