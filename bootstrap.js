@@ -894,6 +894,257 @@ insert_code = function (win) {
             }
         };
 
+
+        // Add a line, including local event handlers for show/hide
+        //  Added in correct place in ordering (alphabetical, main site at top)
+
+        // Remove all lines, including cleanup of callbacks etc.
+
+        // (All filtered by innerwindowid)
+        // Update line icon (index by host) - reference to main model, pass object
+        // Update line connection count (index by host)
+        // Update line connection address (index by host)
+        // Update line additional addresses (index by host)
+
+        // Summary or detail needs to be a property of the object representation so that it can persist between menu shows, or refreshing of the extended info fields
+        // The ip address arrays can be rebuilt, meaning the elements would have to be removed and re-added
+
+
+        /* Object representing one host entry in the panel
+           Takes a reference to a member of the request cache as argument
+           and links to that member to reflect its state
+           Also takes a reference to the element to add this element after
+           e.g. header or the preceeding list item */
+        var new_line = function (host) {
+            /* Create and return a new line item */
+            var create_header_row = function () {
+                var create_showhide = function () {
+                    var count4, count6, hide, hbox;
+                    var create_count4 = function (addto) {
+                        /* Create DOM UI elements */
+                        var c4 = doc.createElement("label");
+                        c4.setAttribute("value", "[+" + count4 + "]");
+                        c4.setAttribute("style", "color: #F00;");
+                        c4.setAttribute("tooltiptext", gt("tt_show_detail"));
+                        addto.add_child(c4);
+                        /* Return object for interacting with DOM element */
+                        return {
+                            update: function () {
+                                var count4 = 0;
+                                host.ipv4s.forEach(function (address, index, addresses) {
+                                    if (address !== host.address) {
+                                        count4 += 1;
+                                    }
+                                });
+                                c4.setAttribute("value", "[+" + count4 + "]");
+                                if (count4 < 1) {
+                                    c4.setAttribute("hidden", true);
+                                }
+                            },
+                            remove: function () {
+                                c4.parentNode.removeChild(c4);
+                            }
+                        };
+                    };
+                    // TODO update on first create, make object, call update() method on it and then return it, saves duplication of the updating code
+                    var create_count6 = function (addto) {
+                        /* Create DOM UI elements */
+                        var c6 = doc.createElement("label");
+                        c6.setAttribute("value", "[+" + count6 + "]");
+                        c6.setAttribute("style", "color: #0F0;");
+                        c6.setAttribute("tooltiptext", gt("tt_show_detail"));
+                        addto.add_child(c6);
+                        return {
+                            update: function () {
+                                var count6 = 0;
+                                host.ipv6s.forEach(function (address, index, addresses) {
+                                    if (address !== host.address) {
+                                        count6 += 1;
+                                    }
+                                });
+                                c6.setAttribute("value", "[+" + count6 + "]");
+                                if (count6 < 1) {
+                                    c6.setAttribute("hidden", true);
+                                }
+                            },
+                            remove: function () {
+                                c6.parentNode.removeChild(c6);
+                            }
+                        };
+                    };
+                    var create_hide = function (addto) {
+                        /* Create DOM UI elements */
+                        var hide = doc.createElement("label");
+                        hide.setAttribute("value", "[Hide]");
+                        hide.setAttribute("style", "");
+                        hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
+                        addto.add_child(hide);
+                        return {
+                            update: function () {
+                                var count6 = 0, count4 = 0;
+                                host.ipv6s.forEach(function (address, index, addresses) {
+                                    if (address !== host.address) {
+                                        count6 += 1;
+                                    }
+                                });
+                                host.ipv4s.forEach(function (address, index, addresses) {
+                                    if (address !== host.address) {
+                                        count4 += 1;
+                                    }
+                                });
+                                hide.setAttribute("hidden", !(host.show_detail && (count6 > 0 || count4 > 0)));
+                            },
+                            remove: function () {
+                                hide.parentNode.removeChild(hide);
+                            }
+                        };
+                    };
+                    var create_hbox = function () {
+                        var hbox = doc.createElement("hbox");
+                        hbox.setAttribute("pack", "center");
+                        return {
+                            // TODO Is this really the best way to add children?! Probably not, seems obtuse, in the case of showhide probably not needed anyway since it acts as a single unit but this problem does need to be solved in general!
+                            add_child: function (child) {
+                                hbox.appendChild(child);
+                            },
+                            update: function () { return; },
+                            remove: function () {
+                                hbox.parentNode.removeChild(hbox);
+                            }
+                        };
+                    };
+                    hbox = create_hbox();
+                    count4 = create_count_4(hbox);
+                    count6 = create_count_6(hbox);
+                    hide = create_hide(hbox);
+                    return {
+                        update: function () {
+                            count4.update();
+                            count6.update();
+                            hide.update();
+                        },
+                        remove: function () {
+                            count4.remove();
+                            count6.remove();
+                            hide.remove();
+                            hbox.remove();
+                        }
+                    };
+                };
+                var create_icon = function () {
+                    /* Create DOM UI elements */
+                    var icon = doc.createElement("image");
+                    icon.setAttribute("width", "16");
+                    icon.setAttribute("height", "16");
+                    icon.setAttribute("src", get_icon_source(host));
+                    /* Return object for interacting with DOM element */
+                    return {
+                        update: function () {
+                            icon.setAttribute("src", get_icon_source(host));
+                        },
+                        remove: function () {
+                            icon.parentNode.removeChild(icon);
+                        }
+                    };
+                };
+                var create_count = function () {
+                    /* Create DOM UI elements */
+                    var count = doc.createElement("label");
+                    if (host.count > 0) {
+                        count.setAttribute("value", "(" + host.count + ")");
+                    } else {
+                        count.setAttribute("value", "");
+                    }
+                    count.setAttribute("style", "");
+                    /* Return object for interacting with DOM element */
+                    return {
+                        update: function () {
+                            if (host.count > 0) {
+                                count.setAttribute("value", "(" + host.count + ")");
+                            } else {
+                                count.setAttribute("value", "");
+                            }
+                        },
+                        remove: function () {
+                            count.parentNode.removeChild(count);
+                        }
+                    };
+                };
+                var create_hostname = function () {
+                };
+                var create_conip = function () {
+                };
+                /* Object representing header row of entry */
+                return {
+                    icon: create_icon(),
+                    count: create_count(),
+                    hostname: create_hostname(),
+                    con_ip: create_conip(),
+                    /* Contains counts of additional addresses and an element to permit hiding */
+                    showhide: create_showhide(),
+                    /* Remove this element and all children */
+                    remove: function () {
+                        this.icon.remove();
+                        this.count.remove();
+                        this.hostname.remove();
+                        this.con_ip.remove();
+                        this.showhide.remove();
+                    }
+                };
+            };
+            /* Return sorted array of detail rows */
+            var create_detail_rows = function () {
+                var detail_rows = [];
+                
+                /* Sort the lists of addresses */
+                host.ipv6s.sort(function (a, b) {
+                    return dns_handler.sort_ip6.call(dns_handler, a, b);
+                });
+                host.ipv4s.sort(function (a, b) {
+                    return dns_handler.sort_ip4.call(dns_handler, a, b);
+                });
+                // TODO add_detail_line should return an object rather than a raw dom element
+                host.ipv6s.forEach(function (address, index, addresses) {
+                    if (address !== host.address) {
+                        detail_rows.push(add_detail_line(address));
+                    }
+                });
+                host.ipv4s.forEach(function (address, index, addresses) {
+                    if (address !== host.address) {
+                        detail_rows.push(add_detail_line(address));
+                    }
+                });
+                return detail_rows;
+            };
+            return {
+                header_row: create_header_row(),
+                detail_rows: create_detail_rows(),
+                copy_full: "",
+                remove: function () {
+                },
+                show_detail: function () {
+                },
+                hide_detail: function () {
+                },
+                update_ips: function () {
+                    this.detail_rows
+                },
+                update_icon: function () {
+                },
+                update_count: function () {
+                },
+
+                /* Return the last element, useful for inserting another element after this one */
+                get_last_element: function () {
+                    return this.detail_rows[-1];
+                },
+                /* Adds the contents of this object after the specified element */
+                add_after: function (element) {
+                }
+            };
+        };
+
+
         /* Update all panel contents */
 
         /* Update local IP contents */
