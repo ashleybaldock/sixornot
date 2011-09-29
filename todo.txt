@@ -1,6 +1,46 @@
 # TODO
 
-# TODO 0.6.6
+# TODO 0.7
+Rewrite to use event-driven model + strip out all the old code from FlagFox - DONE
+Add support for nsIHttpChannelInternal detection of connection's IP address - DONE
+Switch from tooltip to panel for address display                            - DONE
+Display all addresses involved in connections                               - DONE
+Display count of connections per domain                                     - DONE
+JSLint for utils.js                                                         - DONE
+Re-add ability to copy information to clipboard
+Add ability to copy a list of all files fetched to clipboard (per-domain)
+Add better proxy detection (per-connection) and icon display
+Update Russian localisation
+Fix exit crash bug
+Add back local address display (some mechanism to refresh it)
+Make preferences work again
+ Greyscale preference affects text display as well
+Platform-specific text colours for optimal display on panel
+Preferences override for all text display colours (if not set use platform-specific)
+Style link
+Proper website landing page + download links
+Update documentation (pretty much completely)
+Compatibility bump to Firefox 6.0/Seamonkey 2.3                             - DONE
+Test windowWatcher and so on (ensure unloading works properly)
+Testing for new code
+Handling for edge-cases and special pages (text)
+
+# TODO 0.7.1
+Preferences dialog/pane for Firefox 7 - https://developer.mozilla.org/en/Extensions/Inline_Options
+Native resolver compatibility with FreeBSD
+Compatibility bump to Firefox 7.0/Seamonkey 2.4
+Testing on Firefox 8.0/9.0
+
+# TODO Future
+Preference to set whether icon should come before or after the star icon
+Remote mode - simple check of local->remote IPv6 connectivity by requesting a page from a webservice
+E.g. ipv6.sixornot.com/ipv4.sixornot.com
+This will be optional (and off by default)
+Needs update to privacy policy etc., state that aggregate statistics may be gathered but no personally identifiable information sent
+Also state that no details of the sites you visit are sent
+Also add external address detection via external server??
+
+# 0.6.6
 Check if domain is in network.dns.ipv4OnlyDomains list and display v4 only  - DONE
 Check if network.dns.disableIPv6 is set and display warning/never use blue
     icon if so (still use orange icon if we detect an AAAA record)          - DONE
@@ -13,23 +53,6 @@ Implement Windows-specific resolver method for use by XP x86                - DO
 Linux support (needs testing and cleanup)                                   - DONE
 Fix Windows ctypes support so that it always returns remote v6 results      - DONE
 Add option to show/hide non-global IP addresses (on by default)             - DONE
-
-# TODO 0.6.7
-Only refresh local address information once every minute - put on a seperate timer?
-JSLint for utils.js
-Preference to set whether icon should come before or after the star icon
-Preferences dialog/pane for Firefox 7 - https://developer.mozilla.org/en/Extensions/Inline_Options
-Compatibility with FreeBSD
-
-# TODO 0.7
-Remote mode - simple check of local->remote IPv6 connectivity by requesting a page from a webservice
-E.g. ipv6.sixornot.com/ipv4.sixornot.com
-This will be optional (and off by default)
-Needs update to privacy policy etc., state that aggregate statistics may be gathered but no personally identifiable information sent
-Also state that no details of the sites you visit are sent
-
-Also add external address detection via external server??
-
 
 # 0.6.5
 Display local DNS name on tooltip                                           - DONE

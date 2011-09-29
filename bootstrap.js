@@ -169,14 +169,6 @@ New page loaded in etc.
 DNS lookup callback returns
 Show an icon/display tooltip text to indicate that a request for a host was served entirely from the local cache and thus no IP addresses come into play
 
-Replace this all later with a panel which will do both tooltip+menu functionality?
-Or use panel for info + copy addresses, menu for settings?
-Or use the new settings functionality which is available for restartless now?
-
-
-Greyscale mode - apply to text as well as icons
-Specify colours for text as override-able settings in configuration (with nice looking defaults on main OS platforms)
-
 
 TODO - investigate crash on exit - related to DNS resolver??
 
@@ -647,35 +639,13 @@ var HTTP_REQUEST_OBSERVER = {
 // TODO
 /*
     https://addons.mozilla.org/en-US/firefox/files/browse/129684/file/bootstrap.js#L127
-    Refactor all main() code into event-driven model                                            DONE
-    Make DNS lookups occur at correct time for correct entries returned by request observer     DONE
     Handle all the same edge cases as before
     Find nice structure for organising the functions
-    Consider changing to use of a panel instead of a tooltip??                                  DONE
     Move settings into panel
     Add tooltips for panel elements
     Allow expanding of panel items to show full detail for any item
         The main page always shows full details
 */
-
-
-/* void initCustomEvent(
-    in DOMString type,
-    in boolean canBubble,
-    in boolean cancelable,
-    in any detail
-); */
-
-/* // Create a page change event
-var evt = document.createEvent("CustomEvent");
-evt.initCustomEvent("sixornot-page-change-event", true, true, {"outer_id": ID, "inner_id: ID});
-// Dispatch the event
-var bool = element.dispatchEvent(evt)
-// Return indicates if it was cancelled or not
-
-// Listen for page change events
-element.addEventListener("sixornot-page-change-event", function (), false);
-element.removeEventListener("sixornot-page-change-event", function (), false); */
 
 
 /* Should be called once for each window of the browser */
@@ -2227,249 +2197,6 @@ insert_code = function (win) {
         }
     };
 
-    /* Update the contents of the panel whenever it is shown */
-    update_panel = function (evt) {
-        var panel, grid, hosts,
-            l6_filtered, l4_filtered,
-            get_hosts, add_v4_line, add_v6_line, add_summary_line,
-            add_bold_host_line, add_title_line, add_warning_line, add_blank_line,
-            add_checkbox, add_url,
-            add_summary_line,
-            add_line;
-        log("Sixornot - main:update_panel", 2);
-        panel = this;
-
-        /* Add a styled line to the panel, including optional icon */
-        add_line = function (rows, labelName, labelStyle, valueName, valueStyle,
-                             iconsrc, extra6value, extra6style, extra4value, extra4style) {
-            var label, value, row, icon, extra6, extra4;
-            log("Sixornot - main:update_panel:add_line - labelName: " + labelName + ", labelStyle: " + labelStyle + ", valueName: " + valueName + ", valueStyle: " + valueStyle, 2);
-            // Defaults
-            labelName = labelName || " ";
-            labelStyle = labelStyle || " ";
-            valueName = valueName || null;
-            valueStyle = valueStyle || null;
-            extra6value = extra6value || "";
-            extra4value = extra4value || "";
-            // If value is null, single item line, else 2 item line
-            if (valueName === null) {
-                label = doc.createElement("label");
-
-                label.setAttribute("value", labelName);
-                label.setAttribute("style", labelStyle);
-
-                rows.appendChild(label);
-                return label;
-            } else {
-                row = doc.createElement("row");
-                label = doc.createElement("label");
-                value = doc.createElement("label");
-
-                label.setAttribute("value", labelName);
-                label.setAttribute("style", labelStyle);
-                value.setAttribute("value", valueName);
-                value.setAttribute("style", valueStyle);
-
-                if (iconsrc) {
-                    icon = doc.createElement("image");
-                    icon.setAttribute("width", "16");
-                    icon.setAttribute("height", "16");
-                    icon.setAttribute("src", iconsrc);
-                    row.appendChild(icon);
-                } else {
-                    icon = doc.createElement("label");
-                    icon.setAttribute("value", " ");
-                    row.appendChild(icon);
-                }
-
-                extra6 = doc.createElement("label");
-                extra6.setAttribute("value", extra6value);
-                extra6.setAttribute("style", extra6style);
-                extra4 = doc.createElement("label");
-                extra4.setAttribute("value", extra4value);
-                extra4.setAttribute("style", extra4style);
-
-                row.appendChild(doc.createElement("label"));
-                row.appendChild(label);
-                row.appendChild(value);
-                row.appendChild(extra6);
-                row.appendChild(extra4);
-                rows.appendChild(row);
-                return row;
-            }
-        };
-
-
-
-
-        add_v6_line = function (rows, address) {
-            return add_line(rows, " ", "", address, "color: #0F0;", null);
-        };
-        add_v4_line = function (rows, address) {
-            return add_line(rows, " ", "", address, "color: #F00;", null);
-        };
-        add_bold_host_line = function (rows, count, host, address, address_family, iconsrc) {
-            var counttext = "";
-            if (count > 0) {
-                counttext = "(" + count + ")";
-            }
-            if (address_family === 4) {
-                return add_line(rows, host, "font-weight: bold;", address, "color: #F00;", iconsrc);
-            } else if (address_family === 6) {
-                return add_line(rows, host, "font-weight: bold;", address, "color: #0F0;", iconsrc);
-            } else {
-                // Invalid family or no address
-                return add_line(rows, host, "font-weight: bold;", "Cached", "color: #00F;", iconsrc);
-            }
-        };
-        add_title_line = function (rows, labelName) {
-            return add_line(rows, labelName, "font-weight: bold; text-align: right;");
-        };
-        add_warning_line = function (rows, labelName) {
-            var label = doc.createElement("label");
-
-            label.setAttribute("value", labelName);
-            label.setAttribute("style", "font-weight: bold; text-align: left; color: #F00;");
-
-            rows.appendChild(label);
-            return label;
-        };
-        add_blank_line = function (rows) {
-            return add_line(rows, "", "");
-        };
-
-        add_summary_line = function (rows, host, address, address_family, iconsrc, count6, count4) {
-            var extra_string = "";
-            var extra4 = "", extra6 = "";
-            if (count6 > 0) {
-                extra6 = "[+" + count6 + "]";
-            }
-            if (count4 > 0) {
-                extra4 = "[+" + count4 + "]";
-            }
-            if (address_family === 4) {
-                return add_line(rows, host, "", address, "color: #F00;", iconsrc,
-                    extra6, "color: #0F0;", extra4, "color: #F00;");
-            } else if (address_family === 6) {
-                return add_line(rows, host, "", address, "color: #0F0;", iconsrc,
-                    extra6, "color: #0F0;", extra4, "color: #F00;");
-            } else {
-                // Invalid family or no address
-                return add_line(rows, host, "", "Cached", "color: #00F;", iconsrc,
-                    extra6, "color: #0F0;", extra4, "color: #F00;");
-            }
-        };
-
-        // Warnings
-        // TODO add this to the panel before the rows
-        /* if (dns_handler.is_ip6_disabled()) {
-            add_warning_line(gt("warn_ip6_disabled"));
-        } */
-
-        // TODO - this needs to be done for each host we lookup
-        /* if (dns_handler.is_ip4only_domain(host)) {
-            add_warning_line(gt("warn_ip4only_domain"));
-        } */
-
-
-        /* Returns array of rows considered to be local */
-        var add_local_ips = function () {
-            var local_ips = [];
-            // Add local IP addresses, only show proper addresses unless setting set
-            if (get_bool_pref("showallips")) {
-                l6_filtered = localipv6s;
-                l4_filtered = localipv4s;
-            } else {
-                l6_filtered = localipv6s.filter(function (item) {
-                    return dns_handler.typeof_ip6(item) === "global";
-                });
-                l4_filtered = localipv4s.filter(function (item) {
-                    return ["global", "rfc1918"].indexOf(dns_handler.typeof_ip4(item)) !== -1;
-                });
-            }
-            // Add local IP address information if available
-            if (l4_filtered.length !== 0 || l6_filtered.length !== 0) {
-                local_ips.push(add_line(remote_rows, gt("header_local"), "text-align: center; font-size: smaller;"));
-                l6_filtered.forEach(function (address, index, thearray) {
-                    if (index === 0) {
-                        local_ips.push(add_bold_host_line(remote_rows, 0, dnsService.myHostName, address, 6, null));
-                    } else {
-                        local_ips.push(add_v6_line(remote_rows, address));
-                    }
-                });
-                l4_filtered.forEach(function (address, index, thearray) {
-                    if (index === 0 && l6_filtered.length < 1) {
-                        local_ips.push(add_bold_host_line(remote_rows, 0, dnsService.myHostName, address, 4, null));
-                    } else {
-                        local_ips.push(add_v4_line(remote_rows, address));
-                    }
-                });
-            } else {
-                local_ips.push(add_bold_host_line(remote_rows, 0, dnsService.myHostName, gt("no_local"), 0, null));
-            }
-            return local_ips;
-        };
-
-        // Add current local IPs to grid
-        var local_ips = add_local_ips();
-
-        log("panel.boxObject.width: " + panel.boxObject.width + ", panel.boxObject.height: " + panel.boxObject.height, 1);
-        log("panel.clientWidth: " + panel.clientWidth + ", panel.clientHeight: " + panel.clientHeight, 1);
-
-        // Trigger async local address resolve, callback updates local IP addresses
-        var local_dns_request = dns_handler.resolve_local_async(function (localips) {
-            localipv6s = localips.filter(function (a) {
-                return dns_handler.is_ip6(a) && dns_handler.typeof_ip6(a) !== "localhost";
-            });
-            localipv4s = localips.filter(function (a) {
-                return dns_handler.is_ip4(a) && dns_handler.typeof_ip4(a) !== "localhost";
-            });
-            // Remove all local IP children from grid
-            // Add new results to grid
-            log("About to remove children, typeof local_ips is: " + typeof local_ips);
-            log("About to remove children, local_ips.length is: " + local_ips.length);
-            local_ips.forEach(function (item, index, thearray) {
-                try {
-                    remote_rows.removeChild(item);
-                    log("Removed child: " + item, 0);
-                } catch (e) {
-                    log("Error: " + e, 0);
-                }
-            });
-            log("After removing children");
-            local_ips = add_local_ips();
-            //panel_vbox.setAttribute("maxheight", panel.clientHeight);
-            log("Done");
-        });
-
-    };
-
-/*              OLD tooltip creation function
-        // TODO - Replace this with an array mapping/lookup table
-        // TODO - If a special location is set no need to do any of the IP address stuff!
-        if (specialLocation) {
-            if (specialLocation[0] === "localfile") {
-                extraString = gt("other_localfile");
-            } else if (specialLocation[0] === "lookuperror") {
-                extraString = gt("other_lookuperror");
-            } else if (specialLocation[0] === "nodnserror") {
-                extraString = gt("other_nodnserror");
-            } else if (specialLocation[0] === "offlinemode") {
-                extraString = gt("other_offlinemode");
-            }
-
-            if (specialLocation[1]) {
-                extraString += " (" + specialLocation[1] + ")";
-            }
-            extraLine = doc.createElement("label");
-            extraLine.setAttribute("value", extraString);
-            if (["unknownsite", "lookuperror", "nodnserror", "offlinemode"].indexOf(specialLocation[0]) !== -1) {
-                extraLine.setAttribute("style", "font-style: italic;");
-            }
-            rows.appendChild(extraLine);
-        } */
-
-
     // Create address bar icon
     // Add address bar icon only if desired by preferences
     if (get_bool_pref("showaddressicon")) {
@@ -2486,6 +2213,110 @@ insert_code = function (win) {
 
 
 
+
+    // TODO
+
+
+// Warnings
+// TODO add this to the panel before the rows
+/* if (dns_handler.is_ip6_disabled()) {
+    add_warning_line(gt("warn_ip6_disabled"));
+} */
+
+// TODO - this needs to be done for each host we lookup
+/* if (dns_handler.is_ip4only_domain(host)) {
+    add_warning_line(gt("warn_ip4only_domain"));
+} */
+
+
+/* Returns array of rows considered to be local */
+/* var add_local_ips = function () {
+    var local_ips = [];
+    // Add local IP addresses, only show proper addresses unless setting set
+    if (get_bool_pref("showallips")) {
+        l6_filtered = localipv6s;
+        l4_filtered = localipv4s;
+    } else {
+        l6_filtered = localipv6s.filter(function (item) {
+            return dns_handler.typeof_ip6(item) === "global";
+        });
+        l4_filtered = localipv4s.filter(function (item) {
+            return ["global", "rfc1918"].indexOf(dns_handler.typeof_ip4(item)) !== -1;
+        });
+    }
+    // Add local IP address information if available
+    if (l4_filtered.length !== 0 || l6_filtered.length !== 0) {
+        local_ips.push(add_line(remote_rows, gt("header_local"), "text-align: center; font-size: smaller;"));
+        l6_filtered.forEach(function (address, index, thearray) {
+            if (index === 0) {
+                local_ips.push(add_bold_host_line(remote_rows, 0, dnsService.myHostName, address, 6, null));
+            } else {
+                local_ips.push(add_v6_line(remote_rows, address));
+            }
+        });
+        l4_filtered.forEach(function (address, index, thearray) {
+            if (index === 0 && l6_filtered.length < 1) {
+                local_ips.push(add_bold_host_line(remote_rows, 0, dnsService.myHostName, address, 4, null));
+            } else {
+                local_ips.push(add_v4_line(remote_rows, address));
+            }
+        });
+    } else {
+        local_ips.push(add_bold_host_line(remote_rows, 0, dnsService.myHostName, gt("no_local"), 0, null));
+    }
+    return local_ips;
+}; */
+
+// Trigger async local address resolve, callback updates local IP addresses
+/* var local_dns_request = dns_handler.resolve_local_async(function (localips) {
+    localipv6s = localips.filter(function (a) {
+        return dns_handler.is_ip6(a) && dns_handler.typeof_ip6(a) !== "localhost";
+    });
+    localipv4s = localips.filter(function (a) {
+        return dns_handler.is_ip4(a) && dns_handler.typeof_ip4(a) !== "localhost";
+    });
+    // Remove all local IP children from grid
+    // Add new results to grid
+    log("About to remove children, typeof local_ips is: " + typeof local_ips);
+    log("About to remove children, local_ips.length is: " + local_ips.length);
+    local_ips.forEach(function (item, index, thearray) {
+        try {
+            remote_rows.removeChild(item);
+            log("Removed child: " + item, 0);
+        } catch (e) {
+            log("Error: " + e, 0);
+        }
+    });
+    log("After removing children");
+    local_ips = add_local_ips();
+    //panel_vbox.setAttribute("maxheight", panel.clientHeight);
+    log("Done");
+}); */
+
+/*              OLD tooltip creation function
+    // TODO - Replace this with an array mapping/lookup table
+    // TODO - If a special location is set no need to do any of the IP address stuff!
+    if (specialLocation) {
+        if (specialLocation[0] === "localfile") {
+            extraString = gt("other_localfile");
+        } else if (specialLocation[0] === "lookuperror") {
+            extraString = gt("other_lookuperror");
+        } else if (specialLocation[0] === "nodnserror") {
+            extraString = gt("other_nodnserror");
+        } else if (specialLocation[0] === "offlinemode") {
+            extraString = gt("other_offlinemode");
+        }
+
+        if (specialLocation[1]) {
+            extraString += " (" + specialLocation[1] + ")";
+        }
+        extraLine = doc.createElement("label");
+        extraLine.setAttribute("value", extraString);
+        if (["unknownsite", "lookuperror", "nodnserror", "offlinemode"].indexOf(specialLocation[0]) !== -1) {
+            extraLine.setAttribute("style", "font-style: italic;");
+        }
+        rows.appendChild(extraLine);
+    } */
 
 /*
 if (host === "")
