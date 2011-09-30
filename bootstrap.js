@@ -356,12 +356,12 @@ var HTTP_REQUEST_OBSERVER = {
         };
 
         /* Prepare and return a new blank entry for the hosts listing */
-        var create_new_entry = function (host, address, cached, origin, inner, outer) {
-            var new_entry = {
+        var create_new_entry = function (host, address, address_family, origin, inner, outer) {
+            return {
                 // TODO Should this be hostPort? Since we could connect using v4/v6 on different ports?
                 host: host,
                 address: address,
-                address_family: 0,
+                address_family: address_family,
                 show_detail: true,
                 count: 1,
                 ipv6s: [],
@@ -377,8 +377,7 @@ var HTTP_REQUEST_OBSERVER = {
                     var on_returned_ips = function (ips) {
                         var evt, cancelled;
                         entry.dns_cancel = null;
-                        if (ips[0] === "FAIL")
-                        {
+                        if (ips[0] === "FAIL") {
                             entry.ipv6s = [];
                             entry.ipv4s = [];
                             entry.dns_status = "failure";
@@ -397,32 +396,28 @@ var HTTP_REQUEST_OBSERVER = {
                     entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, on_returned_ips);
                 }
             };
-            // TODO move this code into a function executed immediately for address_family item
-            if (cached) {
-                new_entry.address_family = 2;
-            } else if (new_entry.address !== "") {
-                new_entry.address_family = new_entry.address.indexOf(":") === -1 ? 4 : 6;
-            }
-            return new_entry;
         };
+
+        var remoteAddressFamily;
 
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
             http_channel = aSubject.QueryInterface(Components.interfaces.nsIHttpChannel);
             http_channel_internal = aSubject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
             try {
-                // TODO in case this fails we should add it, but with a blank address/address_family
-                // And still perform DNS lookup!
                 remoteAddress = http_channel_internal.remoteAddress;
+                // TODO move this code into a function executed immediately for address_family item
+                if (aTopic === "http-on-examine-cached-response") {
+                    remoteAddressFamily = 2;
+                } else if (new_entry.address !== "") {
+                    remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
+                }
             } catch (e) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
                 remoteAddress = "";
+                remoteAddressFamily = 0;
             }
 
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
-
-            // Create new entry for this domain in the current window's cache (if not already present)
-            // If already present update the connection IP(s) list (strip duplicates)
-            // Trigger DNS lookup with callback to update DNS records upon completion
 
             // Fetch DOM window associated with this request
             nC = http_channel.notificationCallbacks;
@@ -437,7 +432,8 @@ var HTTP_REQUEST_OBSERVER = {
 
             try {
                 domWindow = nC.getInterface(Components.interfaces.nsIDOMWindow).top;
-                domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
+                domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                                            .getInterface(Components.interfaces.nsIDOMWindowUtils);
                 domWindowInner = domWindowUtils.currentInnerWindowID;
                 domWindowOuter = domWindowUtils.outerWindowID;
 
@@ -453,88 +449,87 @@ var HTTP_REQUEST_OBSERVER = {
             if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
             /*jslint bitwise: false */
                 // What does this identity assignment do in practice? How does this detect new windows?
-                new_page = original_window === original_window.top;
+                if (original_window === original_window.top) {
+                    new_page = true;
+                } else {
+                    new_page = false;
+                }
             }
+
+            // Create new entry for this domain in the current window's cache (if not already present)
+            // If already present update the connection IP(s) list (strip duplicates)
+            // Trigger DNS lookup with callback to update DNS records upon completion
 
             // Create a new host entry for this host to add to the cache array
             new_entry = create_new_entry(http_channel.URI.host, remoteAddress,
-                aTopic === "http-on-examine-cached-response",
+                remoteAddressFamily,
                 domWindow, domWindowInner, domWindowOuter);
 
+            // After the initial http-on-examine-response event, but before the first content-document-global-created one
+            // the new page won't have an inner ID. In this case temporarily cache the object in a waiting list (keyed by
+            // outer ID) until the first content-document-global-created event (at which point add this as the first element
+            // of the new window's cached list, keyed by the new inner ID).
 
             if (new_page) {
                 /* PRIMARY PAGE LOAD */
                 // New page, since inner window ID hasn't been set yet we need to store any
                 // new connections until such a time as it is, these get stored in the RequestWaitingList
                 // which is keyed by the outer window ID
-                hosts = [];
-                if (RequestWaitingList[domWindowOuter]) {
-                    hosts = RequestWaitingList[domWindowOuter];
+                if (!RequestWaitingList[domWindowOuter]) {
+                    RequestWaitingList[domWindowOuter] = [];
                 }
-                // If host already in list update IP address if needed
-                hosts.filter(function (element, index, thearray) {
-                    if (element.host === new_entry.host) {
-                        element.count += 1;
-                        if (element.address !== new_entry.address && new_entry.address !== "") {
-                            log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
-                            element.address = new_entry.address;
-                            element.address_family = new_entry.address_family;
+                if (!RequestWaitingList[domWindowOuter].some(function (item, index, items) {
+                    // If element present in list update fields if required
+                    if (item.host === http_channel.URI.host) {
+                        item.count += 1;
+                        if (item.address !== remoteAddress && remoteAddress !== "") {
+                            log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, updated IP address for entry: " + remoteAddress + ", ID: " + domWindowOuter, 1);
+                            item.address = remoteAddress;
+                            item.address_family = remoteAddressFamily;
                         }
+                        return true;
                     }
-                });
-                // If host not already in list add it
-                if (!hosts.some(function (element, index, thearray) {
-                    return element.host === new_entry.host;
                 })) {
-                    log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + new_entry.address + ", ID: " + domWindowOuter, 1);
-                    hosts.push(new_entry);
-                    // Trigger new DNS lookup for the new host entry
-                    // TODO move this into "content-document-global-created" below since this has a callback which triggers an event which needs to know the innerID
-                    new_entry.lookup_ips();
+                    // Create new entry + add to waiting list
+                    log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + remoteAddress + ", ID: " + domWindowOuter, 1);
+                    RequestWaitingList[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily,
+                                                                domWindow, null, domWindowOuter));
                 }
-                RequestWaitingList[domWindowOuter] = hosts;
 
             } else {
                 /* SECONDARY PAGE LOAD */
                 // Not new, inner window ID will be correct by now so add entries to RequestCache
-                hosts = [];
-                if (RequestCache[domWindowInner]) {
-                    hosts = RequestCache[domWindowInner];
+                if (!RequestCache[domWindowInner]) {
+                    RequestCache[domWindowInner] = [];
                 }
                 // If host already in list update IP address if needed
-                hosts.filter(function (element, index, thearray) {
-                    if (element.host === new_entry.host) {
-                        // TODO Send element count increase event
-                        // Subject is element host, to permit filtering of events
-                        element.count += 1;
-                        send_event("sixornot-count-change-event",
-                            domWindow, new_entry);
+                if (!RequestCache[domWindowInner].some(function (item, index, items) {
+                    if (item.host === http_channel.URI.host) {
+                        item.count += 1;
+                        send_event("sixornot-count-change-event", domWindow, item);
 
-                        if (element.address !== new_entry.address && new_entry.address !== "") {
-                            log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: " + new_entry.address + ", ID: " + domWindowInner, 1);
-                            // TODO Send element address change event
-                            // Subject is element host, to permit filtering of events
-                            send_event("sixornot-address-change-event",
-                                domWindow, new_entry);
-                            element.address = new_entry.address;
-                            element.address_family = new_entry.address_family;
+                        if (item.address !== remoteAddress && remoteAddress !== "") {
+                            log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: "
+                                + remoteAddress + ", ID: " + domWindowInner, 1);
+                            send_event("sixornot-address-change-event", domWindow, item);
+                            item.address = remoteAddress;
+                            item.address_family = remoteAddressFamily;
                         }
+                        return true;
                     }
-                });
-                // If host not already in list add it
-                if (!hosts.some(function (element, index, thearray) {
-                    return element.host === new_entry.host;
                 })) {
-                    log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: new_entry.address: " + new_entry.address + ", ID: " + domWindowInner, 1);
+                    // Create new entry + add to cache
+                    log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: new_entry.address: "
+                        + remoteAddress + ", ID: " + domWindowInner, 1);
                     // TODO Send new element event
-                    send_event("sixornot-new-host-event",
-                        domWindow, new_entry);
-                    // Subject ??
-                    hosts.push(new_entry);
+                    var new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily,
+                                                        domWindow, domWindowInner, domWindowOuter);
+                    send_event("sixornot-new-host-event", domWindow, new_entry);
                     // Trigger new DNS lookup for the new host entry
                     new_entry.lookup_ips();
+                    // Add to cache
+                    RequestCache[domWindowInner].push(new_entry);
                 }
-                RequestCache[domWindowInner] = hosts;
             }
 
         } else if (aTopic === "content-document-global-created") {
@@ -545,7 +540,8 @@ var HTTP_REQUEST_OBSERVER = {
             domWindowInner = domWindowUtils.currentInnerWindowID;
             domWindowOuter = domWindowUtils.outerWindowID;
 
-            log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created: Inner Window ID: " + domWindowInner + ", Outer Window ID: " + domWindowOuter + ", Location: " + domWindow.location, 1);
+            log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created: Inner Window ID: "
+                + domWindowInner + ", Outer Window ID: " + domWindowOuter + ", Location: " + domWindow.location, 1);
 
             if (!RequestWaitingList[domWindowOuter]) {
                 log("RequestWaitingList[domWindowOuter] is null", 1);
@@ -559,34 +555,42 @@ var HTTP_REQUEST_OBSERVER = {
             // Move item(s) from waiting list to cache
             RequestCache[domWindowInner] = RequestWaitingList.splice(domWindowOuter, 1)[0];
 
+            // For each member of the new cache set inner ID and trigger a dns lookup
+            RequestCache[domWindowInner].forEach(function (item, index, items) {
+                item.inner = domWindowInner;
+                item.lookup_ips();
+            });
+
             // Create an event to inform listeners that a new page load has started
             // We do this now since it's only now that we know the innerID of the page
-            send_event("sixornot-page-change-event",
-                domWindow, RequestCache[domWindowInner][0]);
+            // Uses first element of the set, since the method triggered by this event builds all the members
+            send_event("sixornot-page-change-event", domWindow, RequestCache[domWindowInner][0]);
 
         } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
             // Remove elements for this window and ensure DNS lookups are all cancelled
             if (RequestCache[domWindowInner]) {
-                log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner + " - removing all items for this inner window...", 1);
-                RequestCache.splice(domWindowInner, 1)[0].forEach(function (element, index, thearray) {
-                    if (element.dns_cancel) {
+                log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner
+                        + " - removing all items for this inner window...", 1);
+                RequestCache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
+                    if (item.dns_cancel) {
                         log("Cancelling DNS...", 1);
-                        element.dns_cancel();
+                        item.dns_cancel();
                     }
                 });
             } else {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 1);
             }
+
         } else if (aTopic === "outer-window-destroyed") {
             domWindowOuter = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
             // Remove elements for this window and ensure DNS lookups are all cancelled
-            if (RequestCache[domWindowInner]) {
+            if (RequestWaitingList[domWindowOuter]) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter + " - removing all items for this outer window...", 1);
-                RequestWaitingList.splice(domWindowOuter, 1)[0].forEach(function (element, index, thearray) {
-                    if (element.dns_cancel) {
+                RequestWaitingList.splice(domWindowOuter, 1)[0].forEach(function (item, index, items) {
+                    if (item.dns_cancel) {
                         log("Cancelling DNS...", 1);
-                        element.dns_cancel();
+                        item.dns_cancel();
                     }
                 });
             } else {
