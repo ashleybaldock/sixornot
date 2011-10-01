@@ -406,17 +406,20 @@ var HTTP_REQUEST_OBSERVER = {
             try {
                 remoteAddress = http_channel_internal.remoteAddress;
                 // TODO move this code into a function executed immediately for address_family item
-                if (aTopic === "http-on-examine-cached-response") {
-                    remoteAddressFamily = 2;
-                } else if (new_entry.address !== "") {
-                    remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
-                }
             } catch (e) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
                 remoteAddress = "";
-                remoteAddressFamily = 0;
             }
 
+            if (remoteAddress !== "") {
+                if (aTopic === "http-on-examine-cached-response") {
+                    remoteAddressFamily = 2;
+                } else {
+                    remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
+                }
+            } else {
+                remoteAddressFamily = 0;
+            }
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
             // Fetch DOM window associated with this request
@@ -445,25 +448,21 @@ var HTTP_REQUEST_OBSERVER = {
             }
 
             // Detect new page loads by checking if flag LOAD_INITIAL_DOCUMENT_URI is set
+            log("http_channel.loadFlags: " + http_channel.loadFlags, 1);
             /*jslint bitwise: true */
             if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
             /*jslint bitwise: false */
+                //new_page = true;
                 // What does this identity assignment do in practice? How does this detect new windows?
-                if (original_window === original_window.top) {
-                    new_page = true;
-                } else {
-                    new_page = false;
-                }
+                new_page = original_window === original_window.top;
+                //} else {
+                //    new_page = false;
+                //}
             }
 
             // Create new entry for this domain in the current window's cache (if not already present)
             // If already present update the connection IP(s) list (strip duplicates)
             // Trigger DNS lookup with callback to update DNS records upon completion
-
-            // Create a new host entry for this host to add to the cache array
-            new_entry = create_new_entry(http_channel.URI.host, remoteAddress,
-                remoteAddressFamily,
-                domWindow, domWindowInner, domWindowOuter);
 
             // After the initial http-on-examine-response event, but before the first content-document-global-created one
             // the new page won't have an inner ID. In this case temporarily cache the object in a waiting list (keyed by
@@ -492,8 +491,7 @@ var HTTP_REQUEST_OBSERVER = {
                 })) {
                     // Create new entry + add to waiting list
                     log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + remoteAddress + ", ID: " + domWindowOuter, 1);
-                    RequestWaitingList[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily,
-                                                                domWindow, null, domWindowOuter));
+                    RequestWaitingList[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, null, domWindowOuter));
                 }
 
             } else {
@@ -519,11 +517,8 @@ var HTTP_REQUEST_OBSERVER = {
                     }
                 })) {
                     // Create new entry + add to cache
-                    log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: new_entry.address: "
-                        + remoteAddress + ", ID: " + domWindowInner, 1);
-                    // TODO Send new element event
-                    var new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily,
-                                                        domWindow, domWindowInner, domWindowOuter);
+                    log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
+                    var new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, domWindowInner, domWindowOuter);
                     send_event("sixornot-new-host-event", domWindow, new_entry);
                     // Trigger new DNS lookup for the new host entry
                     new_entry.lookup_ips();
@@ -557,14 +552,16 @@ var HTTP_REQUEST_OBSERVER = {
 
             // For each member of the new cache set inner ID and trigger a dns lookup
             RequestCache[domWindowInner].forEach(function (item, index, items) {
-                item.inner = domWindowInner;
+                log("Setting inner_id of item: " + item.host + "(" + item.address + ") to: " + domWindowInner, 1);
+                item.inner_id = domWindowInner;
                 item.lookup_ips();
+                log("item - host: " + item.host + ", inner_id: " + item.inner_id + ", outer_id: " + item.outer_id, 1);
+                send_event("sixornot-page-change-event", domWindow, item);
             });
 
             // Create an event to inform listeners that a new page load has started
             // We do this now since it's only now that we know the innerID of the page
             // Uses first element of the set, since the method triggered by this event builds all the members
-            send_event("sixornot-page-change-event", domWindow, RequestCache[domWindowInner][0]);
 
         } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
@@ -1349,7 +1346,7 @@ insert_code = function (win) {
         };
 
         // On page change
-        // Check if tab outerID matches event outerID
+        // Check if tab innerID matches event innerID
         // If so repopulate grid_contents list as per show panel
         var on_page_change = function (evt) {
             log("Sixornot - on_page_change", 1);
@@ -1357,8 +1354,8 @@ insert_code = function (win) {
                 log("Sixornot - on_page_change - skipping (panel is closed)", 1);
                 return;
             }
-            if (evt.outer_id !== currentTabOuterID) {
-                log("Sixornot - on_page_change - skipping (outer ID mismatch)", 1);
+            if (evt.subject.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_page_change - skipping (inner ID mismatch), evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
             }
             remove_all();
