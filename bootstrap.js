@@ -403,23 +403,22 @@ var HTTP_REQUEST_OBSERVER = {
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
             http_channel = aSubject.QueryInterface(Components.interfaces.nsIHttpChannel);
             http_channel_internal = aSubject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
-            try {
-                remoteAddress = http_channel_internal.remoteAddress;
-                // TODO move this code into a function executed immediately for address_family item
-            } catch (e) {
-                log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
-                remoteAddress = "";
-            }
 
-            if (remoteAddress !== "") {
-                if (aTopic === "http-on-examine-cached-response") {
-                    remoteAddressFamily = 2;
-                } else {
+            if (aTopic === "http-on-examine-response") {
+                try {
+                    remoteAddress = http_channel_internal.remoteAddress;
                     remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
+                    // TODO move this code into a function executed immediately for address_family item
+                } catch (e) {
+                    log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
+                    remoteAddress = "";
+                    remoteAddressFamily = 0;
                 }
             } else {
-                remoteAddressFamily = 0;
+                remoteAddress = "";
+                remoteAddressFamily = 2;
             }
+
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
             // Fetch DOM window associated with this request
@@ -452,12 +451,8 @@ var HTTP_REQUEST_OBSERVER = {
             /*jslint bitwise: true */
             if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
             /*jslint bitwise: false */
-                //new_page = true;
                 // What does this identity assignment do in practice? How does this detect new windows?
                 new_page = original_window === original_window.top;
-                //} else {
-                //    new_page = false;
-                //}
             }
 
             // Create new entry for this domain in the current window's cache (if not already present)
@@ -608,8 +603,8 @@ var HTTP_REQUEST_OBSERVER = {
         this.observer_service.addObserver(this, "inner-window-destroyed", false);
         this.observer_service.addObserver(this, "outer-window-destroyed", false);
 
-        this.observer_service.addObserver(this, "http-on-modify-request", false);
-        this.observer_service.addObserver(this, "dom-window-destroyed", false);
+        //this.observer_service.addObserver(this, "http-on-modify-request", false);
+        //this.observer_service.addObserver(this, "dom-window-destroyed", false);
     },
 
     unregister: function () {
@@ -621,8 +616,8 @@ var HTTP_REQUEST_OBSERVER = {
         this.observer_service.removeObserver(this, "inner-window-destroyed");
         this.observer_service.removeObserver(this, "outer-window-destroyed");
 
-        this.observer_service.removeObserver(this, "http-on-modify-request");
-        this.observer_service.removeObserver(this, "dom-window-destroyed");
+        //this.observer_service.removeObserver(this, "http-on-modify-request");
+        //this.observer_service.removeObserver(this, "dom-window-destroyed");
     }
 };
 
@@ -1303,7 +1298,7 @@ insert_code = function (win) {
         var grid_contents = [];
 
         var remove_all = function () {
-            log("Sixornot - remove_all", 2);
+            log("Sixornot - panel:remove_all", 2);
             grid_contents.forEach(function (item, index, items) {
                 try {
                     item.remove();
@@ -1315,7 +1310,7 @@ insert_code = function (win) {
 
         };
         var generate_all = function () {
-            log("Sixornot - generate_all", 2);
+            log("Sixornot - panel:generate_all", 2);
             var hosts = get_hosts();
 
             hosts.forEach(function (host, index, items) {
@@ -1340,7 +1335,7 @@ insert_code = function (win) {
         // in the cache matching this page
         // 
         var on_show_panel = function (evt) {
-            log("Sixornot - on_show_panel", 1);
+            log("Sixornot - panel:on_show_panel", 1);
             remove_all();
             generate_all();
         };
@@ -1349,11 +1344,16 @@ insert_code = function (win) {
         // Check if tab innerID matches event innerID
         // If so repopulate grid_contents list as per show panel
         var on_page_change = function (evt) {
-            log("Sixornot - on_page_change", 1);
+            log("Sixornot - panel:on_page_change", 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_page_change - skipping (panel is closed)", 1);
                 return;
             }
+            if (evt.subject.outer_id !== currentTabOuterID) {
+                log("Sixornot - on_page_change - skipping (outer ID mismatch), evt.subject.outer_id: " + evt.subject.outer_id + ", currentTabOuterID: " + currentTabOuterID, 1);
+                return;
+            }
+            setCurrentTabIDs();
             if (evt.subject.inner_id !== currentTabInnerID) {
                 log("Sixornot - on_page_change - skipping (inner ID mismatch), evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
@@ -1367,7 +1367,7 @@ insert_code = function (win) {
         // Check if mainhost matches
         // If so add a new host into grid_contents (in correct sort position)
         var on_new_host = function (evt) {
-            log("Sixornot - on_new_host", 1);
+            log("Sixornot - panel:on_new_host", 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_new_host - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
@@ -1400,7 +1400,7 @@ insert_code = function (win) {
         // If so look up matching host entry in grid_contents + update its connection IP
         // And update its icon
         var on_address_change = function (evt) {
-            log("Sixornot - on_address_change", 1);
+            log("Sixornot - panel:on_address_change", 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_address_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
@@ -1427,7 +1427,7 @@ insert_code = function (win) {
         // Check innerID + mainhost match
         // Look up matching host entry in grid_contents and update its count
         var on_count_change = function (evt) {
-            log("Sixornot - on_count_change", 1);
+            log("Sixornot - panel:on_count_change", 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_count_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
@@ -1455,7 +1455,7 @@ insert_code = function (win) {
         // Look up matching host entry + call update_ips() which rebuilds the set of addresses
         // Update icon
         var on_dns_complete = function (evt) {
-            log("Sixornot - on_dns_complete", 1);
+            log("Sixornot - panel:on_dns_complete", 1);
             // TODO - unsubscribe from events when panel is closed to avoid this check
             if (panel.state !== "open") {
                 log("Sixornot - on_dns_complete - skipping (panel is closed) - panel.state: " + panel.state, 1);
@@ -1478,6 +1478,21 @@ insert_code = function (win) {
             } catch (e) {
                 log("exception!" + parse_exception(e), 0);
             }
+        };
+
+        // On Tab selection by user
+        var on_tab_select = function (evt) {
+            log("Sixornot - panel:on_tab_select", 1);
+            // TODO - unsubscribe from events when panel is closed to avoid this check
+            if (panel.state !== "open") {
+                log("Sixornot - on_tab_select - skipping (panel is closed) - panel.state: " + panel.state, 1);
+                return;
+            }
+            // This should be done by the icon handler, but just make sure
+            setCurrentTabIDs();
+
+            remove_all();
+            generate_all();
         };
 
 
@@ -1860,6 +1875,7 @@ insert_code = function (win) {
         win.addEventListener("sixornot-address-change-event", on_address_change, false);
         win.addEventListener("sixornot-count-change-event", on_count_change, false);
         win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+        win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
 
         // Add a callback to our unload list to remove the UI when addon is disabled
         unload(function () {
@@ -1871,6 +1887,7 @@ insert_code = function (win) {
             win.removeEventListener("sixornot-address-change-event", on_address_change, false);
             win.removeEventListener("sixornot-count-change-event", on_count_change, false);
             win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+            win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
             // Remove UI
             panel.parentNode.removeChild(panel);
         }, win);
@@ -1919,7 +1936,7 @@ insert_code = function (win) {
         /* Called whenever the current window's active tab is changed
            Calls the update method for the icon */
         tabselect_handler = function (evt) {
-            log("Sixornot - insert_code:create_button:tabselect_handler", 2);
+            log("Sixornot - insert_code:create_button:tabselect_handler", 1);
             setCurrentTabIDs();
             update_icon();
         };
