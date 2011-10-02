@@ -861,21 +861,16 @@ insert_code = function (win) {
 
         /* Get the hosts list for the current window */
         var get_hosts = function () {
-            var domWindow, domWindowUtils, domWindowInner, domWindowOuter;
             // New functionality, get IDs for lookup
-            domWindow = win.gBrowser.mCurrentBrowser.contentWindow;
-            domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
-            domWindowInner = domWindowUtils.currentInnerWindowID;
-            domWindowOuter = domWindowUtils.outerWindowID;
-
-            return RequestCache[domWindowInner];
+            return = RequestCache[win.gBrowser.mCurrentBrowser.contentWindow.domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).currentInnerWindowID];
         };
 
         /* Ensure panel contents visible with scrollbars */
         var force_scrollbars = function () {
             if (panel_vbox.clientHeight > panel.clientHeight) {
                 panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
-                panel_vbox.setAttribute("width", panel_vbox.clientWidth + 40);
+                // TODO if panel width changes after this is applied horizontal fit breaks
+                panel_vbox.setAttribute("minwidth", panel_vbox.clientWidth + 40);
             }
         };
 
@@ -1085,6 +1080,7 @@ insert_code = function (win) {
                     count.addEventListener("mouseover", mouseover, false);
                     count.addEventListener("mouseout", mouseout, false);
 
+                    count.setAttribute("tooltiptext", gt("tt_copycount"));
                     update = function () {
                         if (host.count > 0) {
                             count.setAttribute("value", "(" + host.count + ")");
@@ -1155,10 +1151,10 @@ insert_code = function (win) {
                             address.setAttribute("style", "color: #F00;");
                             address.setAttribute("tooltiptext", gt("tt_copyaddr"));
                         } else if (host.address_family === 2) {
-                            address.setAttribute("value", "Cached");
+                            address.setAttribute("value", gt("addr_cached"));
                             address.setAttribute("style", "color: #00F;");
                         } else {
-                            address.setAttribute("value", "Address Unavailable");
+                            address.setAttribute("value", gt("addr_unavailable"));
                             address.setAttribute("style", "color: #000;");
                         }
                         // Update the copy+paste text TODO
@@ -1360,6 +1356,7 @@ insert_code = function (win) {
             }
             remove_all();
             generate_all();
+            force_scrollbars();
         };
 
         // On new host
@@ -1392,6 +1389,7 @@ insert_code = function (win) {
             } catch (e) {
                 log("exception!" + parse_exception(e), 0);
             }
+            force_scrollbars();
         };
 
         // On address change
@@ -1478,6 +1476,8 @@ insert_code = function (win) {
             } catch (e) {
                 log("exception!" + parse_exception(e), 0);
             }
+            // TODO optimisation - this only needs to be called if the height is changed (e.g. if showing this host)
+            force_scrollbars();
         };
 
         // On Tab selection by user
@@ -1493,6 +1493,7 @@ insert_code = function (win) {
 
             remove_all();
             generate_all();
+            force_scrollbars();
         };
 
 
@@ -1501,25 +1502,7 @@ insert_code = function (win) {
         /* Update local IP contents */
 
         /* Update remote IP contents */
-        var update_remote_list = function (evt) {
-            /* Add details for a host record, either expanded or hidden
-               Also adds methods for expand/hide behaviour, click to copy etc. */
-            var add_remote_line = function (addto, host, detail) {
-                var count4 = 0, count6 = 0;
-
-                /* List of all rows to hide when not showing detail */
-                var detail_rows = [];
-                var summary_rows = [];
-
-                /* Sort the lists of addresses */
-                host.ipv6s.sort(function (a, b) {
-                    return dns_handler.sort_ip6.call(dns_handler, a, b);
-                });
-                host.ipv4s.sort(function (a, b) {
-                    return dns_handler.sort_ip4.call(dns_handler, a, b);
-                });
-
-                /* Full list of addresses for copy+paste */
+        /* var update_remote_list = function (evt) {
                 var copy_full = host.host;
                 if (host.address) {
                     copy_full = copy_full + "," + host.address;
@@ -1539,8 +1522,6 @@ insert_code = function (win) {
                 });
                 copy_full = copy_full + "\n";
 
-                /* Show the detailed info rows, hide summary */
-                // TODO cleanup of event handlers
                 var add_show_detail_listeners = function (element) {
                     element.addEventListener("click", function (evt) {
                         evt.stopPropagation();
@@ -1551,17 +1532,7 @@ insert_code = function (win) {
                             row.setAttribute("hidden", false);
                         });
                     }, false);
-                    element.addEventListener("mouseover", function (evt) {
-                        element.style.textDecoration = "underline";
-                        evt.target.style.cursor="pointer";
-                    }, false);
-                    element.addEventListener("mouseout", function (evt) {
-                        evt.target.style.cursor="default";
-                        element.style.textDecoration = "none";
-                    }, false);
                 };
-                /* Hide the detailed info rows, show summary */
-                // TODO cleanup of event handlers
                 var add_hide_detail_listeners = function (element) {
                     element.addEventListener("click", function (evt) {
                         evt.stopPropagation();
@@ -1572,18 +1543,8 @@ insert_code = function (win) {
                             row.setAttribute("hidden", true);
                         });
                     }, false);
-                    element.addEventListener("mouseover", function (evt) {
-                        element.style.textDecoration = "underline";
-                        evt.target.style.cursor="pointer";
-                    }, false);
-                    element.addEventListener("mouseout", function (evt) {
-                        evt.target.style.cursor="default";
-                        element.style.textDecoration = "none";
-                    }, false);
                 };
 
-                /* Add event handlers to an element to copy a value when it's clicked */
-                // TODO need to clean up these event handlers when the element is destroyed
                 //  add them to some kind of array for removal...
                 var add_copy_on_click = function (element, copytext) {
                     element.addEventListener("click", function (evt) {
@@ -1591,274 +1552,10 @@ insert_code = function (win) {
                         clipboardHelper.copyString(copytext);
                         // TODO add confirmation message to main UI to indicate copy worked
                     }, false);
-                    element.addEventListener("mouseover", function (evt) {
-                        element.style.textDecoration = "underline";
-                        evt.target.style.cursor="pointer";
-                    }, false);
-                    element.addEventListener("mouseout", function (evt) {
-                        evt.target.style.cursor="default";
-                        element.style.textDecoration = "none";
-                    }, false);
                 };
 
-                // Build UI
-                // Summary line
-                var add_summary_line = function () {
-                    var summary_row = doc.createElement("row");
-                    // Icon
-                    var icon = doc.createElement("image");
-                    icon.setAttribute("width", "16");
-                    icon.setAttribute("height", "16");
-                    icon.setAttribute("src", get_icon_source(host));
-                    // Item count
-                    var count = doc.createElement("label");
-                    if (host.count > 1) {
-                        count.setAttribute("value", "(" + host.count + ")");
-                    } else {
-                        count.setAttribute("value", "");
-                    }
-                    count.setAttribute("style", "");
-                    // Hostname
-                    var hostname = doc.createElement("label");
-                    log("hostname set to: " + host.host, 1);
-                    hostname.setAttribute("value", host.host);
-                    if (host.host === getCurrentHost()) {
-                        // Bold
-                        hostname.setAttribute("style", "font-weight: bold;");
-                    } else {
-                        hostname.setAttribute("style", "font-weight: normal;");
-                    }
-                    hostname.setAttribute("tooltiptext", gt("tt_copyall"));
-                    add_copy_on_click(hostname, copy_full);
-                    // Connection IP (click to copy)
-                    var address = doc.createElement("label");
-                    if (host.address_family === 6) {
-                        address.setAttribute("value", host.address);
-                        address.setAttribute("style", "color: #0F0;");
-                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                        add_copy_on_click(address, host.address);
-                    } else if (host.address_family === 4) {
-                        address.setAttribute("value", host.address);
-                        address.setAttribute("style", "color: #F00;");
-                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                        add_copy_on_click(address, host.address);
-                    } else if (host.address_family === 2) {
-                        address.setAttribute("value", "Cached");
-                        address.setAttribute("style", "color: #00F;");
-                    } else {
-                        address.setAttribute("value", "Address Unavailable");
-                        address.setAttribute("style", "color: #000;");
-                    }
-                    // Count of additional v6s (click to expand)
-                    var counts = doc.createElement("hbox");
-                    counts.setAttribute("pack", "center");
-                    if (count6 > 0) {
-                        var c6 = doc.createElement("label");
-                        c6.setAttribute("value", "[+" + count6 + "]");
-                        c6.setAttribute("style", "color: #0F0;");
-                        c6.setAttribute("tooltiptext", gt("tt_show_detail"));
-                        add_show_detail_listeners(c6);
-                        counts.appendChild(c6);
-                    }
-                    // Count of additional v4s (click to expand)
-                    if (count4 > 0) {
-                        var c4 = doc.createElement("label");
-                        c4.setAttribute("value", "[+" + count4 + "]");
-                        c4.setAttribute("style", "color: #F00;");
-                        c4.setAttribute("tooltiptext", gt("tt_show_detail"));
-                        add_show_detail_listeners(c4);
-                        counts.appendChild(c4);
-                    }
-
-                    summary_row.appendChild(icon);
-                    summary_row.appendChild(count);
-                    summary_row.appendChild(hostname);
-                    summary_row.appendChild(address);
-                    summary_row.appendChild(counts);
-
-                    addto.appendChild(summary_row);
-                    return summary_row;
-                };
-
-
-                // Detail line(s)
-                var add_first_detail_line = function () {
-                    var row = doc.createElement("row");
-                    // Icon
-                    var icon = doc.createElement("image");
-                    icon.setAttribute("width", "16");
-                    icon.setAttribute("height", "16");
-                    icon.setAttribute("src", get_icon_source(host));
-                    // Item count
-                    var count = doc.createElement("label");
-                    if (host.count > 1) {
-                        count.setAttribute("value", "(" + host.count + ")");
-                    } else {
-                        count.setAttribute("value", "");
-                    }
-                    count.setAttribute("style", "");
-                    // Hostname
-                    var hostname = doc.createElement("label");
-                    hostname.setAttribute("value", host.host);
-                    if (host.host === getCurrentHost()) {
-                        // Bold
-                        hostname.setAttribute("style", "font-weight: bold;");
-                    } else {
-                        hostname.setAttribute("style", "font-weight: normal;");
-                    }
-                    hostname.setAttribute("tooltiptext", gt("tt_copyall"));
-                    add_copy_on_click(hostname, copy_full);
-                    // Connection IP
-                    var address = doc.createElement("label");
-                    if (host.address_family === 6) {
-                        address.setAttribute("value", host.address);
-                        address.setAttribute("style", "color: #0F0;");
-                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                        add_copy_on_click(address, host.address);
-                    } else if (host.address_family === 4) {
-                        address.setAttribute("value", host.address);
-                        address.setAttribute("style", "color: #F00;");
-                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                        add_copy_on_click(address, host.address);
-                    } else if (host.address_family === 2) {
-                        address.setAttribute("value", "Cached");
-                        address.setAttribute("style", "color: #00F;");
-                    } else {
-                        address.setAttribute("value", "Address Unavailable");
-                        address.setAttribute("style", "color: #000;");
-                    }
-
-                    // Count of additional v6s (click to expand)
-                    var counts = doc.createElement("hbox");
-                    counts.setAttribute("pack", "center");
-                    if (count6 > 0 || count4 > 0) {
-                        var hide = doc.createElement("label");
-                        hide.setAttribute("value", "[Hide]");
-                        hide.setAttribute("style", "");
-                        hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
-                        counts.appendChild(hide);
-                    }
-
-                    row.appendChild(icon);
-                    row.appendChild(count);
-                    row.appendChild(hostname);
-                    row.appendChild(address);
-                    row.appendChild(counts);
-                    add_hide_detail_listeners(hide);
-
-                    addto.appendChild(row);
-                    return row;
-                };
-                var add_detail_line = function (add_address) {
-                    var row = doc.createElement("row");
-                    // Icon (blank)
-                    var icon = doc.createElement("image");
-                    icon.setAttribute("width", "16");
-                    icon.setAttribute("height", "16");
-                    icon.setAttribute("src", "");
-                    // Item count (blank)
-                    var count = doc.createElement("label");
-                    count.setAttribute("value", "");
-                    // Hostname (blank)
-                    var hostname = doc.createElement("label");
-                    hostname.setAttribute("value", "");
-                    // Current IP (click to copy)
-                    var address = doc.createElement("label");
-                    if (dns_handler.is_ip6(add_address)) {
-                        address.setAttribute("value", add_address);
-                        address.setAttribute("style", "color: #0F0;");
-                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                        add_copy_on_click(address, add_address);
-                    } else if (dns_handler.is_ip4(add_address)) {
-                        address.setAttribute("value", add_address);
-                        address.setAttribute("style", "color: #F00;");
-                        address.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                        add_copy_on_click(address, add_address);
-                    } else {
-                        // Should not happen!
-                        address.setAttribute("value", "ERROR");
-                        address.setAttribute("style", "color: #FF0;");
-                    }
-
-                    row.appendChild(icon);
-                    row.appendChild(count);
-                    row.appendChild(hostname);
-                    row.appendChild(address);
-
-                    addto.appendChild(row);
-                    return row;
-                };
-
-                // Actually add the UI
-                summary_rows.push(add_summary_line());
-                detail_rows.push(add_first_detail_line());
-
-                host.ipv6s.forEach(function (address, index, addresses) {
-                    if (address !== host.address) {
-                        detail_rows.push(add_detail_line(address));
-                    }
-                });
-                host.ipv4s.forEach(function (address, index, addresses) {
-                    if (address !== host.address) {
-                        detail_rows.push(add_detail_line(address));
-                    }
-                });
-
-                // Set what is visible by default based on detail parameter
-                if (detail) {
-                    summary_rows.forEach(function (row, index, thearray) {
-                        try {
-                            row.setAttribute("hidden", true);
-                        } catch (e) {
-                            log("Exception: " + e, 0);
-                        }
-                    });
-                } else {
-                    detail_rows.forEach(function (row, index, thearray) {
-                        try {
-                            row.setAttribute("hidden", true);
-                        } catch (e) {
-                            log("Exception: " + e, 0);
-                        }
-                    });
-                }
             };
-
-            var add_line = function (addto, labelName, style) {
-                var label = doc.createElement("label");
-
-                label.setAttribute("value", labelName);
-                label.setAttribute("style", style);
-
-                addto.appendChild(label);
-                return label;
-            };
-            // Add UI for the listing of addresses
-            var hosts = get_hosts();
-
-            // First remove existing UI
-            // TODO - this needs to be done more intelligently, removing listeners etc.
-            while (remote_rows.firstChild) {
-                remote_rows.removeChild(remote_rows.firstChild);
-            }
-
-            add_line(remote_rows, gt("header_remote"), "text-align: center; font-size: smaller;");
-
-            if (!hosts) {
-                add_line(remote_rows, "no hosts found", "font-weight: bold; text-align: left; color: #F00;");
-            } else {
-                // TODO add sorting of hosts
-                // TODO always display matching host first in list
-                hosts.forEach(function (host, index, myarray) {
-                    log("host.host: " + host.host + ", getCurrentHost(): " + getCurrentHost(), 1);
-                    add_remote_line(remote_rows, host, host.host === getCurrentHost());
-                });
-            }
-
-            // Ensure that if resizing has taken the panel off-screen that we set up scrollbars
-            // TODO must be called whenever the size of the window is changed
-            force_scrollbars();
-        };
+        }; */
 
         // Panel setup
         panel.setAttribute("type", "arrow");
