@@ -862,7 +862,7 @@ insert_code = function (win) {
         /* Get the hosts list for the current window */
         var get_hosts = function () {
             // New functionality, get IDs for lookup
-            return = RequestCache[win.gBrowser.mCurrentBrowser.contentWindow.domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).currentInnerWindowID];
+            return RequestCache[win.gBrowser.mCurrentBrowser.contentWindow.domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).currentInnerWindowID];
         };
 
         /* Ensure panel contents visible with scrollbars */
