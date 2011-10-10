@@ -862,7 +862,10 @@ insert_code = function (win) {
         /* Get the hosts list for the current window */
         var get_hosts = function () {
             // New functionality, get IDs for lookup
-            return RequestCache[win.gBrowser.mCurrentBrowser.contentWindow.domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils).currentInnerWindowID];
+            return RequestCache[win.gBrowser.mCurrentBrowser.contentWindow
+                .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                .currentInnerWindowID];
         };
 
         /* Ensure panel contents visible with scrollbars */
@@ -898,13 +901,32 @@ insert_code = function (win) {
         var new_line = function (host, addafter) {
             log("Sixornot - new_line", 1);
             var mouseover = function (evt) {
-                evt.target.style.textDecoration = "underline";
-                evt.target.style.cursor="pointer";
+                if (evt.target.mouseoverdecorate) {
+                    evt.target.style.textDecoration = "underline";
+                    evt.target.style.cursor="pointer";
+                }
             };
             var mouseout = function (evt) {
-                evt.target.style.textDecoration = "none";
-                evt.target.style.cursor="default";
+                if (evt.target.mouseoverdecorate) {
+                    evt.target.style.textDecoration = "none";
+                    evt.target.style.cursor="default";
+                }
             };
+
+            var copy_click = function (evt) {
+                if (evt.target.copytext) {
+                    try {
+                        evt.stopPropagation();
+                        log("Sixornot - copy_click - copying '" + evt.target.copytext + "' to clipboard", 1);
+                        clipboardHelper.copyString(evt.target.copytext);
+                    } catch (e) {
+                        log("exception!" + parse_exception(e), 0);
+                    }
+                }
+            };
+
+            // Due to closure this is available to all functions defined inside this one
+            var copy_full = "";
 
             /* Create and return a new detail line item */
             var create_detail_row = function (add_address, addafter) {
@@ -920,20 +942,21 @@ insert_code = function (win) {
                 s3 = doc.createElement("label");
                 s3.setAttribute("value", "");
                 address = doc.createElement("label");
-                address.addEventListener("mouseover", mouseover, false);
-                address.addEventListener("mouseout", mouseout, false);
                 // Colouring for field
                 if (dns_handler.is_ip6(add_address)) {
                     address.setAttribute("value", add_address);
+                    address.copytext = add_address;
                     address.setAttribute("style", "color: #0F0;");
                     address.setAttribute("tooltiptext", gt("tt_copyaddr"));
                 } else if (dns_handler.is_ip4(add_address)) {
                     address.setAttribute("value", add_address);
+                    address.copytext = add_address;
                     address.setAttribute("style", "color: #F00;");
                     address.setAttribute("tooltiptext", gt("tt_copyaddr"));
                 } else {
                     // Should not happen!
                     address.setAttribute("value", "ERROR");
+                    address.copytext = "ERROR";
                     address.setAttribute("style", "color: #FF0;");
                 }
                 // Create row
@@ -952,16 +975,26 @@ insert_code = function (win) {
                 update();
                 /* Add this element after the last one */
                 addafter.add_after(row);
+
+                // Add event listeners for children
+                row.addEventListener("mouseover", mouseover, false);
+                row.addEventListener("mouseout", mouseout, false);
+                row.addEventListener("click", copy_click, false);
+
                 /* Object representing header row of entry */
                 return {
                     update: update,
                     remove: function () {
-                        address.removeEventListener("mouseover", mouseover, false);
-                        address.removeEventListener("mouseout", mouseout, false);
+                        // Remove event listeners for children
+                        row.removeEventListener("mouseover", mouseover, false);
+                        row.removeEventListener("mouseout", mouseout, false);
+                        row.removeEventListener("click", copy_click, false);
+                        // Remove children
                         row.removeChild(s1);
                         row.removeChild(s2);
                         row.removeChild(s3);
                         row.removeChild(address);
+                        // Remove self
                         row.parentNode.removeChild(row);
                     },
                     add_after: function (element) {
@@ -1000,13 +1033,6 @@ insert_code = function (win) {
                     hbox.appendChild(c4);
                     hbox.appendChild(hide);
 
-                    c4.addEventListener("mouseover", mouseover, false);
-                    c4.addEventListener("mouseout", mouseout, false);
-                    c6.addEventListener("mouseover", mouseover, false);
-                    c6.addEventListener("mouseout", mouseout, false);
-                    hide.addEventListener("mouseover", mouseover, false);
-                    hide.addEventListener("mouseout", mouseout, false);
-
                     update = function () {
                         var count6 = 0, count4 = 0;
                         host.ipv6s.forEach(function (address, index, addresses) {
@@ -1037,12 +1063,6 @@ insert_code = function (win) {
                     return {
                         update: update,
                         remove: function () {
-                            c4.removeEventListener("mouseover", mouseover, false);
-                            c4.removeEventListener("mouseout", mouseout, false);
-                            c6.removeEventListener("mouseover", mouseover, false);
-                            c6.removeEventListener("mouseout", mouseout, false);
-                            hide.removeEventListener("mouseover", mouseover, false);
-                            hide.removeEventListener("mouseout", mouseout, false);
 
                             hbox.removeChild(c4);
                             hbox.removeChild(c6);
@@ -1058,6 +1078,7 @@ insert_code = function (win) {
                     icon = doc.createElement("image");
                     icon.setAttribute("width", "16");
                     icon.setAttribute("height", "16");
+                    icon.mouseoverdecorate = false;
                     update = function () {
                         icon.setAttribute("src", get_icon_source(host));
                     };
@@ -1077,16 +1098,18 @@ insert_code = function (win) {
                     log("Sixornot - create_count", 1);
                     /* Create DOM UI elements */
                     count = doc.createElement("label");
-                    count.addEventListener("mouseover", mouseover, false);
-                    count.addEventListener("mouseout", mouseout, false);
 
                     count.setAttribute("tooltiptext", gt("tt_copycount"));
                     update = function () {
                         if (host.count > 0) {
                             count.setAttribute("value", "(" + host.count + ")");
+                            count.mouseoverdecorate = true;
                         } else {
                             count.setAttribute("value", "");
+                            count.mouseoverdecorate = false;
                         }
+                        // TODO Add real copy text here
+                        count.copytext = "count copy text";
                     };
                     /* Update element on create */
                     update();
@@ -1095,8 +1118,6 @@ insert_code = function (win) {
                     return {
                         update: update,
                         remove: function () {
-                            count.removeEventListener("mouseover", mouseover, false);
-                            count.removeEventListener("mouseout", mouseout, false);
                             addto.removeChild(count);
                         }
                     };
@@ -1113,12 +1134,30 @@ insert_code = function (win) {
                     } else {
                         hostname.setAttribute("style", "font-weight: normal;");
                     }
-                    hostname.addEventListener("mouseover", mouseover, false);
-                    hostname.addEventListener("mouseout", mouseout, false);
 
                     hostname.setAttribute("tooltiptext", gt("tt_copyall"));
                     update = function () {
-                        // Update the copy+paste text TODO
+                        // TODO Add real copy text here
+                        var text = host.host + "," + host.address;
+                        /* Sort the lists of addresses */
+                        host.ipv6s.sort(function (a, b) {
+                            return dns_handler.sort_ip6.call(dns_handler, a, b);
+                        });
+                        host.ipv4s.sort(function (a, b) {
+                            return dns_handler.sort_ip4.call(dns_handler, a, b);
+                        });
+                        host.ipv6s.forEach(function (address, index, addresses) {
+                            if (address !== host.address) {
+                                text = text + "," + address;
+                            }
+                        });
+                        host.ipv4s.forEach(function (address, index, addresses) {
+                            if (address !== host.address) {
+                                text = text + "," + address;
+                            }
+                        });
+                        hostname.copytext = text;
+                        hostname.mouseoverdecorate = true;
                     };
                     /* Update element on create */
                     update();
@@ -1127,8 +1166,6 @@ insert_code = function (win) {
                     return {
                         update: update,
                         remove: function () {
-                            hostname.removeEventListener("mouseover", mouseover, false);
-                            hostname.removeEventListener("mouseout", mouseout, false);
                             addto.removeChild(hostname);
                         }
                     };
@@ -1138,26 +1175,31 @@ insert_code = function (win) {
                     log("Sixornot - create_conip", 1);
                     /* Create DOM UI elements */
                     address = doc.createElement("label");
-                    address.addEventListener("mouseover", mouseover, false);
-                    address.addEventListener("mouseout", mouseout, false);
 
                     update = function () {
                         if (host.address_family === 6) {
                             address.setAttribute("value", host.address);
+                            address.copytext = host.address;
                             address.setAttribute("style", "color: #0F0;");
                             address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                            address.mouseoverdecorate = true;
                         } else if (host.address_family === 4) {
                             address.setAttribute("value", host.address);
+                            address.copytext = host.address;
                             address.setAttribute("style", "color: #F00;");
                             address.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                            address.mouseoverdecorate = true;
                         } else if (host.address_family === 2) {
                             address.setAttribute("value", gt("addr_cached"));
+                            address.copytext = "";
                             address.setAttribute("style", "color: #00F;");
+                            address.mouseoverdecorate = false;
                         } else {
                             address.setAttribute("value", gt("addr_unavailable"));
+                            address.copytext = "";
                             address.setAttribute("style", "color: #000;");
+                            address.mouseoverdecorate = false;
                         }
-                        // Update the copy+paste text TODO
                     };
                     /* Update element on create */
                     update();
@@ -1166,8 +1208,6 @@ insert_code = function (win) {
                     return {
                         update: update,
                         remove: function () {
-                            address.removeEventListener("mouseover", mouseover, false);
-                            address.removeEventListener("mouseout", mouseout, false);
                             addto.removeChild(address);
                         }
                     };
@@ -1178,6 +1218,12 @@ insert_code = function (win) {
                 /* Add this element after the last one */
                 addafter.add_after(row);
                 //addafter.parentNode.insertAfter(addafter, row);
+
+                // Add event listeners for children
+                row.addEventListener("mouseover", mouseover, false);
+                row.addEventListener("mouseout", mouseout, false);
+                row.addEventListener("click", copy_click, false);
+
                 /* Object representing header row of entry */
                 return {
                     icon: create_icon(row),
@@ -1187,11 +1233,17 @@ insert_code = function (win) {
                     showhide: create_showhide(row),
                     /* Remove this element and all children */
                     remove: function () {
+                        // Remove event listeners for children
+                        row.removeEventListener("mouseover", mouseover, false);
+                        row.removeEventListener("mouseout", mouseout, false);
+                        row.removeEventListener("click", copy_click, false);
+                        // Remove children
                         this.icon.remove();
                         this.count.remove();
                         this.hostname.remove();
                         this.con_ip.remove();
                         this.showhide.remove();
+                        // Remove self
                         row.parentNode.removeChild(row);
                     },
                     add_after: function (element) {
@@ -1229,15 +1281,17 @@ insert_code = function (win) {
                 });
                 return detail_rows;
             };
+
             // Bind onclick events here TODO
             var header_row = create_header_row(addafter);
             var detail_rows = create_detail_rows(header_row);
+
 
             return {
                 header_row: header_row,
                 detail_rows: detail_rows,
                 host: host,
-                copy_full: "",
+                copy_full: copy_full,
                 remove: function () {
                     header_row.remove();
                     this.detail_rows.forEach(function (item, index, items) {
@@ -1332,8 +1386,13 @@ insert_code = function (win) {
         // 
         var on_show_panel = function (evt) {
             log("Sixornot - panel:on_show_panel", 1);
-            remove_all();
-            generate_all();
+            try {
+                remove_all();
+                generate_all();
+            } catch (e) {
+                log("exception!" + parse_exception(e), 0);
+            }
+            log("Sixornot - panel:on_show_panel - done", 1);
         };
 
         // On page change
