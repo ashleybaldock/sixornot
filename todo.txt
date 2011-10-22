@@ -7,26 +7,27 @@ Switch from tooltip to panel for address display                            - DO
 Display all addresses involved in connections                               - DONE
 Display count of connections per domain                                     - DONE
 JSLint for utils.js                                                         - DONE
-Re-add ability to copy information to clipboard
+Re-add ability to copy information to clipboard                             - DONE
 Add ability to copy a list of all files fetched to clipboard (per-domain)
-Add better proxy detection (per-connection) and icon display
 Update Russian localisation
-Fix exit crash bug
-Add back local address display (some mechanism to refresh it)
-Make preferences work again
- Greyscale preference affects text display as well
-Platform-specific text colours for optimal display on panel
-Preferences override for all text display colours (if not set use platform-specific)
-Style link
-Proper website landing page + download links
+Fix exit crash bug                                                      - Has gone away?
+Add back local address display refresh on tooltip show
+Make preferences work again                                                 - DONE
 Update documentation (pretty much completely)
-Compatibility bump to Firefox 6.0/Seamonkey 2.3                             - DONE
+Compatibility bump to Firefox 7.0/Seamonkey 2.4                             - DONE
 Test windowWatcher and so on (ensure unloading works properly)
 Testing for new code
 Handling for edge-cases and special pages (text)
+Preferences dialog/pane for Firefox 7                                       - DONE 
 
 # TODO 0.7.1
-Preferences dialog/pane for Firefox 7 - https://developer.mozilla.org/en/Extensions/Inline_Options
+Handle moving back/foward in history
+Add better proxy detection (per-connection) and icon display
+Platform-specific text colours for optimal display on panel
+Preferences override for all text display colours (if not set use platform-specific)
+Proper website landing page + download links
+
+# TODO 0.7.5
 Native resolver compatibility with FreeBSD
 Compatibility bump to Firefox 7.0/Seamonkey 2.4
 Testing on Firefox 8.0/9.0

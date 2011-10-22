@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+
+    <setting type="bool"
+             title="Show addressbar icon"
+             desc="Sets whether the SixOrNot icon is shown in the address bar or not"
+             pref="extensions.sixornot.showaddressicon"/>
+
+    <setting type="bool"
+             title="Greyscale mode"
+             desc="Sets whether colour is used as a means of representing information"
+             pref="extensions.sixornot.greyscaleicons"/>
+
+    <setting type="bool"
+             title="Show all local IPs"
+             desc="Sets whether non-routeable local IP addresses (e.g. linklocal) are shown"
+             pref="extensions.sixornot.showallips"/>
+
+</vbox>
