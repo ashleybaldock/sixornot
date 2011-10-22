@@ -515,6 +515,8 @@ var HTTP_REQUEST_OBSERVER = {
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
                     var new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, domWindowInner, domWindowOuter);
                     send_event("sixornot-new-host-event", domWindow, new_entry);
+                    // Secondary pages shouldn't have full info shown in panel
+                    new_entry.show_detail = false;
                     // Trigger new DNS lookup for the new host entry
                     new_entry.lookup_ips();
                     // Add to cache
@@ -669,29 +671,6 @@ insert_code = function (win) {
         log("Sixornot - insert_code:setCurrentTabIDs, outer: " + currentTabOuterID + ", inner: " + currentTabInnerID, 1);
     };
 
-    // Called whenever an item on the menu is clicked and bound to each menu item as an event handler
-    // Look up appropriate action by ID and perform that action
-    onMenuCommand = function (evt) {
-        var commandID, commandString, currentWindow, currentBrowser, toggle;
-        log("Sixornot - main:onMenuCommand");
-
-        commandID = evt.target.value.substring(0,5);
-        commandString = evt.target.value.substring(5);
-        // Actions
-        // "prefs" - Open preferences
-        // "copyc" - Copy text to clipboard
-        // "gotow" - Go to SixOrNot website
-        // "taddr" - Show or hide the address bar icon
-        if (commandID === "copyc") {
-            log("Sixornot - main:onMenuCommand - copy to clipboard", 2);
-            clipboardHelper.copyString(commandString);
-        } else if (commandID === "tbool") {
-            // Toggle address bar icon visibility
-            toggle = (evt.target.hasAttribute("checked") && evt.target.getAttribute("checked") === "true");
-            log("Sixornot - main:onMenuCommand - set boolean pref value: " + commandString + " to " + toggle, 2);
-            PREF_BRANCH_SIXORNOT.setBoolPref(commandString, toggle);
-        }
-    };
 
     /* Return the host part of the current window's location */
     getCurrentHost = function () {
@@ -700,9 +679,9 @@ insert_code = function (win) {
 
     /* Creates and sets up a panel to display information which can then be bound to an icon */
     create_panel = function () {
-        var panel, refresh_panel, on_click;
+        var panel, refresh_panel, on_click, on_mouseover, on_mouseout;
         panel = doc.createElement("panel");
-        panel.setAttribute("noautohide", true);
+        //panel.setAttribute("noautohide", true);
 
         // This contains everything else in the panel, vertical orientation
         var panel_vbox = doc.createElement("vbox");
@@ -716,7 +695,7 @@ insert_code = function (win) {
         var remote_rows = doc.createElement("rows");
         var remote_cols = doc.createElement("columns");
         // 5 columns wide
-        // icon, count, host, address, extra
+        // icon, count, host, address, show/hide
         remote_cols.appendChild(doc.createElement("column"));
         remote_cols.appendChild(doc.createElement("column"));
         remote_cols.appendChild(doc.createElement("column"));
@@ -748,71 +727,14 @@ insert_code = function (win) {
         title_local.setAttribute("style", "text-align: center; font-size: smaller;");
         remote_rows.appendChild(title_local);
 
-        // Settings UI
+        // Settings link
         var settingslabel = doc.createElement("description");
-        settingslabel.setAttribute("value", "Settings");
-        settingslabel.setAttribute("flex", "1");
-        settingslabel.setAttribute("style", "text-align: right; font-size: smaller;");
+        settingslabel.setAttribute("value", "header_settings");
+        settingslabel.setAttribute("style", "text-align: center; font-size: smaller;");
+        remote_rows.appendChild(settingslabel);
 
-        var settingssep = doc.createElement("separator");
-        settingssep.setAttribute("orient", "vertical");
-        settingssep.setAttribute("class", "thin");
-
-        var settingstoggle = doc.createElement("description");
-        settingstoggle.setAttribute("value", "[Show]");
-        settingstoggle.setAttribute("flex", "1");
-        settingstoggle.setAttribute("style", "text-decoration: underline; text-align: left; font-size: smaller;");
-        var settingslabel_hbox = doc.createElement("hbox");
-        settingslabel_hbox.appendChild(settingslabel);
-        settingslabel_hbox.appendChild(settingssep);
-        settingslabel_hbox.appendChild(settingstoggle);
-        panel_vbox.appendChild(settingslabel_hbox);
-
-        // Add a checkbox to the settings UI
-        var add_checkbox = function (addto, label, checked) {
-            var cbox, hbox;
-            cbox = doc.createElement("checkbox");
-            cbox.setAttribute("label", label);
-            cbox.setAttribute("checked", checked);
-            cbox.setAttribute("hidden", true);
-            hbox = doc.createElement("hbox");
-            hbox.appendChild(cbox);
-            addto.appendChild(hbox);
-            return cbox;
-        };
-
-        // Show icon
-        var setting_icon = add_checkbox(panel_vbox, "Show addressbar icon", true);
-
-        // Greyscale
-        var setting_grey = add_checkbox(panel_vbox, "Greyscale mode", true);
-
-        // Show all IPs
-        var setting_show = add_checkbox(panel_vbox, "Show all local IPs", true);
-
-        var show_settings = function (evt) {
-            evt.stopPropagation();
-            // Show the settings UI
-            setting_icon.setAttribute("hidden", false);
-            setting_grey.setAttribute("hidden", false);
-            setting_show.setAttribute("hidden", false);
-            settingstoggle.setAttribute("value", "[Hide]");
-            settingstoggle.removeEventListener("click", show_settings, false);
-            settingstoggle.addEventListener("click", hide_settings, false);
-        };
-        var hide_settings = function (evt) {
-            evt.stopPropagation();
-            // Show the settings UI
-            setting_icon.setAttribute("hidden", true);
-            setting_grey.setAttribute("hidden", true);
-            setting_show.setAttribute("hidden", true);
-            settingstoggle.setAttribute("value", "[Show]");
-            settingstoggle.removeEventListener("click", hide_settings, false);
-            settingstoggle.addEventListener("click", show_settings, false);
-        };
-
-        settingstoggle.addEventListener("click", show_settings, false);
-        settingstoggle.sixornot_decorate = true;
+        settingslabel.sixornot_decorate = true;
+        settingslabel.sixornot_openprefs = true;
 
         /* Add a clickable URL field */
         var add_url = function (addto, url, text) {
@@ -821,21 +743,10 @@ insert_code = function (win) {
 
             label.setAttribute("value", text);
             label.setAttribute("crop", "none");
-            label.setAttribute("style", "text-decoration: underline;");
-            // TODO remove event listeners
-            label.addEventListener("click", function (evt) {
-                var currentWindow, currentBrowser;
-                evt.stopPropagation();
-                panel.hidePopup();
-                // Add tab to most recent window, regardless of where this function was called from
-                currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-                     .getService(Components.interfaces.nsIWindowMediator)
-                     .getMostRecentWindow("navigator:browser");
-                currentWindow.focus();
-                currentBrowser = currentWindow.getBrowser();
-                currentBrowser.selectedTab = currentBrowser.addTab(url);
-            }, false);
+            //label.setAttribute("style", "text-decoration: underline;");
+
             label.sixornot_decorate = true;
+            label.sixornot_hyperlink = url;
             hbox = doc.createElement("hbox");
             hbox.appendChild(label);
             hbox.setAttribute("align", "end");
@@ -897,75 +808,53 @@ insert_code = function (win) {
             var create_header_row = function (addafter) {
                 log("Sixornot - create_header_row", 1);
                 var create_showhide = function (addto) {
-                    var c6, c4, hide, hbox, update;
+                    var showhide, update;
                     log("Sixornot - create_showhide", 1);
-                    hbox = doc.createElement("hbox");
-                    hbox.setAttribute("pack", "center");
-                    hbox.sixornot_host = host.host;
 
                     /* Create DOM UI elements */
-                    c6 = doc.createElement("label");
-                    c6.setAttribute("style", "color: #0F0;");
-                    c6.setAttribute("tooltiptext", gt("tt_show_detail"));
-                    c6.sixornot_host = host.host;
-                    c6.sixornot_show = true;
+                    showhide = doc.createElement("label");
+                    showhide.setAttribute("value", "");
+                    showhide.setAttribute("style", "");
 
-                    c4 = doc.createElement("label");
-                    c4.setAttribute("style", "color: #F00;");
-                    c4.setAttribute("tooltiptext", gt("tt_show_detail"));
-                    c4.sixornot_host = host.host;
-                    c4.sixornot_show = true;
-
-                    hide = doc.createElement("label");
-                    hide.setAttribute("value", "[Hide]");
-                    hide.setAttribute("style", "");
-                    hide.setAttribute("tooltiptext", gt("tt_hide_detail"));
-                    hide.sixornot_host = host.host;
-                    hide.sixornot_hide = true;
-
-                    c6.sixornot_decorate = true;
-                    c4.sixornot_decorate = true;
-                    hide.sixornot_decorate = true;
-
-                    hbox.appendChild(c6);
-                    hbox.appendChild(c4);
-                    hbox.appendChild(hide);
+                    showhide.sixornot_host = host.host;
+                    showhide.sixornot_showhide = true;
+                    showhide.sixornot_decorate = true;
 
                     update = function () {
-                        var count6 = 0, count4 = 0;
+                        var count = 0;
                         host.ipv6s.forEach(function (address, index, addresses) {
                             if (address !== host.address) {
-                                count6 += 1;
+                                count += 1;
                             }
                         });
                         host.ipv4s.forEach(function (address, index, addresses) {
                             if (address !== host.address) {
-                                count4 += 1;
+                                count += 1;
                             }
                         });
-                        hide.setAttribute("hidden",
-                            !(host.show_detail && (count6 > 0 || count4 > 0)));
-
-                        c6.setAttribute("value", "[+" + count6 + "]");
-                        c6.setAttribute("hidden",
-                            !(!host.show_detail && count6 > 0));
-
-                        c4.setAttribute("value", "[+" + count4 + "]");
-                        c4.setAttribute("hidden",
-                            !(!host.show_detail && count4 > 0));
+                        if (count > 0) {
+                            if (host.show_detail) {
+                                showhide.setAttribute("value", "[Hide]");
+                                showhide.setAttribute("hidden", false);
+                                showhide.setAttribute("tooltiptext", gt("tt_show_detail"));
+                            } else {
+                                showhide.setAttribute("value", "[+" + count + "]");
+                                showhide.setAttribute("hidden", false);
+                                showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));
+                            }
+                        } else {
+                            showhide.setAttribute("value", "");
+                            showhide.setAttribute("hidden", true);
+                        }
                     };
                     /* Update elements on create */
                     update();
-                    addto.appendChild(hbox);
+                    addto.appendChild(showhide);
                     /* Return object for interacting with DOM elements */
                     return {
                         update: update,
                         remove: function () {
-
-                            hbox.removeChild(c4);
-                            hbox.removeChild(c6);
-                            hbox.removeChild(hide);
-                            addto.removeChild(hbox);
+                            addto.removeChild(showhide);
                         }
                     };
                 };
@@ -1112,37 +1001,39 @@ insert_code = function (win) {
                         }
                         address_box.appendChild(conipaddr);
 
-                        // Add the other addresses (if any)
-                        host.ipv6s.sort(function (a, b) {
-                            return dns_handler.sort_ip6.call(dns_handler, a, b);
-                        });
-                        host.ipv4s.sort(function (a, b) {
-                            return dns_handler.sort_ip4.call(dns_handler, a, b);
-                        });
-                        host.ipv6s.forEach(function (address, index, addresses) {
-                            if (address !== host.address) {
-                                var detailaddr = doc.createElement("label");
-                                detailaddr.setAttribute("value", address);
-                                detailaddr.sixornot_copytext = address;
-                                detailaddr.setAttribute("style", "color: #0F0;");
-                                detailaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                                detailaddr.sixornot_decorate = true;
-                                detailaddr.sixornot_host = host.host;
-                                address_box.appendChild(detailaddr);
-                            }
-                        });
-                        host.ipv4s.forEach(function (address, index, addresses) {
-                            if (address !== host.address) {
-                                var detailaddr = doc.createElement("label");
-                                detailaddr.setAttribute("value", address);
-                                detailaddr.sixornot_copytext = address;
-                                detailaddr.setAttribute("style", "color: #F00;");
-                                detailaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                                detailaddr.sixornot_decorate = true;
-                                detailaddr.sixornot_host = host.host;
-                                address_box.appendChild(detailaddr);
-                            }
-                        });
+                        if (host.show_detail) {
+                            // Add the other addresses (if any)
+                            host.ipv6s.sort(function (a, b) {
+                                return dns_handler.sort_ip6.call(dns_handler, a, b);
+                            });
+                            host.ipv4s.sort(function (a, b) {
+                                return dns_handler.sort_ip4.call(dns_handler, a, b);
+                            });
+                            host.ipv6s.forEach(function (address, index, addresses) {
+                                if (address !== host.address) {
+                                    var detailaddr = doc.createElement("label");
+                                    detailaddr.setAttribute("value", address);
+                                    detailaddr.sixornot_copytext = address;
+                                    detailaddr.setAttribute("style", "color: #0F0;");
+                                    detailaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                                    detailaddr.sixornot_decorate = true;
+                                    detailaddr.sixornot_host = host.host;
+                                    address_box.appendChild(detailaddr);
+                                }
+                            });
+                            host.ipv4s.forEach(function (address, index, addresses) {
+                                if (address !== host.address) {
+                                    var detailaddr = doc.createElement("label");
+                                    detailaddr.setAttribute("value", address);
+                                    detailaddr.sixornot_copytext = address;
+                                    detailaddr.setAttribute("style", "color: #F00;");
+                                    detailaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                                    detailaddr.sixornot_decorate = true;
+                                    detailaddr.sixornot_host = host.host;
+                                    address_box.appendChild(detailaddr);
+                                }
+                            });
+                        }
 
                     };
                     /* Update element on create */
@@ -1164,11 +1055,6 @@ insert_code = function (win) {
                 /* Add this element after the last one */
                 addafter.add_after(row);
 
-                // Add event listeners for children
-                row.addEventListener("mouseover", on_mouseover, false);
-                row.addEventListener("mouseout", on_mouseout, false);
-                row.addEventListener("click", on_click, false);
-
                 /* Object representing header row of entry */
                 return {
                     icon: create_icon(row),
@@ -1178,10 +1064,6 @@ insert_code = function (win) {
                     showhide: create_showhide(row),
                     /* Remove this element and all children */
                     remove: function () {
-                        // Remove event listeners for children
-                        row.removeEventListener("mouseover", on_mouseover, false);
-                        row.removeEventListener("mouseout", on_mouseout, false);
-                        row.removeEventListener("click", on_click, false);
                         // Remove children
                         this.icon.remove();
                         this.count.remove();
@@ -1312,15 +1194,16 @@ insert_code = function (win) {
                     log("exception!" + parse_exception(e), 0);
                 }
             }
-            /* If element has show/hide behaviour, trigger refresh */
-            if (evt.target.sixornot_show) {
+            /* If element has show/hide behaviour, toggle and trigger refresh */
+            if (evt.target.sixornot_showhide) {
                 try {
                     evt.stopPropagation();
-                    log("Sixornot - panel:on_click - show", 1);
+                    log("Sixornot - panel:on_click - showhide", 1);
                     // Locate matching element and trigger refresh
                     if (!grid_contents.some(function (item, index, items) {
                         if (item.host.host === evt.target.sixornot_host) {
                             log("Sixornot - panel:on_click - ", 1);
+                            item.host.show_detail = !item.host.show_detail;
                             item.update_ips();
                             return true;
                         }
@@ -1331,20 +1214,39 @@ insert_code = function (win) {
                     log("exception!" + parse_exception(e), 0);
                 }
             }
-            if (evt.target.sixornot_hide) {
+            /* Element should open preferences when clicked */
+            if (evt.target.sixornot_openprefs) {
                 try {
                     evt.stopPropagation();
-                    log("Sixornot - panel:on_click - hide", 1);
-                    // Locate matching element and trigger refresh
-                    if (!grid_contents.some(function (item, index, items) {
-                        if (item.host.host === evt.target.sixornot_host) {
-                            log("Sixornot - panel:on_click - ", 1);
-                            item.update_ips();
-                            return true;
-                        }
-                    })) {
-                            log("Sixornot - panel:on_click - no matching host found", 1);
-                    }
+                    panel.hidePopup();
+                    log("Sixornot - panel:on_click - openprefs", 1);
+                    // Add tab to most recent window, regardless of where this function was called from
+                    var currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+                         .getService(Components.interfaces.nsIWindowMediator)
+                         .getMostRecentWindow("navigator:browser");
+                    currentWindow.focus();
+                    var currentBrowser = currentWindow.getBrowser();
+                    currentBrowser.selectedTab = currentBrowser.addTab("about:addons");
+                    // TODO link should open Sixornot, but this isn't currently possible
+                    //currentWindow.getBrowser().contentWindow.wrappedJSObject.loadView("addons://detail/sixornot@entropy.me.uk");
+                } catch (e) {
+                    log("exception!" + parse_exception(e), 0);
+                }
+            }
+            /* Element should open hyperlink when clicked */
+            if (evt.target.sixornot_hyperlink) {
+                try {
+                    var currentWindow, currentBrowser;
+                    log("Sixornot - panel:on_click - open hyperlink", 1);
+                    evt.stopPropagation();
+                    panel.hidePopup();
+                    // Add tab to most recent window, regardless of where this function was called from
+                    currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+                         .getService(Components.interfaces.nsIWindowMediator)
+                         .getMostRecentWindow("navigator:browser");
+                    currentWindow.focus();
+                    currentBrowser = currentWindow.getBrowser();
+                    currentBrowser.selectedTab = currentBrowser.addTab(evt.target.sixornot_hyperlink);
                 } catch (e) {
                     log("exception!" + parse_exception(e), 0);
                 }
@@ -1532,62 +1434,6 @@ insert_code = function (win) {
 
         /* Update local IP contents */
 
-        /* Update remote IP contents */
-        /* var update_remote_list = function (evt) {
-                var copy_full = host.host;
-                if (host.address) {
-                    copy_full = copy_full + "," + host.address;
-                }
-
-                host.ipv6s.forEach(function (address, index, addresses) {
-                    if (address !== host.address) {
-                        count6 += 1;
-                        copy_full = copy_full + "," + address;
-                    }
-                });
-                host.ipv4s.forEach(function (address, index, addresses) {
-                    if (address !== host.address) {
-                        count4 += 1;
-                        copy_full = copy_full + "," + address;
-                    }
-                });
-                copy_full = copy_full + "\n";
-
-                var add_show_detail_listeners = function (element) {
-                    element.addEventListener("click", function (evt) {
-                        evt.stopPropagation();
-                        summary_rows.forEach(function (row, index, thearray) {
-                            row.setAttribute("hidden", true);
-                        });
-                        detail_rows.forEach(function (row, index, thearray) {
-                            row.setAttribute("hidden", false);
-                        });
-                    }, false);
-                };
-                var add_hide_detail_listeners = function (element) {
-                    element.addEventListener("click", function (evt) {
-                        evt.stopPropagation();
-                        summary_rows.forEach(function (row, index, thearray) {
-                            row.setAttribute("hidden", false);
-                        });
-                        detail_rows.forEach(function (row, index, thearray) {
-                            row.setAttribute("hidden", true);
-                        });
-                    }, false);
-                };
-
-                //  add them to some kind of array for removal...
-                var add_copy_on_click = function (element, sixornot_copytext) {
-                    element.addEventListener("click", function (evt) {
-                        evt.stopPropagation();
-                        clipboardHelper.copyString(copytext);
-                        // TODO add confirmation message to main UI to indicate copy worked
-                    }, false);
-                };
-
-            };
-        }; */
-
         // Panel setup
         panel.setAttribute("type", "arrow");
         panel.setAttribute("hidden", true);
@@ -1596,6 +1442,10 @@ insert_code = function (win) {
         // This must be set so that panel's children don't inherit this style!
         panel.style.listStyleImage = "none";
 
+        // Add event listeners for children
+        panel.addEventListener("mouseover", on_mouseover, false);
+        panel.addEventListener("mouseout", on_mouseout, false);
+        panel.addEventListener("click", on_click, false);
         // Event listener to update panel contents when it is shown
         panel.addEventListener("popupshowing", on_show_panel, false);
         win.addEventListener("sixornot-page-change-event", on_page_change, false);
@@ -1608,6 +1458,10 @@ insert_code = function (win) {
         // Add a callback to our unload list to remove the UI when addon is disabled
         unload(function () {
             log("Sixornot - Unload panel callback", 2);
+            // Remove event listeners for children
+            panel.removeEventListener("mouseover", on_mouseover, false);
+            panel.removeEventListener("mouseout", on_mouseout, false);
+            panel.removeEventListener("click", on_click, false);
             // Remove event listeners
             panel.removeEventListener("popupshowing", on_show_panel, false);
             win.removeEventListener("sixornot-page-change-event", on_page_change, false);
