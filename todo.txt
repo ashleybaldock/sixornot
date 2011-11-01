@@ -8,21 +8,25 @@ Display all addresses involved in connections                               - DO
 Display count of connections per domain                                     - DONE
 JSLint for utils.js                                                         - DONE
 Re-add ability to copy information to clipboard                             - DONE
-Add ability to copy a list of all files fetched to clipboard (per-domain)
 Update Russian localisation
-Fix exit crash bug                                                      - Has gone away?
-Add back local address display refresh on tooltip show
 Make preferences work again                                                 - DONE
-Update documentation (pretty much completely)
 Compatibility bump to Firefox 7.0/Seamonkey 2.4                             - DONE
 Test windowWatcher and so on (ensure unloading works properly)
-Testing for new code
-Handling for edge-cases and special pages (text)
 Preferences dialog/pane for Firefox 7                                       - DONE 
 
+Fix exit crash bug                                                      - Has gone away?
+Update documentation (pretty much completely)
+
 # TODO 0.7.1
+Add back local address display refresh on tooltip show
+Object for images rather than lots of global variables
+Handling for edge-cases and special pages (text)
+Warnings for ip6_disabled and ip4only_domain
+Add ability to copy a list of all files fetched to clipboard (per-domain)
 Handle moving back/foward in history
 Add better proxy detection (per-connection) and icon display
+ Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
+ Same way that DNS lookups are done, with a callback
 Platform-specific text colours for optimal display on panel
 Preferences override for all text display colours (if not set use platform-specific)
 Proper website landing page + download links

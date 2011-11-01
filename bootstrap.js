@@ -146,38 +146,9 @@ var localipv6s = [];
 var locallookuptime = 0;
 
 
-/*
-
-Cache
-
-Request Cache - keyed by ID, list of all hosts contacted per page
-
-Data should be cached at time of retrieval
-Cached http responses don't get IPs, so in these cases the DNS results
-would need to be used instead
-DNS is cached itself, so no need to have a second cache for it
-And the DNS results ought to all be cached since we've been visiting the pages
-
-DNS callbacks should update the arrays which have already been added to the cache
-They should also emit an event for the icons to listen for and update themselves
-
-Deleting an item from the cache should cancel any DNS callbacks currently running
-
-Icons updated when:
-Current tab changes
-New page loaded in etc.
-DNS lookup callback returns
-Show an icon/display tooltip text to indicate that a request for a host was served entirely from the local cache and thus no IP addresses come into play
-
-
-TODO - investigate crash on exit - related to DNS resolver??
-
-*/
-
+/* Request Cache - keyed by ID, list of all hosts contacted per page */
 var RequestCache = [];
 var RequestWaitingList = [];
-
-// TODO - periodic refresh of local addresses + store these globally
 
 xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService(Components.interfaces.nsIXULRuntime);
 
@@ -636,7 +607,6 @@ var HTTP_REQUEST_OBSERVER = {
 
 // TODO
 /*
-    https://addons.mozilla.org/en-US/firefox/files/browse/129684/file/bootstrap.js#L127
     Handle all the same edge cases as before
     Find nice structure for organising the functions
     Move settings into panel
@@ -725,37 +695,30 @@ insert_code = function (win) {
         var title_local = doc.createElement("label");
         title_local.setAttribute("value", gt("header_local"));
         title_local.setAttribute("style", "text-align: center; font-size: smaller;");
+        title_local.setAttribute("hidden", true);
         remote_rows.appendChild(title_local);
 
         // Settings link
         var settingslabel = doc.createElement("description");
-        settingslabel.setAttribute("value", "header_settings");
+        settingslabel.setAttribute("value", gt("header_settings"));
+        settingslabel.setAttribute("tooltiptext", gt("tt_open_settings"));
         settingslabel.setAttribute("style", "text-align: center; font-size: smaller;");
         remote_rows.appendChild(settingslabel);
 
         settingslabel.sixornot_decorate = true;
         settingslabel.sixornot_openprefs = true;
 
-        /* Add a clickable URL field */
-        var add_url = function (addto, url, text) {
-            var label, hbox;
-            label = doc.createElement("description");
-
-            label.setAttribute("value", text);
-            label.setAttribute("crop", "none");
-            //label.setAttribute("style", "text-decoration: underline;");
-
-            label.sixornot_decorate = true;
-            label.sixornot_hyperlink = url;
-            hbox = doc.createElement("hbox");
-            hbox.appendChild(label);
-            hbox.setAttribute("align", "end");
-            addto.appendChild(hbox);
-        };
-
         // Add link to Sixornot website to UI
-        add_url(panel_vbox, "http://entropy.me.uk/sixornot/", "Goto Sixornot website");
-
+        var urllabel = doc.createElement("description");
+        urllabel.setAttribute("value", gt("sixornot_web"));
+        urllabel.setAttribute("crop", "none");
+        urllabel.sixornot_decorate = true;
+        urllabel.sixornot_hyperlink = gt("tt_gotowebsite");
+        urllabel.setAttribute("tooltiptext", gt("tt_open_settings"));
+        var urlhbox = doc.createElement("urlhbox");
+        urlhbox.appendChild(urllabel);
+        urlhbox.setAttribute("align", "end");
+        panel_vbox.appendChild(urlhbox);
 
 
         /* Functions */
@@ -774,7 +737,7 @@ insert_code = function (win) {
             if (panel_vbox.clientHeight > panel.clientHeight) {
                 panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
                 // TODO if panel width changes after this is applied horizontal fit breaks
-                panel_vbox.setAttribute("minwidth", panel_vbox.clientWidth + 40);
+                //panel.setAttribute("minwidth", panel_vbox.clientWidth + 40);
             }
         };
 
@@ -834,13 +797,13 @@ insert_code = function (win) {
                         });
                         if (count > 0) {
                             if (host.show_detail) {
-                                showhide.setAttribute("value", "[Hide]");
+                                showhide.setAttribute("value", "[" + gt("hide_text") + "]");
                                 showhide.setAttribute("hidden", false);
-                                showhide.setAttribute("tooltiptext", gt("tt_show_detail"));
+                                showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));
                             } else {
                                 showhide.setAttribute("value", "[+" + count + "]");
                                 showhide.setAttribute("hidden", false);
-                                showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));
+                                showhide.setAttribute("tooltiptext", gt("tt_show_detail"));
                             }
                         } else {
                             showhide.setAttribute("value", "");
@@ -890,13 +853,13 @@ insert_code = function (win) {
                     update = function () {
                         if (host.count > 0) {
                             count.setAttribute("value", "(" + host.count + ")");
-                            count.sixornot_decorate = true;
+                            //count.sixornot_decorate = true;
                         } else {
                             count.setAttribute("value", "");
-                            count.sixornot_decorate = false;
+                            //count.sixornot_decorate = false;
                         }
                         // TODO Add real copy text here
-                        count.sixornot_copytext = "count copy text";
+                        //count.sixornot_copytext = "count copy text";
                     };
                     /* Update element on create */
                     update();
@@ -922,7 +885,7 @@ insert_code = function (win) {
                         hostname.setAttribute("style", "font-weight: normal;");
                     }
 
-                    hostname.setAttribute("tooltiptext", gt("tt_copyall"));
+                    hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
                     update = function () {
                         // TODO Add real copy text here
                         var text = host.host + "," + host.address;
@@ -979,24 +942,24 @@ insert_code = function (win) {
                         if (host.address_family === 6) {
                             conipaddr.setAttribute("value", host.address);
                             conipaddr.sixornot_copytext = host.address;
-                            conipaddr.setAttribute("style", "color: #0F0;");
+                            //conipaddr.setAttribute("style", "color: #0F0;");
                             conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
                             conipaddr.sixornot_decorate = true;
                         } else if (host.address_family === 4) {
                             conipaddr.setAttribute("value", host.address);
                             conipaddr.sixornot_copytext = host.address;
-                            conipaddr.setAttribute("style", "color: #F00;");
+                            //conipaddr.setAttribute("style", "color: #F00;");
                             conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
                             conipaddr.sixornot_decorate = true;
                         } else if (host.address_family === 2) {
                             conipaddr.setAttribute("value", gt("addr_cached"));
                             conipaddr.sixornot_copytext = "";
-                            conipaddr.setAttribute("style", "color: #00F;");
+                            //conipaddr.setAttribute("style", "color: #00F;");
                             conipaddr.sixornot_decorate = false;
                         } else {
                             conipaddr.setAttribute("value", gt("addr_unavailable"));
                             conipaddr.sixornot_copytext = "";
-                            conipaddr.setAttribute("style", "color: #000;");
+                            //conipaddr.setAttribute("style", "color: #000;");
                             conipaddr.sixornot_decorate = false;
                         }
                         address_box.appendChild(conipaddr);
@@ -1014,7 +977,7 @@ insert_code = function (win) {
                                     var detailaddr = doc.createElement("label");
                                     detailaddr.setAttribute("value", address);
                                     detailaddr.sixornot_copytext = address;
-                                    detailaddr.setAttribute("style", "color: #0F0;");
+                                    //detailaddr.setAttribute("style", "color: #0F0;");
                                     detailaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
                                     detailaddr.sixornot_decorate = true;
                                     detailaddr.sixornot_host = host.host;
@@ -1026,7 +989,7 @@ insert_code = function (win) {
                                     var detailaddr = doc.createElement("label");
                                     detailaddr.setAttribute("value", address);
                                     detailaddr.sixornot_copytext = address;
-                                    detailaddr.setAttribute("style", "color: #F00;");
+                                    //detailaddr.setAttribute("style", "color: #F00;");
                                     detailaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
                                     detailaddr.sixornot_decorate = true;
                                     detailaddr.sixornot_host = host.host;
@@ -1722,7 +1685,7 @@ insert_code = function (win) {
 
     /* Returns the correct icon source entry for a given record */
     // TODO
-    // Expand this to account for proxies, cached files etc.
+    // Expand this to account for proxies
     // Also account for error conditions, e.g. using v4 with no v4 in DNS
     get_icon_source = function (record) {
         if (record.address_family === 4) {
@@ -1944,22 +1907,6 @@ if (dns_handler.is_proxied_dns(url))
     log("Sixornot is in proxied mode");
     return;
 }
-*/
-
-/*
-// Update the status icon state (icon & tooltip)
-// Returns true if it's done and false if unknown
-update_icon = function () {
-
-    loc_options = ["file:", "data:", "about:", "chrome:", "resource:"];
-
-    // For any of these protocols, display "other" icon
-    if (loc_options.indexOf(contentDoc.location.protocol) !== -1) {
-        set_icon(sother_16);
-        specialLocation = ["localfile"];
-        return true;
-    }
-};
 */
 
 
