@@ -31,10 +31,8 @@
 
 
 // Global variables defined by this script
-//var consoleService, log, parse_exception, dns, loglevel;
-var log, parse_exception, dns, loglevel;
-
-loglevel = 0;
+//var consoleService, log, parse_exception, dns;
+var log, parse_exception, dns;
 
 // Utility functions
 
@@ -66,13 +64,13 @@ parse_exception = function (e)
     }
 };
 
-// Data is an array
-// [callback_id, request_id, data]
-// callback_id is a number which will be passed back to the main thread
+// Data is a serialised dict
+// {"callbackid": , "reqid": , "content": }
+// callbackid is a number which will be passed back to the main thread
 //      to indicate which callback function (if any) should be executed
 //      when this request completes
-// request_id references the type of request, see reqids table
-// data is arbitrary information passed to the request_id function
+// reqid references the type of request, see reqids table
+// content is arbitrary information passed to the reqid function
 
 // If you do var onmessage this doesn't function properly
 onmessage = function (evt)
@@ -80,17 +78,14 @@ onmessage = function (evt)
     "use strict";
     log("Sixornot(dns_worker) - onmessage: " + evt.toSource(), 1);
 
-    // Because of dumb new worker implementation we have to manually deserialise here
+    // Because of new worker implementation we have to manually deserialise here
     if (evt.data) {
         var data = JSON.parse(evt.data);
         if (data.reqid === 255) {
             dns.init(data.content);
             // Post back message to indicate whether init was successful
-            // Init also posts back messages to indicate specific success
+            // init() also posts back messages to indicate specific success
             postMessage(JSON.stringify({"callbackid": -1, "reqid": 255, "content": true}));
-        } else if (data.reqid === 254) {
-            loglevel = data.content;
-            postMessage(JSON.stringify({"callbackid": -1, "reqid": 254, "content": true}));
         } else {
             dns.dispatch_message(data);
         }
@@ -232,8 +227,7 @@ dns = {
     resolve_local : function ()
     {
         "use strict";
-        var first_addr, first_addr_ptr, ret, i, addresses, new_addr, sa, address,
-            ifaddr, ifaddr_ptr, adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize;
+        var ret, addresses, sa, address, ifaddr, ifaddr_ptr, adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_local", 2);
 
         switch(this.os)
@@ -358,8 +352,7 @@ dns = {
     resolve_remote : function (host)
     {
         "use strict";
-        var hints, first_addr, first_addr_ptr, ret, i, addresses, new_addr,
-            addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
+        var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_remote - resolving host: " + host, 2);
 
         switch(this.os)
