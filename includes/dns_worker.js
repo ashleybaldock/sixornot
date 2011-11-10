@@ -31,30 +31,24 @@
 
 
 // Global variables defined by this script
-var consoleService, log, parse_exception, dns, loglevel;
+//var consoleService, log, parse_exception, dns, loglevel;
+var log, parse_exception, dns, loglevel;
 
 loglevel = 0;
 
 // Utility functions
 
 // Used by log to write messages to console
-consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
+//consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
 
 log = function (message, level)
 {
     "use strict";
-    // Three log levels, 0 = critical, 1 = normal, 2 = verbose
-    // Default level is 1
-    level = level || 1;
-    // If preference unset, default to 1 (normal) level
-    if (level <= loglevel)
-    {
-        consoleService.logStringMessage(message);
-    }
+    postMessage(JSON.stringify({"callbackid": -1, "reqid": 254, "content": [message, level]}));
 };
 
 // Returns a string version of an exception object with its stack trace
-// TODO - Report exceptions back up to main thread for proper handling
+// Uncaught exceptions will be handled by the onerror handler added to the worker by its parent
 parse_exception = function (e)
 {
     "use strict";
@@ -85,29 +79,21 @@ onmessage = function (evt)
 {
     "use strict";
     log("Sixornot(dns_worker) - onmessage: " + evt.toSource(), 1);
-    // Special case messages should be handled here
-    if (evt.data && evt.data[1] && evt.data[1] === 255)
-    {
-        // 255 = init message
-        // Set up DNS (load ctypes modules etc.)
-        dns.init(evt.data[2]);
-        // Post back message to indicate whether init was successful
-        // Init also posts back messages to indicate specific success
-        postMessage([-1, 255, true]);
-    }
-    else if (evt.data && evt.data[1] && evt.data[1] === 254)
-    {
-        // 254 = loglevel message
-        // Set logging level to specified level
-        loglevel = evt.data[2];
-        log("Sixornot(dns_worker) - loglevel set to: " + evt.data[2], 1);
-        // Return and indicate success
-        postMessage([-1, 254, true]);
-    }
-    // All other codes should be passed through to dns for processing
-    else if (evt.data && evt.data[1])
-    {
-        dns.dispatch_message(evt.data);
+
+    // Because of dumb new worker implementation we have to manually deserialise here
+    if (evt.data) {
+        var data = JSON.parse(evt.data);
+        if (data.reqid === 255) {
+            dns.init(data.content);
+            // Post back message to indicate whether init was successful
+            // Init also posts back messages to indicate specific success
+            postMessage(JSON.stringify({"callbackid": -1, "reqid": 255, "content": true}));
+        } else if (data.reqid === 254) {
+            loglevel = data.content;
+            postMessage(JSON.stringify({"callbackid": -1, "reqid": 254, "content": true}));
+        } else {
+            dns.dispatch_message(data);
+        }
     }
 };
 
@@ -186,8 +172,8 @@ dns = {
         }
 
         // Post a message back to main thread to indicate availability of ctypes
-        postMessage([-1, this.reqids.checkremote, this.remote_ctypes]);
-        postMessage([-1, this.reqids.checklocal, this.local_ctypes]);
+        postMessage(JSON.stringify({"callbackid": -1, "reqid": this.reqids.checkremote, "content": this.remote_ctypes}));
+        postMessage(JSON.stringify({"callbackid": -1, "reqid": this.reqids.checklocal, "content": this.local_ctypes}));
 
         log("Sixornot(dns_worker) - dns:init completed");
     },
@@ -233,13 +219,13 @@ dns = {
         dispatch[this.reqids.checklocal] = this.check_local;
 
         // Use request_id (data[1]) to select function
-        f = dispatch[message[1]];
+        f = dispatch[message.reqid];
         if (f)
         {
             // Need to use function.call so that the value of "this" in the called function is set correctly
-            ret = f.call(this, message[2]);
+            ret = f.call(this, message.content);
             // Return data to main thread
-            postMessage([message[0], message[1], ret]);
+            postMessage(JSON.stringify({"callbackid": message.callbackid, "reqid": message.reqid, "content": ret}));
         }
     },
 

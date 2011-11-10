@@ -240,8 +240,6 @@ PREF_OBSERVER = {
         if (aData === "loglevel")
         {
             log("Sixornot - PREFS_OBSERVER - loglevel has changed", 1);
-            // Ensure dns_worker is at the same loglevel
-            dns_handler.set_worker_loglevel(PREF_BRANCH_SIXORNOT.getIntPref("loglevel"))
         }
         if (aData === "overridelocale")
         {
@@ -1540,7 +1538,7 @@ dns_handler =
         checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
         checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
         os: 253,            // Set the operating system
-        loglevel: 254,      // Set the logging level of the ctypes resolver
+        log: 254,           // A logging message (sent from worker to main thread only)
         init: 255           // Initialise dns in the worker
     },
 
@@ -1553,13 +1551,18 @@ dns_handler =
         log("Sixornot - dns_handler - init", 1);
 
         // Initialise ChromeWorker which will be used to do DNS lookups either via ctypes or dnsService
-        this.worker = workerFactory.newChromeWorker("resource://sixornot/includes/dns_worker.js");
+        this.worker = new ChromeWorker("resource://sixornot/includes/dns_worker.js");
 
         // Shim to get 'this' to refer to dns_handler, not the
         // worker, when a message is received.
         that = this;
         this.worker.onmessage = function (evt) {
-            that.onworkermessage.call(that, evt);
+            var data = JSON.parse(evt.data);
+            that.onworkermessage.call(that, data);
+        };
+
+        this.worker.onerror = function (err) {
+            log(err.message + ", " + err.filename + ", " + err.lineno, 1);
         };
 
         // Set up request map, which will map async requests to their callbacks
@@ -1569,21 +1572,15 @@ dns_handler =
         // When a request is completed the callback_ids can be queried to find the correct callback to call
         // Any message which doesn't need a callback association should be sent with a callback ID of -1
 
-        // Finally set the logging level appropriately and call init
-        this.worker.postMessage([-1, this.reqids.loglevel, PREF_BRANCH_SIXORNOT.getIntPref("loglevel")]);
-        this.worker.postMessage([-1, this.reqids.init, xulRuntime.OS.toLowerCase()]);
-    },
-
-    set_worker_loglevel : function (newloglevel)
-    {
-        this.worker.postMessage([-1, this.reqids.loglevel, newloglevel]);
+        // Finally init the worker
+        this.worker.postMessage(JSON.stringify({"callbackid": -1, "reqid": this.reqids.init, "content": xulRuntime.OS.toLowerCase()}));
     },
 
     shutdown : function ()
     {
         log("Sixornot - dns_handler:shutdown", 1);
         // Shutdown async resolver
-        this.worker.postMessage([-1, this.reqids.shutdown, null]);
+        this.worker.postMessage(JSON.stringify({"callbackid": -1, "reqid": this.reqids.shutdown, "content": null}));
     },
 
 
@@ -2075,7 +2072,7 @@ dns_handler =
 
         new_callback_id = this.add_callback_id(callback);
 
-        this.worker.postMessage([new_callback_id, this.reqids.locallookup, null]);
+        this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.locallookup, "content": null}));
 
         return this.make_cancel_obj(new_callback_id);
     },
@@ -2115,7 +2112,7 @@ dns_handler =
 
         new_callback_id = this.add_callback_id(callback);
 
-        this.worker.postMessage([new_callback_id, this.reqids.remotelookup, host]);
+        this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.remotelookup, "content": host}));
 
         return this.make_cancel_obj(new_callback_id);
     },
@@ -2236,42 +2233,43 @@ dns_handler =
         Recieve and act on messages from Worker
     */
     // Called by worker to pass information back to main thread
-    onworkermessage : function (evt)
+    onworkermessage : function (data)
     {
         var callback;
-        log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 2);
+        log("Sixornot - dns_handler:onworkermessage - message: " + data, 2);
         // evt.data is the information passed back
         // This is an array: [callback_id, request_id, data]
         // data will usually be a list of IP addresses
         // Look up correct callback in callback_ids array
 
         // checkremote, set remote ctypes status
-        if (evt.data[1] === this.reqids.checkremote)
+        if (data.reqid === this.reqids.checkremote)
         {
-            this.remote_ctypes = evt.data[2];
+            this.remote_ctypes = data.content;
         }
         // checklocal, set local ctypes status
-        else if (evt.data[1] === this.reqids.checklocal)
+        else if (data.reqid === this.reqids.checklocal)
         {
-            this.local_ctypes = evt.data[2];
+            this.local_ctypes = data.content;
         }
-        else if (evt.data[1] === this.reqids.init)
+        else if (data.reqid === this.reqids.init)
         {
             log("Sixornot - dns_handler:onworkermessage - init ack received", 2);
         }
-        else if (evt.data[1] === this.reqids.loglevel)
+        else if (data.reqid === this.reqids.log)
         {
-            log("Sixornot - dns_handler:onworkermessage - loglevel change ack received", 2);
+            // Log message from dns_worker
+            log(data.content[0], data.content[1]);
         }
         // remotelookup/locallookup, find correct callback and call it
-        else if (evt.data[1] === this.reqids.remotelookup || evt.data[1] === this.reqids.locallookup)
+        else if (data.reqid === this.reqids.remotelookup || data.reqid === this.reqids.locallookup)
         {
-            callback = this.remove_callback_id(evt.data[0]);
+            callback = this.remove_callback_id(data.callbackid);
             log("Sixornot - dns_handler:onworkermessage, typeof callback: " + typeof callback, 1);
             // Execute callback
             if (callback)
             {
-                callback(evt.data[2]);
+                callback(data.content);
             }
         }
     },
