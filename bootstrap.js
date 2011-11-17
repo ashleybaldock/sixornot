@@ -345,8 +345,10 @@ var HTTP_REQUEST_OBSERVER = {
                 lookup_ips: function () {
                     /* Create closure containing reference to element and trigger async lookup with callback */
                     var entry = this;
+                    log("Sixornot - LOOKUP_IPS", 1);
                     var on_returned_ips = function (ips) {
                         var evt, cancelled;
+                        log("Sixornot - LOOKUP_IPS - on_returned_ips", 1);
                         entry.dns_cancel = null;
                         if (ips[0] === "FAIL") {
                             entry.ipv6s = [];
@@ -362,7 +364,7 @@ var HTTP_REQUEST_OBSERVER = {
                         send_event("sixornot-dns-lookup-event", entry.origin, entry);
                     };
                     if (entry.dns_cancel) {
-                        entry.dns_cancel();
+                        entry.dns_cancel.cancel();
                     }
                     entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, on_returned_ips);
                 }
@@ -539,8 +541,8 @@ var HTTP_REQUEST_OBSERVER = {
                         + " - removing all items for this inner window...", 1);
                 RequestCache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
                     if (item.dns_cancel) {
-                        log("Cancelling DNS...", 1);
-                        item.dns_cancel();
+                        log("Cancelling DNS..." + typeof item.dns_cancel, 1);
+                        item.dns_cancel.cancel();
                     }
                 });
             } else {
@@ -555,7 +557,7 @@ var HTTP_REQUEST_OBSERVER = {
                 RequestWaitingList.splice(domWindowOuter, 1)[0].forEach(function (item, index, items) {
                     if (item.dns_cancel) {
                         log("Cancelling DNS...", 1);
-                        item.dns_cancel();
+                        item.dns_cancel.cancel();
                     }
                 });
             } else {
@@ -2247,10 +2249,6 @@ defineLazyGetter("clipboardHelper", function () {
     return Components.classes["@mozilla.org/widget/clipboardhelper;1"]
                     .getService(Components.interfaces.nsIClipboardHelper);
 });
-defineLazyGetter("workerFactory", function () {
-    return Components.classes["@mozilla.org/threads/workerfactory;1"]
-                    .createInstance(Components.interfaces.nsIWorkerFactory);
-});
 defineLazyGetter("threadManager", function() {
     return Components.classes["@mozilla.org/thread-manager;1"]
                      .getService(Components.interfaces.nsIThreadManager);
@@ -2274,48 +2272,69 @@ dns_handler = {
         locallookup: 2,     // Perform dns.resolve_local lookup
         checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
         checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
-        os: 253,            // Set the operating system
-        loglevel: 254,      // Set the logging level of the ctypes resolver
+        log: 254,           // A logging message (sent from worker to main thread only)
         init: 255           // Initialise dns in the worker
     },
 
-    /*
-        Startup/shutdown functions for dns_handler - call init before using!
-    */
+    /* Initialises the native dns resolver (if possible) - call this first! */
     init : function () {
         var that;
         log("Sixornot - dns_handler - init", 1);
 
         // Initialise ChromeWorker which will be used to do DNS lookups either via ctypes or dnsService
-        this.worker = workerFactory.newChromeWorker("resource://sixornot/includes/dns_worker.js");
+        this.worker = new ChromeWorker("resource://sixornot/includes/dns_worker.js");
 
-        // Shim to get 'this' to refer to dns_handler, not the
+        // Shim to get 'this'(that) to refer to dns_handler, not the
         // worker, when a message is received.
         that = this;
-        this.worker.onmessage = function (evt) {
-            that.onworkermessage.call(that, evt);
-        };
+        this.worker.addEventListener("message", function (evt) {  
+            var data;
+            data = JSON.parse(evt.data);
+            log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 2);
+
+            if (data.reqid === that.reqids.log) {
+                // Log message from dns_worker
+                log(data.content[0], data.content[1]);
+            } else if (data.reqid === that.reqids.checkremote) {
+                // checkremote, set remote ctypes status
+                that.remote_ctypes = data.content;
+            } else if (data.reqid === that.reqids.checklocal) {
+                // checklocal, set local ctypes status
+                that.local_ctypes = data.content;
+            } else if (data.reqid === that.reqids.init) {
+                // Initialisation acknowledgement
+                log("Sixornot - dns_handler:onworkermessage - init ack received", 2);
+            } else if (data.reqid === that.reqids.remotelookup ||
+                       data.reqid === that.reqids.locallookup) {
+                // remotelookup/locallookup, find correct callback and call it
+                callback = that.remove_callback_id(data.callbackid);
+                // Execute callback
+                if (callback) {
+                    callback(data.content);
+                }
+            }
+        }, false);
+
+        this.worker.addEventListener("error", function (err) {  
+            log(err.message + ", " + err.filename + ", " + err.lineno, 1);
+        }, false);
 
         // Set up request map, which will map async requests to their callbacks
+        // Every time a request is started its callback is added to the callback_ids
+        // When a request is completed the callback_ids can be queried to find the correct
+        // callback to call.
         this.callback_ids = [];
         this.next_callback_id = 0;
-        // Every time a request is processed its callback is added to the callback_ids
-        // When a request is completed the callback_ids can be queried to find the correct callback to call
-        // Any message which doesn't need a callback association should be sent with a callback ID of -1
 
-        // Finally set the logging level appropriately and call init
-        this.worker.postMessage([-1, this.reqids.loglevel, PREF_BRANCH_SIXORNOT.getIntPref("loglevel")]);
-        this.worker.postMessage([-1, this.reqids.init, xulRuntime.OS.toLowerCase()]);
+        // Finally init the worker
+        this.worker.postMessage(JSON.stringify({"reqid": this.reqids.init,
+            "content": xulRuntime.OS.toLowerCase()}));
     },
 
-    set_worker_loglevel : function (newloglevel) {
-        this.worker.postMessage([-1, this.reqids.loglevel, newloglevel]);
-    },
-
+    /* Shuts down the native dns resolver (if running) */
     shutdown : function () {
         log("Sixornot - dns_handler:shutdown", 1);
-        // Shutdown async resolver
-        this.worker.postMessage([-1, this.reqids.shutdown, null]);
+        this.worker.postMessage(JSON.stringify({"reqid": this.reqids.shutdown}));
     },
 
 
@@ -2720,17 +2739,13 @@ dns_handler = {
         return "global";
     },
 
-    /*
-        Returns value of preference network.dns.disableIPv6
-    */
+    /* Returns value of preference network.dns.disableIPv6 */
     is_ip6_disabled : function () {
         return Services.prefs.getBoolPref("network.dns.disableIPv6");
     },
 
 
-    /*
-        Returns true if the domain specified is in the list of IPv4-only domains
-    */
+    /* Returns true if the domain specified is in the list of IPv4-only domains */
     is_ip4only_domain : function (domain) {
         var ip4onlydomains, i;
         ip4onlydomains = Services.prefs.getCharPref("network.dns.ipv4OnlyDomains").replace(/\s+/g, "").toLowerCase().split(",");
@@ -2745,10 +2760,8 @@ dns_handler = {
         return false;
     },
 
-    /*
-        Finding local IP address(es)
-    */
-    // Return the IP address(es) of the local host
+    /* Finding local IP address(es)
+       Uses either the built-in Firefox method or OS-native depending on availability */
     resolve_local_async : function (callback) {
         log("Sixornot - dns_handler:resolve_local_async");
         if (this.local_ctypes) {
@@ -2760,31 +2773,27 @@ dns_handler = {
         }
     },
 
+    /* Use dns_worker thread to perform OS-native DNS lookup for the local host */
     local_ctypes_async : function (callback) {
         var new_callback_id;
         log("Sixornot - dns_handler:local_ctypes_async - selecting resolver for local host lookup", 2);
-        // This uses dns_worker to do the work asynchronously
-
         new_callback_id = this.add_callback_id(callback);
 
-        this.worker.postMessage([new_callback_id, this.reqids.locallookup, null]);
+        this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.locallookup, "content": null}));
 
         return this.make_cancel_obj(new_callback_id);
     },
 
-    // Proxy to remote_firefox_async since it does much the same thing
+    /* Proxy to remote_firefox_async since it does much the same thing */
     local_firefox_async : function (callback) {
         log("Sixornot - dns_handler:local_firefox_async - resolving local host using Firefox builtin method", 2);
         return this.remote_firefox_async(dnsService.myHostName, callback);
     },
 
 
-    /*
-        Finding remote IP address(es)
-    */
-    // Resolve IP address(es) of a remote host using DNS
+    /* Finding remote IP address(es)
+       Resolve IP address(es) of a remote host using DNS */
     resolve_remote_async : function (host, callback) {
-        log("Sixornot - dns_handler:resolve_remote_async - host: " + host + ", callback: " + callback, 2);
         if (this.remote_ctypes) {
             // If remote resolution is happening via ctypes...
             return this.remote_ctypes_async(host, callback);
@@ -2794,14 +2803,13 @@ dns_handler = {
         }
     },
 
+    /* Use dns_worker thread to perform OS-native DNS lookup for a remote host */
     remote_ctypes_async : function (host, callback) {
         var new_callback_id;
         log("Sixornot - dns_handler:remote_ctypes_async - host: " + host + ", callback: " + callback, 2);
-        // This uses dns_worker to do the work asynchronously
-
         new_callback_id = this.add_callback_id(callback);
 
-        this.worker.postMessage([new_callback_id, this.reqids.remotelookup, host]);
+        this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.remotelookup, "content": host}));
 
         return this.make_cancel_obj(new_callback_id);
     },
@@ -2814,8 +2822,7 @@ dns_handler = {
             onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
                 var ip_addresses;
                 // Request has been cancelled - ignore
-                if (nsstatus === Components.results.NS_ERROR_ABORT)
-                {
+                if (nsstatus === Components.results.NS_ERROR_ABORT) {
                     return;
                 }
                 // Request has failed for some reason
@@ -2840,6 +2847,7 @@ dns_handler = {
             }
         };
         try {
+            // TODO - remove need for threadManager here??
             return dnsService.asyncResolve(host, 0, my_callback, threadManager.currentThread);
         } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
@@ -2879,7 +2887,7 @@ dns_handler = {
 
     // Add a callback to the callback_ids array with the next available ID
     add_callback_id : function (callback) {
-        log("Sixornot - dns_handler:add_callback_id - callback: " + callback, 2);
+        log("Sixornot - dns_handler:add_callback_id", 2);
         // Use next available callback ID, return that ID
         this.next_callback_id = this.next_callback_id + 1;
         this.callback_ids.push([this.next_callback_id, callback]);
@@ -2896,50 +2904,6 @@ dns_handler = {
             }
         };
         return obj;
-    },
-
-
-    /*
-        Recieve and act on messages from Worker
-    */
-    // Called by worker to pass information back to main thread
-    onworkermessage : function (evt) {
-        var callback;
-        log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 2);
-        // evt.data is the information passed back
-        // This is an array: [callback_id, request_id, data]
-        // data will usually be a list of IP addresses
-        // Look up correct callback in callback_ids array
-
-        // checkremote, set remote ctypes status
-        if (evt.data[1] === this.reqids.checkremote)
-        {
-            this.remote_ctypes = evt.data[2];
-        }
-        // checklocal, set local ctypes status
-        else if (evt.data[1] === this.reqids.checklocal)
-        {
-            this.local_ctypes = evt.data[2];
-        }
-        else if (evt.data[1] === this.reqids.init)
-        {
-            log("Sixornot - dns_handler:onworkermessage - init ack received", 2);
-        }
-        else if (evt.data[1] === this.reqids.loglevel)
-        {
-            log("Sixornot - dns_handler:onworkermessage - loglevel change ack received", 2);
-        }
-        // remotelookup/locallookup, find correct callback and call it
-        else if (evt.data[1] === this.reqids.remotelookup || evt.data[1] === this.reqids.locallookup)
-        {
-            callback = this.remove_callback_id(evt.data[0]);
-            log("Sixornot - dns_handler:onworkermessage, typeof callback: " + typeof callback, 1);
-            // Execute callback
-            if (callback)
-            {
-                callback(evt.data[2]);
-            }
-        }
     },
 
 

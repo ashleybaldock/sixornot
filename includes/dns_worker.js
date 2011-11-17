@@ -31,83 +31,56 @@
 
 
 // Global variables defined by this script
-var consoleService, log, parse_exception, dns, loglevel;
-
-loglevel = 0;
+//var consoleService, log, parse_exception, dns;
+var log, parse_exception, dns;
 
 // Utility functions
-
-// Used by log to write messages to console
-consoleService = XPCOM.getService("@mozilla.org/consoleservice;1");
 
 log = function (message, level)
 {
     "use strict";
-    // Three log levels, 0 = critical, 1 = normal, 2 = verbose
-    // Default level is 1
-    level = level || 1;
-    // If preference unset, default to 1 (normal) level
-    if (level <= loglevel)
-    {
-        consoleService.logStringMessage(message);
-    }
+    postMessage(JSON.stringify({"reqid": 254, "content": [message, level]}));
 };
 
 // Returns a string version of an exception object with its stack trace
-// TODO - Report exceptions back up to main thread for proper handling
+// Uncaught exceptions will be handled by the onerror handler added to the worker by its parent
 parse_exception = function (e)
 {
     "use strict";
-    if (!e)
-    {
+    if (!e) {
         return "";
-    }
-    else if (!e.stack)
-    {
+    } else if (!e.stack) {
         return String(e);
-    }
-    else
-    {
+    } else {
         return String(e) + " \n" + e.stack;
     }
 };
 
-// Data is an array
-// [callback_id, request_id, data]
-// callback_id is a number which will be passed back to the main thread
+// Data is a serialised dict
+// {"callbackid": , "reqid": , "content": }
+// callbackid is a number which will be passed back to the main thread
 //      to indicate which callback function (if any) should be executed
-//      when this request completes
-// request_id references the type of request, see reqids table
-// data is arbitrary information passed to the request_id function
+//      when this request completes (optional)
+// reqid references the type of request, see reqids table
+// content is arbitrary information passed to the reqid function (optional)
 
 // If you do var onmessage this doesn't function properly
 onmessage = function (evt)
 {
     "use strict";
     log("Sixornot(dns_worker) - onmessage: " + evt.toSource(), 1);
-    // Special case messages should be handled here
-    if (evt.data && evt.data[1] && evt.data[1] === 255)
-    {
-        // 255 = init message
-        // Set up DNS (load ctypes modules etc.)
-        dns.init(evt.data[2]);
-        // Post back message to indicate whether init was successful
-        // Init also posts back messages to indicate specific success
-        postMessage([-1, 255, true]);
-    }
-    else if (evt.data && evt.data[1] && evt.data[1] === 254)
-    {
-        // 254 = loglevel message
-        // Set logging level to specified level
-        loglevel = evt.data[2];
-        log("Sixornot(dns_worker) - loglevel set to: " + evt.data[2], 1);
-        // Return and indicate success
-        postMessage([-1, 254, true]);
-    }
-    // All other codes should be passed through to dns for processing
-    else if (evt.data && evt.data[1])
-    {
-        dns.dispatch_message(evt.data);
+
+    // Because of new worker implementation we have to manually deserialise here
+    if (evt.data) {
+        var data = JSON.parse(evt.data);
+        if (data.reqid === 255) {
+            dns.init(data.content);
+            // Post back message to indicate whether init was successful
+            // init() also posts back messages to indicate specific success
+            postMessage(JSON.stringify({"reqid": 255, "content": true}));
+        } else {
+            dns.dispatch_message(data);
+        }
     }
 };
 
@@ -142,29 +115,25 @@ dns = {
         checklocal: 4       // Check whether ctypes resolver is in use for local lookups
     },
 
-    check_remote : function ()
-    {
+    check_remote : function () {
         "use strict";
         log("Sixornot(dns_worker) - dns:check_remote, value: " + this.remote_ctypes);
         return this.remote_ctypes;
     },
-    check_local : function ()
-    {
+    check_local : function () {
         "use strict";
         log("Sixornot(dns_worker) - dns:check_local, value: " + this.local_ctypes);
         return this.local_ctypes;
     },
 
-    init : function (operatingsystem)
-    {
+    init : function (operatingsystem) {
         "use strict";
         log("Sixornot(dns_worker) - dns:init");
 
         this.os = operatingsystem;
 
         // OS specific sections
-        switch(this.os)
-        {
+        switch(this.os) {
             case "darwin":
                 this.load_osx();
                 log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: OSX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
@@ -186,21 +155,18 @@ dns = {
         }
 
         // Post a message back to main thread to indicate availability of ctypes
-        postMessage([-1, this.reqids.checkremote, this.remote_ctypes]);
-        postMessage([-1, this.reqids.checklocal, this.local_ctypes]);
+        postMessage(JSON.stringify({"reqid": this.reqids.checkremote, "content": this.remote_ctypes}));
+        postMessage(JSON.stringify({"reqid": this.reqids.checklocal, "content": this.local_ctypes}));
 
         log("Sixornot(dns_worker) - dns:init completed");
     },
 
-    shutdown : function ()
-    {
+    shutdown : function () {
         "use strict";
         log("Sixornot(dns_worker) - shutdown");
-        if (this.remote_ctypes || this.local_ctypes)
-        {
+        if (this.remote_ctypes || this.local_ctypes) {
             // Shutdown ctypes library
-            switch(this.os)
-            {
+            switch(this.os) {
                 case "winnt":
                     this.library1.close();
                     this.library2.close();
@@ -219,8 +185,7 @@ dns = {
     },
 
     // Select correct function to execute based on ID code sent by main thread
-    dispatch_message : function (message)
-    {
+    dispatch_message : function (message) {
         "use strict";
         var dispatch, f, ret;
         log("Sixornot(dns_worker) - dns:dispatch_message: " + message.toSource(), 2);
@@ -233,25 +198,21 @@ dns = {
         dispatch[this.reqids.checklocal] = this.check_local;
 
         // Use request_id (data[1]) to select function
-        f = dispatch[message[1]];
-        if (f)
-        {
+        f = dispatch[message.reqid];
+        if (f) {
             // Need to use function.call so that the value of "this" in the called function is set correctly
-            ret = f.call(this, message[2]);
+            ret = f.call(this, message.content);
             // Return data to main thread
-            postMessage([message[0], message[1], ret]);
+            postMessage(JSON.stringify({"callbackid": message.callbackid, "reqid": message.reqid, "content": ret}));
         }
     },
 
-    resolve_local : function ()
-    {
+    resolve_local : function () {
         "use strict";
-        var first_addr, first_addr_ptr, ret, i, addresses, new_addr, sa, address,
-            ifaddr, ifaddr_ptr, adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize;
+        var ret, addresses, sa, address, ifaddr, ifaddr_ptr, adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_local", 2);
 
-        switch(this.os)
-        {
+        switch(this.os) {
             case "winnt":
                 adapbuf   = (ctypes.uint8_t.array(8192))();
                 adapsize  = ctypes.unsigned_long(8192);
@@ -261,8 +222,7 @@ dns = {
 
                 ret = this.GetAdaptersAddresses(this.AF_UNSPEC, adapflags, null, adapbuf, adapsize.address());
 
-                if (ret > 0)
-                {
+                if (ret > 0) {
                     log("Sixornot(dns_worker) - dns:resolve_local - GetAdaptersAddresses failed with exit code: " + ret, 1);
                     return ["FAIL"];
                 }
@@ -273,29 +233,23 @@ dns = {
                 addresses = [];
 
                 // Loop through returned addresses and add them to array
-                for (;;)
-                {
-                    if (adapter.IfType !== this.IF_TYPE_SOFTWARE_LOOPBACK && adapter.IfType !== this.IF_TYPE_TUNNEL && !adapter.FirstUnicastAddress.isNull())
-                    {
+                for (;;) {
+                    if (adapter.IfType !== this.IF_TYPE_SOFTWARE_LOOPBACK && adapter.IfType !== this.IF_TYPE_TUNNEL && !adapter.FirstUnicastAddress.isNull()) {
                         address = adapter.FirstUnicastAddress.contents;
 
-                        for (;;)
-                        {
-                            switch (address.Address.lpSockaddr.contents.sa_family)
-                            {
+                        for (;;) {
+                            switch (address.Address.lpSockaddr.contents.sa_family) {
                                 case this.AF_INET:
                                 case this.AF_INET6:
                                     addrsize.value = 128;
                                     this.WSAAddressToString(address.Address.lpSockaddr, address.Address.iSockaddrLength, null, addrbuf, addrsize.address());
-                                    if (addresses.indexOf(addrbuf.readString()) === -1)
-                                    {
+                                    if (addresses.indexOf(addrbuf.readString()) === -1) {
                                         addresses.push(addrbuf.readString());
                                     }
                                     break;
                             }
 
-                            if (address.Next.isNull())
-                            {
+                            if (address.Next.isNull()) {
                                 break;
                             }
                             address = address.Next.contents;
@@ -316,8 +270,7 @@ dns = {
                 ifaddr_ptr = this.ifaddrs.ptr();
                 ret = this.getifaddrs(ifaddr_ptr.address());
 
-                if (ret > 0 || ifaddr_ptr.isNull())
-                {
+                if (ret > 0 || ifaddr_ptr.isNull()) {
                     log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Got no results from getifaddrs", 1);
                     return ["FAIL"];
                 }
@@ -326,10 +279,8 @@ dns = {
                 addrbuf   = (ctypes.char.array(128))();
                 addresses = [];
 
-                for (;;)
-                {
-                    switch(ifaddr.ifa_addr.contents.sa_family)
-                    {
+                for (;;) {
+                    switch(ifaddr.ifa_addr.contents.sa_family) {
                         case this.AF_INET:
                             sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
                             this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
@@ -349,8 +300,7 @@ dns = {
                             break;
                     }
 
-                    if (ifaddr.ifa_next.isNull())
-                    {
+                    if (ifaddr.ifa_next.isNull()) {
                         break;
                     }
                     ifaddr = ifaddr.ifa_next.contents;
@@ -369,15 +319,12 @@ dns = {
     },
 
     // Proxy to ctypes getaddrinfo functionality
-    resolve_remote : function (host)
-    {
+    resolve_remote : function (host) {
         "use strict";
-        var hints, first_addr, first_addr_ptr, ret, i, addresses, new_addr,
-            addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
+        var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_remote - resolving host: " + host, 2);
 
-        switch(this.os)
-        {
+        switch(this.os) {
             case "darwin":
             case "linux":
                 hints = this.addrinfo();
@@ -390,8 +337,7 @@ dns = {
                 addrinfo_ptr = this.addrinfo.ptr();
                 ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
 
-                if (ret > 0 || addrinfo_ptr.isNull())
-                {
+                if (ret > 0 || addrinfo_ptr.isNull()) {
                     log("Sixornot(dns_worker) - dns:resolve_remote(OSX/Linux) - Got no results from getaddrinfo", 1);
                     return ["FAIL"];
                 }
@@ -400,10 +346,8 @@ dns = {
                 addrbuf   = (ctypes.char.array(128))();
                 addresses = [];
 
-                for (;;)
-                {
-                    switch(addrinfo.ai_addr.contents.sa_family)
-                    {
+                for (;;) {
+                    switch(addrinfo.ai_addr.contents.sa_family) {
                         case this.AF_INET:
                             sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in);
                             this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
@@ -423,8 +367,7 @@ dns = {
                             break;
                     }
 
-                    if (addrinfo.ai_next.isNull())
-                    {
+                    if (addrinfo.ai_next.isNull()) {
                         break;
                     }
                     addrinfo = addrinfo.ai_next.contents;
@@ -466,8 +409,7 @@ dns = {
                 addrinfo_ptr = this.addrinfo.ptr();
                 ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
 
-                if (ret > 0 || addrinfo_ptr.isNull())
-                {
+                if (ret > 0 || addrinfo_ptr.isNull()) {
                     log("Sixornot(dns_worker) - dns:resolve_remote(WIN) - Got no results from getaddrinfo", 1);
                     return ["FAIL"];
                 }
@@ -477,10 +419,8 @@ dns = {
                 addrsize  = ctypes.uint32_t();
                 addresses = [];
 
-                for (;;)
-                {
-                    switch(addrinfo.ai_addr.contents.sa_family)
-                    {
+                for (;;) {
+                    switch(addrinfo.ai_addr.contents.sa_family) {
                         case this.AF_INET:
                             addrsize.value = 128;
                             this.WSAAddressToString(addrinfo.ai_addr, 16, null, addrbuf, addrsize.address());
@@ -500,8 +440,7 @@ dns = {
                             break;
                     }
 
-                    if (addrinfo.ai_next.isNull())
-                    {
+                    if (addrinfo.ai_next.isNull()) {
                         break;
                     }
                     addrinfo = addrinfo.ai_next.contents;
@@ -525,13 +464,10 @@ dns = {
         // On Mac OSX do both local and remote lookups via ctypes
         this.remote_ctypes = true;
         this.local_ctypes  = true;
-        try
-        {
+        try {
             this.library = ctypes.open(this.osx_library);
             log("Sixornot(dns_worker) - dns:load_osx - opened library: '" + this.osx_library + "'", 1);
-        }
-        catch (e)
-        {
+        } catch (e) {
             log("Sixornot(dns_worker) - dns:load_osx - cannot open '" + this.osx_library + "' - ctypes lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.local_ctypes  = false;
@@ -662,15 +598,11 @@ dns = {
             ]);
 
         // Set up the ctypes functions we need
-        if (this.local_ctypes || this.remote_ctypes)
-        {
-            try
-            {
+        if (this.local_ctypes || this.remote_ctypes) {
+            try {
                 this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi,
                     ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.uint32_t);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'inet_ntop' function, local_ctypes and remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
@@ -678,58 +610,42 @@ dns = {
             }
         }
 
-        if (this.remote_ctypes)
-        {
-            try
-            {
+        if (this.remote_ctypes) {
+            try {
                 this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi,
                     ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'getaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
         }
-        if (this.remote_ctypes)
-        {
-            try
-            {
+        if (this.remote_ctypes) {
+            try {
                 this.freeaddrinfo = this.library.declare("freeaddrinfo", ctypes.default_abi,
                     ctypes.int, this.addrinfo.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'freeaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
         }
 
-        if (this.local_ctypes)
-        {
-            try
-            {
+        if (this.local_ctypes) {
+            try {
                 this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi,
                     ctypes.int, this.ifaddrs.ptr.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'getifaddrs' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
             }
         }
-        if (this.local_ctypes)
-        {
-            try
-            {
+        if (this.local_ctypes) {
+            try {
                 this.freeifaddrs = this.library.declare("freeifaddrs", ctypes.default_abi,
                     ctypes.void_t, this.ifaddrs.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'freeifaddrs' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
@@ -737,8 +653,7 @@ dns = {
         }
 
         // If initialisation failed then close library
-        if (!this.local_ctypes && !this.remote_ctypes && this.library)
-        {
+        if (!this.local_ctypes && !this.remote_ctypes && this.library) {
             this.library.close();
             this.library = null;
         }
@@ -747,33 +662,26 @@ dns = {
         return true;
     },
 
-    load_win : function ()
-    {
+    load_win : function () {
         "use strict";
         var e;
         // On Windows do both local and remote lookups via ctypes
         this.remote_ctypes = true;
         this.local_ctypes  = true;
-        try
-        {
+        try {
             // Library 1 needed only for local lookup
             this.library1 = ctypes.open(this.win_library1);
             log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library1 + "'", 1);
-        }
-        catch (e)
-        {
+        } catch (e) {
             log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.win_library1 + "' - ctypes local lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.local_ctypes  = false;
         }
-        try
-        {
+        try {
             // Library 2 needed for local and remote lookup
             this.library2 = ctypes.open(this.win_library2);
             log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library2 + "'", 1);
-        }
-        catch (e)
-        {
+        } catch (e) {
             log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.win_library2 + "' - ctypes local and remote lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.remote_ctypes = false;
@@ -962,65 +870,49 @@ dns = {
         ]);
 
         // Set up the ctypes functions we need
-        if (this.remote_ctypes)
-        {
-            try
-            {
+        if (this.remote_ctypes) {
+            try {
                 this.getaddrinfo = this.library2.declare("getaddrinfo", ctypes.default_abi,
                     ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'getaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
         }
 
-        if (this.remote_ctypes)
-        {
-            try
-            {
+        if (this.remote_ctypes) {
+            try {
                 this.freeaddrinfo = this.library2.declare("freeaddrinfo", ctypes.default_abi,
                     ctypes.int, this.addrinfo.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'freeaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
         }
 
-        if (this.local_ctypes)
-        {
+        if (this.local_ctypes) {
             // Try to initialise WSAAddressToString (Windows method for producing string representation of IP address)
-            try
-            {
+            try {
                 this.WSAAddressToString = this.library2.declare("WSAAddressToStringA",
                     ctypes.winapi_abi, ctypes.int, this.sockaddr.ptr, ctypes.uint32_t,
                     ctypes.voidptr_t, ctypes.char.ptr, ctypes.uint32_t.ptr );
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'WSAAddressToString' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.library1.close();
                 this.local_ctypes = false;
             }
         }
-        if (this.local_ctypes)
-        {
+        if (this.local_ctypes) {
             // Try to initialise GetAdaptorAddresses (Windows method for obtaining interface IP addresses)
-            try
-            {
+            try {
                 this.GetAdaptersAddresses = this.library1.declare("GetAdaptersAddresses",
                     ctypes.winapi_abi, ctypes.unsigned_long, ctypes.unsigned_long,
                     ctypes.unsigned_long, ctypes.voidptr_t, ctypes.uint8_t.ptr,
                     ctypes.unsigned_long.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'GetAdaptorAddresses' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
                 this.local_ctypes = false;
@@ -1028,13 +920,11 @@ dns = {
         }
 
         // If initialisation failed then close appropriate libraries
-        if (!this.local_ctypes && this.library1)
-        {
+        if (!this.local_ctypes && this.library1) {
             this.library1.close();
             this.library1 = null;
         }
-        if (!this.local_ctypes && !this.remote_ctypes && this.library2)
-        {
+        if (!this.local_ctypes && !this.remote_ctypes && this.library2) {
             this.library2.close();
             this.library2 = null;
         }
@@ -1043,20 +933,16 @@ dns = {
         return true;
     },
 
-    load_linux : function ()
-    {
+    load_linux : function () {
         "use strict";
         var e;
         // On Linux do both local and remote lookups via ctypes
         this.remote_ctypes = true;
         this.local_ctypes  = true;
-        try
-        {
+        try {
             this.library = ctypes.open(this.linux_library);
             log("Sixornot(dns_worker) - dns:load_linux - opened library: '" + this.linux_library + "'", 1);
-        }
-        catch (e)
-        {
+        } catch (e) {
             log("Sixornot(dns_worker) - dns:load_linux - cannot open '" + this.linux_library + "' - ctypes lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.local_ctypes  = false;
@@ -1156,15 +1042,11 @@ dns = {
              ]);
 
         // Set up the ctypes functions we need
-        if (this.local_ctypes || this.remote_ctypes)
-        {
-            try
-            {
+        if (this.local_ctypes || this.remote_ctypes) {
+            try {
                 this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi,
                     ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.uint32_t);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'inet_ntop' function, local_ctypes and remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
@@ -1172,56 +1054,40 @@ dns = {
             }
         }
 
-        if (this.remote_ctypes)
-        {
-            try
-            {
+        if (this.remote_ctypes) {
+            try {
                 this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi, ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'getaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
         }
-        if (this.remote_ctypes)
-        {
-            try
-            {
+        if (this.remote_ctypes) {
+            try {
                 this.freeaddrinfo = this.library.declare("freeaddrinfo", ctypes.default_abi,
                     ctypes.int, this.addrinfo.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'freeaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
         }
 
-        if (this.local_ctypes)
-        {
-            try
-            {
+        if (this.local_ctypes) {
+            try {
                 this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi, ctypes.int, this.ifaddrs.ptr.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'getifaddrs' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
             }
         }
-        if (this.local_ctypes)
-        {
-            try
-            {
+        if (this.local_ctypes) {
+            try {
                 this.freeifaddrs = this.library.declare("freeifaddrs", ctypes.default_abi,
                     ctypes.void_t, this.ifaddrs.ptr);
-            }
-            catch (e)
-            {
+            } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_linux - Unable to setup 'freeifaddrs' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
@@ -1229,8 +1095,7 @@ dns = {
         }
 
         // If initialisation failed then close library
-        if (!this.local_ctypes && !this.remote_ctypes && this.library)
-        {
+        if (!this.local_ctypes && !this.remote_ctypes && this.library) {
             this.library.close();
             this.library = null;
         }
