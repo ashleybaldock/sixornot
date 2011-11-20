@@ -65,8 +65,7 @@
 /*global gt, unload, watchWindows, initLocalisation, gbi */
 
 // Provided in lazy getters
-/*global consoleService, ioService, proxyService, dnsService, clipboardHelper,
-         workerFactory, threadManager */
+/*global */
 
 /*
     Constants and global variables
@@ -135,7 +134,6 @@ var NS_XUL,
     get_int_pref,
     set_initial_prefs,
     parse_exception,
-    defineLazyGetter,
     // Global objects
     xulRuntime;
 
@@ -201,7 +199,9 @@ log = (function () {
         level = level || 1;
         // If preference unset, default to 1 (normal) level
         if (level <= get_loglevel()) {
-            consoleService.logStringMessage(message);
+            Components.classes["@mozilla.org/consoleservice;1"]
+                .getService(Components.interfaces.nsIConsoleService)
+                .logStringMessage(message);
         }
     };
 }());
@@ -715,8 +715,8 @@ insert_code = function (win) {
         urllabel.setAttribute("value", gt("sixornot_web"));
         urllabel.setAttribute("crop", "none");
         urllabel.sixornot_decorate = true;
-        urllabel.sixornot_hyperlink = gt("tt_gotowebsite");
-        urllabel.setAttribute("tooltiptext", gt("tt_open_settings"));
+        urllabel.sixornot_hyperlink = gt("sixornot_weblink");
+        urllabel.setAttribute("tooltiptext", gt("tt_gotowebsite"));
         var urlhbox = doc.createElement("urlhbox");
         urlhbox.appendChild(urllabel);
         urlhbox.setAttribute("align", "end");
@@ -1154,7 +1154,9 @@ insert_code = function (win) {
                 try {
                     evt.stopPropagation();
                     log("Sixornot - panel:on_click - sixornot_copytext '" + evt.target.sixornot_copytext + "' to clipboard", 1);
-                    clipboardHelper.copyString(evt.target.sixornot_copytext);
+                    Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+                        .getService(Components.interfaces.nsIClipboardHelper)
+                        .copyString(evt.target.sixornot_copytext);
                 } catch (e) {
                     log("exception!" + parse_exception(e), 0);
                 }
@@ -2215,46 +2217,6 @@ parse_exception = function (e) {
     }
 };
 
-// Lazy getter services
-defineLazyGetter = function (getterName, getterFunction) {
-    // The first time this getter is requested it'll decay into the function getterFunction
-    /*jslint nomen: false*/
-    this.__defineGetter__(getterName, function () {
-        /*jslint nomen: true*/
-        // Remove stale reference to getterFunction
-        delete this[getterName];
-        // Produce a fresh copy of getterFunction with the correct this applied
-        this[getterName] = getterFunction.apply(this);
-        return this[getterName];
-    });
-};
-
-defineLazyGetter("consoleService", function () {
-    return Components.classes["@mozilla.org/consoleservice;1"]
-                    .getService(Components.interfaces.nsIConsoleService);
-});
-defineLazyGetter("ioService", function () {
-    return Components.classes["@mozilla.org/network/io-service;1"]
-                    .getService(Components.interfaces.nsIIOService);
-});
-defineLazyGetter("proxyService", function () {
-    return Components.classes["@mozilla.org/network/protocol-proxy-service;1"]
-                    .getService(Components.interfaces.nsIProtocolProxyService);
-});
-defineLazyGetter("dnsService", function () {
-    return Components.classes["@mozilla.org/network/dns-service;1"]
-                    .getService(Components.interfaces.nsIDNSService);
-});
-defineLazyGetter("clipboardHelper", function () {
-    return Components.classes["@mozilla.org/widget/clipboardhelper;1"]
-                    .getService(Components.interfaces.nsIClipboardHelper);
-});
-defineLazyGetter("threadManager", function() {
-    return Components.classes["@mozilla.org/thread-manager;1"]
-                     .getService(Components.interfaces.nsIThreadManager);
-});
-
-
 
 // The DNS Handler which does most of the work of the extension
 dns_handler = {
@@ -2281,7 +2243,7 @@ dns_handler = {
         var that;
         log("Sixornot - dns_handler - init", 1);
 
-        // Initialise ChromeWorker which will be used to do DNS lookups either via ctypes or dnsService
+        // Initialise ChromeWorker which will be used to do DNS lookups either via ctypes or built-in DNS resolver
         this.worker = new ChromeWorker("resource://sixornot/includes/dns_worker.js");
 
         // Shim to get 'this'(that) to refer to dns_handler, not the
@@ -2786,8 +2748,11 @@ dns_handler = {
 
     /* Proxy to remote_firefox_async since it does much the same thing */
     local_firefox_async : function (callback) {
+        var myhostname;
         log("Sixornot - dns_handler:local_firefox_async - resolving local host using Firefox builtin method", 2);
-        return this.remote_firefox_async(dnsService.myHostName, callback);
+        myhostname = Components.classes["@mozilla.org/network/dns-service;1"]
+                        .getService(Components.interfaces.nsIDNSService).myHostName;
+        return this.remote_firefox_async(myhostname, callback);
     },
 
 
@@ -2847,8 +2812,12 @@ dns_handler = {
             }
         };
         try {
-            // TODO - remove need for threadManager here??
-            return dnsService.asyncResolve(host, 0, my_callback, threadManager.currentThread);
+            return Components.classes["@mozilla.org/network/dns-service;1"]
+                    .getService(Components.interfaces.nsIDNSService)
+                    .asyncResolve(host, 0, my_callback,
+                        Components.classes["@mozilla.org/thread-manager;1"]
+                        .getService(Components.interfaces.nsIThreadManager)
+                        .currentThread);
         } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
             callback(["FAIL"]);
@@ -2928,9 +2897,14 @@ dns_handler = {
     is_proxied_dns : function (url) {
         var uri, proxyinfo;
         log("Sixornot - dns_handler:is_proxied_dns - url: " + url, 2);
-        uri = ioService.newURI(url, null, null);
+        uri = Components.classes["@mozilla.org/network/io-service;1"]
+                .getService(Components.interfaces.nsIIOService)
+                .newURI(url, null, null);
         // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
-        proxyinfo = proxyService.resolve(uri, 0);
+        // TODO - do this async!
+        proxyinfo = Components.classes["@mozilla.org/network/protocol-proxy-service;1"]
+                    .getService(Components.interfaces.nsIProtocolProxyService)
+                    .resolve(uri, 0);
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
         return (proxyinfo !== null) && (proxyinfo.flags && proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
     }
