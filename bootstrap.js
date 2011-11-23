@@ -101,21 +101,6 @@ var NS_XUL,
         ipv4 only                   4only_16.png, 4only_24.png
         Unknown                     other_16.png, other_24.png
     */
-    // Colour icons - TODO - find a way to have less variables (maybe an object)
-    s6only_16_c, s6and4_16_c, s4pot6_16_c, s4only_16_c, sother_16_c, serror_16_c,
-    s6only_24_c, s6and4_24_c, s4pot6_24_c, s4only_24_c, sother_24_c, serror_24_c,
-    s6only_cache_16_c, s4pot6_cache_16_c, s4only_cache_16_c, sother_cache_16_c,
-    s6only_cache_24_c, s4pot6_cache_24_c, s4only_cache_24_c, sother_cache_24_c,
-    // Greyscale icons
-    s6only_16_g, s6and4_16_g, s4pot6_16_g, s4only_16_g, sother_16_g, serror_16_g,
-    s6only_24_g, s6and4_24_g, s4pot6_24_g, s4only_24_g, sother_24_g, serror_24_g,
-    s6only_cache_16_g, s4pot6_cache_16_g, s4only_cache_16_g, sother_cache_16_g,
-    s6only_cache_24_g, s4pot6_cache_24_g, s4only_cache_24_g, sother_cache_24_g,
-    // Current icons
-    s6only_16,   s6and4_16,   s4pot6_16,   s4only_16,   sother_16, serror_16,
-    s6only_24,   s6and4_24,   s4pot6_24,   s4only_24,   sother_24, serror_24,
-    s6only_cache_16,   s4pot6_cache_16,   s4only_cache_16,   sother_cache_16,
-    s6only_cache_24,   s4pot6_cache_24,   s4only_cache_24,   sother_cache_24,
     // dns_handler
     dns_handler,
     // Global functions
@@ -129,7 +114,6 @@ var NS_XUL,
     // Utility functions
     include,
     log,
-    set_iconset,
     get_bool_pref,
     get_int_pref,
     set_initial_prefs,
@@ -230,7 +214,6 @@ PREF_OBSERVER = {
         }
         if (aData === "greyscaleicons") {
             log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 1);
-            set_iconset();
             reload();
         }
         // TODO Update worker process to use new log level?
@@ -1476,7 +1459,7 @@ insert_code = function (win) {
                 // TODO - fallback to DNS lookup of current name
                 //      - store this in the cache
                 log("Sixornot - main:create_button - callback: update_state - typeof(hosts) is undefined!", 1);
-                toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+                toolbarButton.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
                 return;
             }
 
@@ -1529,7 +1512,7 @@ insert_code = function (win) {
         toolbarButton.setAttribute("tooltiptext", "Show Sixornot panel");
         toolbarButton.setAttribute("type", "menu");
         toolbarButton.setAttribute("orient", "horizontal");
-        toolbarButton.style.listStyleImage = "url('" + sother_16 + "')";
+        toolbarButton.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
 
         /* Create a panel to show details when clicked */
         panel = create_panel();
@@ -1608,7 +1591,7 @@ insert_code = function (win) {
                 // TODO - fallback to DNS lookup of current name
                 //      - store this in the cache
                 log("Sixornot - main:create_addressbaricon - callback: update_state - typeof(hosts) is undefined!", 1);
-                addressBarIcon.style.listStyleImage = "url('" + sother_16 + "')";
+                addressBarIcon.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
             }
 
         };
@@ -1641,7 +1624,7 @@ insert_code = function (win) {
         addressBarIcon.setAttribute("height", "16");
         addressBarIcon.setAttribute("align", "center");
         addressBarIcon.setAttribute("pack", "center");
-        addressBarIcon.style.listStyleImage = "url('" + sother_16 + "')";
+        addressBarIcon.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
         addressBarIcon.setAttribute("tooltiptext", "Show Sixornot panel");
         /* Box must contain at least one child or it doesn't display */
         addressBarIcon.appendChild(doc.createElement("image"));
@@ -1695,72 +1678,42 @@ insert_code = function (win) {
         if (record.address_family === 4) {
             if (record.ipv6s.length !== 0) {
                 // Actual is v4, DNS is v4 + v6 -> Orange
-                return s4pot6_16;
+                return imagesrc.get("4pot6");
             } else {
                 // Actual is v4, DNS is v4 -> Red
-                return s4only_16;
+                return imagesrc.get("4only");
             }
         } else if (record.address_family === 6) {
             if (record.ipv4s.length === 0) {
                 // Actual is v6, DNS is v6 -> Blue
-                return s6only_16;
+                return imagesrc.get("6only");
             } else {
                 // Actual is v6, DNS is v4 + v6 -> Green
-                return s6and4_16;
+                return imagesrc.get("6and4");
             }
         } else if (record.address_family === 2) {
             // address family 2 is cached responses
             if (record.ipv6s.length === 0) {
                 if (record.ipv4s.length === 0) {
                     // No addresses, grey cache icon
-                    return sother_cache_16;
+                    return imagesrc.get("other");
                 } else {
                     // Only v4 addresses from DNS, red cache icon
-                    return s4only_cache_16;
+                    return imagesrc.get("4only");
                 }
             } else {
                 if (record.ipv4s.length === 0) {
                     // Only v6 addresses from DNS, blue cache icon
-                    return s6only_cache_16;
+                    return imagesrc.get("6only");
                 } else {
                     // Both kinds of addresses from DNS, yellow cache icon
-                    return s4pot6_cache_16;
+                    return imagesrc.get("4pot6");
                 }
             }
         } else if (record.address_family === 0) {
             // This indicates that no addresses were available but request is not cached
             // Show error icon TODO
-            return serror_16;
-            if (record.ipv6s.length === 0) {
-                if (record.ipv4s.length === 0) {
-                    // No addresses at all!
-                    return sother_16;
-                } else {
-                    // Actual is unknown, DNS is v4 -> Red
-                    return s4only_16;
-                }
-            } else {
-                if (record.ipv4s.length === 0) {
-                    // Actual is unknown, DNS is v6, Local is any -> Blue
-                    return s6only_16;
-                } else {
-                    if (localipv6s.length === 0) {
-                        // Actual is unknown, DNS is v4 + v6, Local is v4 -> Orange
-                        return s4pot6_16;
-                    } else if (dns_handler.is_ip4only_domain(record.host)) {
-                        // Always Orange if ip4only set + we have a local v6
-                        return s4pot6_16;
-                    } else {
-                        if (localipv6s.map(dns_handler.typeof_ip6).indexOf("global") !== -1) {
-                            // Actual is unknown, DNS is v4 + v6, Local is v4 + v6 -> Green
-                            return s6and4_16;
-                        } else {
-                            // Actual is unknown, DNS is v4 + v6, Local is v4 -> Orange
-                            return s4pot6_16;
-                        }
-                    }
-                }
-            }
+            return imagesrc.get("error");
         }
     };
 
@@ -1888,7 +1841,7 @@ insert_code = function (win) {
 /*
 if (host === "")
 {
-    set_icon(sother_16);
+    set_icon(imagesrc.get("other"));
     specialLocation = ["unknownsite"];
     log("Sixornot warning: no host returned for \"" + url + "\"");
     return;
@@ -1897,7 +1850,7 @@ if (host === "")
 // Offline mode or otherwise not connected
 if (!win.navigator.onLine)
 {
-    set_icon(sother_16);
+    set_icon(imagesrc.get("other"));
     specialLocation = ["offlinemode"];
     log("Sixornot is in offline mode");
     return;
@@ -1906,71 +1859,13 @@ if (!win.navigator.onLine)
 // Proxy in use for DNS; can't do a DNS lookup
 if (dns_handler.is_proxied_dns(url))
 {
-    set_icon(sother_16);
+    set_icon(imagesrc.get("other"));
     specialLocation = ["nodnserror"];
     log("Sixornot is in proxied mode");
     return;
 }
 */
 
-
-// Image set is either colour or greyscale
-set_iconset = function () {
-    "use strict";
-    log("Sixornot - set_iconset", 2);
-    // If greyscaleicons is set to true, load grey icons, otherwise load default set
-    if (get_bool_pref("greyscaleicons")) {
-        s6only_16 = s6only_16_g;
-        s6and4_16 = s6and4_16_g;
-        s4pot6_16 = s4pot6_16_g;
-        s4only_16 = s4only_16_g;
-        sother_16 = sother_16_g;
-        serror_16 = serror_16_g;
-
-        s6only_cache_16 = s6only_cache_16_g;
-        s4pot6_cache_16 = s4pot6_cache_16_g;
-        s4only_cache_16 = s4only_cache_16_g;
-        sother_cache_16 = sother_cache_16_g;
-
-        s6only_24 = s6only_24_g;
-        s6and4_24 = s6and4_24_g;
-        s4pot6_24 = s4pot6_24_g;
-        s4only_24 = s4only_24_g;
-        sother_24 = sother_24_g;
-        serror_24 = serror_24_g;
-
-        s6only_cache_24 = s6only_cache_24_g;
-        s4pot6_cache_24 = s4pot6_cache_24_g;
-        s4only_cache_24 = s4only_cache_24_g;
-        sother_cache_24 = sother_cache_24_g;
-    }
-    else
-    {
-        s6only_16 = s6only_16_c;
-        s6and4_16 = s6and4_16_c;
-        s4pot6_16 = s4pot6_16_c;
-        s4only_16 = s4only_16_c;
-        sother_16 = sother_16_c;
-        serror_16 = serror_16_c;
-
-        s6only_cache_16 = s6only_cache_16_c;
-        s4pot6_cache_16 = s4pot6_cache_16_c;
-        s4only_cache_16 = s4only_cache_16_c;
-        sother_cache_16 = sother_cache_16_c;
-
-        s6only_24 = s6only_24_c;
-        s6and4_24 = s6and4_24_c;
-        s4pot6_24 = s4pot6_24_c;
-        s4only_24 = s4only_24_c;
-        sother_24 = sother_24_c;
-        serror_24 = serror_24_c;
-
-        s6only_cache_24 = s6only_cache_24_c;
-        s4pot6_cache_24 = s4pot6_cache_24_c;
-        s4only_cache_24 = s4only_cache_24_c;
-        sother_cache_24 = sother_cache_24_c;
-    }
-};
 
 /*
     bootstrap.js API
@@ -1980,15 +1875,25 @@ startup = function (aData, aReason) {
     var resource, alias;
     log("Sixornot - startup - reason: " + aReason, 0);
     // Set up resource URI alias
-    resource = Services.io.getProtocolHandler("resource").QueryInterface(Components.interfaces.nsIResProtocolHandler);
+    resource = Services.io.getProtocolHandler("resource")
+                .QueryInterface(Components.interfaces.nsIResProtocolHandler);
+
     alias = Services.io.newFileURI(aData.installPath);
+    log("Install path is: " + aData.resourceURI.spec);
+
     if (!aData.installPath.isDirectory()) {
         alias = Services.io.newURI("jar:" + alias.spec + "!/", null, null);
+        log("Install path is: " + alias.spec);
     }
+
     // This triggers a warning on AMO validation
     // The resource substitution is cleaned up by the addon's shutdown method
     // Search for "resource.setSubstitution("sixornot", null);"
     resource.setSubstitution("sixornot", alias);
+
+    // Import images module containing all images used by addon
+    log("Importing: \"" + aData.resourceURI.spec + "includes/imagesrc.jsm\"", 1);
+    Components.utils.import(aData.resourceURI.spec + "includes/imagesrc.jsm");
 
     AddonManager.getAddonByID(aData.id, function (addon, data) {
         var prefs;
@@ -1998,6 +1903,7 @@ startup = function (aData, aReason) {
         include(addon.getResourceURI("includes/utils.js").spec);
         log("Sixornot - startup - including: " + addon.getResourceURI("includes/locale.js").spec, 2);
         include(addon.getResourceURI("includes/locale.js").spec);
+
 
         // Init dns_handler
         dns_handler.init();
@@ -2013,63 +1919,6 @@ startup = function (aData, aReason) {
         log("Sixornot - startup - initLocalisation...", 2);
         initLocalisation(addon, "sixornot.properties",
                          PREF_BRANCH_SIXORNOT.getCharPref("overridelocale"));
-
-        // Load image sets
-        // TODO - Split this all off into a seperate script and include it
-        // TODO - Pre-load images into memory to reduce flicker when switching to one for first time
-        log("Sixornot - startup - loading image sets...");
-        // Greyscale
-        s6only_16_g = addon.getResourceURI("images/6only_g_16.png").spec;
-        s6and4_16_g = addon.getResourceURI("images/6and4_g_16.png").spec;
-        s4pot6_16_g = addon.getResourceURI("images/4pot6_g_16.png").spec;
-        s4only_16_g = addon.getResourceURI("images/4only_g_16.png").spec;
-        sother_16_g = addon.getResourceURI("images/other_g_16.png").spec;
-        serror_16_g = addon.getResourceURI("images/error_g_16.png").spec;
-
-        s6only_cache_16_g = addon.getResourceURI("images/6only_cache_g_16.png").spec;
-        s4pot6_cache_16_g = addon.getResourceURI("images/4pot6_cache_g_16.png").spec;
-        s4only_cache_16_g = addon.getResourceURI("images/4only_cache_g_16.png").spec;
-        sother_cache_16_g = addon.getResourceURI("images/other_cache_g_16.png").spec;
-
-        s6only_24_g = addon.getResourceURI("images/6only_g_24.png").spec;
-        s6and4_24_g = addon.getResourceURI("images/6and4_g_24.png").spec;
-        s4pot6_24_g = addon.getResourceURI("images/4pot6_g_24.png").spec;
-        s4only_24_g = addon.getResourceURI("images/4only_g_24.png").spec;
-        sother_24_g = addon.getResourceURI("images/other_g_24.png").spec;
-        serror_24_g = addon.getResourceURI("images/error_g_24.png").spec;
-
-        s6only_cache_24_g = addon.getResourceURI("images/6only_cache_g_24.png").spec;
-        s4pot6_cache_24_g = addon.getResourceURI("images/4pot6_cache_g_24.png").spec;
-        s4only_cache_24_g = addon.getResourceURI("images/4only_cache_g_24.png").spec;
-        sother_cache_24_g = addon.getResourceURI("images/other_cache_g_24.png").spec;
-        // Colour
-        s6only_16_c = addon.getResourceURI("images/6only_c_16.png").spec;
-        s6and4_16_c = addon.getResourceURI("images/6and4_c_16.png").spec;
-        s4pot6_16_c = addon.getResourceURI("images/4pot6_c_16.png").spec;
-        s4only_16_c = addon.getResourceURI("images/4only_c_16.png").spec;
-        sother_16_c = addon.getResourceURI("images/other_c_16.png").spec;
-        serror_16_c = addon.getResourceURI("images/error_c_16.png").spec;
-
-        s6only_cache_16_c = addon.getResourceURI("images/6only_cache_c_16.png").spec;
-        s4pot6_cache_16_c = addon.getResourceURI("images/4pot6_cache_c_16.png").spec;
-        s4only_cache_16_c = addon.getResourceURI("images/4only_cache_c_16.png").spec;
-        sother_cache_16_c = addon.getResourceURI("images/other_cache_c_16.png").spec;
-
-        s6only_24_c = addon.getResourceURI("images/6only_c_24.png").spec;
-        s6and4_24_c = addon.getResourceURI("images/6and4_c_24.png").spec;
-        s4pot6_24_c = addon.getResourceURI("images/4pot6_c_24.png").spec;
-        s4only_24_c = addon.getResourceURI("images/4only_c_24.png").spec;
-        sother_24_c = addon.getResourceURI("images/other_c_24.png").spec;
-        serror_24_c = addon.getResourceURI("images/error_c_24.png").spec;
-
-        s6only_cache_24_c = addon.getResourceURI("images/6only_cache_c_24.png").spec;
-        s4pot6_cache_24_c = addon.getResourceURI("images/4pot6_cache_c_24.png").spec;
-        s4only_cache_24_c = addon.getResourceURI("images/4only_cache_c_24.png").spec;
-        sother_cache_24_c = addon.getResourceURI("images/other_cache_c_24.png").spec;
-
-        // Set active image set
-        log("Sixornot - startup - setting active image set...", 2);
-        set_iconset();
 
         // Load into existing windows and set callback to load into any new ones too
         log("Sixornot - startup - loading into windows...", 2);
@@ -2102,7 +1951,11 @@ shutdown = function (aData, aReason) {
     if (aReason !== APP_SHUTDOWN) {
         // Unload all UI via init-time unload() callbacks
         unload();
-        
+
+        // Unload our own code modules
+        log("Unloading: \"" + aData.resourceURI.spec + "includes/imagesrc.jsm\"", 1);
+        Components.utils.unload(aData.resourceURI.spec + "includes/imagesrc.jsm");
+
         // Shutdown dns_handler
         dns_handler.shutdown();
 

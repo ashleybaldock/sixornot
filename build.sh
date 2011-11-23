@@ -14,12 +14,12 @@ cp bootstrap.js ../dist/$version/src/
 cp install.rdf ../dist/$version/src/
 cp icon.png ../dist/$version/src/
 cp icon64.png ../dist/$version/src/
-mkdir ../dist/$version/src/images
-cp images/*.png ../dist/$version/src/images/
 mkdir ../dist/$version/src/includes
 cp includes/locale.js ../dist/$version/src/includes/
 cp includes/utils.js ../dist/$version/src/includes/
 cp includes/dns_worker.js ../dist/$version/src/includes/
+./gen_imagesrc.sh
+cp includes/imagesrc.jsm ../dist/$version/src/includes/
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale
