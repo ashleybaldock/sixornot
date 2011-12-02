@@ -56,16 +56,16 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/*jslint white: true */
+
+/*jslint white: true, maxerr: 100, indent: 4 */
 
 // Provided by Firefox:
-/*global Components, Services, APP_SHUTDOWN, AddonManager */
+/*global Components, Services, AddonManager, ChromeWorker */
+/*global APP_STARTUP, APP_SHUTDOWN, ADDON_ENABLE, ADDON_DISABLE, ADDON_INSTALL, ADDON_UNINSTALL, ADDON_UPGRADE, ADDON_DOWNGRADE */
 
 // Provided in included modules:
-/*global gt, unload, watchWindows, initLocalisation, gbi */
+/*global gt, unload, watchWindows, initLocalisation, gbi, imagesrc */
 
-// Provided in lazy getters
-/*global */
 
 /*
     Constants and global variables
@@ -159,16 +159,18 @@ PREFS = {
 
 // Function to permit the including of other scripts into this one
 (function (scope) {
+    "use strict";
     scope.include = function (src) {
         // This triggers a warning on AMO validation
         // This method is only used to import utils.js and locale.js
         // Which are local to this addon (under include directory)
         Services.scriptloader.loadSubScript(src, scope);
     };
-})(this);
+}(this));
 
 // Log a message to error console, but only if it is important enough
 log = (function () {
+    "use strict";
     var get_loglevel = function () {
         try {
             return PREF_BRANCH_SIXORNOT.getIntPref("loglevel");
@@ -292,9 +294,10 @@ PREF_OBSERVER_DNS = {
 var HTTP_REQUEST_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         "use strict";
-        var notifcationCallbacks, domWindow, domWindowUtils, domWindowInner,
+        var domWindow, domWindowUtils, domWindowInner,
             domWindowOuter, original_window, new_page, remoteAddress, send_event,
-            lookupIPs, http_channel, http_channel_internal, nC, new_entry, hosts, evt, cancelled;
+            create_new_entry, remoteAddressFamily,
+            http_channel, http_channel_internal, nC, new_entry;
         log("Sixornot - HTTP_REQUEST_OBSERVER - (" + aTopic + ")", 1);
 
         /* Create an event of the specified type and dispatch it to the specified element
@@ -310,7 +313,7 @@ var HTTP_REQUEST_OBSERVER = {
         };
 
         /* Prepare and return a new blank entry for the hosts listing */
-        var create_new_entry = function (host, address, address_family, origin, inner, outer) {
+        create_new_entry = function (host, address, address_family, origin, inner, outer) {
             return {
                 // TODO Should this be hostPort? Since we could connect using v4/v6 on different ports?
                 host: host,
@@ -326,11 +329,11 @@ var HTTP_REQUEST_OBSERVER = {
                 inner_id: inner,
                 outer_id: outer,
                 lookup_ips: function () {
+                    var entry, on_returned_ips;
                     /* Create closure containing reference to element and trigger async lookup with callback */
-                    var entry = this;
+                    entry = this;
                     log("Sixornot - LOOKUP_IPS", 1);
-                    var on_returned_ips = function (ips) {
-                        var evt, cancelled;
+                    on_returned_ips = function (ips) {
                         log("Sixornot - LOOKUP_IPS - on_returned_ips", 1);
                         entry.dns_cancel = null;
                         if (ips[0] === "FAIL") {
@@ -354,8 +357,6 @@ var HTTP_REQUEST_OBSERVER = {
             };
         };
 
-        var remoteAddressFamily;
-
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
             http_channel = aSubject.QueryInterface(Components.interfaces.nsIHttpChannel);
             http_channel_internal = aSubject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
@@ -365,7 +366,7 @@ var HTTP_REQUEST_OBSERVER = {
                     remoteAddress = http_channel_internal.remoteAddress;
                     remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
                     // TODO move this code into a function executed immediately for address_family item
-                } catch (e) {
+                } catch (e1) {
                     log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
                     remoteAddress = "";
                     remoteAddressFamily = 0;
@@ -396,7 +397,7 @@ var HTTP_REQUEST_OBSERVER = {
                 domWindowOuter = domWindowUtils.outerWindowID;
 
                 original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);
-            } catch (e) {
+            } catch (e2) {
                 // HTTP response is in response to a non-DOM source - ignore these
                 log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 2);
                 return;
@@ -469,7 +470,7 @@ var HTTP_REQUEST_OBSERVER = {
                 })) {
                     // Create new entry + add to cache
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
-                    var new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, domWindowInner, domWindowOuter);
+                    new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, domWindowInner, domWindowOuter);
                     send_event("sixornot-new-host-event", domWindow, new_entry);
                     // Secondary pages shouldn't have full info shown in panel
                     new_entry.show_detail = false;
@@ -497,7 +498,7 @@ var HTTP_REQUEST_OBSERVER = {
             }
 
             if (RequestCache[domWindowInner]) {
-                throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: RequestCache already contains content entries."
+                throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: RequestCache already contains content entries.";
             }
 
             // Move item(s) from waiting list to cache
@@ -604,12 +605,10 @@ var HTTP_REQUEST_OBSERVER = {
 /* Should be called once for each window of the browser */
 insert_code = function (win) {
     "use strict";
-    var doc, onMenuCommand,
-        create_button, create_addressbaricon, create_panel,
+    var doc, create_button, create_addressbaricon, create_panel,
         get_icon_source,
         currentTabInnerID, currentTabOuterID, setCurrentTabIDs,
-        getCurrentHost,
-        update_panel;
+        getCurrentHost;
 
     doc = win.document;
 
@@ -634,21 +633,27 @@ insert_code = function (win) {
 
     /* Creates and sets up a panel to display information which can then be bound to an icon */
     create_panel = function () {
-        var panel, refresh_panel, on_click, on_mouseover, on_mouseout;
+        var panel, on_click, on_mouseover, on_mouseout,
+        on_show_panel, on_page_change, on_new_host, on_address_change,
+        on_count_change, on_dns_complete, on_tab_select,
+        panel_vbox, remote_grid, remote_rows, remote_cols, title_remote,
+        remote_anchor, title_local, settingslabel, urllabel, urlhbox,
+        get_hosts, force_scrollbars, new_line, grid_contents, remove_all,
+        generate_all;
         panel = doc.createElement("panel");
         //panel.setAttribute("noautohide", true);
 
         // This contains everything else in the panel, vertical orientation
-        var panel_vbox = doc.createElement("vbox");
+        panel_vbox = doc.createElement("vbox");
         panel_vbox.setAttribute("flex", "1");
         panel_vbox.style.overflowY = "auto";
         panel_vbox.style.overflowX = "hidden";
         panel.appendChild(panel_vbox);
 
         // Build containing panel UI
-        var remote_grid = doc.createElement("grid");
-        var remote_rows = doc.createElement("rows");
-        var remote_cols = doc.createElement("columns");
+        remote_grid = doc.createElement("grid");
+        remote_rows = doc.createElement("rows");
+        remote_cols = doc.createElement("columns");
         // 5 columns wide
         // icon, count, host, address, show/hide
         remote_cols.appendChild(doc.createElement("column"));
@@ -661,12 +666,12 @@ insert_code = function (win) {
         panel_vbox.appendChild(remote_grid);
 
         // Add "Remote" title
-        var title_remote = doc.createElement("label");
+        title_remote = doc.createElement("label");
         title_remote.setAttribute("value", gt("header_remote"));
         title_remote.setAttribute("style", "text-align: center; font-size: smaller;");
         remote_rows.appendChild(title_remote);
         // Add remote title anchor object
-        var remote_anchor = {
+        remote_anchor = {
             add_after: function (element) {
                 if (title_remote.nextSibling) {
                     remote_rows.insertBefore(element, title_remote.nextSibling);
@@ -677,14 +682,14 @@ insert_code = function (win) {
         };
 
         // Add "Local" title (TODO - replace with element with "hide" method)
-        var title_local = doc.createElement("label");
+        title_local = doc.createElement("label");
         title_local.setAttribute("value", gt("header_local"));
         title_local.setAttribute("style", "text-align: center; font-size: smaller;");
         title_local.setAttribute("hidden", true);
         remote_rows.appendChild(title_local);
 
         // Settings link
-        var settingslabel = doc.createElement("description");
+        settingslabel = doc.createElement("description");
         settingslabel.setAttribute("value", gt("header_settings"));
         settingslabel.setAttribute("tooltiptext", gt("tt_open_settings"));
         settingslabel.setAttribute("style", "text-align: center; font-size: smaller;");
@@ -694,13 +699,13 @@ insert_code = function (win) {
         settingslabel.sixornot_openprefs = true;
 
         // Add link to Sixornot website to UI
-        var urllabel = doc.createElement("description");
+        urllabel = doc.createElement("description");
         urllabel.setAttribute("value", gt("sixornot_web"));
         urllabel.setAttribute("crop", "none");
         urllabel.sixornot_decorate = true;
         urllabel.sixornot_hyperlink = gt("sixornot_weblink");
         urllabel.setAttribute("tooltiptext", gt("tt_gotowebsite"));
-        var urlhbox = doc.createElement("urlhbox");
+        urlhbox = doc.createElement("urlhbox");
         urlhbox.appendChild(urllabel);
         urlhbox.setAttribute("align", "end");
         panel_vbox.appendChild(urlhbox);
@@ -709,7 +714,7 @@ insert_code = function (win) {
         /* Functions */
 
         /* Get the hosts list for the current window */
-        var get_hosts = function () {
+        get_hosts = function () {
             // New functionality, get IDs for lookup
             return RequestCache[win.gBrowser.mCurrentBrowser.contentWindow
                 .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
@@ -718,7 +723,7 @@ insert_code = function (win) {
         };
 
         /* Ensure panel contents visible with scrollbars */
-        var force_scrollbars = function () {
+        force_scrollbars = function () {
             if (panel_vbox.clientHeight > panel.clientHeight) {
                 panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
                 // TODO if panel width changes after this is applied horizontal fit breaks
@@ -747,15 +752,18 @@ insert_code = function (win) {
            and links to that member to reflect its state
            Also takes a reference to the element to add this element after
            e.g. header or the preceeding list item */
-        var new_line = function (host, addafter) {
+        new_line = function (host, addafter) {
+            var copy_full, create_header_row, header_row;
             log("Sixornot - new_line", 1);
             // Due to closure this is available to all functions defined inside this one
-            var copy_full = "";
+            copy_full = "";
 
             /* Create and return a new line item */
-            var create_header_row = function (addafter) {
+            create_header_row = function (addafter) {
+                var create_showhide, create_icon, create_count, create_hostname,
+                    create_ips, row;
                 log("Sixornot - create_header_row", 1);
-                var create_showhide = function (addto) {
+                create_showhide = function (addto) {
                     var showhide, update;
                     log("Sixornot - create_showhide", 1);
 
@@ -806,7 +814,7 @@ insert_code = function (win) {
                         }
                     };
                 };
-                var create_icon = function (addto) {
+                create_icon = function (addto) {
                     var icon, update;
                     log("Sixornot - create_icon", 1);
                     /* Create DOM UI elements */
@@ -828,7 +836,7 @@ insert_code = function (win) {
                         }
                     };
                 };
-                var create_count = function (addto) {
+                create_count = function (addto) {
                     var count, update;
                     log("Sixornot - create_count", 1);
                     /* Create DOM UI elements */
@@ -857,7 +865,7 @@ insert_code = function (win) {
                         }
                     };
                 };
-                var create_hostname = function (addto) {
+                create_hostname = function (addto) {
                     var hostname, update;
                     log("Sixornot - create_hostname", 1);
                     /* Create DOM UI elements */
@@ -909,8 +917,8 @@ insert_code = function (win) {
                 /* Creates an element containing a listing of IP addresses
                    The first one will be the connection IP
                    The rest are IP addresses looked up from DNS */
-                var create_ips = function (addto) {
-                    var address, update, address_box;
+                create_ips = function (addto) {
+                    var update, address_box;
                     log("Sixornot - create_conip", 1);
                     /* Create DOM UI elements */
                     address_box = doc.createElement("vbox");
@@ -998,7 +1006,7 @@ insert_code = function (win) {
                 };
 
                 // Create row
-                var row = doc.createElement("row");
+                row = doc.createElement("row");
                 row.setAttribute("align", "start");
                 /* Add this element after the last one */
                 addafter.add_after(row);
@@ -1033,7 +1041,7 @@ insert_code = function (win) {
             };
 
             // Bind onclick events here TODO
-            var header_row = create_header_row(addafter);
+            header_row = create_header_row(addafter);
 
             return {
                 header_row: header_row,
@@ -1069,18 +1077,18 @@ insert_code = function (win) {
                 },
                 /* Adds the contents of this object after the specified element */
                 add_after: function (element) {
-                    if (row.nextSibling) {
-                        row.parentNode.insertBefore(element, row.nextSibling);
+                    if (header_row.nextSibling) {
+                        header_row.parentNode.insertBefore(element, header_row.nextSibling);
                     } else {
-                        row.parentNode.appendChild(element);
+                        header_row.parentNode.appendChild(element);
                     }
                 }
             };
         };
 
-        var grid_contents = [];
+        grid_contents = [];
 
-        var remove_all = function () {
+        remove_all = function () {
             log("Sixornot - panel:remove_all", 2);
             grid_contents.forEach(function (item, index, items) {
                 try {
@@ -1092,7 +1100,7 @@ insert_code = function (win) {
             grid_contents = [];
 
         };
-        var generate_all = function () {
+        generate_all = function () {
             log("Sixornot - panel:generate_all", 2);
             var hosts = get_hosts();
 
@@ -1131,6 +1139,7 @@ insert_code = function (win) {
            Actions are defined by custom properties applied to the event target element
            One or more of these can be triggered */
         on_click = function (evt) {
+            var currentWindow, currentBrowser;
             log("Sixornot - panel:on_click", 1);
             /* If element has sixornot_copytext, then copy it to clipboard */
             if (evt.target.sixornot_copytext) {
@@ -1140,8 +1149,8 @@ insert_code = function (win) {
                     Components.classes["@mozilla.org/widget/clipboardhelper;1"]
                         .getService(Components.interfaces.nsIClipboardHelper)
                         .copyString(evt.target.sixornot_copytext);
-                } catch (e) {
-                    log("exception!" + parse_exception(e), 0);
+                } catch (e_copytext) {
+                    log("exception!" + parse_exception(e_copytext), 0);
                 }
             }
             /* If element has show/hide behaviour, toggle and trigger refresh */
@@ -1160,8 +1169,8 @@ insert_code = function (win) {
                     })) {
                             log("Sixornot - panel:on_click - no matching host found", 1);
                     }
-                } catch (e) {
-                    log("exception!" + parse_exception(e), 0);
+                } catch (e_showhide) {
+                    log("exception!" + parse_exception(e_showhide), 0);
                 }
             }
             /* Element should open preferences when clicked */
@@ -1171,22 +1180,21 @@ insert_code = function (win) {
                     panel.hidePopup();
                     log("Sixornot - panel:on_click - openprefs", 1);
                     // Add tab to most recent window, regardless of where this function was called from
-                    var currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+                    currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
                          .getService(Components.interfaces.nsIWindowMediator)
                          .getMostRecentWindow("navigator:browser");
                     currentWindow.focus();
-                    var currentBrowser = currentWindow.getBrowser();
+                    currentBrowser = currentWindow.getBrowser();
                     currentBrowser.selectedTab = currentBrowser.addTab("about:addons");
                     // TODO link should open Sixornot, but this isn't currently possible
                     //currentWindow.getBrowser().contentWindow.wrappedJSObject.loadView("addons://detail/sixornot@entropy.me.uk");
-                } catch (e) {
-                    log("exception!" + parse_exception(e), 0);
+                } catch (e_openprefs) {
+                    log("exception!" + parse_exception(e_openprefs), 0);
                 }
             }
             /* Element should open hyperlink when clicked */
             if (evt.target.sixornot_hyperlink) {
                 try {
-                    var currentWindow, currentBrowser;
                     log("Sixornot - panel:on_click - open hyperlink", 1);
                     evt.stopPropagation();
                     panel.hidePopup();
@@ -1197,8 +1205,8 @@ insert_code = function (win) {
                     currentWindow.focus();
                     currentBrowser = currentWindow.getBrowser();
                     currentBrowser.selectedTab = currentBrowser.addTab(evt.target.sixornot_hyperlink);
-                } catch (e) {
-                    log("exception!" + parse_exception(e), 0);
+                } catch (e_hyperlink) {
+                    log("exception!" + parse_exception(e_hyperlink), 0);
                 }
             }
         };
@@ -1208,7 +1216,7 @@ insert_code = function (win) {
         // Then create a new entry in grid_contents (new_grid_line()) for each element
         // in the cache matching this page
         // 
-        var on_show_panel = function (evt) {
+        on_show_panel = function (evt) {
             log("Sixornot - panel:on_show_panel", 1);
             try {
                 remove_all();
@@ -1222,7 +1230,7 @@ insert_code = function (win) {
         // On page change
         // Check if tab innerID matches event innerID
         // If so repopulate grid_contents list as per show panel
-        var on_page_change = function (evt) {
+        on_page_change = function (evt) {
             log("Sixornot - panel:on_page_change", 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_page_change - skipping (panel is closed)", 1);
@@ -1246,7 +1254,7 @@ insert_code = function (win) {
         // Check if innerID matches
         // Check if mainhost matches
         // If so add a new host into grid_contents (in correct sort position)
-        var on_new_host = function (evt) {
+        on_new_host = function (evt) {
             log("Sixornot - panel:on_new_host", 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_new_host - skipping (panel is closed) - panel.state: " + panel.state, 1);
@@ -1280,7 +1288,7 @@ insert_code = function (win) {
         // Check if mainhost matches
         // If so look up matching host entry in grid_contents + update its connection IP
         // And update its icon
-        var on_address_change = function (evt) {
+        on_address_change = function (evt) {
             log("Sixornot - panel:on_address_change", 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_address_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
@@ -1307,7 +1315,7 @@ insert_code = function (win) {
         // On count change
         // Check innerID + mainhost match
         // Look up matching host entry in grid_contents and update its count
-        var on_count_change = function (evt) {
+        on_count_change = function (evt) {
             log("Sixornot - panel:on_count_change", 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_count_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
@@ -1335,7 +1343,7 @@ insert_code = function (win) {
         // Check innerID + mainhost match
         // Look up matching host entry + call update_ips() which rebuilds the set of addresses
         // Update icon
-        var on_dns_complete = function (evt) {
+        on_dns_complete = function (evt) {
             log("Sixornot - panel:on_dns_complete", 1);
             // TODO - unsubscribe from events when panel is closed to avoid this check
             if (panel.state !== "open") {
@@ -1364,7 +1372,7 @@ insert_code = function (win) {
         };
 
         // On Tab selection by user
-        var on_tab_select = function (evt) {
+        on_tab_select = function (evt) {
             log("Sixornot - panel:on_tab_select", 1);
             // TODO - unsubscribe from events when panel is closed to avoid this check
             if (panel.state !== "open") {
@@ -1893,7 +1901,9 @@ startup = function (aData, aReason) {
 
     // Import images module containing all images used by addon
     log("Importing: \"" + aData.resourceURI.spec + "includes/imagesrc.jsm\"", 1);
+    /*jslint es5: true */
     Components.utils.import(aData.resourceURI.spec + "includes/imagesrc.jsm");
+    /*jslint es5: false */
 
     AddonManager.getAddonByID(aData.id, function (addon, data) {
         var prefs;
@@ -2001,6 +2011,7 @@ uninstall = function (aData, aReason) {
 // Return integer preference value, either from prefs branch or internal defaults
 // TODO - move into utils.js
 get_int_pref = function (name) {
+    "use strict";
     log("Sixornot - get_int_pref - name: " + name, 2);
     try {
         return PREF_BRANCH_SIXORNOT.getIntPref(name);
@@ -2018,6 +2029,7 @@ get_int_pref = function (name) {
 // Return boolean preference value, either from prefs branch or internal defaults
 // TODO - move into utils.js
 get_bool_pref = function (name) {
+    "use strict";
     log("Sixornot - get_bool_pref - name: " + name, 2);
     try {
         return PREF_BRANCH_SIXORNOT.getBoolPref(name);
@@ -2035,6 +2047,7 @@ get_bool_pref = function (name) {
 // Set up initial values for preferences
 // TODO - Move into closure
 set_initial_prefs = function () {
+    "use strict";
     var key, val;
     log("Sixornot - set_initial_prefs", 2);
     for (key in PREFS) {
@@ -2060,6 +2073,7 @@ set_initial_prefs = function () {
 
 // Returns a string version of an exception object with its stack trace
 parse_exception = function (e) {
+    "use strict";
     log("Sixornot - parse_exception", 2);
     if (!e) {
         return "";
@@ -2093,6 +2107,7 @@ dns_handler = {
 
     /* Initialises the native dns resolver (if possible) - call this first! */
     init : function () {
+        "use strict";
         var that;
         log("Sixornot - dns_handler - init", 1);
 
@@ -2103,7 +2118,7 @@ dns_handler = {
         // worker, when a message is received.
         that = this;
         this.worker.addEventListener("message", function (evt) {  
-            var data;
+            var data, callback;
             data = JSON.parse(evt.data);
             log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 2);
 
@@ -2148,6 +2163,7 @@ dns_handler = {
 
     /* Shuts down the native dns resolver (if running) */
     shutdown : function () {
+        "use strict";
         log("Sixornot - dns_handler:shutdown", 1);
         this.worker.postMessage(JSON.stringify({"reqid": this.reqids.shutdown}));
     },
@@ -2157,6 +2173,7 @@ dns_handler = {
         IP Address utility functions
     */
     validate_ip4 : function (ip_address) {
+        "use strict";
         log("Sixornot - dns_handler:validate_ip4: " + ip_address, 3);
         // TODO - Write this function if needed, extensive validation of IPv4 address
         return false;
@@ -2164,6 +2181,7 @@ dns_handler = {
 
     // Quick check for address family, not a validator (see validate_ip4)
     is_ip4 : function (ip_address) {
+        "use strict";
         log("Sixornot - dns_handler:is_ip4 " + ip_address, 3);
         return ip_address && (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
     },
@@ -2212,6 +2230,7 @@ dns_handler = {
 
     // Pad an IPv4 address to permit lexicographical sorting
     pad_ip4 : function (ip4_address) {
+        "use strict";
         var pad = function (n) {
             return ("00" + n).substr(-3);
         };
@@ -2219,6 +2238,7 @@ dns_handler = {
     },
     // Remove leading zeros from IPv4 address
     unpad_ip4 : function (ip4_address) {
+        "use strict";
         var unpad = function (n) {
             return parseInt(n, 10);
         };
@@ -2227,6 +2247,7 @@ dns_handler = {
 
     // Sort IPv4 addresses into logical ordering
     sort_ip4 : function (a, b) {
+        "use strict";
         var typeof_a, typeof_b;
         typeof_a = this.typeof_ip4(a);
         typeof_b = this.typeof_ip4(b);
@@ -2271,6 +2292,7 @@ dns_handler = {
     },
 
     typeof_ip4 : function (ip_address) {
+        "use strict";
         var split_address;
         log("Sixornot - dns_handler:typeof_ip4 " + ip_address, 3);
         // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
@@ -2325,6 +2347,7 @@ dns_handler = {
     },
 
     test_is_ip6 : function () {
+        "use strict";
         var overall, tests, i, result;
         overall = true;
         tests = [
@@ -2355,6 +2378,7 @@ dns_handler = {
     },
 
     validate_ip6 : function (ip_address) {
+        "use strict";
         log("Sixornot - dns_handler:validate_ip6: " + ip_address, 3);
         // TODO - Write this function if needed, extensive validation of IPv6 address
         return false;
@@ -2362,11 +2386,13 @@ dns_handler = {
 
     // Quick check for address family, not a validator (see validate_ip6)
     is_ip6 : function (ip_address) {
+        "use strict";
         log("Sixornot - dns_handler:is_ip6: " + ip_address, 3);
         return ip_address && (ip_address.indexOf(":") !== -1);
     },
 
     test_normalise_ip6 : function () {
+        "use strict";
         var overall, tests, i, result;
         overall = true;
         tests = [
@@ -2394,6 +2420,7 @@ dns_handler = {
 
     // Expand IPv6 address into long version
     normalise_ip6 : function (ip6_address) {
+        "use strict";
         var sides, left_parts, right_parts, middle, outarray, pad_left;
         log("Sixornot - dns_handler:normalise_ip6: " + ip6_address, 3);
         // Split by instances of ::
@@ -2415,6 +2442,7 @@ dns_handler = {
 
     // Unit test suite for typeof_ip6 function, returns false if a test fails
     test_typeof_ip6 : function () {
+        "use strict";
         var overall, tests, i, result;
         overall = true;
         tests = [
@@ -2463,6 +2491,7 @@ dns_handler = {
     */
     // Sort IPv6 addresses into logical ordering
     sort_ip6 : function (a, b) {
+        "use strict";
         var typeof_a, typeof_b;
         typeof_a = this.typeof_ip6(a);
         typeof_b = this.typeof_ip6(b);
@@ -2508,6 +2537,7 @@ dns_handler = {
     },
 
     typeof_ip6 : function (ip_address) {
+        "use strict";
         var norm_address;
         log("Sixornot - dns_handler:typeof_ip6: " + ip_address, 3);
         // 1. Check IP version, return false if v4
@@ -2556,12 +2586,14 @@ dns_handler = {
 
     /* Returns value of preference network.dns.disableIPv6 */
     is_ip6_disabled : function () {
+        "use strict";
         return Services.prefs.getBoolPref("network.dns.disableIPv6");
     },
 
 
     /* Returns true if the domain specified is in the list of IPv4-only domains */
     is_ip4only_domain : function (domain) {
+        "use strict";
         var ip4onlydomains, i;
         ip4onlydomains = Services.prefs.getCharPref("network.dns.ipv4OnlyDomains").replace(/\s+/g, "").toLowerCase().split(",");
         domain = domain.toLowerCase();
@@ -2578,6 +2610,7 @@ dns_handler = {
     /* Finding local IP address(es)
        Uses either the built-in Firefox method or OS-native depending on availability */
     resolve_local_async : function (callback) {
+        "use strict";
         log("Sixornot - dns_handler:resolve_local_async");
         if (this.local_ctypes) {
             // If remote resolution is happening via ctypes...
@@ -2590,6 +2623,7 @@ dns_handler = {
 
     /* Use dns_worker thread to perform OS-native DNS lookup for the local host */
     local_ctypes_async : function (callback) {
+        "use strict";
         var new_callback_id;
         log("Sixornot - dns_handler:local_ctypes_async - selecting resolver for local host lookup", 2);
         new_callback_id = this.add_callback_id(callback);
@@ -2601,6 +2635,7 @@ dns_handler = {
 
     /* Proxy to remote_firefox_async since it does much the same thing */
     local_firefox_async : function (callback) {
+        "use strict";
         var myhostname;
         log("Sixornot - dns_handler:local_firefox_async - resolving local host using Firefox builtin method", 2);
         myhostname = Components.classes["@mozilla.org/network/dns-service;1"]
@@ -2612,6 +2647,7 @@ dns_handler = {
     /* Finding remote IP address(es)
        Resolve IP address(es) of a remote host using DNS */
     resolve_remote_async : function (host, callback) {
+        "use strict";
         if (this.remote_ctypes) {
             // If remote resolution is happening via ctypes...
             return this.remote_ctypes_async(host, callback);
@@ -2623,6 +2659,7 @@ dns_handler = {
 
     /* Use dns_worker thread to perform OS-native DNS lookup for a remote host */
     remote_ctypes_async : function (host, callback) {
+        "use strict";
         var new_callback_id;
         log("Sixornot - dns_handler:remote_ctypes_async - host: " + host + ", callback: " + callback, 2);
         new_callback_id = this.add_callback_id(callback);
@@ -2633,6 +2670,7 @@ dns_handler = {
     },
 
     remote_firefox_async : function (host, callback) {
+        "use strict";
         var my_callback;
         log("Sixornot - dns_handler:remote_firefox_async - host: " + host + ", callback: " + callback, 2);
 
@@ -2684,6 +2722,7 @@ dns_handler = {
     */
     // Index this.callback_ids and return required callback
     find_callback_by_id : function (callback_id) {
+        "use strict";
         var f;
         log("Sixornot - dns_handler:find_callback_by_id - callback_id: " + callback_id, 2);
         // Callback IDs is an array of 2-item arrays - [ID, callback]
@@ -2696,6 +2735,7 @@ dns_handler = {
 
     // Search this.callback_ids for the ID in question, remove it if it exists
     remove_callback_id : function (callback_id) {
+        "use strict";
         var i;
         log("Sixornot - dns_handler:remove_callback_id - callback_id: " + callback_id, 2);
         i = this.find_callback_by_id(callback_id);
@@ -2709,6 +2749,7 @@ dns_handler = {
 
     // Add a callback to the callback_ids array with the next available ID
     add_callback_id : function (callback) {
+        "use strict";
         log("Sixornot - dns_handler:add_callback_id", 2);
         // Use next available callback ID, return that ID
         this.next_callback_id = this.next_callback_id + 1;
@@ -2717,6 +2758,7 @@ dns_handler = {
     },
 
     make_cancel_obj : function (callback_id) {
+        "use strict";
         var obj;
         log("Sixornot - dns_handler:make_cancel_obj - callback_id: " + callback_id, 2);
         obj = {
@@ -2735,6 +2777,7 @@ dns_handler = {
 
     // Cancels an active ctypes DNS lookup request currently being actioned by Worker
     cancel_request : function (request) {
+        "use strict";
         log("Sixornot - dns_handler:cancel_request - request: " + request, 2);
         try {
             // This function can be called with request as a null or undefined value
@@ -2748,6 +2791,7 @@ dns_handler = {
 
     // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
     is_proxied_dns : function (url) {
+        "use strict";
         var uri, proxyinfo;
         log("Sixornot - dns_handler:is_proxied_dns - url: " + url, 2);
         uri = Components.classes["@mozilla.org/network/io-service;1"]
