@@ -1427,6 +1427,8 @@ insert_code = function (win) {
         win.addEventListener("sixornot-count-change-event", on_count_change, false);
         win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
+        win.gBrowser.addEventListener("pageshow", on_page_change, false);
+        //win.gBrowser.addEventListener("DOMContentLoaded", on_page_change, false);
 
         // Add a callback to our unload list to remove the UI when addon is disabled
         unload(function () {
@@ -1443,6 +1445,8 @@ insert_code = function (win) {
             win.removeEventListener("sixornot-count-change-event", on_count_change, false);
             win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
+            win.gBrowser.removeEventListener("pageshow", on_page_change, false);
+            //win.gBrowser.removeEventListener("DOMContentLoaded", on_page_change, false);
             // Remove UI
             panel.parentNode.removeChild(panel);
         }, win);
@@ -1455,7 +1459,8 @@ insert_code = function (win) {
         var toolbarButton, toolbarId, toolbar,
             nextItem,
             onclick_toolbarButton, panel, toggle_customise,
-            page_change_handler, tabselect_handler, update_icon;
+            page_change_handler, tabselect_handler,
+            popstate_handler, pageshow_handler, update_icon;
         log("Sixornot - insert_code:create_button", 2);
 
         // Event handler to show panel
@@ -1492,6 +1497,20 @@ insert_code = function (win) {
            Calls the update method for the icon */
         tabselect_handler = function (evt) {
             log("Sixornot - insert_code:create_button:tabselect_handler", 1);
+            setCurrentTabIDs();
+            update_icon();
+        };
+
+        /* popstate event triggered */
+        popstate_handler = function (evt) {
+            log("Sixornot - insert_code:create_button:popstate_handler", 1);
+            setCurrentTabIDs();
+            update_icon();
+        };
+
+        /* pageshow event triggered */
+        pageshow_handler = function (evt) {
+            log("Sixornot - insert_code:create_button:pageshow_handler", 1);
             setCurrentTabIDs();
             update_icon();
         };
@@ -1565,6 +1584,8 @@ insert_code = function (win) {
         win.addEventListener("sixornot-page-change-event", page_change_handler, false);
         win.addEventListener("sixornot-dns-lookup-event", page_change_handler, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
+        win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
+        //win.gBrowser.addEventListener("DOMContentLoaded", page_change_handler, false);
 
         /* Add a callback to unload to remove the button */
         unload(function () {
@@ -1578,6 +1599,8 @@ insert_code = function (win) {
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
             win.removeEventListener("sixornot-dns-lookup-event", page_change_handler, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
+            win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
+            //win.gBrowser.removeEventListener("DOMContentLoaded", page_change_handler, false);
 
             /* Remove UI */
             toolbarButton.parentNode.removeChild(toolbarButton);
@@ -1587,7 +1610,8 @@ insert_code = function (win) {
     create_addressbaricon = function () {
         var addressBarIcon, urlbaricons, starbutton,
             onclick_addressBarIcon, panel,
-            page_change_handler, tabselect_handler, update_icon;
+            page_change_handler, tabselect_handler,
+            popstate_handler, pageshow_handler, update_icon;
         log("Sixornot - insert_code:create_addressbaricon", 2);
 
         // Event handler to show panel
@@ -1622,6 +1646,20 @@ insert_code = function (win) {
         /* When the active tab is changed this event handler updates the icon */
         tabselect_handler = function (evt) {
             log("Sixornot - insert_code:create_addressbaricon:tabselect_handler", 2);
+            setCurrentTabIDs();
+            update_icon();
+        };
+
+        /* popstate event triggered */
+        popstate_handler = function (evt) {
+            log("Sixornot - insert_code:create_button:popstate_handler", 1);
+            setCurrentTabIDs();
+            update_icon();
+        };
+
+        /* pageshow event triggered */
+        pageshow_handler = function (evt) {
+            log("Sixornot - insert_code:create_button:pageshow_handler", 1);
             setCurrentTabIDs();
             update_icon();
         };
@@ -1677,6 +1715,8 @@ insert_code = function (win) {
         win.addEventListener("sixornot-page-change-event", page_change_handler, false);
         win.addEventListener("sixornot-dns-lookup-event", page_change_handler, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
+        win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
+        //win.gBrowser.addEventListener("DOMContentLoaded", page_change_handler, false);
 
         /* Add a callback to unload to remove the icon */
         unload(function () {
@@ -1687,6 +1727,8 @@ insert_code = function (win) {
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
             win.removeEventListener("sixornot-dns-lookup-event", page_change_handler, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
+            win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
+            //win.gBrowser.removeEventListener("DOMContentLoaded", page_change_handler, false);
 
             /* Remove UI */
             addressBarIcon.parentNode.removeChild(addressBarIcon);
