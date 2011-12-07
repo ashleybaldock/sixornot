@@ -1402,10 +1402,18 @@ insert_code = function (win) {
             force_scrollbars();
         };
 
+        /* popstate event triggered */
+        popstate_handler = function (evt) {
+            log("Sixornot - insert_code:create_button:popstate_handler", 1);
+            // TODO - handle this
+        };
 
-        /* Update all panel contents */
+        /* pageshow event triggered */
+        pageshow_handler = function (evt) {
+            log("Sixornot - insert_code:create_button:pageshow_handler", 1);
+            // TODO - handle this
+        };
 
-        /* Update local IP contents */
 
         // Panel setup
         panel.setAttribute("type", "arrow");
@@ -1427,7 +1435,10 @@ insert_code = function (win) {
         win.addEventListener("sixornot-count-change-event", on_count_change, false);
         win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
-        win.gBrowser.addEventListener("pageshow", on_page_change, false);
+        // TODO - add/remove this event listener when the tab changes
+        // bind only to the window which is active, so we don't get events for
+        // windows which aren't showing
+        win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
         //win.gBrowser.addEventListener("DOMContentLoaded", on_page_change, false);
 
         // Add a callback to our unload list to remove the UI when addon is disabled
@@ -1445,7 +1456,7 @@ insert_code = function (win) {
             win.removeEventListener("sixornot-count-change-event", on_count_change, false);
             win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
-            win.gBrowser.removeEventListener("pageshow", on_page_change, false);
+            win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
             //win.gBrowser.removeEventListener("DOMContentLoaded", on_page_change, false);
             // Remove UI
             panel.parentNode.removeChild(panel);
