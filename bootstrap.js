@@ -523,12 +523,17 @@ var HTTP_REQUEST_OBSERVER = {
             if (RequestCache[domWindowInner]) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner
                         + " - removing all items for this inner window...", 1);
-                RequestCache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
+                if (RequestCache[domWindowInner].dns_cancel) {
+                    log("Cancelling DNS..." + typeof item.dns_cancel, 1);
+                    item.dns_cancel.cancel();
+                }
+                RequestCache[domWindowInner] = undefined;
+                /* RequestCache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
                     if (item.dns_cancel) {
                         log("Cancelling DNS..." + typeof item.dns_cancel, 1);
                         item.dns_cancel.cancel();
                     }
-                });
+                }); */
             } else {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 1);
             }
@@ -715,11 +720,21 @@ insert_code = function (win) {
 
         /* Get the hosts list for the current window */
         get_hosts = function () {
+            var currentWindowID, requestCacheLookup;
             // New functionality, get IDs for lookup
-            return RequestCache[win.gBrowser.mCurrentBrowser.contentWindow
+            currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
                 .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                 .getInterface(Components.interfaces.nsIDOMWindowUtils)
-                .currentInnerWindowID];
+                .currentInnerWindowID;
+            requestCacheLookup = RequestCache[currentWindowID];
+            log("get_hosts: currentWindowID: " + currentWindowID + ", requestCacheLookup: " + requestCacheLookup, 1);
+            log("get_hosts: current RequestCache state is: ", 1);
+            for (var i = 0; i < RequestCache.length; i++) {
+                if (RequestCache[i] !== undefined) {
+                    log("item #: " + i + ", is: " + RequestCache[i]);
+                }
+            }
+            return requestCacheLookup;
         };
 
         /* Ensure panel contents visible with scrollbars */
