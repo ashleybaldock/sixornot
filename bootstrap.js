@@ -617,7 +617,6 @@ insert_code = function (win) {
 
     doc = win.document;
 
-    // TODO move this up a level to allow other functions to use it
     setCurrentTabIDs = function () {
         var domWindow, domWindowUtils;
         log("Sixornot - insert_code:setCurrentTabIDs", 1);
@@ -640,6 +639,7 @@ insert_code = function (win) {
     create_panel = function () {
         var panel, on_click, on_mouseover, on_mouseout,
         on_show_panel, on_page_change, on_new_host, on_address_change,
+        popstate_handler, pageshow_handler,
         on_count_change, on_dns_complete, on_tab_select,
         panel_vbox, remote_grid, remote_rows, remote_cols, title_remote,
         remote_anchor, title_local, settingslabel, urllabel, urlhbox,
