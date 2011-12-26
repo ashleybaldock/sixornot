@@ -83,8 +83,6 @@ var NS_XUL,
     // ID constants
     BUTTON_ID,
     ADDRESS_IMG_ID,
-    PREF_TOOLBAR,
-    PREF_NEXTITEM,
     // Prefs branch constant
     PREF_BRANCH_SIXORNOT,
     PREF_BRANCH_DNS,
@@ -94,13 +92,6 @@ var NS_XUL,
     PREF_OBSERVER,
     PREF_OBSERVER_DNS,
     HTTP_REQUEST_OBSERVER,
-    /*
-        ipv6 only                   6only_16.png, 6only_24.png
-        ipv4+ipv6 w/ local ipv6     6and4_16.png, 6and4_24.png
-        ipv4+ipv6 w/o local ipv6    4pot6_16.png, 4pot6_24.png
-        ipv4 only                   4only_16.png, 4only_24.png
-        Unknown                     other_16.png, other_24.png
-    */
     // dns_handler
     dns_handler,
     // Global functions
@@ -114,8 +105,9 @@ var NS_XUL,
     // Utility functions
     include,
     log,
-    get_bool_pref,
+    get_char_pref,
     get_int_pref,
+    get_bool_pref,
     set_initial_prefs,
     parse_exception,
     // Global objects
@@ -135,15 +127,15 @@ var RequestWaitingList = [];
 xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService(Components.interfaces.nsIXULRuntime);
 
 NS_XUL          = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
-
 BUTTON_ID       = "sixornot-buttonid";
 ADDRESS_IMG_ID  = "sixornot-addressimageid";
-PREF_TOOLBAR    = "toolbar";
-PREF_NEXTITEM   = "nextitem";
 
+
+/* Preferences */
 PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
 PREF_BRANCH_DNS      = Services.prefs.getBranch("network.dns.");
 
+// Default values for all Sixornot preferences
 PREFS = {
     nextitem:           "bookmarks-menu-button-container",
     toolbar:            "nav-bar",
@@ -153,6 +145,7 @@ PREFS = {
     overridelocale:     "",
     showallips:         false
 };
+
 
 // http://erikvold.com/blog/index.cfm/2011/1/2/restartless-firefox-addons-part-2-includes
 // https://developer.mozilla.org/en/XUL_School/Appendix_D:_Loading_Scripts
@@ -221,8 +214,6 @@ PREF_OBSERVER = {
         // TODO Update worker process to use new log level?
         if (aData === "loglevel") {
             log("Sixornot - PREF_OBSERVER - loglevel has changed", 1);
-            // Ensure dns_worker is at the same loglevel
-            dns_handler.set_worker_loglevel(PREF_BRANCH_SIXORNOT.getIntPref("loglevel"));
         }
         if (aData === "overridelocale") {
             log("Sixornot - PREF_OBSERVER - overridelocale has changed", 1);
@@ -1467,18 +1458,11 @@ insert_code = function (win) {
 
     /* Creates icon button and binds events */
     create_button = function () {
-        var toolbarButton, toolbarId, toolbar,
-            nextItem,
-            onclick_toolbarButton, panel, toggle_customise,
-            page_change_handler, tabselect_handler,
-            popstate_handler, pageshow_handler, update_icon;
+        var toolbarButton, toolbarID, toolbar, nextItem, nextID,
+            click_handler, panel, update_icon,
+            customize_handler, page_change_handler, tabselect_handler,
+            popstate_handler, pageshow_handler;
         log("Sixornot - insert_code:create_button", 2);
-
-        // Event handler to show panel
-        onclick_toolbarButton = function () {
-            panel.setAttribute("hidden", false);
-            panel.openPopup(toolbarButton, panel.getAttribute("position"), 0, 0, false, false);
-        };
 
         /* Updates the icon to reflect state of the currently displayed page */
         update_icon = function () {
@@ -1504,6 +1488,12 @@ insert_code = function (win) {
 
         };
 
+        /* click events on the button (show panel) */
+        click_handler = function () {
+            panel.setAttribute("hidden", false);
+            panel.openPopup(toolbarButton, panel.getAttribute("position"), 0, 0, false, false);
+        };
+
         /* Called whenever the current window's active tab is changed
            Calls the update method for the icon */
         tabselect_handler = function (evt) {
@@ -1512,14 +1502,14 @@ insert_code = function (win) {
             update_icon();
         };
 
-        /* popstate event triggered */
+        /* popstate event triggered, active history entry has changed */
         popstate_handler = function (evt) {
             log("Sixornot - insert_code:create_button:popstate_handler", 1);
             setCurrentTabIDs();
             update_icon();
         };
 
-        /* pageshow event triggered */
+        /* pageshow event triggered, current page has been shown */
         pageshow_handler = function (evt) {
             log("Sixornot - insert_code:create_button:pageshow_handler", 1);
             setCurrentTabIDs();
@@ -1539,10 +1529,11 @@ insert_code = function (win) {
             }
         };
 
-        /* When button location is customised store the new location in preferences so we can load into the same place next time */
-        toggle_customise = function (evt) {
+        /* When button location is customised store the new location in preferences
+           so we can load into the same place next time */
+        customize_handler = function (evt) {
             var button_parent, button_nextitem, toolbar_id, nextitem_id;
-            log("Sixornot - insert_code:create_button:toggle_customise");
+            log("Sixornot - insert_code:create_button:customize_handler");
             if (toolbarButton) {
                 button_parent = toolbarButton.parentNode;
                 button_nextitem = toolbarButton.nextSibling;
@@ -1551,8 +1542,8 @@ insert_code = function (win) {
                     nextitem_id = button_nextitem && button_nextitem.id;
                 }
             }
-            PREF_BRANCH_SIXORNOT.setCharPref(PREF_TOOLBAR,  toolbar_id || "");
-            PREF_BRANCH_SIXORNOT.setCharPref(PREF_NEXTITEM, nextitem_id || "");
+            PREF_BRANCH_SIXORNOT.setCharPref("toolbar",  toolbar_id || "");
+            PREF_BRANCH_SIXORNOT.setCharPref("nextitem", nextitem_id || "");
         };
 
         /* Create the button */
@@ -1574,19 +1565,32 @@ insert_code = function (win) {
         /* Add button to toolbox palette, since it needs a parent */
         gbi(doc, "navigator-toolbox").palette.appendChild(toolbarButton);
 
-        /* Move to location specified in prefs */
-        toolbarId = PREF_BRANCH_SIXORNOT.getCharPref(PREF_TOOLBAR);
-        toolbar = toolbarId && gbi(doc, toolbarId);
-        if (toolbar) {
-            nextItem = gbi(doc, PREF_BRANCH_SIXORNOT.getCharPref(PREF_NEXTITEM));
-            toolbar.insertItem(BUTTON_ID, nextItem && nextItem.parentNode.id === toolbarId && nextItem);
+        /* Move to location specified in prefs
+           If location is blank, then it isn't moved (stays in toolbox palette) */
+        toolbarID = get_char_pref("toolbar");
+        if (toolbarID !== "") {
+            toolbar = gbi(doc, toolbarID);
+
+            nextID = get_char_pref("nextitem");
+            if (nextID === "") {
+                // Add to end of the specified bar
+                toolbar.insertItem(BUTTON_ID);
+            } else {
+                // Add to specified position, if nextID is found
+                nextItem = gbi(doc, nextID);
+                if (nextItem && nextItem.parentNode.id === toolbarID) {
+                    toolbar.insertItem(BUTTON_ID, nextItem);
+                } else {
+                    toolbar.insertItem(BUTTON_ID);
+                }
+            }
         }
 
         /* Add event listeners */
         // win.addEventListener("online", onChangedOnlineStatus, false); TODO
         // win.addEventListener("offline", onChangedOnlineStatus, false); TODO
-        toolbarButton.addEventListener("click", onclick_toolbarButton, false);
-        win.addEventListener("aftercustomization", toggle_customise, false);
+        toolbarButton.addEventListener("click", click_handler, false);
+        win.addEventListener("aftercustomization", customize_handler, false);
 
         /* Ensure tab ID is set upon loading into window */
         setCurrentTabIDs();
@@ -1603,10 +1607,10 @@ insert_code = function (win) {
             log("Sixornot - Unload main UI for a window...", 2);
 
             /* Clear event handlers */
-            win.removeEventListener("aftercustomization", toggle_customise, false);
             // win.removeEventListener("offline", onChangedOnlineStatus, false); TODO
             // win.removeEventListener("online", onChangedOnlineStatus, false); TODO
-            toolbarButton.removeEventListener("click", onclick_toolbarButton, false);
+            toolbarButton.removeEventListener("click", click_handler, false);
+            win.removeEventListener("aftercustomization", customize_handler, false);
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
             win.removeEventListener("sixornot-dns-lookup-event", page_change_handler, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
@@ -1619,17 +1623,10 @@ insert_code = function (win) {
     };
 
     create_addressbaricon = function () {
-        var addressBarIcon, urlbaricons, starbutton,
-            onclick_addressBarIcon, panel,
-            page_change_handler, tabselect_handler,
-            popstate_handler, pageshow_handler, update_icon;
+        var addressBarIcon, urlbaricons, starbutton, panel, update_icon,
+            click_handler, page_change_handler, tabselect_handler,
+            popstate_handler, pageshow_handler;
         log("Sixornot - insert_code:create_addressbaricon", 2);
-
-        // Event handler to show panel
-        onclick_addressBarIcon = function () {
-            panel.setAttribute("hidden", false);
-            panel.openPopup(addressBarIcon, panel.getAttribute("position"), 0, 0, false, false);
-        };
 
         /* Updates the icon to reflect state of the currently displayed page */
         update_icon = function () {
@@ -1652,6 +1649,12 @@ insert_code = function (win) {
                 addressBarIcon.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
             }
 
+        };
+
+        /* click events on the button (show panel) */
+        click_handler = function () {
+            panel.setAttribute("hidden", false);
+            panel.openPopup(addressBarIcon, panel.getAttribute("position"), 0, 0, false, false);
         };
 
         /* When the active tab is changed this event handler updates the icon */
@@ -1716,13 +1719,11 @@ insert_code = function (win) {
             urlbaricons.insertBefore(addressBarIcon, starbutton);
         }
 
-        /* Add event listeners */
-        addressBarIcon.addEventListener("click", onclick_addressBarIcon, false);
-
         /* Ensure tab ID is set upon loading into window */
         setCurrentTabIDs();
 
-        /* Register for page change events */
+        /* Add event listeners */
+        addressBarIcon.addEventListener("click", click_handler, false);
         win.addEventListener("sixornot-page-change-event", page_change_handler, false);
         win.addEventListener("sixornot-dns-lookup-event", page_change_handler, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
@@ -1734,7 +1735,7 @@ insert_code = function (win) {
             log("Sixornot - address bar unload function", 2);
 
             /* Clear event handlers */
-            addressBarIcon.removeEventListener("click", onclick_addressBarIcon, false);
+            addressBarIcon.removeEventListener("click", click_handler, false);
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
             win.removeEventListener("sixornot-dns-lookup-event", page_change_handler, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
@@ -1995,8 +1996,7 @@ startup = function (aData, aReason) {
         }
 
         log("Sixornot - startup - initLocalisation...", 2);
-        initLocalisation(addon, "sixornot.properties",
-                         PREF_BRANCH_SIXORNOT.getCharPref("overridelocale"));
+        initLocalisation(addon, "sixornot.properties", get_char_pref("overridelocale"));
 
         // Load into existing windows and set callback to load into any new ones too
         log("Sixornot - startup - loading into windows...", 2);
@@ -2075,6 +2075,23 @@ uninstall = function (aData, aReason) {
     Utility functions
 */
 
+
+// Return string preference value, either from prefs branch or internal defaults
+get_char_pref = function (name) {
+    "use strict";
+    log("Sixornot - get_char_pref - name: " + name, 2);
+    try {
+        return PREF_BRANCH_SIXORNOT.getCharPref(name);
+    } catch (e) {
+        log("Sixornot - get_char_pref error - " + e, 0);
+    }
+    if (PREFS.hasOwnProperty(name)) {
+        log("Sixornot - get_char_pref returning PREFS[name] : " + PREFS[name], 2);
+        return PREFS[name];
+    } else {
+        log("Sixornot - get_char_pref error - No default preference value for requested preference: " + name, 0);
+    }
+};
 
 // Return integer preference value, either from prefs branch or internal defaults
 // TODO - move into utils.js
