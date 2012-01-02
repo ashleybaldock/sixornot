@@ -59,7 +59,6 @@ var uninstall;
 var reload;
 // Utility functions
 var include;
-var set_initial_prefs;
 
 
 // Fake data for testing
@@ -646,7 +645,7 @@ install = function (aData, aReason) {
     log("Sixornot - install - reason: " + aReason, 0);
 
     // TODO replace with prefs.create()
-    set_initial_prefs();
+    prefs.create();
 };
 
 /* ADDON_UNINSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
@@ -655,46 +654,11 @@ uninstall = function (aData, aReason) {
     log("Sixornot - uninstall - reason: " + aReason, 0);
 
     // If uninstalling, remove our preferences
-    // TODO replace with prefs.delete()
     if (aReason === ADDON_UNINSTALL) {
-        PREF_BRANCH_SIXORNOT.deleteBranch("");
+        prefs.remove();
     }
 
     // Remove resource alias
     cleanup_resource();
 };
-
-
-/*
-    Utility functions
-*/
-
-
-// Set up initial values for preferences
-// TODO - Move into prefs.jsm
-set_initial_prefs = function () {
-    "use strict";
-    var key, val;
-    log("Sixornot - set_initial_prefs", 2);
-    for (key in PREFS) {
-        if (PREFS.hasOwnProperty(key)) {
-            // Preserve pre-existing values for preferences in case user has modified them
-            val = PREFS[key];
-            if (typeof val === "boolean") {
-                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
-                    PREF_BRANCH_SIXORNOT.setBoolPref(key, val);
-                }
-            } else if (typeof val === "number") {
-                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
-                    PREF_BRANCH_SIXORNOT.setIntPref(key, val);
-                }
-            } else if (typeof val === "string") {
-                if (PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
-                    PREF_BRANCH_SIXORNOT.setCharPref(key, val);
-                }
-            }
-        }
-    }
-};
-
 

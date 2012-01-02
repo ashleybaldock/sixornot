@@ -9,9 +9,6 @@
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
-
-// Import logging
-
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["prefs"];
@@ -38,7 +35,6 @@ var prefs = {
         if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof(1)) {
             return this.defaults[name];
         } else {
-            // TODO raise preference type mismatch error
             throw "Sixornot - Preference type mismatch";
         }
     },
@@ -57,7 +53,6 @@ var prefs = {
         if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof(true)) {
             return this.defaults[name];
         } else {
-            // TODO raise preference type mismatch error
             throw "Sixornot - Preference type mismatch";
         }
     },
@@ -76,7 +71,6 @@ var prefs = {
         if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof("")) {
             return this.defaults[name];
         } else {
-            // TODO raise preference type mismatch error
             throw "Sixornot - Preference type mismatch";
         }
     },
@@ -84,6 +78,37 @@ var prefs = {
     set_char: function (name, value) {
         "use strict";
         this.PREF_BRANCH_SIXORNOT.setCharPref(name, value);
+    },
+
+    // Create all preferences with defaults (leave existing settings if present + valid)
+    create: function () {
+        "use strict";
+        var key, val;
+        for (key in this.PREFS) {
+            if (this.PREFS.hasOwnProperty(key)) {
+                // Preserve pre-existing values for preferences in case user has modified them
+                val = this.PREFS[key];
+                if (typeof(val) === typeof(true)) {
+                    if (this.PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
+                        this.PREF_BRANCH_SIXORNOT.setBoolPref(key, val);
+                    }
+                } else if (typeof(val) === typeof(1)) {
+                    if (this.PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
+                        this.PREF_BRANCH_SIXORNOT.setIntPref(key, val);
+                    }
+                } else if (typeof(val) === typeof("")) {
+                    if (this.PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
+                        this.PREF_BRANCH_SIXORNOT.setCharPref(key, val);
+                    }
+                }
+            }
+        }
+    },
+
+    // Remove all addon preferences
+    remove: function () {
+        "use strict";
+        this.PREF_BRANCH_SIXORNOT.deleteBranch("");
     }
 };
 
