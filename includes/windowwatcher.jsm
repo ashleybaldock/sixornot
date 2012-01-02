@@ -36,70 +36,85 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-
-/*jslint white: true */
+/*jslint white: true, maxerr: 100, indent: 4 */
 
 // Provided by Firefox:
-/*global Components, Services, APP_SHUTDOWN, AddonManager */
+/*global Components, Services */
 
-/**
- * Save callbacks to run when unloading. Optionally scope the callback to a
- * container, e.g., window. Provide a way to run all the callbacks.
- *
- * @usage unload(): Run all callbacks and release them.
- *
- * @usage unload(callback): Add a callback to run on unload.
- * @param [function] callback: 0-parameter function to call on unload.
- * @return [function]: A 0-parameter function that undoes adding the callback.
- *
- * @usage unload(callback, container) Add a scoped callback to run on unload.
- * @param [function] callback: 0-parameter function to call on unload.
- * @param [node] container: Remove the callback when this container unloads.
- * @return [function]: A 0-parameter function that undoes adding the callback.
- */
-function unload (callback, container) {
+// Provided by Sixornot
+/*global log, parse_exception */
+
+// Module imports we need
+/*jslint es5: true */
+Components.utils.import("resource://gre/modules/Services.jsm");
+
+// Import logging
+Components.utils.import("resource://sixornot/includes/logger.jsm");
+
+/*jslint es5: false */
+
+var EXPORTED_SYMBOLS = ["watchWindows", "unload"];
+
+
+var unload = (function () {
     "use strict";
-    var remove_unloader, orig_callback, unloaders;
-    // Initialize the array of unloaders on the first usage
-    unloaders = unload.unloaders;
-    if (!unloaders) {
-        unloaders = unload.unloaders = [];
-    }
+    // Persistent listing of unloaders
+    var unloaders = [];
 
-    // Calling with no arguments runs all the unloader callbacks
-    if (!callback) {
-        unloaders.slice().forEach(function (unloader) {
-            unloader();
-        });
-        unloaders.length = 0;
-        return;
-    }
+    /**
+     * Save callbacks to run when unloading. Optionally scope the callback to a
+     * container, e.g., window. Provide a way to run all the callbacks.
+     *
+     * @usage unload(): Run all callbacks and release them.
+     *
+     * @usage unload(callback): Add a callback to run on unload.
+     * @param [function] callback: 0-parameter function to call on unload.
+     * @return [function]: A 0-parameter function that undoes adding the callback.
+     *
+     * @usage unload(callback, container) Add a scoped callback to run on unload.
+     * @param [function] callback: 0-parameter function to call on unload.
+     * @param [node] container: Remove the callback when this container unloads.
+     * @return [function]: A 0-parameter function that undoes adding the callback.
+     */
+    return function (callback, container) {
+        var remove_unloader, orig_callback;
 
-    // Provide a way to remove the unloader
-    remove_unloader = function () {
-        var index = unloaders.indexOf(callback);
-        if (index !== -1) {
-            unloaders.splice(index, 1);
+        // Calling with no arguments runs all the unloader callbacks
+        if (!callback) {
+            unloaders.slice().forEach(function (unloader) {
+                unloader();
+            });
+            unloaders.length = 0;
+            return;
         }
-    };
 
-    // The callback is bound to the lifetime of the container if we have one
-    if (container) {
-        // Remove the unloader when the container unloads
-        container.addEventListener("unload", remove_unloader, false);
-
-        // Wrap the callback to additionally remove the unload listener
-        orig_callback = callback;
-        callback = function () {
-            container.removeEventListener("unload", remove_unloader, false);
-            orig_callback();
+        // Provide a way to remove the unloader
+        remove_unloader = function () {
+            var index = unloaders.indexOf(callback);
+            if (index !== -1) {
+                unloaders.splice(index, 1);
+            }
         };
-    }
 
-    unloaders.push(callback);
+        // The callback is bound to the lifetime of the container if we have one
+        if (container) {
+            // Remove the unloader when the container unloads
+            container.addEventListener("unload", remove_unloader, false);
 
-    return remove_unloader;
-}
+            // Wrap the callback to additionally remove the unload listener
+            orig_callback = callback;
+            callback = function () {
+                container.removeEventListener("unload", remove_unloader, false);
+                orig_callback();
+            };
+        }
+
+        // TODO test that this is still working properly and removes everything properly
+        unloaders.push(callback);
+
+        return remove_unloader;
+    };
+}());
 
 /**
  * Waits for a browser window to finish loading before running the callback
@@ -107,9 +122,9 @@ function unload (callback, container) {
  * @usage runOnLoad(window, callback): Apply a callback to to run on a window when it loads.
  * @param [function] callback: 1-parameter function that gets a browser window.
  */
-function runOnLoad (win, callback) {
-    // Listen for one load event before checking the window type
+var runOnLoad = function (win, callback) {
     "use strict";
+    // Listen for one load event before checking the window type
     win.addEventListener("load", function load_once () {
         win.removeEventListener("load", load_once, false);
 
@@ -118,7 +133,7 @@ function runOnLoad (win, callback) {
             callback(win);
         }
     }, false);
-}
+};
 
 
 /**
@@ -127,7 +142,7 @@ function runOnLoad (win, callback) {
  * @usage runOnWindows(callback): Apply a callback to each open browser window.
  * @param [function] callback: 1-parameter function that gets a browser window.
  */
-function runOnWindows (callback) {
+var runOnWindows = function (callback) {
     "use strict";
     var browserWindows, browserWindow;
     // Add functionality to existing windows
@@ -142,7 +157,7 @@ function runOnWindows (callback) {
             runOnLoad(browserWindow, callback);
         }
     }
-}
+};
 
 /**
  * Apply a callback to each open and new browser windows.
@@ -150,12 +165,12 @@ function runOnWindows (callback) {
  * @usage watchWindows(callback): Apply a callback to each browser window.
  * @param [function] callback: 1-parameter function that gets a browser window.
  */
-function watchWindows (callback) {
+var watchWindows = function (callback) {
     "use strict";
     // Add functionality to existing windows
     runOnWindows(callback);
 
-    // Watch for new browser windows opening then wait for it to load
+    // Watch for new browser windows opening then wait for them to load
     function windowWatcher (subject, topic) {
         if (topic === "domwindowopened") {
             runOnLoad(subject, callback);
@@ -167,17 +182,5 @@ function watchWindows (callback) {
     unload(function () {
         Services.ww.unregisterNotification(windowWatcher);
     });
-}
-
-
-/* Proxy to getElementById */
-function gbi (node, child_id) {
-    "use strict";
-    if (node.getElementById) {
-        return node.getElementById(child_id);
-    } else {
-        return node.querySelector("#" + child_id);
-    }
-}
-
+};
 

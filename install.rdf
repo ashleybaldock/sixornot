@@ -38,8 +38,8 @@
             <Description>
                 <!-- Firefox -->
                 <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
-                <em:minVersion>8.0</em:minVersion>
-                <em:maxVersion>9.*</em:maxVersion>
+                <em:minVersion>9.0</em:minVersion>
+                <em:maxVersion>11.*</em:maxVersion>
             </Description>
         </em:targetApplication>
 
@@ -47,8 +47,8 @@
             <Description>
                 <!-- SeaMonkey -->
                 <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id>
-                <em:minVersion>2.5</em:minVersion>
-                <em:maxVersion>2.5.*</em:maxVersion>
+                <em:minVersion>2.7</em:minVersion>
+                <em:maxVersion>2.9.*</em:maxVersion>
             </Description>
         </em:targetApplication>
 
