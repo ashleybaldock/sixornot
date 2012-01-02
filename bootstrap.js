@@ -72,8 +72,6 @@ var RequestCache = [];
 var RequestWaitingList = [];
 
 
-
-
 /* Preferences */
 PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
 PREF_BRANCH_DNS      = Services.prefs.getBranch("network.dns.");
@@ -91,9 +89,9 @@ PREFS = {
 
 
 /*
-    Sixornot Preferences observer
-    Watches our preferences so that if the user changes them manually we update to reflect the changes
-*/
+ * Sixornot Preferences observer
+ * Watches our preferences so that if the user changes them manually we update to reflect the changes
+ */
 PREF_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         "use strict";
@@ -144,9 +142,9 @@ PREF_OBSERVER = {
 };
 
 /*
-    DNS Preferences observer
-    Watches built-in Firefox preferences which have an impact on DNS resolution.
-*/
+ * DNS Preferences observer
+ * Watches built-in Firefox preferences which have an impact on DNS resolution.
+ */
 PREF_OBSERVER_DNS = {
     observe: function (aSubject, aTopic, aData) {
         "use strict";
@@ -183,9 +181,10 @@ PREF_OBSERVER_DNS = {
 
 
 /*
-    HTTP Request observer
-    Observes all HTTP requests to determine the details of all browser connections
-*/
+ * HTTP Request observer
+ * Observes all HTTP requests to determine the details of connections
+ * Ignores connections which aren't related to browser windows
+ */
 var HTTP_REQUEST_OBSERVER = {
     observe: function (aSubject, aTopic, aData) {
         "use strict";
@@ -482,7 +481,11 @@ var HTTP_REQUEST_OBSERVER = {
 
 
 
+/*
+ * Resource alias management (for resource:// URLs)
+ */
 var setup_resource = function (aData) {
+    "use strict";
     var resource, alias;
     // Set up resource URI alias
     resource = Services.io.getProtocolHandler("resource")
@@ -503,27 +506,30 @@ var setup_resource = function (aData) {
 };
 
 var cleanup_resource = function () {
+    "use strict";
     var resource = Services.io.getProtocolHandler("resource")
                 .QueryInterface(Components.interfaces.nsIResProtocolHandler);
     resource.setSubstitution("sixornot", null);
 };
 
+
+
 /*
-    bootstrap.js API
-*/
+ * bootstrap.js API
+ */
 /* APP_STARTUP, ADDON_ENABLE, ADDON_INSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
 startup = function (aData, aReason) {
     "use strict";
     // Set up sixornot resource alias
     setup_resource(aData);
 
-    // Import logging module (adds global symbols log, parse_exception)
+    // Import logging module (adds global symbols: log, parse_exception)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/logger.jsm");
     /*jslint es5: false */
     log("Imported: \"resource://sixornot/includes/logger.jsm\"", 1);
 
-    // Import prefs module (adds global symbol prefs)
+    // Import prefs module (adds global: symbol prefs)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
     /*jslint es5: false */
@@ -531,7 +537,7 @@ startup = function (aData, aReason) {
 
     log("Sixornot - startup - reason: " + aReason, 0);
 
-    // Import dns module (adds global symbol dns_handler)
+    // Import dns module (adds global symbol: dns_handler)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/dns.jsm");
     /*jslint es5: false */
@@ -539,18 +545,19 @@ startup = function (aData, aReason) {
     dns_handler.init();
     log("Imported: \"resource://sixornot/includes/dns.jsm\"", 1);
 
-    // Import windowwatcher module (adds global symbols watchWindows, unload)
+    // Import windowwatcher module (adds global symbols: watchWindows, unload)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
     /*jslint es5: false */
     log("Imported: \"resource://sixornot/includes/windowwatcher.jsm\"", 1);
 
-    // Import gui module (adds global symbol insert_code)
+    // Import gui module (adds global symbol: insert_code)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/gui.jsm");
     /*jslint es5: false */
     log("Imported: \"resource://sixornot/includes/gui.jsm\"", 1);
 
+    // Load callback for when our addon finishes loading
     AddonManager.getAddonByID(aData.id, function (addon, data) {
 
         // Run dns_handler tests
@@ -576,7 +583,7 @@ startup = function (aData, aReason) {
     });
 };
 
-// Reload addon in all windows, e.g. when preferences change
+/* Reload addon in all windows, e.g. when preferences change */
 reload = function () {
     "use strict";
     log("Sixornot - reload", 1);

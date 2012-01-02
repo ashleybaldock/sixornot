@@ -1,60 +1,49 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: BSD License
+ * 
+ * Copyright (c) 2008-2012 Timothy Baldock. All Rights Reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * 
+ * 3. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission from the author.
+ * 
+ * 4. Products derived from this software may not be called "SixOrNot" nor may "SixOrNot" appear in their names without specific prior written permission from the author.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * 
+ * ***** END LICENSE BLOCK ***** */
+
 /*jslint white: true, maxerr: 100, indent: 4 */
 
 // Provided by Firefox:
 /*global Components, Services, ChromeWorker */
 
+// Provided by Sixornot
+/*global log, parse_exception, prefs */
+
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
+
+// Import logging
+Components.utils.import("resource://sixornot/includes/logger.jsm");
+log("Imported logging", 0);
+
+// Import preferences
+Components.utils.import("resource://sixornot/includes/prefs.jsm");
+log("Imported prefs", 0);
+
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["dns_handler"];
 
-var PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
-
-// Default values for all Sixornot preferences
-var PREFS = {
-    loglevel: 0
-};
 
 var xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService(Components.interfaces.nsIXULRuntime);
 
-// Log a message to error console, but only if it is important enough
-var log = (function () {
-    "use strict";
-    var get_loglevel = function () {
-        try {
-            return PREF_BRANCH_SIXORNOT.getIntPref("loglevel");
-        } catch (e) {
-            // Fallback to hard-coded default
-            return PREFS.loglevel;
-        }
-    };
-    return function (message, level) {
-        // Three log levels, 0 = critical, 1 = normal, 2 = verbose
-        // Default level is 1
-        level = level || 1;
-        // If preference unset, default to 1 (normal) level
-        if (level <= get_loglevel()) {
-            Components.classes["@mozilla.org/consoleservice;1"]
-                .getService(Components.interfaces.nsIConsoleService)
-                .logStringMessage(message);
-        }
-    };
-}());
-
-// Returns a string version of an exception object with its stack trace
-var parse_exception = function (e) {
-    "use strict";
-    log("Sixornot - parse_exception", 2);
-    if (!e) {
-        return "";
-    } else if (!e.stack) {
-        return String(e);
-    } else {
-        return String(e) + " \n" + e.stack;
-    }
-};
 
 
 // The DNS Handler which does most of the work of the extension

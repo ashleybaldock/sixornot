@@ -23,7 +23,7 @@
 /*global Components, Services, ChromeWorker */
 
 // Provided by Sixornot
-/*global gt, init_locale, log, parse_exception, prefs, dns_handler, imagesrc, windowWatcher, unload */
+/*global gt, log, parse_exception, prefs, dns_handler, imagesrc, windowWatcher, unload */
 
 // Module imports we need
 /*jslint es5: true */
