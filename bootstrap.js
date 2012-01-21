@@ -61,28 +61,6 @@ var reload;
 var include;
 
 
-// Fake data for testing
-var localipv4s = [];
-var localipv6s = [];
-var locallookuptime = 0;
-
-
-/* Preferences */
-PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
-PREF_BRANCH_DNS      = Services.prefs.getBranch("network.dns.");
-
-// Default values for all Sixornot preferences
-PREFS = {
-    nextitem:           "bookmarks-menu-button-container",
-    toolbar:            "nav-bar",
-    showaddressicon:    false,
-    greyscaleicons:     false,
-    loglevel:           0,
-    overridelocale:     "",
-    showallips:         false
-};
-
-
 /*
  * Sixornot Preferences observer
  * Watches our preferences so that if the user changes them manually we update to reflect the changes
@@ -95,7 +73,7 @@ PREF_OBSERVER = {
             log("Sixornot - PREF_OBSERVER - not a pref change event 1", 2);
             return;
         }
-        if (!PREFS.hasOwnProperty(aData)) {
+        if (!prefs.defaults.hasOwnProperty(aData)) {
             log("Sixornot - PREF_OBSERVER - not a pref change event 2", 2);
             return;
         }
@@ -108,7 +86,6 @@ PREF_OBSERVER = {
             log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 1);
             reload();
         }
-        // TODO Update worker process to use new log level?
         if (aData === "loglevel") {
             log("Sixornot - PREF_OBSERVER - loglevel has changed", 1);
         }
@@ -121,18 +98,18 @@ PREF_OBSERVER = {
         }
     },
 
-    nsIPB2: PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2),
-
     register: function () {
         "use strict";
         log("Sixornot - PREF_OBSERVER - register", 2);
-        this.nsIPB2.addObserver("", PREF_OBSERVER, false);
+        prefs.PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2)
+            .addObserver("", PREF_OBSERVER, false);
     },
 
     unregister: function () {
         "use strict";
         log("Sixornot - PREF_OBSERVER - unregister", 2);
-        this.nsIPB2.removeObserver("", PREF_OBSERVER);
+        prefs.PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2)
+            .removeObserver("", PREF_OBSERVER);
     }
 };
 
@@ -159,18 +136,18 @@ PREF_OBSERVER_DNS = {
         }
     },
 
-    nsIPB2: PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2),
-
     register: function () {
         "use strict";
         log("Sixornot - PREF_OBSERVER_DNS - register", 2);
-        this.nsIPB2.addObserver("", PREF_OBSERVER_DNS, false);
+        prefs.PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2)
+            .addObserver("", PREF_OBSERVER_DNS, false);
     },
 
     unregister: function () {
         "use strict";
         log("Sixornot - PREF_OBSERVER_DNS - unregister", 2);
-        this.nsIPB2.removeObserver("", PREF_OBSERVER_DNS);
+        prefs.PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2)
+            .removeObserver("", PREF_OBSERVER_DNS);
     }
 };
 
@@ -189,14 +166,30 @@ var HTTP_REQUEST_OBSERVER = {
             http_channel, http_channel_internal, nC, new_entry;
         log("Sixornot - HTTP_REQUEST_OBSERVER - (" + aTopic + ")", 1);
 
-        /* Create an event of the specified type and dispatch it to the specified element
-           Return boolean indicating if the event has been cancelled */
-        send_event = function (type, target, subject) {
+        /*
+         * Create an event of the specified type and dispatch it to the specified element
+         * Return boolean indicating if the event has been cancelled
+         * Event type one of:
+         *  sixornot-dns-lookup-event
+         *  sixornot-count-change-event
+         *  sixornot-address-change-event
+         *  sixornot-new-host-event
+         *  sixornot-page-change-event
+         */
+        send_event = function (type, target, entry) {
             // Create an event to inform listeners that a new page load has started
             // We do this now since it's only now that we know the innerID of the page
             var evt = target.top.document.createEvent("CustomEvent");
-            evt.initCustomEvent(type, true, true, null);
-            evt.subject = subject;
+
+            // Event's payload is basic info to allow lookup of entry from request cache
+            evt.initCustomEvent(type, true, true, {
+                host: entry.host,
+                inner_id: entry.inner_id,
+                outer_id: entry.outer_id
+            });
+
+            log("Sixornot - send_event of type: " + type + ", to target: " + target + " with payload: " + JSON.stringify(evt.detail), 1);
+
             // Dispatch the event
             return target.top.dispatchEvent(evt);
         };
@@ -204,7 +197,6 @@ var HTTP_REQUEST_OBSERVER = {
         /* Prepare and return a new blank entry for the hosts listing */
         create_new_entry = function (host, address, address_family, origin, inner, outer) {
             return {
-                // TODO Should this be hostPort? Since we could connect using v4/v6 on different ports?
                 host: host,
                 address: address,
                 address_family: address_family,
@@ -573,6 +565,7 @@ startup = function (aData, aReason) {
         log("Sixornot - startup - loading into windows...", 2);
         watchWindows(insert_code);
 
+        // The observers actually trigger events in the UI, nothing happens until they are registered
         log("Sixornot - startup - setting up prefs observer...", 2);
         PREF_OBSERVER.register();
 
@@ -601,9 +594,21 @@ shutdown = function (aData, aReason) {
         // Unload all UI via init-time unload() callbacks
         unload();
 
+        log("Sixornot - shutdown - removing http observer...", 2);
+        HTTP_REQUEST_OBSERVER.unregister();
+
+        log("Sixornot - shutdown - removing dns prefs observer...", 2);
+        PREF_OBSERVER_DNS.unregister();
+
+        log("Sixornot - shutdown - removing prefs observer...", 2);
+        PREF_OBSERVER.unregister();
+
         // Unload our own code modules
         Components.utils.unload("resource://sixornot/includes/gui.jsm");
         log("Unloaded: \"resource://sixornot/includes/gui.jsm\"", 1);
+
+        Components.utils.unload("resource://sixornot/includes/requestcache.jsm");
+        log("Unloaded: \"resource://sixornot/includes/requestcache.jsm\"", 1);
 
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
         log("Unloaded: \"resource://sixornot/includes/windowwatcher.jsm\"", 1);
@@ -613,20 +618,11 @@ shutdown = function (aData, aReason) {
         Components.utils.unload("resource://sixornot/includes/dns.jsm");
         log("Unloaded: \"resource://sixornot/includes/dns.jsm\"", 1);
 
-        Components.utils.unload("resource://sixornot/includes/logger.jsm");
-        log("Unloaded: \"resource://sixornot/includes/logger.jsm\"", 1);
-
         Components.utils.unload("resource://sixornot/includes/prefs.jsm");
         log("Unloaded: \"resource://sixornot/includes/prefs.jsm\"", 1);
 
-        log("Sixornot - shutdown - removing prefs observer...", 2);
-        PREF_OBSERVER.unregister();
-
-        log("Sixornot - shutdown - removing dns prefs observer...", 2);
-        PREF_OBSERVER_DNS.unregister();
-
-        log("Sixornot - shutdown - removing http observer...", 2);
-        HTTP_REQUEST_OBSERVER.unregister();
+        Components.utils.unload("resource://sixornot/includes/logger.jsm");
+        log("Unloaded: \"resource://sixornot/includes/logger.jsm\"", 1);
 
         // Remove resource alias
         cleanup_resource();
@@ -652,7 +648,6 @@ install = function (aData, aReason) {
 
     log("Sixornot - install - reason: " + aReason, 0);
 
-    // TODO replace with prefs.create()
     prefs.create();
 };
 

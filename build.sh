@@ -14,18 +14,25 @@ cp bootstrap.js ../dist/$version/src/
 cp install.rdf ../dist/$version/src/
 cp icon.png ../dist/$version/src/
 cp icon64.png ../dist/$version/src/
+
 mkdir ../dist/$version/src/includes
-cp includes/locale.js ../dist/$version/src/includes/
-cp includes/utils.js ../dist/$version/src/includes/
+cp includes/dns.jsm ../dist/$version/src/includes/
 cp includes/dns_worker.js ../dist/$version/src/includes/
+cp includes/gui.jsm ../dist/$version/src/includes/
+cp includes/locale.jsm ../dist/$version/src/includes/
+cp includes/logger.jsm ../dist/$version/src/includes/
+cp includes/prefs.jsm ../dist/$version/src/includes/
+cp includes/requestcache.jsm ../dist/$version/src/includes/
+cp includes/windowwatcher.jsm ../dist/$version/src/includes/
+
 ./gen_imagesrc.sh
 cp includes/imagesrc.jsm ../dist/$version/src/includes/
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale
 mkdir ../dist/$version/src/locale/en
-mkdir ../dist/$version/src/locale/ru
 cp locale/en/sixornot.properties ../dist/$version/src/locale/en/
+mkdir ../dist/$version/src/locale/ru
 cp locale/ru/sixornot.properties ../dist/$version/src/locale/ru/
 
 # Create .zip file from build directory (with .xpi file extension)

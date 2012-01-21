@@ -141,7 +141,7 @@ var insert_code = function (win) {
         on_count_change, on_dns_complete, on_tab_select,
         panel_vbox, remote_grid, remote_rows, remote_cols, title_remote,
         remote_anchor, title_local, settingslabel, urllabel, urlhbox,
-        get_hosts, force_scrollbars, new_line, grid_contents, remove_all,
+        get_hosts, get_host, force_scrollbars, new_line, grid_contents, remove_all,
         generate_all;
         panel = doc.createElement("panel");
         //panel.setAttribute("noautohide", true);
@@ -233,6 +233,26 @@ var insert_code = function (win) {
                 }
             }
             return requestCacheLookup;
+        };
+
+        /* Get a particular host entry for current window based on host name */
+        get_host = function (hostname) {
+            var currentWindowID, requestCacheLookup, i;
+            // New functionality, get IDs for lookup
+            currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
+                .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                .currentInnerWindowID;
+            requestCacheLookup = requests.cache[currentWindowID];
+            log("get_host: currentWindowID: " + currentWindowID + ", requestCacheLookup: " + requestCacheLookup, 1);
+
+            // Locate the requested item in the lookup entry
+            for (i = 0; i < requestCacheLookup.length; i += 1) {
+                if (requestCacheLookup[i] !== undefined) {
+                    return requestCacheLookup[i];
+                }
+            }
+            return null;
         };
 
         /* Ensure panel contents visible with scrollbars */
@@ -745,17 +765,18 @@ var insert_code = function (win) {
         // If so repopulate grid_contents list as per show panel
         on_page_change = function (evt) {
             log("Sixornot - panel:on_page_change", 1);
+            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_page_change - skipping (panel is closed)", 1);
                 return;
             }
-            if (evt.subject.outer_id !== currentTabOuterID) {
-                log("Sixornot - on_page_change - skipping (outer ID mismatch), evt.subject.outer_id: " + evt.subject.outer_id + ", currentTabOuterID: " + currentTabOuterID, 1);
+            if (evt.detail.outer_id !== currentTabOuterID) {
+                log("Sixornot - on_page_change - skipping (outer ID mismatch), evt.detail.outer_id: " + evt.detail.outer_id + ", currentTabOuterID: " + currentTabOuterID, 1);
                 return;
             }
             setCurrentTabIDs();
-            if (evt.subject.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_page_change - skipping (inner ID mismatch), evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.detail.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_page_change - skipping (inner ID mismatch), evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
             }
             remove_all();
@@ -769,12 +790,13 @@ var insert_code = function (win) {
         // If so add a new host into grid_contents (in correct sort position)
         on_new_host = function (evt) {
             log("Sixornot - panel:on_new_host", 1);
+            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_new_host - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
             }
-            if (evt.subject.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_new_host - skipping (inner ID mismatch) - evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.detail.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_new_host - skipping (inner ID mismatch) - evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
             }
 
@@ -782,13 +804,15 @@ var insert_code = function (win) {
                 // TODO put this in the right position based on some ordering
                 // TODO since event subject is the host object in question so long as the IDs match we should be ok
                 //  to just use that rather than doing this lookup!
-                log("Sixornot - on_new_host - evt.subject.host: " + evt.subject.host, 1);
-                // For first match for evt.subject.host add a new line
+                log("Sixornot - on_new_host - evt.detail.host: " + evt.detail.host, 1);
+                // For first match for evt.detail.host add a new line
                 // Only do so if a matching host does not exist in the listing already TODO
                 if (grid_contents.length > 0) {
-                    grid_contents.push(new_line(evt.subject, grid_contents[grid_contents.length - 1].get_last_element()));
+                    grid_contents.push(new_line(get_host(evt.detail.host),
+                        grid_contents[grid_contents.length - 1].get_last_element()));
                 } else {
-                    grid_contents.push(new_line(evt.subject, remote_anchor));
+                    grid_contents.push(new_line(get_host(evt.detail).host,
+                        remote_anchor));
                 }
             } catch (e) {
                 log("exception!" + parse_exception(e), 0);
@@ -803,17 +827,18 @@ var insert_code = function (win) {
         // And update its icon
         on_address_change = function (evt) {
             log("Sixornot - panel:on_address_change", 1);
+            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             if (panel.state !== "open") {
                 log("Sixornot - on_address_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
             }
-            if (evt.subject.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_address_change - skipping (inner ID mismatch) - evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.detail.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_address_change - skipping (inner ID mismatch) - evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
                 return;
             }
             try {
                 if (!grid_contents.some(function (item, index, items) {
-                    if (item.host.host === evt.subject.host) {
+                    if (item.host.host === evt.detail.host) {
                         item.update_address();
                         return true;
                     }
@@ -830,17 +855,18 @@ var insert_code = function (win) {
         // Look up matching host entry in grid_contents and update its count
         on_count_change = function (evt) {
             log("Sixornot - panel:on_count_change", 1);
+            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             if (panel.state !== "open") {
-                log("Sixornot - on_count_change - skipping (panel is closed) - panel.state: " + panel.state, 1);
+                log("Sixornot - on_count_change - skipping (panel is closed)", 2);
                 return;
             }
-            if (evt.subject.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_count_change - skipping (inner ID mismatch) - evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.detail.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_count_change - skipping (inner ID mismatch)", 2);
                 return;
             }
             try {
                 if (!grid_contents.some(function (item, index, items) {
-                    if (item.host.host === evt.subject.host) {
+                    if (item.host.host === evt.detail.host) {
                         item.update_count();
                         return true;
                     }
@@ -858,18 +884,20 @@ var insert_code = function (win) {
         // Update icon
         on_dns_complete = function (evt) {
             log("Sixornot - panel:on_dns_complete", 1);
+            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+
             // TODO - unsubscribe from events when panel is closed to avoid this check
             if (panel.state !== "open") {
                 log("Sixornot - on_dns_complete - skipping (panel is closed) - panel.state: " + panel.state, 1);
                 return;
             }
-            if (evt.subject.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_dns_complete - skipping (inner ID mismatch) - evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+            if (evt.detail.inner_id !== currentTabInnerID) {
+                log("Sixornot - on_dns_complete - skipping (inner ID mismatch)", 2);
                 return;
             }
             try {
                 if (!grid_contents.some(function (item, index, items) {
-                    if (item.host.host === evt.subject.host) {
+                    if (item.host.host === evt.detail.host) {
                         log("Sixornot - on_dns_complete - updating ips and icon", 1);
                             item.update_ips();
                         return true;
@@ -968,7 +996,7 @@ var insert_code = function (win) {
         var toolbarButton, toolbarID, toolbar, nextItem, nextID,
             click_handler, panel, update_icon,
             customize_handler, page_change_handler, tabselect_handler,
-            popstate_handler, pageshow_handler;
+            popstate_handler, pageshow_handler, on_dns_complete;
         log("Sixornot - insert_code:create_button", 2);
 
         /* Updates the icon to reflect state of the currently displayed page */
@@ -1023,21 +1051,40 @@ var insert_code = function (win) {
             update_icon();
         };
 
-        /* Called whenever a Sixornot page change event is emitted
-           Calls the update method for the icon, but only if the event applies to us */
+
+        /*
+         * Called whenever a Sixornot page change event is seen
+         * Calls the update method for the icon, but only if the event applies to us
+         */
         page_change_handler = function (evt) {
-            log("Sixornot - insert_code:create_button:page_change_handler - evt.subject.outer_id: " + evt.subject.outer_id + ", evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            log("Sixornot - insert_code:create_button:page_change_handler", 1);
+            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+
             setCurrentTabIDs();
             // Ignore updates for windows other than this one
-            if (evt.subject.outer_id !== currentTabOuterID) {
-                log("Sixornot - insert_code:create_button - callback: update_state - Callback ID mismatch: evt.subject.outer_id is: " + evt.subject.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
-            } else {
+            if (evt.detail.outer_id === currentTabOuterID) {
                 update_icon();
             }
         };
 
-        /* When button location is customised store the new location in preferences
-           so we can load into the same place next time */
+        /*
+         * Called whenever a Sixornot dns lookup event is seen
+         */
+        on_dns_complete = function (evt) {
+            log("Sixornot - insert_code:create_button:on_dns_complete", 1);
+            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+
+            setCurrentTabIDs();
+            // Ignore updates for windows other than this one
+            if (evt.detail.outer_id === currentTabOuterID) {
+                update_icon();
+            }
+        };
+
+        /*
+         * When button location is customised store the new location in preferences
+         * so we can load into the same place next time
+         */
         customize_handler = function (evt) {
             var button_parent, button_nextitem, toolbar_id, nextitem_id;
             log("Sixornot - insert_code:create_button:customize_handler");
@@ -1104,7 +1151,7 @@ var insert_code = function (win) {
 
         /* Register for page change events */
         win.addEventListener("sixornot-page-change-event", page_change_handler, false);
-        win.addEventListener("sixornot-dns-lookup-event", page_change_handler, false);
+        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
         win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
         //win.gBrowser.addEventListener("DOMContentLoaded", page_change_handler, false);
@@ -1119,7 +1166,7 @@ var insert_code = function (win) {
             toolbarButton.removeEventListener("click", click_handler, false);
             win.removeEventListener("aftercustomization", customize_handler, false);
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
-            win.removeEventListener("sixornot-dns-lookup-event", page_change_handler, false);
+            win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
             win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
             //win.gBrowser.removeEventListener("DOMContentLoaded", page_change_handler, false);
@@ -1132,7 +1179,7 @@ var insert_code = function (win) {
     create_addressbaricon = function () {
         var addressBarIcon, urlbaricons, starbutton, panel, update_icon,
             click_handler, page_change_handler, tabselect_handler,
-            popstate_handler, pageshow_handler;
+            popstate_handler, pageshow_handler, on_dns_complete;
         log("Sixornot - insert_code:create_addressbaricon", 2);
 
         /* Updates the icon to reflect state of the currently displayed page */
@@ -1188,11 +1235,26 @@ var insert_code = function (win) {
         /* Called whenever a Sixornot page change event is emitted
            Calls the update method for the icon, but only if the event applies to us */
         page_change_handler = function (evt) {
-            log("Sixornot - insert_code:create_addressbaricon:page_change_handler - evt.subject.outer_id: " + evt.subject.outer_id + ", evt.subject.inner_id: " + evt.subject.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            log("Sixornot - insert_code:create_addressbaricon:page_change_handler - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             setCurrentTabIDs();
             // Ignore updates for windows other than this one
-            if (evt.subject.outer_id !== currentTabOuterID) {
-                log("Sixornot - insert_code:create_addressbaricon - callback: update_state - Callback ID mismatch: evt.subject.outer_id is: " + evt.subject.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
+            if (evt.detail.outer_id !== currentTabOuterID) {
+                log("Sixornot - insert_code:create_addressbaricon - callback: update_state - Callback ID mismatch: evt.detail.outer_id is: " + evt.detail.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
+            } else {
+                update_icon();
+            }
+        };
+
+        /*
+         * Called whenever a Sixornot dns lookup event is heard
+         */
+        on_dns_complete = function (evt) {
+            log("Sixornot - insert_code:create_button:on_dns_complete", 1);
+            log("evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            setCurrentTabIDs();
+            // Ignore updates for windows other than this one
+            if (evt.detail.outer_id !== currentTabOuterID) {
+                log("Sixornot - insert_code:create_button - callback: update_state - Callback ID mismatch: evt.detail.outer_id is: " + evt.detail.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
             } else {
                 update_icon();
             }
@@ -1232,7 +1294,7 @@ var insert_code = function (win) {
         /* Add event listeners */
         addressBarIcon.addEventListener("click", click_handler, false);
         win.addEventListener("sixornot-page-change-event", page_change_handler, false);
-        win.addEventListener("sixornot-dns-lookup-event", page_change_handler, false);
+        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
         win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
         //win.gBrowser.addEventListener("DOMContentLoaded", page_change_handler, false);
@@ -1244,7 +1306,7 @@ var insert_code = function (win) {
             /* Clear event handlers */
             addressBarIcon.removeEventListener("click", click_handler, false);
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
-            win.removeEventListener("sixornot-dns-lookup-event", page_change_handler, false);
+            win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
             win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
             //win.gBrowser.removeEventListener("DOMContentLoaded", page_change_handler, false);
