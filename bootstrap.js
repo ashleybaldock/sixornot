@@ -24,7 +24,7 @@
 /*global APP_STARTUP, APP_SHUTDOWN, ADDON_ENABLE, ADDON_DISABLE, ADDON_INSTALL, ADDON_UNINSTALL, ADDON_UPGRADE, ADDON_DOWNGRADE */
 
 // Provided in included modules:
-/*global unload, watchWindows, dns_handler, log, parse_exception, prefs */
+/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests */
 
 
 /*
@@ -65,11 +65,6 @@ var include;
 var localipv4s = [];
 var localipv6s = [];
 var locallookuptime = 0;
-
-
-/* Request Cache - keyed by ID, list of all hosts contacted per page */
-var RequestCache = [];
-var RequestWaitingList = [];
 
 
 /* Preferences */
@@ -318,12 +313,12 @@ var HTTP_REQUEST_OBSERVER = {
             if (new_page) {
                 /* PRIMARY PAGE LOAD */
                 // New page, since inner window ID hasn't been set yet we need to store any
-                // new connections until such a time as it is, these get stored in the RequestWaitingList
+                // new connections until such a time as it is, these get stored in the requests waiting list
                 // which is keyed by the outer window ID
-                if (!RequestWaitingList[domWindowOuter]) {
-                    RequestWaitingList[domWindowOuter] = [];
+                if (!requests.waitinglist[domWindowOuter]) {
+                    requests.waitinglist[domWindowOuter] = [];
                 }
-                if (!RequestWaitingList[domWindowOuter].some(function (item, index, items) {
+                if (!requests.waitinglist[domWindowOuter].some(function (item, index, items) {
                     // If element present in list update fields if required
                     if (item.host === http_channel.URI.host) {
                         item.count += 1;
@@ -337,17 +332,17 @@ var HTTP_REQUEST_OBSERVER = {
                 })) {
                     // Create new entry + add to waiting list
                     log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + remoteAddress + ", ID: " + domWindowOuter, 1);
-                    RequestWaitingList[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, null, domWindowOuter));
+                    requests.waitinglist[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, null, domWindowOuter));
                 }
 
             } else {
                 /* SECONDARY PAGE LOAD */
-                // Not new, inner window ID will be correct by now so add entries to RequestCache
-                if (!RequestCache[domWindowInner]) {
-                    RequestCache[domWindowInner] = [];
+                // Not new, inner window ID will be correct by now so add entries to request cache
+                if (!requests.cache[domWindowInner]) {
+                    requests.cache[domWindowInner] = [];
                 }
                 // If host already in list update IP address if needed
-                if (!RequestCache[domWindowInner].some(function (item, index, items) {
+                if (!requests.cache[domWindowInner].some(function (item, index, items) {
                     if (item.host === http_channel.URI.host) {
                         item.count += 1;
                         send_event("sixornot-count-change-event", domWindow, item);
@@ -371,13 +366,13 @@ var HTTP_REQUEST_OBSERVER = {
                     // Trigger new DNS lookup for the new host entry
                     new_entry.lookup_ips();
                     // Add to cache
-                    RequestCache[domWindowInner].push(new_entry);
+                    requests.cache[domWindowInner].push(new_entry);
                 }
             }
 
         } else if (aTopic === "content-document-global-created") {
             // This signals that the document has been created, initial load completed
-            // This is where entries on the RequestWaitingList get moved to the RequestCache
+            // This is where entries on the requests waiting list get moved to the request cache
             domWindow = aSubject;
             domWindowUtils = domWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
             domWindowInner = domWindowUtils.currentInnerWindowID;
@@ -386,20 +381,20 @@ var HTTP_REQUEST_OBSERVER = {
             log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created: Inner Window ID: "
                 + domWindowInner + ", Outer Window ID: " + domWindowOuter + ", Location: " + domWindow.location, 1);
 
-            if (!RequestWaitingList[domWindowOuter]) {
-                log("RequestWaitingList[domWindowOuter] is null", 1);
+            if (!requests.waitinglist[domWindowOuter]) {
+                log("requests.waitinglist[domWindowOuter] is null", 1);
                 return;
             }
 
-            if (RequestCache[domWindowInner]) {
-                throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: RequestCache already contains content entries.";
+            if (requests.cache[domWindowInner]) {
+                throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: requests.cache already contains content entries.";
             }
 
             // Move item(s) from waiting list to cache
-            RequestCache[domWindowInner] = RequestWaitingList.splice(domWindowOuter, 1)[0];
+            requests.cache[domWindowInner] = requests.waitinglist.splice(domWindowOuter, 1)[0];
 
             // For each member of the new cache set inner ID and trigger a dns lookup
-            RequestCache[domWindowInner].forEach(function (item, index, items) {
+            requests.cache[domWindowInner].forEach(function (item, index, items) {
                 log("Setting inner_id of item: " + item.host + "(" + item.address + ") to: " + domWindowInner, 1);
                 item.inner_id = domWindowInner;
                 item.lookup_ips();
@@ -414,15 +409,15 @@ var HTTP_REQUEST_OBSERVER = {
         } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
             // Remove elements for this window and ensure DNS lookups are all cancelled
-            if (RequestCache[domWindowInner]) {
+            if (requests.cache[domWindowInner]) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner
                         + " - removing all items for this inner window...", 1);
-                if (RequestCache[domWindowInner].dns_cancel) {
-                    log("Cancelling DNS..." + typeof RequestCache[domWindowInner].dns_cancel, 1);
-                    RequestCache[domWindowInner].dns_cancel.cancel();
+                if (requests.cache[domWindowInner].dns_cancel) {
+                    log("Cancelling DNS..." + typeof requests.cache[domWindowInner].dns_cancel, 1);
+                    requests.cache[domWindowInner].dns_cancel.cancel();
                 }
-                RequestCache[domWindowInner] = undefined;
-                /* RequestCache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
+                requests.cache[domWindowInner] = undefined;
+                /* requests.cache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
                     if (item.dns_cancel) {
                         log("Cancelling DNS..." + typeof item.dns_cancel, 1);
                         item.dns_cancel.cancel();
@@ -435,9 +430,9 @@ var HTTP_REQUEST_OBSERVER = {
         } else if (aTopic === "outer-window-destroyed") {
             domWindowOuter = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
             // Remove elements for this window and ensure DNS lookups are all cancelled
-            if (RequestWaitingList[domWindowOuter]) {
+            if (requests.waitinglist[domWindowOuter]) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter + " - removing all items for this outer window...", 1);
-                RequestWaitingList.splice(domWindowOuter, 1)[0].forEach(function (item, index, items) {
+                requests.waitinglist.splice(domWindowOuter, 1)[0].forEach(function (item, index, items) {
                     if (item.dns_cancel) {
                         log("Cancelling DNS...", 1);
                         item.dns_cancel.cancel();
@@ -550,6 +545,12 @@ startup = function (aData, aReason) {
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
     /*jslint es5: false */
     log("Imported: \"resource://sixornot/includes/windowwatcher.jsm\"", 1);
+
+    // Import request cache module (adds global symbol: requests)
+    /*jslint es5: true */
+    Components.utils.import("resource://sixornot/includes/requestcache.jsm");
+    /*jslint es5: false */
+    log("Imported: \"resource://sixornot/includes/requestcache.jsm\"", 1);
 
     // Import gui module (adds global symbol: insert_code)
     /*jslint es5: true */

@@ -23,7 +23,7 @@
 /*global Components, Services, ChromeWorker */
 
 // Provided by Sixornot
-/*global gt, log, parse_exception, prefs, dns_handler, imagesrc, windowWatcher, unload */
+/*global gt, log, parse_exception, prefs, dns_handler, imagesrc, windowWatcher, unload, requests */
 
 // Module imports we need
 /*jslint es5: true */
@@ -41,7 +41,9 @@ log("Imported locale", 0);
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 log("Imported prefs", 0);
 
-// Import item queue?? TODO
+// Import request cache
+Components.utils.import("resource://sixornot/includes/requestcache.jsm");
+log("Imported requestcache", 0);
 
 // Import imagesrc (only used here)
 Components.utils.import("resource://sixornot/includes/imagesrc.jsm");
@@ -222,12 +224,12 @@ var insert_code = function (win) {
                 .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                 .getInterface(Components.interfaces.nsIDOMWindowUtils)
                 .currentInnerWindowID;
-            requestCacheLookup = RequestCache[currentWindowID];
+            requestCacheLookup = requests.cache[currentWindowID];
             log("get_hosts: currentWindowID: " + currentWindowID + ", requestCacheLookup: " + requestCacheLookup, 1);
-            log("get_hosts: current RequestCache state is: ", 1);
-            for (i = 0; i < RequestCache.length; i += 1) {
-                if (RequestCache[i] !== undefined) {
-                    log("item #: " + i + ", is: " + RequestCache[i]);
+            log("get_hosts: current requests.cache state is: ", 1);
+            for (i = 0; i < requests.cache.length; i += 1) {
+                if (requests.cache[i] !== undefined) {
+                    log("item #: " + i + ", is: " + requests.cache[i]);
                 }
             }
             return requestCacheLookup;
@@ -972,7 +974,7 @@ var insert_code = function (win) {
         /* Updates the icon to reflect state of the currently displayed page */
         update_icon = function () {
             log("Sixornot - insert_code:create_button:update_icon", 1);
-            var hosts = RequestCache[currentTabInnerID];
+            var hosts = requests.cache[currentTabInnerID];
 
             if (hosts) {
                 /* Parse array searching for the main host (which matches the current location) */
@@ -1136,7 +1138,7 @@ var insert_code = function (win) {
         /* Updates the icon to reflect state of the currently displayed page */
         update_icon = function () {
             log("Sixornot - insert_code:create_addressbaricon:update_icon", 1);
-            var hosts = RequestCache[currentTabInnerID];
+            var hosts = requests.cache[currentTabInnerID];
 
             if (hosts) {
                 /* Parse array searching for the main host (which matches the current location) */
