@@ -623,20 +623,27 @@ var insert_code = function (win) {
             log("Sixornot - panel:generate_all", 2);
             var hosts = get_hosts();
 
-            hosts.forEach(function (host, index, items) {
-                // For each host in hosts add a line object to the grid_contents array
-                // These will be added to the DOM after the previous one, or after the
-                // anchor element if none have been created yet
-                try {
-                    if (grid_contents.length > 0) {
-                        grid_contents.push(new_line(host, grid_contents[grid_contents.length - 1].get_last_element()));
-                    } else {
-                        grid_contents.push(new_line(host, remote_anchor));
+            // In this case we're on a page which has no cached info
+            if (hosts === undefined) {
+                // TODO - Add logic here to display useful messages for other pages
+                // TODO - If we're on a page which we have no cached data for, but which has
+                //        a domain, do DNS lookups and add data to cache etc. (fallback behaviour)
+            } else {
+                hosts.forEach(function (host, index, items) {
+                    // For each host in hosts add a line object to the grid_contents array
+                    // These will be added to the DOM after the previous one, or after the
+                    // anchor element if none have been created yet
+                    try {
+                        if (grid_contents.length > 0) {
+                            grid_contents.push(new_line(host, grid_contents[grid_contents.length - 1].get_last_element()));
+                        } else {
+                            grid_contents.push(new_line(host, remote_anchor));
+                        }
+                    } catch (e) {
+                        Components.utils.reportError(e);
                     }
-                } catch (e) {
-                    Components.utils.reportError(e);
-                }
-            });
+                });
+            }
         };
 
         /* Handles mouseover events on any panel element */
