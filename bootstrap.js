@@ -28,8 +28,8 @@
 
 
 /*
-    Constants and global variables
-*/
+ * Constants and global variables
+ */
 // Import needed code modules
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
@@ -40,15 +40,11 @@ Components.utils.import("resource://gre/modules/AddonManager.jsm");
 // Note: Due to execution as a bootstrapless addon these aren't really global
 // but are within the scope of this extension
 
-// Prefs branch constant
-var PREF_BRANCH_SIXORNOT;
-var PREF_BRANCH_DNS;
-// Preferences object (stores defaults)
-var PREFS;
 // Prefs observer object - TODO - move into function where it is used? no need to be global?
 var PREF_OBSERVER;
 var PREF_OBSERVER_DNS;
 var HTTP_REQUEST_OBSERVER;
+
 // Global functions
 // Main functionality
 var insert_code;
@@ -57,8 +53,6 @@ var shutdown;
 var install;
 var uninstall;
 var reload;
-// Utility functions
-var include;
 
 
 /*
@@ -188,7 +182,7 @@ var HTTP_REQUEST_OBSERVER = {
                 outer_id: entry.outer_id
             });
 
-            log("Sixornot - send_event of type: " + type + ", to target: " + target + " with payload: " + JSON.stringify(evt.detail), 1);
+            log("Sixornot - send_event of type: " + type + ", to target: " + target + " with payload: " + JSON.stringify(evt.detail), 2);
 
             // Dispatch the event
             return target.top.dispatchEvent(evt);
@@ -213,9 +207,9 @@ var HTTP_REQUEST_OBSERVER = {
                     var entry, on_returned_ips;
                     /* Create closure containing reference to element and trigger async lookup with callback */
                     entry = this;
-                    log("Sixornot - LOOKUP_IPS", 1);
+                    log("Sixornot - LOOKUP_IPS", 2);
                     on_returned_ips = function (ips) {
-                        log("Sixornot - LOOKUP_IPS - on_returned_ips", 1);
+                        log("Sixornot - LOOKUP_IPS - on_returned_ips", 2);
                         entry.dns_cancel = null;
                         if (ips[0] === "FAIL") {
                             entry.ipv6s = [];
@@ -285,7 +279,7 @@ var HTTP_REQUEST_OBSERVER = {
             }
 
             // Detect new page loads by checking if flag LOAD_INITIAL_DOCUMENT_URI is set
-            log("http_channel.loadFlags: " + http_channel.loadFlags, 1);
+            log("http_channel.loadFlags: " + http_channel.loadFlags, 2);
             /*jslint bitwise: true */
             if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
             /*jslint bitwise: false */
@@ -370,11 +364,10 @@ var HTTP_REQUEST_OBSERVER = {
             domWindowInner = domWindowUtils.currentInnerWindowID;
             domWindowOuter = domWindowUtils.outerWindowID;
 
-            log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created: Inner Window ID: "
-                + domWindowInner + ", Outer Window ID: " + domWindowOuter + ", Location: " + domWindow.location, 1);
+            log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created: Inner Window ID: " + domWindowInner + ", Outer Window ID: " + domWindowOuter + ", Location: " + domWindow.location, 1);
 
             if (!requests.waitinglist[domWindowOuter]) {
-                log("requests.waitinglist[domWindowOuter] is null", 1);
+                log("requests.waitinglist[domWindowOuter] is null (this is normal)", 1);
                 return;
             }
 
@@ -402,8 +395,7 @@ var HTTP_REQUEST_OBSERVER = {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
             // Remove elements for this window and ensure DNS lookups are all cancelled
             if (requests.cache[domWindowInner]) {
-                log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner
-                        + " - removing all items for this inner window...", 1);
+                log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner + " - removing all items for this inner window...", 1);
                 if (requests.cache[domWindowInner].dns_cancel) {
                     log("Cancelling DNS..." + typeof requests.cache[domWindowInner].dns_cancel, 1);
                     requests.cache[domWindowInner].dns_cancel.cancel();

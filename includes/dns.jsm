@@ -31,11 +31,11 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 
 // Import logging
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-log("Imported logging", 0);
+log("dns.jsm - Imported logging", 2);
 
 // Import preferences
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
-log("Imported prefs", 0);
+log("dns.jsm - Imported prefs", 2);
 
 /*jslint es5: false */
 
@@ -126,7 +126,8 @@ var dns_handler = {
     shutdown : function () {
         "use strict";
         log("Sixornot - dns_handler:shutdown", 1);
-        this.worker.postMessage(JSON.stringify({"reqid": this.reqids.shutdown}));
+        this.worker.postMessage(JSON.stringify({"reqid": this.reqids.shutdown,
+            "content": null}));
     },
 
 
