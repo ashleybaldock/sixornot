@@ -340,11 +340,10 @@ var HTTP_REQUEST_OBSERVER = {
                         send_event("sixornot-count-change-event", domWindow, item);
 
                         if (item.address !== remoteAddress && remoteAddress !== "") {
-                            log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: "
-                                + remoteAddress + ", ID: " + domWindowInner, 1);
-                            send_event("sixornot-address-change-event", domWindow, item);
+                            log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, updated IP address for entry: " + remoteAddress + ", ID: " + domWindowInner, 1);
                             item.address = remoteAddress;
                             item.address_family = remoteAddressFamily;
+                            send_event("sixornot-address-change-event", domWindow, item);
                         }
                         return true;
                     }
@@ -352,13 +351,14 @@ var HTTP_REQUEST_OBSERVER = {
                     // Create new entry + add to cache
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
                     new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, domWindowInner, domWindowOuter);
-                    send_event("sixornot-new-host-event", domWindow, new_entry);
+                    // Add to cache
+                    requests.cache[domWindowInner].push(new_entry);
                     // Secondary pages shouldn't have full info shown in panel
                     new_entry.show_detail = false;
                     // Trigger new DNS lookup for the new host entry
                     new_entry.lookup_ips();
-                    // Add to cache
-                    requests.cache[domWindowInner].push(new_entry);
+                    // Finally send event to signal new entry
+                    send_event("sixornot-new-host-event", domWindow, new_entry);
                 }
             }
 

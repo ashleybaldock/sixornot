@@ -248,11 +248,10 @@ var insert_code = function (win) {
 
             // Locate the requested item in the lookup entry
             for (i = 0; i < requestCacheLookup.length; i += 1) {
-                if (requestCacheLookup[i] !== undefined) {
+                if (requestCacheLookup[i] !== undefined && requestCacheLookup[i].host === hostname) {
                     return requestCacheLookup[i];
                 }
             }
-            return null;
         };
 
         /* Ensure panel contents visible with scrollbars */
@@ -573,12 +572,14 @@ var insert_code = function (win) {
                 };
             };
 
+            log("new_line: host is: " + host, 0);
+
             // Bind onclick events here TODO
             header_row = create_header_row(addafter);
 
             return {
-                header_row: header_row,
                 host: host,
+                header_row: header_row,
                 copy_full: copy_full,
                 remove: function () {
                     header_row.remove();
@@ -789,30 +790,43 @@ var insert_code = function (win) {
         // Check if mainhost matches
         // If so add a new host into grid_contents (in correct sort position)
         on_new_host = function (evt) {
-            log("Sixornot - panel:on_new_host", 1);
-            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            log("Sixornot - panel:on_new_host", 0);
+            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 0);
             if (panel.state !== "open") {
-                log("Sixornot - on_new_host - skipping (panel is closed) - panel.state: " + panel.state, 1);
+                log("Sixornot - on_new_host - skipping (panel is closed) - panel.state: " + panel.state, 0);
                 return;
             }
             if (evt.detail.inner_id !== currentTabInnerID) {
-                log("Sixornot - on_new_host - skipping (inner ID mismatch) - evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabInnerID: " + currentTabInnerID, 1);
+                log("Sixornot - on_new_host - skipping (inner ID mismatch) - evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabInnerID: " + currentTabInnerID, 0);
                 return;
             }
 
             try {
                 // TODO put this in the right position based on some ordering
-                // TODO since event subject is the host object in question so long as the IDs match we should be ok
-                //  to just use that rather than doing this lookup!
-                log("Sixornot - on_new_host - evt.detail.host: " + evt.detail.host, 1);
+                log("Sixornot - on_new_host - evt.detail.host: " + evt.detail.host, 0);
                 // For first match for evt.detail.host add a new line
-                // Only do so if a matching host does not exist in the listing already TODO
+                // Only do so if a matching host does not exist in the listing already
                 if (grid_contents.length > 0) {
-                    grid_contents.push(new_line(get_host(evt.detail.host),
-                        grid_contents[grid_contents.length - 1].get_last_element()));
+                    if (!grid_contents.some(function (item, index, items) {
+                        // TODO - this shouldn't be able to happen!
+                        // If item is already in the array, don't add a duplicate
+                        // Just update the existing one instead
+                        if (item.host.host === evt.detail.host) {
+                            log("Adding duplicate!!", 0);
+                            item.update_address();
+                            item.update_ips();
+                            item.update_count();
+                            return true;
+                        }
+                    })) {
+                        // Add new entry
+                        log("Adding new entry!!", 0);
+                        grid_contents.push(new_line(get_host(evt.detail.host), grid_contents[grid_contents.length - 1].get_last_element()));
+                    }
                 } else {
-                    grid_contents.push(new_line(get_host(evt.detail).host,
-                        remote_anchor));
+                    // Push first item onto grid
+                    log("Adding initial!!", 0);
+                    grid_contents.push(new_line(get_host(evt.detail.host), remote_anchor));
                 }
             } catch (e) {
                 log("exception!" + parse_exception(e), 0);
@@ -930,14 +944,37 @@ var insert_code = function (win) {
 
         /* popstate event triggered */
         popstate_handler = function (evt) {
-            log("Sixornot - insert_code:create_button:popstate_handler", 1);
-            // TODO - handle this
+            log("Sixornot - panel:popstate_handler", 1);
+            // TODO - unsubscribe from events when panel is closed to avoid this check
+            if (panel.state !== "open") {
+                log("Sixornot - panel:popstate_handler - skipping (panel is closed)", 1);
+                return;
+            }
+            // This should be done by the icon handler, but just make sure
+            setCurrentTabIDs();
+
+            remove_all();
+            generate_all();
+            force_scrollbars();
         };
 
-        /* pageshow event triggered */
+        /*
+         * pageshow event triggered
+         *  This event occurs on back/forward navigation
+         */
         pageshow_handler = function (evt) {
-            log("Sixornot - insert_code:create_button:pageshow_handler", 1);
-            // TODO - handle this
+            log("Sixornot - panel:pageshow_handler", 1);
+            // TODO - unsubscribe from events when panel is closed to avoid this check
+            /*if (panel.state !== "open") {
+                log("Sixornot - panel:pageshow_handler - skipping (panel is closed)", 1);
+                return;
+            }
+            // This should be done by the icon handler, but just make sure
+            setCurrentTabIDs();
+
+            remove_all();
+            generate_all();
+            force_scrollbars(); */
         };
 
 
