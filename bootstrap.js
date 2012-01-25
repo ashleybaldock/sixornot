@@ -200,10 +200,9 @@ var HTTP_REQUEST_OBSERVER = {
                 ipv4s: [],
                 dns_status: "ready",
                 dns_cancel: null,
-                origin: origin,
                 inner_id: inner,
                 outer_id: outer,
-                lookup_ips: function () {
+                lookup_ips: function (evt_origin) {
                     var entry, on_returned_ips;
                     /* Create closure containing reference to element and trigger async lookup with callback */
                     entry = this;
@@ -222,7 +221,7 @@ var HTTP_REQUEST_OBSERVER = {
                         }
                         // Also trigger page change event here to refresh display of IP tooltip
                         // Create a page change event
-                        send_event("sixornot-dns-lookup-event", entry.origin, entry);
+                        send_event("sixornot-dns-lookup-event", evt_origin, entry);
                     };
                     if (entry.dns_cancel) {
                         entry.dns_cancel.cancel();
@@ -350,7 +349,7 @@ var HTTP_REQUEST_OBSERVER = {
                     // Secondary pages shouldn't have full info shown in panel
                     new_entry.show_detail = false;
                     // Trigger new DNS lookup for the new host entry
-                    new_entry.lookup_ips();
+                    new_entry.lookup_ips(domWindow);
                     // Finally send event to signal new entry
                     send_event("sixornot-new-host-event", domWindow, new_entry);
                 }
@@ -367,7 +366,7 @@ var HTTP_REQUEST_OBSERVER = {
             log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created: Inner Window ID: " + domWindowInner + ", Outer Window ID: " + domWindowOuter + ", Location: " + domWindow.location, 1);
 
             if (!requests.waitinglist[domWindowOuter]) {
-                log("requests.waitinglist[domWindowOuter] is null (this is normal)", 1);
+                log("requests.waitinglist[domWindowOuter] is null (this is normal)", 2);
                 return;
             }
 
@@ -380,10 +379,8 @@ var HTTP_REQUEST_OBSERVER = {
 
             // For each member of the new cache set inner ID and trigger a dns lookup
             requests.cache[domWindowInner].forEach(function (item, index, items) {
-                log("Setting inner_id of item: " + item.host + "(" + item.address + ") to: " + domWindowInner, 1);
                 item.inner_id = domWindowInner;
-                item.lookup_ips();
-                log("item - host: " + item.host + ", inner_id: " + item.inner_id + ", outer_id: " + item.outer_id, 1);
+                item.lookup_ips(domWindow);
                 send_event("sixornot-page-change-event", domWindow, item);
             });
 
@@ -394,36 +391,35 @@ var HTTP_REQUEST_OBSERVER = {
         } else if (aTopic === "inner-window-destroyed") {
             domWindowInner = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
             // Remove elements for this window and ensure DNS lookups are all cancelled
+            log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 0);
             if (requests.cache[domWindowInner]) {
-                log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner + " - removing all items for this inner window...", 1);
-                if (requests.cache[domWindowInner].dns_cancel) {
-                    log("Cancelling DNS..." + typeof requests.cache[domWindowInner].dns_cancel, 1);
-                    requests.cache[domWindowInner].dns_cancel.cancel();
-                }
-                requests.cache[domWindowInner] = undefined;
-                /* requests.cache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
+                log("Sixornot - removing " + requests.cache[domWindowInner].length + " items for inner window: " + domWindowInner, 0);
+                requests.print_cache(0);
+                requests.cache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
                     if (item.dns_cancel) {
-                        log("Cancelling DNS..." + typeof item.dns_cancel, 1);
+                        log("Cancelling DNS for item: " + item.host, 0);
                         item.dns_cancel.cancel();
                     }
-                }); */
-            } else {
-                log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 1);
+                });
+                requests.print_cache(0);
             }
 
         } else if (aTopic === "outer-window-destroyed") {
             domWindowOuter = aSubject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
+            log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 0);
             // Remove elements for this window and ensure DNS lookups are all cancelled
             if (requests.waitinglist[domWindowOuter]) {
-                log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter + " - removing all items for this outer window...", 1);
+                log("Sixornot - removing " + requests.waitinglist[domWindowOuter].length + " items for outer window: " + domWindowOuter, 0);
+                requests.print_waitinglist(0);
                 requests.waitinglist.splice(domWindowOuter, 1)[0].forEach(function (item, index, items) {
+                    // DNS lookup should not be triggered until the item has been moved from waitinglist to cache
+                    // But do this anyway, just to be sure
                     if (item.dns_cancel) {
-                        log("Cancelling DNS...", 1);
+                        log("Cancelling DNS for item: " + item.host, 0);
                         item.dns_cancel.cancel();
                     }
                 });
-            } else {
-                log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 1);
+                requests.print_waitinglist(0);
             }
         }
     },

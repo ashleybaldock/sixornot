@@ -45,6 +45,40 @@ var EXPORTED_SYMBOLS = ["requests"];
  */
 var requests = {
     cache: [],
-    waitinglist: []
+    waitinglist: [],
+    print_cache: function (loglevel) {
+        var out = "";
+        this.cache.forEach(function (item, index, items) {
+            out += "[" + index + ": ";
+            item.forEach(function (item, index, items) {
+                out += "[";
+                out += item.host;
+                out += ",";
+                out += item.inner_id;
+                out += ",";
+                out += item.outer_id;
+                out += "],";
+            });
+            out += "],\n";
+        });
+        log(out, loglevel);
+    },
+    print_waitinglist: function () {
+        var out = "";
+        this.waitinglist.forEach(function (item, index, items) {
+            out += "[" + index + ": ";
+            item.forEach(function (item, index, items) {
+                out += "[";
+                out += item.host;
+                out += ",";
+                out += item.inner_id;
+                out += ",";
+                out += item.outer_id;
+                out += "],";
+            });
+            out += "],\n";
+        });
+        log(out, loglevel);
+    }
 };
 
