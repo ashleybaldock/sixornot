@@ -189,7 +189,7 @@ var HTTP_REQUEST_OBSERVER = {
         };
 
         /* Prepare and return a new blank entry for the hosts listing */
-        create_new_entry = function (host, address, address_family, origin, inner, outer) {
+        create_new_entry = function (host, address, address_family, inner, outer) {
             return {
                 host: host,
                 address: address,
@@ -317,7 +317,7 @@ var HTTP_REQUEST_OBSERVER = {
                 })) {
                     // Create new entry + add to waiting list
                     log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + remoteAddress + ", ID: " + domWindowOuter, 1);
-                    requests.waitinglist[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, null, domWindowOuter));
+                    requests.waitinglist[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, null, domWindowOuter));
                 }
 
             } else {
@@ -343,7 +343,7 @@ var HTTP_REQUEST_OBSERVER = {
                 })) {
                     // Create new entry + add to cache
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
-                    new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindow, domWindowInner, domWindowOuter);
+                    new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindowInner, domWindowOuter);
                     // Add to cache
                     requests.cache[domWindowInner].push(new_entry);
                     // Secondary pages shouldn't have full info shown in panel
