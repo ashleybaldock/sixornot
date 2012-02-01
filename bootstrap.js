@@ -231,6 +231,8 @@ var HTTP_REQUEST_OBSERVER = {
             };
         };
 
+        // TODO - A copy of the initial load for each site visited is stored under innerWindow ID 2, this is a bug!
+
         if (aTopic === "http-on-examine-response" || aTopic === "http-on-examine-cached-response") {
             http_channel = aSubject.QueryInterface(Components.interfaces.nsIHttpChannel);
             http_channel_internal = aSubject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
@@ -297,10 +299,13 @@ var HTTP_REQUEST_OBSERVER = {
 
             if (new_page) {
                 /* PRIMARY PAGE LOAD */
+                log("SN: primary page load for domWindowOuter: " + domWindowOuter, 0);
+                requests.print_waitinglist(0);
                 // New page, since inner window ID hasn't been set yet we need to store any
                 // new connections until such a time as it is, these get stored in the requests waiting list
                 // which is keyed by the outer window ID
                 if (!requests.waitinglist[domWindowOuter]) {
+                    log("SN: requests.waitinglist[" + domWindowOuter + "] set to: []", 0);
                     requests.waitinglist[domWindowOuter] = [];
                 }
                 if (!requests.waitinglist[domWindowOuter].some(function (item, index, items) {
@@ -317,13 +322,17 @@ var HTTP_REQUEST_OBSERVER = {
                 })) {
                     // Create new entry + add to waiting list
                     log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry: " + remoteAddress + ", ID: " + domWindowOuter, 1);
+                    log("SN: adding new entry to waitinglist, page: " + http_channel.URI.host, 0);
                     requests.waitinglist[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, null, domWindowOuter));
                 }
 
             } else {
                 /* SECONDARY PAGE LOAD */
+                log("SN: secondary page load for domWindowInner: " + domWindowInner, 0);
+                requests.print_cache(0);
                 // Not new, inner window ID will be correct by now so add entries to request cache
                 if (!requests.cache[domWindowInner]) {
+                    log("SN: requests.cache[" + domWindowInner + "] set to: []", 0);
                     requests.cache[domWindowInner] = [];
                 }
                 // If host already in list update IP address if needed
@@ -344,6 +353,7 @@ var HTTP_REQUEST_OBSERVER = {
                     // Create new entry + add to cache
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry: remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
                     new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindowInner, domWindowOuter);
+                    log("SN: adding new entry to cache, page: " + http_channel.URI.host, 0);
                     // Add to cache
                     requests.cache[domWindowInner].push(new_entry);
                     // Secondary pages shouldn't have full info shown in panel
@@ -395,12 +405,13 @@ var HTTP_REQUEST_OBSERVER = {
             if (requests.cache[domWindowInner]) {
                 log("Sixornot - removing " + requests.cache[domWindowInner].length + " items for inner window: " + domWindowInner, 0);
                 requests.print_cache(0);
-                requests.cache.splice(domWindowInner, 1)[0].forEach(function (item, index, items) {
+                requests.cache[domWindowInner].forEach(function (item, index, items) {
                     if (item.dns_cancel) {
                         log("Cancelling DNS for item: " + item.host, 0);
                         item.dns_cancel.cancel();
                     }
                 });
+                delete requests.cache[domWindowInner];
                 requests.print_cache(0);
             }
 
@@ -411,7 +422,8 @@ var HTTP_REQUEST_OBSERVER = {
             if (requests.waitinglist[domWindowOuter]) {
                 log("Sixornot - removing " + requests.waitinglist[domWindowOuter].length + " items for outer window: " + domWindowOuter, 0);
                 requests.print_waitinglist(0);
-                requests.waitinglist.splice(domWindowOuter, 1)[0].forEach(function (item, index, items) {
+
+                requests.waitinglist[domWindowOuter].forEach(function (item, index, items) {
                     // DNS lookup should not be triggered until the item has been moved from waitinglist to cache
                     // But do this anyway, just to be sure
                     if (item.dns_cancel) {
@@ -419,6 +431,8 @@ var HTTP_REQUEST_OBSERVER = {
                         item.dns_cancel.cancel();
                     }
                 });
+
+                delete requests.waitinglist[domWindowOuter];
                 requests.print_waitinglist(0);
             }
         }

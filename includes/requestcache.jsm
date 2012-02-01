@@ -47,7 +47,7 @@ var requests = {
     cache: [],
     waitinglist: [],
     print_cache: function (loglevel) {
-        var out = "";
+        var out = "cache is:\n";
         this.cache.forEach(function (item, index, items) {
             out += "[" + index + ": ";
             item.forEach(function (item, index, items) {
@@ -63,8 +63,8 @@ var requests = {
         });
         log(out, loglevel);
     },
-    print_waitinglist: function () {
-        var out = "";
+    print_waitinglist: function (loglevel) {
+        var out = "waitinglist is:";
         this.waitinglist.forEach(function (item, index, items) {
             out += "[" + index + ": ";
             item.forEach(function (item, index, items) {
