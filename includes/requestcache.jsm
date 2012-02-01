@@ -64,7 +64,7 @@ var requests = {
         log(out, loglevel);
     },
     print_waitinglist: function (loglevel) {
-        var out = "waitinglist is:";
+        var out = "waitinglist is:\n";
         this.waitinglist.forEach(function (item, index, items) {
             out += "[" + index + ": ";
             item.forEach(function (item, index, items) {
