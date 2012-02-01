@@ -1,40 +1,19 @@
 # TODO
 
-# TODO 0.7
-Rewrite to use event-driven model + strip out all the old code from FlagFox - DONE
-Add support for nsIHttpChannelInternal detection of connection's IP address - DONE
-Switch from tooltip to panel for address display                            - DONE
-Display all addresses involved in connections                               - DONE
-Display count of connections per domain                                     - DONE
-JSLint for utils.js                                                         - DONE
-Re-add ability to copy information to clipboard                             - DONE
-Update Russian localisation
-Make preferences work again                                                 - DONE
-Compatibility bump to Firefox 7.0/Seamonkey 2.4                             - DONE
-Test windowWatcher and so on (ensure unloading works properly)
-Preferences dialog/pane for Firefox 7                                       - DONE 
-
-Fix exit crash bug                                                      - Has gone away?
 Update documentation (pretty much completely)
 
-# TODO 0.7.1
+# TODO FUTURE
 Add back local address display refresh on tooltip show
-Object for images rather than lots of global variables
 Handling for edge-cases and special pages (text)
 Warnings for ip6_disabled and ip4only_domain
 Add ability to copy a list of all files fetched to clipboard (per-domain)
-Handle moving back/foward in history
 Add better proxy detection (per-connection) and icon display
  Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
  Same way that DNS lookups are done, with a callback
 Platform-specific text colours for optimal display on panel
 Preferences override for all text display colours (if not set use platform-specific)
 Proper website landing page + download links
-
-# TODO 0.7.5
 Native resolver compatibility with FreeBSD
-Compatibility bump to Firefox 7.0/Seamonkey 2.4
-Testing on Firefox 8.0/9.0
 
 # TODO Future
 Preference to set whether icon should come before or after the star icon
@@ -44,6 +23,26 @@ This will be optional (and off by default)
 Needs update to privacy policy etc., state that aggregate statistics may be gathered but no personally identifiable information sent
 Also state that no details of the sites you visit are sent
 Also add external address detection via external server??
+
+# 0.7.1
+Fix memory leaks in cache
+Minor code improvements
+
+# 0.7.0
+Rewrite to use event-driven model + strip out all the old code from FlagFox - DONE
+Add support for nsIHttpChannelInternal detection of connection's IP address - DONE
+Switch from tooltip to panel for address display                            - DONE
+Display all addresses involved in connections                               - DONE
+Display count of connections per domain                                     - DONE
+JSLint for utils.js                                                         - DONE
+Re-add ability to copy information to clipboard                             - DONE
+Update Russian localisation                                                 - DONE
+Make preferences work again                                                 - DONE
+Compatibility bump to Firefox 7.0/Seamonkey 2.4                             - DONE
+Test windowWatcher and so on (ensure unloading works properly)              - DONE
+Preferences dialog/pane for Firefox 7                                       - DONE 
+Object for images rather than lots of global variables                      - DONE
+Handle moving back/foward in history                                        - DONE
 
 # 0.6.6
 Check if domain is in network.dns.ipv4OnlyDomains list and display v4 only  - DONE
