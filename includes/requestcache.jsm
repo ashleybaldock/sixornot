@@ -23,16 +23,11 @@
 /*global Components, Services */
 
 // Provided by Sixornot
-/*global log, parse_exception, prefs */
+/*global parse_exception, prefs */
 
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
-
-// Import logging
-Components.utils.import("resource://sixornot/includes/logger.jsm");
-log("Imported logging", 0);
-
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["requests"];
@@ -46,7 +41,7 @@ var EXPORTED_SYMBOLS = ["requests"];
 var requests = {
     cache: [],
     waitinglist: [],
-    print_cache: function (loglevel) {
+    print_cache: function () {
         var out = "cache is:\n";
         this.cache.forEach(function (item, index, items) {
             out += "[" + index + ": ";
@@ -61,9 +56,9 @@ var requests = {
             });
             out += "],\n";
         });
-        log(out, loglevel);
+        return out;
     },
-    print_waitinglist: function (loglevel) {
+    print_waitinglist: function () {
         var out = "waitinglist is:\n";
         this.waitinglist.forEach(function (item, index, items) {
             out += "[" + index + ": ";
@@ -78,7 +73,7 @@ var requests = {
             });
             out += "],\n";
         });
-        log(out, loglevel);
+        return out;
     }
 };
 

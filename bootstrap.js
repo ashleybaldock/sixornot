@@ -457,26 +457,22 @@ var HTTP_REQUEST_OBSERVER = {
 
     register: function () {
         "use strict";
-        log("Sixornot - HTTP_REQUEST_OBSERVER - register", 2);
         this.observer_service.addObserver(this, "http-on-examine-response", false);
         this.observer_service.addObserver(this, "http-on-examine-cached-response", false);
         this.observer_service.addObserver(this, "content-document-global-created", false);
         this.observer_service.addObserver(this, "inner-window-destroyed", false);
         this.observer_service.addObserver(this, "outer-window-destroyed", false);
-
         //this.observer_service.addObserver(this, "http-on-modify-request", false);
         //this.observer_service.addObserver(this, "dom-window-destroyed", false);
     },
 
     unregister: function () {
         "use strict";
-        log("Sixornot - HTTP_REQUEST_OBSERVER - unregister", 2);
         this.observer_service.removeObserver(this, "http-on-examine-response");
         this.observer_service.removeObserver(this, "http-on-examine-cached-response");
         this.observer_service.removeObserver(this, "content-document-global-created");
         this.observer_service.removeObserver(this, "inner-window-destroyed");
         this.observer_service.removeObserver(this, "outer-window-destroyed");
-
         //this.observer_service.removeObserver(this, "http-on-modify-request");
         //this.observer_service.removeObserver(this, "dom-window-destroyed");
     }
@@ -495,11 +491,9 @@ var setup_resource = function (aData) {
                 .QueryInterface(Components.interfaces.nsIResProtocolHandler);
 
     alias = Services.io.newFileURI(aData.installPath);
-    //log("Install path is: " + aData.resourceURI.spec);
 
     if (!aData.installPath.isDirectory()) {
         alias = Services.io.newURI("jar:" + alias.spec + "!/", null, null);
-        //log("Install path is: " + alias.spec);
     }
 
     // This triggers a warning on AMO validation
@@ -529,46 +523,26 @@ startup = function (aData, aReason) {
     // Import logging module (adds global symbols: log, parse_exception)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/logger.jsm");
-    /*jslint es5: false */
-    log("Imported: \"resource://sixornot/includes/logger.jsm\"", 1);
-
     // Import prefs module (adds global: symbol prefs)
-    /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
-    /*jslint es5: false */
-    log("Imported: \"resource://sixornot/includes/prefs.jsm\"", 1);
-
-    log("Sixornot - startup - reason: " + aReason, 0);
-
     // Import dns module (adds global symbol: dns_handler)
-    /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/dns.jsm");
     /*jslint es5: false */
+
     // Init dns_handler
     dns_handler.init();
-    log("Imported: \"resource://sixornot/includes/dns.jsm\"", 1);
 
+    /*jslint es5: true */
     // Import windowwatcher module (adds global symbols: watchWindows, unload)
-    /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
-    /*jslint es5: false */
-    log("Imported: \"resource://sixornot/includes/windowwatcher.jsm\"", 1);
-
     // Import request cache module (adds global symbol: requests)
-    /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/requestcache.jsm");
-    /*jslint es5: false */
-    log("Imported: \"resource://sixornot/includes/requestcache.jsm\"", 1);
-
     // Import gui module (adds global symbol: insert_code)
-    /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/gui.jsm");
     /*jslint es5: false */
-    log("Imported: \"resource://sixornot/includes/gui.jsm\"", 1);
 
     // Load callback for when our addon finishes loading
     AddonManager.getAddonByID(aData.id, function (addon, data) {
-
         // Run dns_handler tests
         // Only run these if debug level is set to 2 or higher
         if (prefs.get_int("loglevel") >= 2) {
@@ -578,17 +552,11 @@ startup = function (aData, aReason) {
         }
 
         // Load into existing windows and set callback to load into any new ones too
-        log("Sixornot - startup - loading into windows...", 2);
         watchWindows(insert_code);
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
-        log("Sixornot - startup - setting up prefs observer...", 2);
         PREF_OBSERVER.register();
-
-        log("Sixornot - startup - setting up dns prefs observer...", 2);
         PREF_OBSERVER_DNS.register();
-
-        log("Sixornot - startup - setting up http observer...", 2);
         HTTP_REQUEST_OBSERVER.register();
     });
 };
@@ -604,41 +572,23 @@ reload = function () {
 /* APP_SHUTDOWN, ADDON_DISABLE, ADDON_UNINSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
 shutdown = function (aData, aReason) {
     "use strict";
-    log("Sixornot - shutdown - reason: " + aReason, 0);
-
     if (aReason !== APP_SHUTDOWN) {
         // Unload all UI via init-time unload() callbacks
         unload();
 
-        log("Sixornot - shutdown - removing http observer...", 2);
         HTTP_REQUEST_OBSERVER.unregister();
-
-        log("Sixornot - shutdown - removing dns prefs observer...", 2);
         PREF_OBSERVER_DNS.unregister();
-
-        log("Sixornot - shutdown - removing prefs observer...", 2);
         PREF_OBSERVER.unregister();
 
         // Unload our own code modules
         Components.utils.unload("resource://sixornot/includes/gui.jsm");
-        log("Unloaded: \"resource://sixornot/includes/gui.jsm\"", 1);
-
         Components.utils.unload("resource://sixornot/includes/requestcache.jsm");
-        log("Unloaded: \"resource://sixornot/includes/requestcache.jsm\"", 1);
-
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
-        log("Unloaded: \"resource://sixornot/includes/windowwatcher.jsm\"", 1);
-
         // Shutdown dns_handler
         dns_handler.shutdown();
         Components.utils.unload("resource://sixornot/includes/dns.jsm");
-        log("Unloaded: \"resource://sixornot/includes/dns.jsm\"", 1);
-
         Components.utils.unload("resource://sixornot/includes/prefs.jsm");
-        log("Unloaded: \"resource://sixornot/includes/prefs.jsm\"", 1);
-
         Components.utils.unload("resource://sixornot/includes/logger.jsm");
-        log("Unloaded: \"resource://sixornot/includes/logger.jsm\"", 1);
 
         // Remove resource alias
         cleanup_resource();
@@ -657,12 +607,9 @@ install = function (aData, aReason) {
     /*jslint es5: false */
 
     // Import prefs module (adds global symbol prefs)
-    log("Importing: \"resource://sixornot/includes/prefs.jsm\"", 1);
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
     /*jslint es5: false */
-
-    log("Sixornot - install - reason: " + aReason, 0);
 
     prefs.create();
 };
@@ -670,7 +617,6 @@ install = function (aData, aReason) {
 /* ADDON_UNINSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
 uninstall = function (aData, aReason) {
     "use strict";
-    log("Sixornot - uninstall - reason: " + aReason, 0);
 
     // If uninstalling, remove our preferences
     if (aReason === ADDON_UNINSTALL) {
