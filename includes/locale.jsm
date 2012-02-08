@@ -9,15 +9,8 @@
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
-
-// Import logging
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-log("Imported logging", 0);
-
-// Import preferences
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
-log("Imported prefs", 0);
-
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["gt"];

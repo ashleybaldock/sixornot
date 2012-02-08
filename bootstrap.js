@@ -64,11 +64,9 @@ PREF_OBSERVER = {
         "use strict";
         log("Sixornot - PREF_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
         if (aTopic.valueOf() !== "nsPref:changed") {
-            log("Sixornot - PREF_OBSERVER - not a pref change event 1", 2);
             return;
         }
         if (!prefs.defaults.hasOwnProperty(aData)) {
-            log("Sixornot - PREF_OBSERVER - not a pref change event 2", 2);
             return;
         }
 
@@ -94,14 +92,12 @@ PREF_OBSERVER = {
 
     register: function () {
         "use strict";
-        log("Sixornot - PREF_OBSERVER - register", 2);
         prefs.PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2)
             .addObserver("", PREF_OBSERVER, false);
     },
 
     unregister: function () {
         "use strict";
-        log("Sixornot - PREF_OBSERVER - unregister", 2);
         prefs.PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2)
             .removeObserver("", PREF_OBSERVER);
     }
@@ -116,12 +112,10 @@ PREF_OBSERVER_DNS = {
         "use strict";
         log("Sixornot - PREF_OBSERVER_DNS - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
         if (aTopic.valueOf() !== "nsPref:changed") {
-            log("Sixornot - PREF_OBSERVER_DNS - not a pref change event 1", 2);
             return;
         }
 
         if (aData === "disableIPv6") {
-            log("Sixornot - PREF_OBSERVER_DNS - disableIPv6 has changed", 1);
             reload();
         }
         if (aData === "ipv4OnlyDomains") {
@@ -132,14 +126,12 @@ PREF_OBSERVER_DNS = {
 
     register: function () {
         "use strict";
-        log("Sixornot - PREF_OBSERVER_DNS - register", 2);
         prefs.PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2)
             .addObserver("", PREF_OBSERVER_DNS, false);
     },
 
     unregister: function () {
         "use strict";
-        log("Sixornot - PREF_OBSERVER_DNS - unregister", 2);
         prefs.PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2)
             .removeObserver("", PREF_OBSERVER_DNS);
     }

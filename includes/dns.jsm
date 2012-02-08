@@ -28,15 +28,8 @@
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
-
-// Import logging
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-log("dns.jsm - Imported logging", 2);
-
-// Import preferences
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
-log("dns.jsm - Imported prefs", 2);
-
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["dns_handler"];
@@ -66,6 +59,11 @@ var dns_handler = {
         init: 255           // Initialise dns in the worker
     },
 
+    handle_worker_message: function (evt) {
+    },
+    handle_worker_error: function (evt) {
+    },
+
     /* Initialises the native dns resolver (if possible) - call this first! */
     init : function () {
         "use strict";
@@ -78,7 +76,8 @@ var dns_handler = {
         // Shim to get 'this'(that) to refer to dns_handler, not the
         // worker, when a message is received.
         that = this;
-        this.worker.addEventListener("message", function (evt) {  
+        //this.worker.addEventListener("message", function (evt) {  
+        this.worker.onmessage = function (evt) {  
             var data, callback;
             data = JSON.parse(evt.data);
             log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 2);
@@ -104,11 +103,12 @@ var dns_handler = {
                     callback(data.content);
                 }
             }
-        }, false);
+        };
 
-        this.worker.addEventListener("error", function (err) {  
+        //this.worker.addEventListener("error", function (err) {
+        this.worker.onerror = function (err) {
             log(err.message + ", " + err.filename + ", " + err.lineno, 1);
-        }, false);
+        };
 
         // Set up request map, which will map async requests to their callbacks
         // Every time a request is started its callback is added to the callback_ids
@@ -126,8 +126,18 @@ var dns_handler = {
     shutdown : function () {
         "use strict";
         log("Sixornot - dns_handler:shutdown", 1);
+
         this.worker.postMessage(JSON.stringify({"reqid": this.reqids.shutdown,
             "content": null}));
+
+        // TODO - this introduces a race condition, since the call to shutdown happens just
+        //        before a call to unload the logger, which the callbacks depend on
+
+        // Shutdown method should not return until the dns worker has actually ended
+
+        // TODO - remove worker's event listeners as added in init()
+        this.worker.onmessage = null;
+        this.worker.onerror = null;
     },
 
 

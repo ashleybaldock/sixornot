@@ -39,6 +39,7 @@ var log, parse_exception, dns;
 log = function (message, level)
 {
     "use strict";
+    if (level === null) { level = 1 };
     postMessage(JSON.stringify({"reqid": 254, "content": [message, level]}));
 };
 
@@ -117,18 +118,18 @@ dns = {
 
     check_remote : function () {
         "use strict";
-        log("Sixornot(dns_worker) - dns:check_remote, value: " + this.remote_ctypes);
+        log("Sixornot(dns_worker) - dns:check_remote, value: " + this.remote_ctypes, 1);
         return this.remote_ctypes;
     },
     check_local : function () {
         "use strict";
-        log("Sixornot(dns_worker) - dns:check_local, value: " + this.local_ctypes);
+        log("Sixornot(dns_worker) - dns:check_local, value: " + this.local_ctypes, 1);
         return this.local_ctypes;
     },
 
     init : function (operatingsystem) {
         "use strict";
-        log("Sixornot(dns_worker) - dns:init");
+        log("Sixornot(dns_worker) - dns:init", 1);
 
         this.os = operatingsystem;
 
@@ -136,21 +137,21 @@ dns = {
         switch(this.os) {
             case "darwin":
                 this.load_osx();
-                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: OSX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
+                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: OSX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes, 1);
                 break;
 
             case "linux":
                 this.load_linux();
-                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: LINUX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
+                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: LINUX, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes, 1);
                 break;
 
             case "winnt":
                 this.load_win();
-                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: WIN, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes);
+                log("Sixornot(dns_worker) - Ctypes resolver init completed for platform: WIN, this.remote_ctypes: " + this.remote_ctypes + ", this.local_ctypes: " + this.local_ctypes, 1);
                 break;
 
             default:
-                log("Sixornot(dns_worker) - Unknown platform - unable to init ctypes resolver, falling back to firefox");
+                log("Sixornot(dns_worker) - Unknown platform - unable to init ctypes resolver, falling back to firefox", 1);
                 break;
         }
 
@@ -158,12 +159,11 @@ dns = {
         postMessage(JSON.stringify({"reqid": this.reqids.checkremote, "content": this.remote_ctypes}));
         postMessage(JSON.stringify({"reqid": this.reqids.checklocal, "content": this.local_ctypes}));
 
-        log("Sixornot(dns_worker) - dns:init completed");
+        log("Sixornot(dns_worker) - dns:init completed", 1);
     },
 
     shutdown : function () {
         "use strict";
-        log("Sixornot(dns_worker) - shutdown");
         if (this.remote_ctypes || this.local_ctypes) {
             // Shutdown ctypes library
             switch(this.os) {
@@ -179,9 +179,9 @@ dns = {
                 default:
                     break;
             }
-            // Close worker thread
-            close();
         }
+        // Close worker thread
+        close();
     },
 
     // Select correct function to execute based on ID code sent by main thread
@@ -312,7 +312,7 @@ dns = {
                 return addresses.slice();
 
             default:
-                log("Sixornot(dns_worker) - dns:resolve_local - Unknown operating system!");
+                log("Sixornot(dns_worker) - dns:resolve_local - Unknown operating system!", 1);
                 return ["FAIL"];
         }
 
@@ -448,11 +448,11 @@ dns = {
 
                 this.freeaddrinfo(addrinfo_ptr);
 
-                log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 0);
+                log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 1);
                 return addresses.slice();
 
             default:
-                log("Sixornot(dns_worker) - dns:resolve_remote - Unknown operating system!");
+                log("Sixornot(dns_worker) - dns:resolve_remote - Unknown operating system!", 1);
                 return ["FAIL"];
         }
     },

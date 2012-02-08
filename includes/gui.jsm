@@ -28,35 +28,13 @@
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
-
-// Import logging
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-log("gui.jsm - Imported logging", 1);
-
-// Import locale (only used here)
 Components.utils.import("resource://sixornot/includes/locale.jsm");
-log("gui.jsm - Imported locale", 1);
-
-// Import preferences
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
-log("gui.jsm - Imported prefs", 1);
-
-// Import request cache
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
-log("gui.jsm - Imported requestcache", 1);
-
-// Import imagesrc (only used here)
 Components.utils.import("resource://sixornot/includes/imagesrc.jsm");
-log("gui.jsm - Imported imagesrc", 1);
-
-// Import unload handler (windowWatcher)
 Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
-log("gui.jsm - Imported windowwatcher", 1);
-
-// Import dns_handler
 Components.utils.import("resource://sixornot/includes/dns.jsm");
-log("gui.jsm - Imported dns", 1);
-
 /*jslint es5: false */
 
 // Module globals
