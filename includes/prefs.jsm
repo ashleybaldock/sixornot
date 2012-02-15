@@ -32,6 +32,9 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 
 var EXPORTED_SYMBOLS = ["prefs"];
 
+var PREF_SIXORNOT = "extensions.sixornot.";
+var PREF_DNS= "network.dns.";
+
 var prefs = {
     defaults: {
         nextitem:           "bookmarks-menu-button-container",
@@ -42,8 +45,12 @@ var prefs = {
         overridelocale:     "",
         showallips:         false
     },
-    PREF_BRANCH_SIXORNOT: Services.prefs.getBranch("extensions.sixornot."),
-    PREF_BRANCH_DNS:      Services.prefs.getBranch("network.dns."),
+
+    sixornot_prefs: PREF_SIXORNOT,
+    dns_prefs: PREF_DNS,
+
+    PREF_BRANCH_SIXORNOT: Services.prefs.getBranch(PREF_SIXORNOT),
+    PREF_BRANCH_DNS:      Services.prefs.getBranch(PREF_DNS),
 
     get_int: function (name) {
         "use strict";

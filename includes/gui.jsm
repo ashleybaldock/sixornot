@@ -199,7 +199,9 @@ var insert_code = function (win) {
                 .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                 .getInterface(Components.interfaces.nsIDOMWindowUtils)
                 .currentInnerWindowID;
-            return requests.cache[currentWindowID];
+            if (requests.cache[currentWindowID] !== undefined) {
+                return requests.cache[currentWindowID];
+            }
         };
 
         /* Get a particular host entry for current window based on host name */
@@ -649,8 +651,8 @@ var insert_code = function (win) {
             if (evt.target.sixornot_copytext) {
                 try {
                     evt.stopPropagation();
-                    log("Sixornot - panel:on_click - sixornot_copytext '" + evt.target.sixornot_copytext + "' to clipboard", 1);
-                    Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+                    log("Sixornot - panel:on_click - sixornot_copytext '" + evt.target.sixornot_copytext + "' to clipboard", 0);
+                    Components.classes["@mozilla.org/widget/clipboardhelper;1"]     // TODO use of getService
                         .getService(Components.interfaces.nsIClipboardHelper)
                         .copyString(evt.target.sixornot_copytext);
                 } catch (e_copytext) {
@@ -684,9 +686,7 @@ var insert_code = function (win) {
                     panel.hidePopup();
                     log("Sixornot - panel:on_click - openprefs", 1);
                     // Add tab to most recent window, regardless of where this function was called from
-                    currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-                         .getService(Components.interfaces.nsIWindowMediator)
-                         .getMostRecentWindow("navigator:browser");
+                    currentWindow = Services.wm.getMostRecentWindow("navigator:browser");
                     currentWindow.focus();
                     currentBrowser = currentWindow.getBrowser();
                     currentBrowser.selectedTab = currentBrowser.addTab("about:addons");
@@ -703,9 +703,7 @@ var insert_code = function (win) {
                     evt.stopPropagation();
                     panel.hidePopup();
                     // Add tab to most recent window, regardless of where this function was called from
-                    currentWindow = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-                         .getService(Components.interfaces.nsIWindowMediator)
-                         .getMostRecentWindow("navigator:browser");
+                    currentWindow = Services.wm.getMostRecentWindow("navigator:browser");
                     currentWindow.focus();
                     currentBrowser = currentWindow.getBrowser();
                     currentBrowser.selectedTab = currentBrowser.addTab(evt.target.sixornot_hyperlink);

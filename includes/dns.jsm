@@ -35,10 +35,6 @@ Components.utils.import("resource://sixornot/includes/prefs.jsm");
 var EXPORTED_SYMBOLS = ["dns_handler"];
 
 
-var xulRuntime = Components.classes["@mozilla.org/xre/app-info;1"].getService(Components.interfaces.nsIXULRuntime);
-
-
-
 // The DNS Handler which does most of the work of the extension
 var dns_handler = {
     remote_ctypes: true,
@@ -119,7 +115,7 @@ var dns_handler = {
 
         // Finally init the worker
         this.worker.postMessage(JSON.stringify({"reqid": this.reqids.init,
-            "content": xulRuntime.OS.toLowerCase()}));
+            "content": Services.appinfo.OS.toLowerCase()}));
     },
 
     /* Shuts down the native dns resolver (if running) */
@@ -130,12 +126,8 @@ var dns_handler = {
         this.worker.postMessage(JSON.stringify({"reqid": this.reqids.shutdown,
             "content": null}));
 
-        // TODO - this introduces a race condition, since the call to shutdown happens just
-        //        before a call to unload the logger, which the callbacks depend on
-
-        // Shutdown method should not return until the dns worker has actually ended
-
-        // TODO - remove worker's event listeners as added in init()
+        // Remove worker's event listeners as added in init(), this prevents messages
+        // sent by the worker after shutdown from triggering anything
         this.worker.onmessage = null;
         this.worker.onerror = null;
     },
@@ -611,7 +603,7 @@ var dns_handler = {
         var myhostname;
         log("Sixornot - dns_handler:local_firefox_async - resolving local host using Firefox builtin method", 2);
         myhostname = Components.classes["@mozilla.org/network/dns-service;1"]
-                        .getService(Components.interfaces.nsIDNSService).myHostName;
+                        .getService(Components.interfaces.nsIDNSService).myHostName;    // TODO - use of getService
         return this.remote_firefox_async(myhostname, callback);
     },
 
@@ -676,11 +668,8 @@ var dns_handler = {
         };
         try {
             return Components.classes["@mozilla.org/network/dns-service;1"]
-                    .getService(Components.interfaces.nsIDNSService)
-                    .asyncResolve(host, 0, my_callback,
-                        Components.classes["@mozilla.org/thread-manager;1"]
-                        .getService(Components.interfaces.nsIThreadManager)
-                        .currentThread);
+                    .getService(Components.interfaces.nsIDNSService)    // TODO - use of getService
+                    .asyncResolve(host, 0, my_callback, Services.tm.currentThread);
         } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
             callback(["FAIL"]);
@@ -766,13 +755,11 @@ var dns_handler = {
         "use strict";
         var uri, proxyinfo;
         log("Sixornot - dns_handler:is_proxied_dns - url: " + url, 2);
-        uri = Components.classes["@mozilla.org/network/io-service;1"]
-                .getService(Components.interfaces.nsIIOService)
-                .newURI(url, null, null);
+        uri = Services.io.newURI(url, null, null);
         // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
         // TODO - do this async!
         proxyinfo = Components.classes["@mozilla.org/network/protocol-proxy-service;1"]
-                    .getService(Components.interfaces.nsIProtocolProxyService)
+                    .getService(Components.interfaces.nsIProtocolProxyService)  // TODO - use of getService
                     .resolve(uri, 0);
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
         return (proxyinfo !== null) && (proxyinfo.flags && proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);

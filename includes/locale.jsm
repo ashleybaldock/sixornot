@@ -19,7 +19,7 @@ var EXPORTED_SYMBOLS = ["gt"];
 var regex = /(\w+)-\w+/;
 
 // get user's locale
-var locale = Components.classes["@mozilla.org/chrome/chrome-registry;1"].getService(Components.interfaces.nsIXULChromeRegistry).getSelectedLocale("global");
+var locale = Components.classes["@mozilla.org/chrome/chrome-registry;1"].getService(Components.interfaces.nsIXULChromeRegistry).getSelectedLocale("global");    // TODO - use of getService
 log("Sixornot - init Localisation - detected locale as: " + locale, 2);
 
 var getstring = function (string_bundle, aKey) {

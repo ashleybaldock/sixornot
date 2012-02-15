@@ -92,14 +92,12 @@ PREF_OBSERVER = {
 
     register: function () {
         "use strict";
-        prefs.PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2)
-            .addObserver("", PREF_OBSERVER, false);
+        Services.prefs.addObserver(prefs.sixornot_prefs, PREF_OBSERVER, false);
     },
 
     unregister: function () {
         "use strict";
-        prefs.PREF_BRANCH_SIXORNOT.QueryInterface(Components.interfaces.nsIPrefBranch2)
-            .removeObserver("", PREF_OBSERVER);
+        Services.prefs.removeObserver(prefs.sixornot_prefs, PREF_OBSERVER);
     }
 };
 
@@ -126,14 +124,12 @@ PREF_OBSERVER_DNS = {
 
     register: function () {
         "use strict";
-        prefs.PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2)
-            .addObserver("", PREF_OBSERVER_DNS, false);
+        Services.prefs.addObserver(prefs.dns_prefs, PREF_OBSERVER_DNS, false);
     },
 
     unregister: function () {
         "use strict";
-        prefs.PREF_BRANCH_DNS.QueryInterface(Components.interfaces.nsIPrefBranch2)
-            .removeObserver("", PREF_OBSERVER_DNS);
+        Services.prefs.removeObserver(prefs.dns_prefs, PREF_OBSERVER_DNS);
     }
 };
 
@@ -226,14 +222,12 @@ var HTTP_REQUEST_OBSERVER = {
         /* Check an inner window ID against all browser windows, return true if it matches
            Used to check for favicon loading by chrome window */
         check_inner_id = function (inner_id) {
-            var winMediator, enumerator, win, utils, win_inner;
-            winMediator = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-                            .getService(Components.interfaces.nsIWindowMediator);
-            enumerator = winMediator.getEnumerator("navigator:browser");
+            var enumerator, win, utils, win_inner;
+            enumerator = Services.wm.getEnumerator("navigator:browser");
             while(enumerator.hasMoreElements()) {
                 win = enumerator.getNext();
                 utils = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                            .getInterface(Components.interfaces.nsIDOMWindowUtils);
+                                            .getInterface(Components.interfaces.nsIDOMWindowUtils);     // TODO - use of getInterface
                 if (inner_id === utils.currentInnerWindowID) {
                     return true;
                 }
@@ -259,13 +253,13 @@ var HTTP_REQUEST_OBSERVER = {
             }
 
             try {
-                domWindow = nC.getInterface(Components.interfaces.nsIDOMWindow).top;
+                domWindow = nC.getInterface(Components.interfaces.nsIDOMWindow).top;    // TODO - use of getInterface
                 domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                            .getInterface(Components.interfaces.nsIDOMWindowUtils);
+                                            .getInterface(Components.interfaces.nsIDOMWindowUtils); // TODO - use of getInterface
                 domWindowInner = domWindowUtils.currentInnerWindowID;
                 domWindowOuter = domWindowUtils.outerWindowID;
 
-                original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);
+                original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);  // TODO - use of getInterface
             } catch (e2) {
                 // HTTP response is in response to a non-DOM source - ignore these
                 log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 2);
@@ -377,7 +371,7 @@ var HTTP_REQUEST_OBSERVER = {
             // This signals that the document has been created, initial load completed
             // This is where entries on the requests waiting list get moved to the request cache
             domWindow = aSubject;
-            domWindowUtils = domWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
+            domWindowUtils = domWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);   // TODO - use of getInterface
             domWindowInner = domWindowUtils.currentInnerWindowID;
             domWindowOuter = domWindowUtils.outerWindowID;
 
