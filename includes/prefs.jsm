@@ -129,12 +129,6 @@ var prefs = {
                 }
             }
         }
-    },
-
-    // Remove all addon preferences
-    remove: function () {
-        "use strict";
-        this.PREF_BRANCH_SIXORNOT.deleteBranch("");
     }
 };
 

@@ -606,7 +606,7 @@ uninstall = function (aData, aReason) {
 
     // If uninstalling, remove our preferences
     if (aReason === ADDON_UNINSTALL) {
-        prefs.remove();
+        Services.prefs.getBranch("extensions.sixornot").deleteBranch("");
     }
 
     // Remove resource alias
