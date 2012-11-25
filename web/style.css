@@ -143,6 +143,31 @@ li.i_4only
     background-image: url("sixornot_4only_cg_24.png");
 }
 
+li.i_6only_cache
+{
+    background-image: url("sixornot_6only_cache_cg_24.png");
+}
+
+li.i_4pot6_cache
+{
+    background-image: url("sixornot_4pot6_cache_cg_24.png");
+}
+
+li.i_4only_cache
+{
+    background-image: url("sixornot_4only_cache_cg_24.png");
+}
+
+li.i_proxy
+{
+    background-image: url("sixornot_proxy_cg_24.png");
+}
+
+li.i_error
+{
+    background-image: url("sixornot_error_cg_24.png");
+}
+
 span.red
 {
     color: #F00;

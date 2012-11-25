@@ -15,7 +15,7 @@
 
 <div class="header">
 <h1>SixOrNot Online Documentation</h1>
-<p class="version">Version 0.6.6</p>
+<p class="version">Version 0.6.7</p>
 </div>
 
 <h2 class="menu"><a name="Menu"></a>Contents</h2>
@@ -47,36 +47,37 @@
 
 <h2><a name="Introduction"></a>Introduction<a href="#Menu">Menu</a></h2>
 
-<p>SixOrNot is a Firefox extension intended to make it easy for you to identify when the website you're connecting to supports the current generation Internet Protocol (version 6). It does this by checking the site's DNS records and displaying an icon either in the address bar or as a button (which you may place anywhere buttons can usually be placed in Firefox). This icon indicates whether the site currently supports IPv6 (or only the legacy Internet Protocol, IPv4). SixOrNot also tries to detect the IP addresses of your local machine, it uses these to guess whether you are likely connecting to a remote site using IPv6 or IPv4 and this also affects the icon displayed.</p>
+<p>SixOrNot is a Firefox extension intended to make it easy for you to identify when the website you're connecting to supports the current generation Internet Protocol (version 6). It does this by checking the site's DNS records and displaying an icon either in the address bar or as a button (which you may place anywhere buttons can usually be placed in Firefox). This icon indicates whether the site you are viewing supports IPv6 (or only the legacy Internet Protocol, IPv4). SixOrNot looks at each connection Firefox makes and notes whether it was made using IPv4 or IPv6, the information is then displayed via a handy tooltip. SixOrNot also tries to detect the IP addresses of your local machine for informational display.</p>
 
 <h2><a name="Installation"></a>Installation<a href="#Menu">Menu</a></h2>
 
-<p>Installation is via the usual Firefox method, simply download the .xpi format attachment and accept when prompted to install. SixOrNot is a "restartless" or "bootstrapped" extension - this means you don't need to restart Firefox when it is installed and you should see the addressbar icon appear immediately upon installation.</p>
+<p>Installation is via the usual Firefox method, simply download the .xpi format attachment and accept when prompted to install. SixOrNot is a "restartless" or "bootstrapped" extension - this means you don't need to restart Firefox when it is installed and you should see the addressbar icon appear immediately upon installation. The button can be dragged from the "Customize..." interface to wherever you desire.</p>
 
 <p>Upgrading should be similarly easy and handled automatically by the addons interface.</p>
 
 <h2><a name="Interface"></a>Interface<a href="#Menu">Menu</a></h2>
 
-<p>The SixOrNot interface is fairly simple. An icon is displayed either in the address bar near the star icon or as a button. By default the address bar icon is disabled and the button is placed onto the navigation bar. You can move the button anywhere you like by entering the Firefox UI customisation mode and simply dragging it to the desired location. Whether accessed through the button or address bar icon the functionality is identical. On mouseover the icon displays a tooltip which shows information about the site you are connecting to. The IPv6/IPv4 addresses of the site are shown in the Remote section along with its domain name. Additionally the IPv6/IPv4 addresses of your own client are shown under the Local section.</p>
+<p>The SixOrNot interface is fairly simple. An icon is displayed either in the address bar near the star icon or as a button. By default the address bar icon is disabled and the button is placed onto the navigation bar. You can move the button anywhere you like by entering the Firefox UI customisation mode and simply dragging it to the desired location. Whether accessed through the button or address bar icon the functionality is identical. Upon clicking the button/icon a tooltip panel is displayed which shows information about the site you are connecting to.</p>
 
-<p>Clicking on either the address bar icon or the button will open a popup menu. This menu allows you to copy IP address information to the clipboard. To copy all the IP addresses for a particular domain click the first entry in the menu (which will show the domain name of the remote site). This will copy the domain name followed by the IP addresses in comma separated format. If you wish to copy an individual IP address select it from the list and only that address will be copied to the clipboard.</p>
+<p>The main site is displayed first, in bold text. The first IP address entry is the actual address used to connect, the remaining addresses are those retrieved from DNS records for the domain in question. Subsequent entries in the list are for domains which additional resources have been loaded from, e.g. images from content delivery networks. Again, the first address is the actual connection, the rest are from DNS. You can click on the [+XX] link to expand DNS information for the secondary connections. The number to the left of the domain indicates the total number of connections made to it for this page.</p>
 
-<p>The same functionality is available for the local host entries. Below the IP address section are options to configure settings (see the Configurable Settings section below for more details on what these do) and a link to the SixOrNot website where this documentation can be found.</p>
-
-<img src="../sixornot_buttons.png" alt="Screenshot of the SixOrNot address bar icon and button" class="pad" />
-<img src="../sixornot_tooltip_normal_0.6.6.png" alt="Screenshot of the SixOrNot tooltip showing IP addresses" />
-<img src="../sixornot_menu_normal_0.6.6.png" alt="Screenshot of the SixOrNot menu showing options" />
+<img src="../sixornot_0.6.7_sc1.png" alt="Screenshot of the SixOrNot interface" class="pad" />
 
     <h3><a name="Interface_Icons"></a>Icon Meanings<a href="#Interface">Interface</a></h3>
 
-    <p>The IP addressing state of the remote website is displayed via a set of 5 icons, their meanings are outlined below. Note that there are two sets of icons to choose between (one colourful, the other greyscale). The grey icons look nicer when used with the button on Mac OSX for example, and can be better for those who have difficulty distinguishing between colours.</p>
+    <p>The IP addressing state of each domain is displayed via a set of icons, their meanings are outlined below. Note that there are two sets of icons to choose between (one colourful, the other greyscale). The grey icons look nicer when used with the button on Mac OSX for example, and can be better for those who have difficulty distinguishing between colours.</p>
 
     <ul class="icon_list">
     <li class="i_other">This icon can mean a variety of things, generally it indicates that no IP address information exists for the current location or that there was a failure obtaining it. Try navigating to a website and ensuring you are not using a Proxy and that Offline mode isn't enabled.</li>
-    <li class="i_6only">This icon indicates that only AAAA (IPv6) records were found for the current domain. This generally means that the domain in question only supports IPv6. For example: <a href="http://ipv6.entropy.me.uk">ipv6.entropy.me.uk</a>.</li>
-    <li class="i_6and4">This icon indicates that both AAAA (IPv6) and A (IPv4) records were found for the current domain and SixOrNot detected that the local host has at least one valid IPv6 address. You are probably connecting to this website using IPv6, the current generation of the Internet Protocol. For example: <a href="http://entropy.me.uk">entropy.me.uk</a>.</li>
-    <li class="i_4pot6">This icon indicates that both AAAA (IPv6) and A (IPv4) records were found for the current domain but SixOrNot has not detected any local valid IPv6 addresses. While the remote domain does support IPv6 you are probably not able to connect to this site using native IPv6.</li>
-    <li class="i_4only">This icon indicates that only A (IPv4) records were returned for the current domain. Either your DNS is not capable of returning AAAA records or (more likely) the domain in question supports only the legacy version of the Internet Protocol suite. Why not ask why they haven't upgraded yet? An example can be found here: <a href="http://ipv4.entropy.me.uk">ipv4.entropy.me.uk</a></li>
+    <li class="i_6only">This icon indicates that Firefox connected to this domain using IPv6 and only AAAA (IPv6) records were found for the domain in DNS. This generally means that the domain in question only supports IPv6. For example: <a href="http://ipv6.entropy.me.uk">ipv6.entropy.me.uk</a>.</li>
+    <li class="i_6and4">This icon indicates that Firefox connected to this domain using IPv6 and both AAAA (IPv6) and A (IPv4) records were found for the domain in DNS. For example: <a href="http://entropy.me.uk">entropy.me.uk</a>.</li>
+    <li class="i_4pot6">This icon indicates that Firefox connected to this domain using IPv4 and both AAAA (IPv6) and A (IPv4) records were found for the current domain. While the remote domain does support IPv6 your browser did not use it to connect.</li>
+    <li class="i_4only">This icon indicates that Firefox connected to this domain using IPv4 and only A (IPv4) records were returned for the domain. Either your DNS is not capable of returning AAAA records or (more likely) the domain in question supports only the legacy version of the Internet Protocol suite. Why not ask why they haven't upgraded yet? An example can be found here: <a href="http://ipv4.entropy.me.uk">ipv4.entropy.me.uk</a></li>
+    <li class="i_6only_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Only AAAA (IPv6) records were found for this domain in DNS, indicating that the domain is probably available only via IPv6.</li>
+    <li class="i_4pot6_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Both AAAA (IPv6) and A (IPv4) records were found for this domain in DNS, indicating that the domain is IPv6 capable.</li>
+    <li class="i_4only_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Only A (IPv4) records were found for this domain in DNS, indicating that the domain is probably available only via IPv4.</li>
+    <li class="i_proxy">This icon indicates that Firefox is currently configured to use a proxy. This prevents SixOrNot from detecting IP address information for the connection automatically and prevents DNS lookups.</li>
+    <li class="i_error">This icon indicates an error occurred for the domain in question.</li>
     </ul>
 
     <h3><a name="Interface_Warnings"></a>Interface Warnings<a href="#Interface">Interface</a></h3>
