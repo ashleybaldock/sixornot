@@ -748,8 +748,9 @@ var dns_handler = {
         } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
         }
-    },
+    }
 
+    /* Non-async proxy lookup no longer allowed in Firefox 18 - not needed, but will need to re-implement this if it ever is!
     // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
     is_proxied_dns : function (url) {
         "use strict";
@@ -763,7 +764,7 @@ var dns_handler = {
                     .resolve(uri, 0);
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
         return (proxyinfo !== null) && (proxyinfo.flags && proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
-    }
+    } */
 
 /*
     // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
