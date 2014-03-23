@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script builds the SixOrNot addon ready for distribution
-version="0.7.3"
+version="0.8.0"
 
 # Create build directory by version
 mkdir ../dist/$version
@@ -23,6 +23,7 @@ cp includes/locale.jsm ../dist/$version/src/includes/
 cp includes/logger.jsm ../dist/$version/src/includes/
 cp includes/prefs.jsm ../dist/$version/src/includes/
 cp includes/requestcache.jsm ../dist/$version/src/includes/
+cp includes/requestobserver.jsm ../dist/$version/src/includes/
 cp includes/windowwatcher.jsm ../dist/$version/src/includes/
 
 ./gen_imagesrc.sh
