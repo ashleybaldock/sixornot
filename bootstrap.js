@@ -208,7 +208,6 @@ var HTTP_REQUEST_OBSERVER = {
                             entry.dns_status = "complete";
                         }
                         // Also trigger page change event here to refresh display of IP tooltip
-                        // Create a page change event
                         send_event("sixornot-dns-lookup-event", evt_origin, entry);
                     };
                     if (entry.dns_cancel) {
@@ -227,7 +226,7 @@ var HTTP_REQUEST_OBSERVER = {
             while(enumerator.hasMoreElements()) {
                 win = enumerator.getNext();
                 utils = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                            .getInterface(Components.interfaces.nsIDOMWindowUtils);     // TODO - use of getInterface
+                                            .getInterface(Components.interfaces.nsIDOMWindowUtils);
                 if (inner_id === utils.currentInnerWindowID) {
                     return true;
                 }
@@ -253,20 +252,22 @@ var HTTP_REQUEST_OBSERVER = {
             }
 
             try {
-                domWindow = nC.getInterface(Components.interfaces.nsIDOMWindow).top;    // TODO - use of getInterface
+                // This is the top level window
+                domWindow = nC.getInterface(Components.interfaces.nsIDOMWindow).top;
                 domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                            .getInterface(Components.interfaces.nsIDOMWindowUtils); // TODO - use of getInterface
+                                            .getInterface(Components.interfaces.nsIDOMWindowUtils);
                 domWindowInner = domWindowUtils.currentInnerWindowID;
                 domWindowOuter = domWindowUtils.outerWindowID;
 
-                original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);  // TODO - use of getInterface
+                // This is the window which initiated the request (maybe a frame/iframe within the page)
+                original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);
             } catch (e2) {
-                // HTTP response is in response to a non-DOM source - ignore these
                 log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 2);
                 return;
             }
 
             // Check for browser windows loading things like favicons and filter out
+            // TODO - check this - is it actually needed/used/working??
             if (check_inner_id(domWindowInner)) {
                 log("Sixornot - HTTP_REQUEST_OBSERVER: domWindowInner: " + domWindowInner + " matches a chrome window (probably a favicon load), skipping.", 1);
                 return;
@@ -291,11 +292,14 @@ var HTTP_REQUEST_OBSERVER = {
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
             // Detect new page loads by checking if flag LOAD_INITIAL_DOCUMENT_URI is set
-            log("http_channel.loadFlags: " + http_channel.loadFlags, 2);
             /*jslint bitwise: true */
             if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
             /*jslint bitwise: false */
-                // What does this identity assignment do in practice? How does this detect new windows?
+
+                // Only consider this to be a navigation to a new page iff the top level window was the one
+                // which initiated the navigation request (so we don't change for frame/iframe requests)
+                // (New page loads may come from sub-windows, which we want to consider as lumped in with
+                //  requests for the top level one)
                 new_page = original_window === original_window.top;
             }
 
@@ -353,16 +357,11 @@ var HTTP_REQUEST_OBSERVER = {
                         return true;
                     }
                 })) {
-                    // Create new entry + add to cache
                     log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry, host: " + http_channel.URI.host + ", remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
                     new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindowInner, domWindowOuter);
-                    // Add to cache
                     requests.cache[domWindowInner].push(new_entry);
-                    // Secondary pages shouldn't have full info shown in panel
                     new_entry.show_detail = false;
-                    // Trigger new DNS lookup for the new host entry
                     new_entry.lookup_ips(domWindow);
-                    // Finally send event to signal new entry
                     send_event("sixornot-new-host-event", domWindow, new_entry);
                 }
             }
@@ -371,7 +370,7 @@ var HTTP_REQUEST_OBSERVER = {
             // This signals that the document has been created, initial load completed
             // This is where entries on the requests waiting list get moved to the request cache
             domWindow = aSubject;
-            domWindowUtils = domWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);   // TODO - use of getInterface
+            domWindowUtils = domWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindowUtils);
             domWindowInner = domWindowUtils.currentInnerWindowID;
             domWindowOuter = domWindowUtils.outerWindowID;
 
@@ -409,7 +408,6 @@ var HTTP_REQUEST_OBSERVER = {
                 log("Sixornot - removing " + requests.cache[domWindowInner].length + " items for inner window: " + domWindowInner, 1);
                 requests.cache[domWindowInner].forEach(function (item, index, items) {
                     if (item.dns_cancel) {
-                        log("Cancelling DNS for item: " + item.host, 1);
                         item.dns_cancel.cancel();
                     }
                 });
@@ -422,13 +420,9 @@ var HTTP_REQUEST_OBSERVER = {
             log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 1);
             // Remove elements for this window and ensure DNS lookups are all cancelled
             if (requests.waitinglist[domWindowOuter]) {
-                log("Sixornot - removing " + requests.waitinglist[domWindowOuter].length + " items for outer window: " + domWindowOuter, 1);
-
                 requests.waitinglist[domWindowOuter].forEach(function (item, index, items) {
                     // DNS lookup should not be triggered until the item has been moved from waitinglist to cache
-                    // But do this anyway, just to be sure
                     if (item.dns_cancel) {
-                        log("Cancelling DNS for item: " + item.host, 1);
                         item.dns_cancel.cancel();
                     }
                 });
@@ -448,8 +442,6 @@ var HTTP_REQUEST_OBSERVER = {
         this.observer_service.addObserver(this, "content-document-global-created", false);
         this.observer_service.addObserver(this, "inner-window-destroyed", false);
         this.observer_service.addObserver(this, "outer-window-destroyed", false);
-        //this.observer_service.addObserver(this, "http-on-modify-request", false);
-        //this.observer_service.addObserver(this, "dom-window-destroyed", false);
     },
 
     unregister: function () {
@@ -459,8 +451,6 @@ var HTTP_REQUEST_OBSERVER = {
         this.observer_service.removeObserver(this, "content-document-global-created");
         this.observer_service.removeObserver(this, "inner-window-destroyed");
         this.observer_service.removeObserver(this, "outer-window-destroyed");
-        //this.observer_service.removeObserver(this, "http-on-modify-request");
-        //this.observer_service.removeObserver(this, "dom-window-destroyed");
     }
 };
 
