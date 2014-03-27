@@ -3,30 +3,24 @@
 Update documentation (pretty much completely)
 
 
-# 0.7.5
+# 0.8.0
+Rewrite of some core bits to handle various cases better
+
+# 0.8.1
 Warnings for ip6_disabled and ip4only_domain
 Add settings to panel, since we can't link to about:addons easily
 
 # TODO FUTURE
 Add back local address display refresh on tooltip show
+ Should be hidden by default, expand to show/hide
 Handling for edge-cases and special pages (text)
 Add ability to copy a list of all files fetched to clipboard (per-domain)
 Add better proxy detection (per-connection) and icon display
  Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
  Same way that DNS lookups are done, with a callback
-Platform-specific text colours for optimal display on panel
-Preferences override for all text display colours (if not set use platform-specific)
-Proper website landing page + download links
-Native resolver compatibility with FreeBSD
 
 # TODO Future
 Preference to set whether icon should come before or after the star icon
-Remote mode - simple check of local->remote IPv6 connectivity by requesting a page from a webservice
-E.g. ipv6.sixornot.com/ipv4.sixornot.com
-This will be optional (and off by default)
-Needs update to privacy policy etc., state that aggregate statistics may be gathered but no personally identifiable information sent
-Also state that no details of the sites you visit are sent
-Also add external address detection via external server??
 
 # 0.7.1
 Fix memory leaks in cache
@@ -99,4 +93,3 @@ Testing
 
     Unit tests for dns_handler:sort_ip4 & dns_handler:sort_ip6
 
-Check for == and != in utils/locale script files and replace with === and !==
