@@ -54,7 +54,7 @@ var send_event = function (type, target, entry) {
         outer_id: entry.outer_id
     });
 
-    log("Sixornot - send_event of type: " + type + ", to target: " + target + " with payload: " + JSON.stringify(evt.detail), 2);
+    //log("Sixornot - send_event of type: " + type + ", to target: " + target + " with payload: " + JSON.stringify(evt.detail), 2);
 
     // Dispatch the event
     return target.top.dispatchEvent(evt);
@@ -83,9 +83,7 @@ var create_new_entry = function (host, address, address_family, inner, outer) {
             }
             /* Create closure containing reference to element and trigger async lookup with callback */
             entry = this;
-            log("Sixornot - LOOKUP_IPS", 2);
             on_returned_ips = function (ips) {
-                log("Sixornot - LOOKUP_IPS - on_returned_ips", 2);
                 entry.dns_cancel = null;
                 if (ips[0] === "FAIL") {
                     entry.ipv6s = [];
@@ -272,7 +270,6 @@ var on_content_document_global_created = function(subject, topic) {
     // yet associated with an inner window ID, these are stored associated with
     // their top outer window ID
 
-
     // This is a create event for the top window (new page)
     if (subjectOuter === topWindowOuter) {
         log("Sixornot - on_content_document_global_created: subjectOuter === topWindowOuter", 1);
@@ -284,8 +281,6 @@ var on_content_document_global_created = function(subject, topic) {
 
         if (!requests.waitinglist[topWindowOuter]
          || requests.waitinglist[topWindowOuter].length === 0) {
-            // In this case most likely the initial page load is probably from a local file, examine protocol of subject.location
-            log("requests.waitinglist[topWindowOuter] is empty", 1);
             requests.waitinglist[topWindowOuter] = [];
             if (subject.location.protocol === "file:") {
                 // Add item to cache to represent this file
@@ -309,7 +304,6 @@ var on_content_document_global_created = function(subject, topic) {
             send_event("sixornot-page-change-event", subject, item);
         });
     } else {
-        // Otherwise it's just a new page in a frame (in which case we don't need to do much at all)
         log("Sixornot - on_content_document_global_created: subjectOuter !== topWindowOuter", 1);
     }
 };
@@ -351,8 +345,6 @@ var on_outer_window_destroyed = function(subject) {
  */
 var HTTP_REQUEST_OBSERVER = {
     observe: function (subject, topic, data) {
-        // TODO - A copy of the initial load for each site visited is stored under innerWindow ID 2, this is a bug!
-
         if (topic === "http-on-examine-response"
          || topic === "http-on-examine-cached-response") {
             on_examine_response(subject, topic);
