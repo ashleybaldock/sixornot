@@ -26,6 +26,8 @@
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
+// Import dns module (adds global symbol: dns_handler)
+Components.utils.import("resource://sixornot/includes/dns.jsm");
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["HTTP_REQUEST_OBSERVER"];
@@ -74,6 +76,11 @@ var create_new_entry = function (host, address, address_family, inner, outer) {
         outer_id: outer,
         lookup_ips: function (evt_origin) {
             var entry, on_returned_ips;
+            // Don't do IP lookup for local file entries
+            if (this.address_family === 1) {
+                this.dns_status = "complete";
+                return;
+            }
             /* Create closure containing reference to element and trigger async lookup with callback */
             entry = this;
             log("Sixornot - LOOKUP_IPS", 2);
@@ -116,7 +123,7 @@ var check_inner_id = function (inner_id) {
     return false;
 };
 
-var on_response(subject, topic) {
+var on_examine_response = function(subject, topic) {
     var http_channel, http_channel_internal, nC,
         domWindow, domWindowUtils, domWindowInner, domWindowOuter,
         original_window, new_page, new_entry,
@@ -162,13 +169,13 @@ var on_response(subject, topic) {
         try {
             remoteAddress = http_channel_internal.remoteAddress;
             remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
-            // TODO move this code into a function executed immediately for address_family item
         } catch (e1) {
             log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 0);
             remoteAddress = "";
             remoteAddressFamily = 0;
         }
     } else {
+        log("Sixornot - HTTP_REQUEST_OBSERVER - NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 0);
         remoteAddress = "";
         remoteAddressFamily = 2;
     }
@@ -176,27 +183,21 @@ var on_response(subject, topic) {
     log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
     // Detect new page loads by checking if flag LOAD_INITIAL_DOCUMENT_URI is set
+    // Only consider this to be a navigation to a new page iff the top level window was the one
+    // which initiated the navigation request (so we don't change for frame/iframe requests)
+    // (New page loads may come from sub-windows, which we want to consider as lumped in with
+    //  requests for the top level one)
     /*jslint bitwise: true */
-    if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
+    if (original_window === original_window.top
+     && http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
     /*jslint bitwise: false */
 
-        // Only consider this to be a navigation to a new page iff the top level window was the one
-        // which initiated the navigation request (so we don't change for frame/iframe requests)
-        // (New page loads may come from sub-windows, which we want to consider as lumped in with
-        //  requests for the top level one)
-        new_page = original_window === original_window.top;
-    }
+        // After the initial http-on-examine-response event, but before the first
+        // content-document-global-created one the new page won't have an inner ID. In this case
+        // temporarily cache the object in a waiting list (keyed by outer ID) until the first
+        // content-document-global-created event (at which point add this as the first element
+        // of the new window's cached list, keyed by the new inner ID).
 
-    // Create new entry for this domain in the current window's cache (if not already present)
-    // If already present update the connection IP(s) list (strip duplicates)
-    // Trigger DNS lookup with callback to update DNS records upon completion
-
-    // After the initial http-on-examine-response event, but before the first content-document-global-created one
-    // the new page won't have an inner ID. In this case temporarily cache the object in a waiting list (keyed by
-    // outer ID) until the first content-document-global-created event (at which point add this as the first element
-    // of the new window's cached list, keyed by the new inner ID).
-
-    if (new_page) {
         /* PRIMARY PAGE LOAD */
         // New page, since inner window ID hasn't been set yet we need to store any
         // new connections until such a time as it is, these get stored in the requests waiting list
@@ -251,49 +252,73 @@ var on_response(subject, topic) {
 };
 
 var on_content_document_global_created = function(subject, topic) {
-    var domWindow, domWindowUtils, domWindowInner, domWindowOuter;
+    var subjectUtils, subjectInner, subjectOuter,
+        topWindow, topWindowUtils, topWindowInner, topWindowOuter;
     // This signals that the document has been created, initial load completed
     // This is where entries on the requests waiting list get moved to the request cache
-    domWindow = subject;
-    domWindowUtils = domWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+    subjectUtils = subject.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                         .getInterface(Components.interfaces.nsIDOMWindowUtils);
-    domWindowInner = domWindowUtils.currentInnerWindowID;
-    domWindowOuter = domWindowUtils.outerWindowID;
+    subjectInner = subjectUtils.currentInnerWindowID;
+    subjectOuter = subjectUtils.outerWindowID;
+    topWindow = subject.top;
+    topWindowUtils = topWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                        .getInterface(Components.interfaces.nsIDOMWindowUtils);
+    topWindowInner = topWindowUtils.currentInnerWindowID;
+    topWindowOuter = topWindowUtils.outerWindowID;
 
-    log("Sixornot - HTTP_REQUEST_OBSERVER - content-document-global-created: Inner Window ID: " + domWindowInner + ", Outer Window ID: " + domWindowOuter + ", Location: " + domWindow.location, 1);
+    log("Sixornot - on_content_document_global_created: subjectInner: " + subjectInner + ", subjectOuter: " + subjectOuter + ", subject Location: " + subject.location + ", topWindowInner: " + topWindowInner + ", topWindowOuter: " + topWindowOuter + ", top window Location: " + topWindow.location, 1);
 
-    if (!requests.waitinglist[domWindowOuter]) {
-        log("requests.waitinglist[domWindowOuter] is null (this is normal)", 2);
-        return;
+    // The waiting list contains http-on-examine-response messages which aren't
+    // yet associated with an inner window ID, these are stored associated with
+    // their top outer window ID
+
+
+    // This is a create event for the top window (new page)
+    if (subjectOuter === topWindowOuter) {
+        log("Sixornot - on_content_document_global_created: subjectOuter === topWindowOuter", 1);
+
+        // TODO - does this need to throw an exception?
+        if (requests.cache[topWindowInner]) {
+            throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: requests.cache already contains content entries.";
+        }
+
+        if (!requests.waitinglist[topWindowOuter]
+         || requests.waitinglist[topWindowOuter].length === 0) {
+            // In this case most likely the initial page load is probably from a local file, examine protocol of subject.location
+            log("requests.waitinglist[topWindowOuter] is empty", 1);
+            requests.waitinglist[topWindowOuter] = [];
+            if (subject.location.protocol === "file:") {
+                // Add item to cache to represent this file
+                requests.waitinglist[topWindowOuter].push(
+                    create_new_entry("Local File", "", 1, subjectInner, topWindowOuter));
+            } else {
+                // Some other protocol used to load file, or something went wrong
+                requests.waitinglist[topWindowOuter].push(
+                    create_new_entry(subject.location, "", 0, subjectInner, topWindowOuter));
+            }
+        }
+
+        // Move item(s) from waiting list to cache
+        // Replace spliced item with empty array, to keep waitinglist array indexes correct!
+        requests.cache[topWindowInner] = requests.waitinglist.splice(topWindowOuter, 1, [])[0];
+
+        // For each member of the new cache set inner ID and trigger a dns lookup
+        requests.cache[topWindowInner].forEach(function (item, index, items) {
+            item.inner_id = topWindowInner;
+            item.lookup_ips(subject);
+            send_event("sixornot-page-change-event", subject, item);
+        });
+    } else {
+        // Otherwise it's just a new page in a frame (in which case we don't need to do much at all)
+        log("Sixornot - on_content_document_global_created: subjectOuter !== topWindowOuter", 1);
     }
-
-    if (requests.cache[domWindowInner]) {
-        throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: requests.cache already contains content entries.";
-    }
-
-    // Move item(s) from waiting list to cache
-    // Replace spliced item with empty array, to keep waitinglist array indexes correct!
-    requests.cache[domWindowInner] = requests.waitinglist.splice(domWindowOuter, 1, [])[0];
-
-    // For each member of the new cache set inner ID and trigger a dns lookup
-    requests.cache[domWindowInner].forEach(function (item, index, items) {
-        item.inner_id = domWindowInner;
-        item.lookup_ips(domWindow);
-        send_event("sixornot-page-change-event", domWindow, item);
-    });
-
-    // Create an event to inform listeners that a new page load has started
-    // We do this now since it's only now that we know the innerID of the page
-    // Uses first element of the set, since the method triggered by this event builds all the members
 };
 
-var on_inner_window_destroyed(subject) {
+var on_inner_window_destroyed = function(subject) {
     var domWindowInner = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
 
-    log("Sixornot - HTTP_REQUEST_OBSERVER - inner-window-destroyed: " + domWindowInner, 2);
     // Remove elements for this window and ensure DNS lookups are all cancelled
     if (requests.cache[domWindowInner]) {
-        log("Sixornot - removing " + requests.cache[domWindowInner].length + " items for inner window: " + domWindowInner, 1);
         requests.cache[domWindowInner].forEach(function (item, index, items) {
             if (item.dns_cancel) {
                 item.dns_cancel.cancel();
@@ -304,14 +329,12 @@ var on_inner_window_destroyed(subject) {
     }
 };
 
-var on_outer_window_destroyed(subject) {
+var on_outer_window_destroyed = function(subject) {
     var domWindowOuter = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
 
-    log("Sixornot - HTTP_REQUEST_OBSERVER - outer-window-destroyed: " + domWindowOuter, 1);
     // Remove elements for this window and ensure DNS lookups are all cancelled
     if (requests.waitinglist[domWindowOuter]) {
         requests.waitinglist[domWindowOuter].forEach(function (item, index, items) {
-            // DNS lookup should not be triggered until the item has been moved from waitinglist to cache
             if (item.dns_cancel) {
                 item.dns_cancel.cancel();
             }
@@ -328,8 +351,6 @@ var on_outer_window_destroyed(subject) {
  */
 var HTTP_REQUEST_OBSERVER = {
     observe: function (subject, topic, data) {
-        log("Sixornot - HTTP_REQUEST_OBSERVER - (" + topic + ")", 1);
-
         // TODO - A copy of the initial load for each site visited is stored under innerWindow ID 2, this is a bug!
 
         if (topic === "http-on-examine-response"

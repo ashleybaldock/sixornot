@@ -372,7 +372,6 @@ var insert_code = function (win) {
                     hostname = doc.createElement("label");
                     hostname.setAttribute("value", host.host);
                     if (host.host === getCurrentHost()) {
-                        // Bold
                         hostname.setAttribute("style", "font-weight: bold;");
                     } else {
                         hostname.setAttribute("style", "font-weight: normal;");
@@ -1002,23 +1001,16 @@ var insert_code = function (win) {
             log("Sixornot - insert_code:create_button:update_icon", 1);
             var hosts = requests.cache[currentTabInnerID];
 
-            if (hosts) {
-                /* Parse array searching for the main host (which matches the current location) */
-                hosts.forEach(function (element, index, thearray) {
-                    if (element.host === getCurrentHost()) {
-                        log("Sixornot - main:create_button - callback: update_state - updating icon!", 1);
-                        toolbarButton.style.listStyleImage = "url('" + get_icon_source(element) + "')";
-                    }
-                });
-            } else {
-                // Analyse current location, see if it's not a valid page
-                // TODO - fallback to DNS lookup of current name
-                //      - store this in the cache
-                log("Sixornot - main:create_button - callback: update_state - typeof(hosts) is undefined!", 1);
+            /* Parse array searching for the main host (which matches the current location) */
+            if (!hosts || !hosts.some(function (item, index, items) {
+                if (item.host === getCurrentHost()) {
+                    toolbarButton.style.listStyleImage = "url('" + get_icon_source(item) + "')";
+                    return true;
+                }
+            })) {
+                // No matching entry for main host (probably a local file)
                 toolbarButton.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
-                return;
             }
-
         };
 
         /* click events on the button (show panel) */
@@ -1185,22 +1177,16 @@ var insert_code = function (win) {
             log("Sixornot - insert_code:create_addressbaricon:update_icon", 1);
             var hosts = requests.cache[currentTabInnerID];
 
-            if (hosts) {
-                /* Parse array searching for the main host (which matches the current location) */
-                hosts.forEach(function (element, index, thearray) {
-                    if (element.host === getCurrentHost()) {
-                        log("Sixornot - main:create_addressbaricon - callback: update_state - updating icon!", 1);
-                        addressBarIcon.style.listStyleImage = "url('" + get_icon_source(element) + "')";
-                    }
-                });
-            } else {
-                // Analyse current location, see if it's not a valid page
-                // TODO - fallback to DNS lookup of current name
-                //      - store this in the cache
-                log("Sixornot - main:create_addressbaricon - callback: update_state - typeof(hosts) is undefined!", 1);
+            /* Parse array searching for the main host (which matches the current location) */
+            if (!hosts || !hosts.some(function (item, index, items) {
+                if (item.host === getCurrentHost()) {
+                    addressBarIcon.style.listStyleImage = "url('" + get_icon_source(item) + "')";
+                    return true;
+                }
+            })) {
+                // No matching entry for main host (probably a local file)
                 addressBarIcon.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
             }
-
         };
 
         /* click events on the button (show panel) */
@@ -1354,6 +1340,8 @@ var insert_code = function (win) {
                     return imagesrc.get("4pot6_cache");
                 }
             }
+        } else if (record.address_family === 1) {
+            return imagesrc.get("other_cache");
         } else if (record.address_family === 0) {
             // This indicates that no addresses were available but request is not cached
             return imagesrc.get("error");

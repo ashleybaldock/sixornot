@@ -20,18 +20,16 @@
 /*jslint white: true, maxerr: 100, indent: 4 */
 
 // Provided by Firefox:
-/*global Components, Services */
+/*global Components */
 
 // Provided by Sixornot
 /*global parse_exception, prefs */
 
-// Module imports we need
-/*jslint es5: true */
-Components.utils.import("resource://gre/modules/Services.jsm");
-/*jslint es5: false */
-
 var EXPORTED_SYMBOLS = ["requests"];
 
+
+// Make methods in this object for updating its state
+// Adding/removing/lookup of entries (hide internal implementation)
 
 /*
  * Contains two lists:
