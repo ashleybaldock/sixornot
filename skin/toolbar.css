@@ -1,0 +1,77 @@
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+@-moz-document url("chrome://browser/content/browser.xul") {
+    #sixornot-button {
+        list-style-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAB5lBMVEUNDhFOVmtRWG0NDhExOlY/R15PVGYyO1YpM1FHTV1DS2NBR1gqNFEpM1A0OUg5PksuMj8qNFEzNkInKzYrLzghJC1FTWRGTmJITmAkJzAbHiUeICcWGB4YGh8RExcTFBkMDBA7QFANDhEFBwtARVQGBwwGCQ0GCAwLDA8MDBAGCAwGCAxKSkowMDAmJiYxMTFYWFgdHR2IiIhpaWk+Pj5nZ2d4eHgfHx8eHR2EhIRMTEsnJyf///88PDydnZ1OTk6trausrKt2dnYeHh4aGhqHh4YnJyZ3d3caGhmgoJ+RkZGbm5uVlJTNzc2kpKR7e3tubm55eXiMjIyOjo5oaGdqammzsrJoaGhXV1dTU1NxdoOUlJO+vr5ZWVlbW1q1tbNWVlZBQUH8/Pyurq4rKytbW1utrKtaWlm3tbKWlpaurayqqqlERES1tLGgoKBjY2OwsLB+fn5qamo9PT0+Pj24uLhISEg+PT13e4eVlZSfn5+hoKAoKCg0NDTw8PBdXV0cHByvr6+ioaDq6urW1tbx8fEkJCQvLy8iIiKxsa60tLMeHh3j4+OEhYRaWlqHh4cLCwsZGRl3dncZGhkRERNzc3Pi4uJ6eXkSExSjo6GcnJyurq2fnp11dXVUVFSTk5OysrKjoqGnqWBrAAAALHRSTlOZl5mbAJafACeZiJczJ5eZly+Zl5mXi52emZeZl5mdnpmXoC6ZOwA0jpA8AOepoPgAAAD7SURBVHheLcDTYgNREADQaVLbtnHXVuzStm3bto0/bR/2QFBwqMFPZ0iM8YeItrOmGd1P90o4BFhGrGNDrx/e8XeLdfI0CZK9e6a38sXKju/RNdP6byCE+VZ99NT+weFFXb2voj0Eci5pSbqenePV3UfJ6cyHyLtnm/uT/6pSq2tstXwURDc0clxzi1ulWxmOYWIhrrOLJHt6+/oHBknyajgeEpCM0IT5aVpDCMlyCqTOL2iaxi6x2r9lNg3SCQLDNja3tncwDCOIDMh0KTh+pJiPT3AcV1xZkH0uUKKdurkVRJES7LmQ9+Dw3Os8jpcCKCwqNoLOWFJa9gcssUf9SHep3AAAAABJRU5ErkJggg==");
+    }
+
+    #sixornot-button.s4only {
+    }
+    #sixornot-button.grey.s4only {
+    }
+    #sixornot-button.s4only_cache {
+    }
+    #sixornot-button.grey.s4only_cache {
+    }
+
+    #sixornot-button.s4pot6 {
+    }
+    #sixornot-button.grey.s4pot6 {
+    }
+    #sixornot-button.s4pot6_cache {
+    }
+    #sixornot-button.grey.s4pot6_cache {
+    }
+
+    #sixornot-button.s6and4 {
+    }
+    #sixornot-button.grey.s6and4 {
+    }
+    #sixornot-button.s6and4_cache {
+    }
+    #sixornot-button.grey.s6and4_cache {
+    }
+
+    #sixornot-button.s6only {
+    }
+    #sixornot-button.grey.s6only {
+    }
+    #sixornot-button.s6only_cache {
+    }
+    #sixornot-button.grey.s6only_cache {
+    }
+
+    #sixornot-button.serror {
+    }
+    #sixornot-button.grey.serror {
+    }
+
+    #sixornot-button.sother {
+    }
+    #sixornot-button.grey.sother {
+    }
+    #sixornot-button.sother_cache {
+    }
+    #sixornot-button.grey.sother_cache {
+    }
+
+    #sixornot-button.sproxy {
+    }
+    #sixornot-button.grey.sproxy {
+    }
+
+    #sixornot-button[cui-areatype="menu-panel"],
+    toolbarpaletteitem[place="palette"] > #sixornot-button {
+        list-style-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAB5lBMVEUNDhFOVmtRWG0NDhExOlY/R15PVGYyO1YpM1FHTV1DS2NBR1gqNFEpM1A0OUg5PksuMj8qNFEzNkInKzYrLzghJC1FTWRGTmJITmAkJzAbHiUeICcWGB4YGh8RExcTFBkMDBA7QFANDhEFBwtARVQGBwwGCQ0GCAwLDA8MDBAGCAwGCAxKSkowMDAmJiYxMTFYWFgdHR2IiIhpaWk+Pj5nZ2d4eHgfHx8eHR2EhIRMTEsnJyf///88PDydnZ1OTk6trausrKt2dnYeHh4aGhqHh4YnJyZ3d3caGhmgoJ+RkZGbm5uVlJTNzc2kpKR7e3tubm55eXiMjIyOjo5oaGdqammzsrJoaGhXV1dTU1NxdoOUlJO+vr5ZWVlbW1q1tbNWVlZBQUH8/Pyurq4rKytbW1utrKtaWlm3tbKWlpaurayqqqlERES1tLGgoKBjY2OwsLB+fn5qamo9PT0+Pj24uLhISEg+PT13e4eVlZSfn5+hoKAoKCg0NDTw8PBdXV0cHByvr6+ioaDq6urW1tbx8fEkJCQvLy8iIiKxsa60tLMeHh3j4+OEhYRaWlqHh4cLCwsZGRl3dncZGhkRERNzc3Pi4uJ6eXkSExSjo6GcnJyurq2fnp11dXVUVFSTk5OysrKjoqGnqWBrAAAALHRSTlOZl5mbAJafACeZiJczJ5eZly+Zl5mXi52emZeZl5mdnpmXoC6ZOwA0jpA8AOepoPgAAAD7SURBVHheLcDTYgNREADQaVLbtnHXVuzStm3bto0/bR/2QFBwqMFPZ0iM8YeItrOmGd1P90o4BFhGrGNDrx/e8XeLdfI0CZK9e6a38sXKju/RNdP6byCE+VZ99NT+weFFXb2voj0Eci5pSbqenePV3UfJ6cyHyLtnm/uT/6pSq2tstXwURDc0clxzi1ulWxmOYWIhrrOLJHt6+/oHBknyajgeEpCM0IT5aVpDCMlyCqTOL2iaxi6x2r9lNg3SCQLDNja3tncwDCOIDMh0KTh+pJiPT3AcV1xZkH0uUKKdurkVRJES7LmQ9+Dw3Os8jpcCKCwqNoLOWFJa9gcssUf9SHep3AAAAABJRU5ErkJggg==");
+    }
+
+  /* Necessary to mimic the behavior of all other buttons, which are darker when
+pressed.
+#aus-view-button:hover:active:not([disabled="true"]):not([cui-areatype="menu-panel"]) {
+list-style-image: url("chrome://aus-view/skin/icon32-dark.png");
+}*/
+
+  /*#sixornot-panel {
+    width: 20em;
+  }*/
+}

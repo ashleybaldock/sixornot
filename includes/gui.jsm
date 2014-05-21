@@ -113,7 +113,7 @@ var insert_code = function (win) {
     create_panel = function () {
         var panel, on_click, on_mouseover, on_mouseout,
         on_show_panel, on_page_change, on_new_host, on_address_change,
-        popstate_handler, pageshow_handler,
+        pageshow_handler,
         on_count_change, on_dns_complete, on_tab_select,
         panel_vbox, remote_grid, remote_rows, remote_cols, title_remote,
         remote_anchor, title_local, settingslabel, urllabel, urlhbox,
@@ -904,21 +904,6 @@ var insert_code = function (win) {
             force_scrollbars();
         };
 
-        /* popstate event triggered */
-        popstate_handler = function (evt) {
-            log("Sixornot - panel:popstate_handler", 1);
-            // TODO - unsubscribe from events when panel is closed to avoid this check
-            if (panel.state !== "open") {
-                log("Sixornot - panel:popstate_handler - skipping (panel is closed)", 2);
-                return;
-            }
-            setCurrentTabIDs();
-
-            remove_all();
-            generate_all();
-            force_scrollbars();
-        };
-
         /*
          * pageshow event triggered
          *  This event occurs on back/forward navigation
@@ -993,7 +978,7 @@ var insert_code = function (win) {
         var toolbarButton, toolbarID, toolbar, nextItem, nextID,
             click_handler, panel, update_icon,
             customize_handler, page_change_handler, tabselect_handler,
-            popstate_handler, pageshow_handler, on_dns_complete;
+            pageshow_handler, on_dns_complete;
         log("Sixornot - insert_code:create_button", 2);
 
         /* Updates the icon to reflect state of the currently displayed page */
@@ -1014,104 +999,106 @@ var insert_code = function (win) {
         };
 
         /* click events on the button (show panel) */
-        click_handler = function () {
+        /*click_handler = function () {
             panel.setAttribute("hidden", false);
             panel.openPopup(toolbarButton, panel.getAttribute("position"), 0, 0, false, false);
-        };
+        };*/
+
+
+
+        // Things which update the icon display
 
         /* Called whenever the current window's active tab is changed
            Calls the update method for the icon */
-        tabselect_handler = function (evt) {
+        /*tabselect_handler = function (evt) {
             log("Sixornot - insert_code:create_button:tabselect_handler", 2);
             setCurrentTabIDs();
             update_icon();
-        };
-
-        /* popstate event triggered, active history entry has changed */
-        popstate_handler = function (evt) {
-            log("Sixornot - insert_code:create_button:popstate_handler", 2);
-            setCurrentTabIDs();
-            update_icon();
-        };
+        };*/
 
         /* pageshow event triggered, current page has been shown */
-        pageshow_handler = function (evt) {
+        /*pageshow_handler = function (evt) {
             log("Sixornot - insert_code:create_button:pageshow_handler", 2);
             setCurrentTabIDs();
             update_icon();
-        };
-
+        };*/
 
         /*
          * Called whenever a Sixornot page change event is seen
          * Calls the update method for the icon, but only if the event applies to us
          */
-        page_change_handler = function (evt) {
-            log("Sixornot - insert_code:create_button:page_change_handler", 1);
-            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+        /*page_change_handler = function (evt) {
+            //log("Sixornot - insert_code:create_button:page_change_handler", 1);
+            //log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
 
             setCurrentTabIDs();
             // Ignore updates for windows other than this one
             if (evt.detail.outer_id === currentTabOuterID) {
                 update_icon();
             }
-        };
+        };*/
 
         /*
          * Called whenever a Sixornot dns lookup event is seen
          */
-        on_dns_complete = function (evt) {
-            log("Sixornot - insert_code:create_button:on_dns_complete", 1);
-            log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+        /*on_dns_complete = function (evt) {
+            //log("Sixornot - insert_code:create_button:on_dns_complete", 1);
+            //log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
 
             setCurrentTabIDs();
             // Ignore updates for windows other than this one
             if (evt.detail.outer_id === currentTabOuterID) {
                 update_icon();
             }
-        };
+        };*/
 
         /*
          * When button location is customised store the new location in preferences
          * so we can load into the same place next time
          */
-        customize_handler = function (evt) {
+        /*customize_handler = function (evt) {
             var button_parent, button_nextitem, toolbar_id, nextitem_id;
             log("Sixornot - insert_code:create_button:customize_handler");
             if (toolbarButton) {
                 button_parent = toolbarButton.parentNode;
                 button_nextitem = toolbarButton.nextSibling;
+                // Old behaviour
                 if (button_parent && button_parent.localName === "toolbar") {
                     toolbar_id = button_parent.id;
+                    nextitem_id = button_nextitem && button_nextitem.id;
+                }
+                // Australis, there's an hbox between toolbar and parent
+                if (button_parent && button_parent.parentNode.localName === "toolbar") {
+                    toolbar_id = button_parent.parentNode.id;
                     nextitem_id = button_nextitem && button_nextitem.id;
                 }
             }
             prefs.set_char("toolbar",  toolbar_id || "");
             prefs.set_char("nextitem", nextitem_id || "");
-        };
+        };*/
 
         /* Create the button */
-        toolbarButton = doc.createElement("toolbarbutton");
+        //toolbarButton = doc.createElement("toolbarbutton");
 
         /* Iconized button setup */
-        toolbarButton.setAttribute("id", BUTTON_ID);
-        toolbarButton.setAttribute("label", gt("label"));
-        toolbarButton.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
-        toolbarButton.setAttribute("tooltiptext", "Show Sixornot panel");
-        toolbarButton.setAttribute("type", "menu");
-        toolbarButton.setAttribute("orient", "horizontal");
-        toolbarButton.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
+        //toolbarButton.setAttribute("id", BUTTON_ID);
+        //toolbarButton.setAttribute("label", gt("label"));
+        //toolbarButton.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
+        //toolbarButton.setAttribute("tooltiptext", "Show Sixornot panel");
+        //toolbarButton.setAttribute("type", "menu");
+        //toolbarButton.setAttribute("orient", "horizontal");
+        //toolbarButton.style.listStyleImage = "url('" + imagesrc.get("other") + "')";
 
         /* Create a panel to show details when clicked */
-        panel = create_panel();
-        toolbarButton.appendChild(panel);
+        //panel = create_panel();
+        //toolbarButton.appendChild(panel);
 
         /* Add button to toolbox palette, since it needs a parent */
-        gbi(doc, "navigator-toolbox").palette.appendChild(toolbarButton);
+        //gbi(doc, "navigator-toolbox").palette.appendChild(toolbarButton);
 
         /* Move to location specified in prefs
            If location is blank, then it isn't moved (stays in toolbox palette) */
-        toolbarID = prefs.get_char("toolbar");
+        /*toolbarID = prefs.get_char("toolbar");
         if (toolbarID !== "") {
             toolbar = gbi(doc, toolbarID);
 
@@ -1128,22 +1115,22 @@ var insert_code = function (win) {
                     toolbar.insertItem(BUTTON_ID);
                 }
             }
-        }
+        }*/
 
         /* Add event listeners */
         // win.addEventListener("online", onChangedOnlineStatus, false); TODO
         // win.addEventListener("offline", onChangedOnlineStatus, false); TODO
-        toolbarButton.addEventListener("click", click_handler, false);
-        win.addEventListener("aftercustomization", customize_handler, false);
+        //toolbarButton.addEventListener("click", click_handler, false);
+        //win.addEventListener("aftercustomization", customize_handler, false);
 
         /* Ensure tab ID is set upon loading into window */
-        setCurrentTabIDs();
+        //setCurrentTabIDs();
 
         /* Register for page change events */
-        win.addEventListener("sixornot-page-change-event", page_change_handler, false);
-        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
-        win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
-        win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
+        //win.addEventListener("sixornot-page-change-event", page_change_handler, false);
+        //win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+        //win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
+        //win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
         //win.gBrowser.addEventListener("DOMContentLoaded", page_change_handler, false);
 
         /* Add a callback to unload to remove the button */
@@ -1153,8 +1140,8 @@ var insert_code = function (win) {
             /* Clear event handlers */
             // win.removeEventListener("offline", onChangedOnlineStatus, false); TODO
             // win.removeEventListener("online", onChangedOnlineStatus, false); TODO
-            toolbarButton.removeEventListener("click", click_handler, false);
-            win.removeEventListener("aftercustomization", customize_handler, false);
+            //toolbarButton.removeEventListener("click", click_handler, false);
+            //win.removeEventListener("aftercustomization", customize_handler, false);
             win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
             win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
@@ -1162,14 +1149,20 @@ var insert_code = function (win) {
             //win.gBrowser.removeEventListener("DOMContentLoaded", page_change_handler, false);
 
             /* Remove UI */
-            toolbarButton.parentNode.removeChild(toolbarButton);
+            //toolbarButton.parentNode.removeChild(toolbarButton);
         }, win);
     };
+
+
+
+
+
+
 
     create_addressbaricon = function () {
         var addressBarIcon, urlbaricons, starbutton, panel, update_icon,
             click_handler, page_change_handler, tabselect_handler,
-            popstate_handler, pageshow_handler, on_dns_complete;
+            pageshow_handler, on_dns_complete;
         log("Sixornot - insert_code:create_addressbaricon", 2);
 
         /* Updates the icon to reflect state of the currently displayed page */
@@ -1202,13 +1195,6 @@ var insert_code = function (win) {
             update_icon();
         };
 
-        /* popstate event triggered */
-        popstate_handler = function (evt) {
-            log("Sixornot - insert_code:create_button:popstate_handler", 1);
-            setCurrentTabIDs();
-            update_icon();
-        };
-
         /* pageshow event triggered */
         pageshow_handler = function (evt) {
             log("Sixornot - insert_code:create_button:pageshow_handler", 1);
@@ -1216,30 +1202,22 @@ var insert_code = function (win) {
             update_icon();
         };
 
-        /* Called whenever a Sixornot page change event is emitted
-           Calls the update method for the icon, but only if the event applies to us */
+        /* Called whenever a Sixornot page change event is emitted */
         page_change_handler = function (evt) {
             log("Sixornot - insert_code:create_addressbaricon:page_change_handler - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             setCurrentTabIDs();
             // Ignore updates for windows other than this one
-            if (evt.detail.outer_id !== currentTabOuterID) {
-                log("Sixornot - insert_code:create_addressbaricon - callback: update_state - Callback ID mismatch: evt.detail.outer_id is: " + evt.detail.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
-            } else {
+            if (evt.detail.outer_id === currentTabOuterID) {
                 update_icon();
             }
         };
 
-        /*
-         * Called whenever a Sixornot dns lookup event is heard
-         */
+        /* Called whenever a Sixornot dns lookup event is heard */
         on_dns_complete = function (evt) {
-            log("Sixornot - insert_code:create_button:on_dns_complete", 1);
-            log("evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+            log("Sixornot - insert_code:create_button:on_dns_complete - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
             setCurrentTabIDs();
             // Ignore updates for windows other than this one
-            if (evt.detail.outer_id !== currentTabOuterID) {
-                log("Sixornot - insert_code:create_button - callback: update_state - Callback ID mismatch: evt.detail.outer_id is: " + evt.detail.outer_id + ", currentTabOuterID is: " + currentTabOuterID, 1);
-            } else {
+            if (evt.detail.outer_id === currentTabOuterID) {
                 update_icon();
             }
         };
@@ -1281,7 +1259,6 @@ var insert_code = function (win) {
         win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
         win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
         win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
-        //win.gBrowser.addEventListener("DOMContentLoaded", page_change_handler, false);
 
         /* Add a callback to unload to remove the icon */
         unload(function () {
@@ -1293,7 +1270,6 @@ var insert_code = function (win) {
             win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
             win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
-            //win.gBrowser.removeEventListener("DOMContentLoaded", page_change_handler, false);
 
             /* Remove UI */
             addressBarIcon.parentNode.removeChild(addressBarIcon);
@@ -1348,17 +1324,25 @@ var insert_code = function (win) {
         }
     };
 
+    // Add stylesheet
+    // TODO - can we build an nsIURI directly from a resource:// URL to avoid
+    //        needing to have a chrome.manifest with a skin in it?
+    var _uri = Services.io.newURI("chrome://sixornot/skin/toolbar.css", null, null);
+    win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
+        getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(_uri, 1);
+
+    unload(function () {
+        log("Sixornot - stylesheet unload function", 2);
+        win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
+            getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(_uri, 1);
+    }, win);
+
     // Create address bar icon
     // Add address bar icon only if desired by preferences
     if (prefs.get_bool("showaddressicon")) {
         log("Sixornot - insert_code: add addressicon", 1);
         create_addressbaricon();
     }
-
-    // Create button
-    log("Sixornot - insert_code: add mainui", 1);
-    create_button();
-
 };
 
 
