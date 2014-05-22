@@ -24,8 +24,7 @@
 /*global APP_STARTUP, APP_SHUTDOWN, ADDON_ENABLE, ADDON_DISABLE, ADDON_INSTALL, ADDON_UNINSTALL, ADDON_UPGRADE, ADDON_DOWNGRADE */
 
 // Provided in included modules:
-/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button */
-
+/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button set_addressbar_icon_visibility, set_greyscale_icons */
 
 /*
  * Constants and global variables
@@ -71,17 +70,18 @@ PREF_OBSERVER = {
 
         if (aData === "showaddressicon") {
             log("Sixornot - PREF_OBSERVER - addressicon has changed", 1);
-            reload();
+            runOnWindows(set_addressbar_icon_visibility);
         }
         if (aData === "greyscaleicons") {
             log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 1);
-            reload();
+            runOnWindows(set_greyscale_icons);
         }
         if (aData === "loglevel") {
             log("Sixornot - PREF_OBSERVER - loglevel has changed", 1);
         }
         if (aData === "overridelocale") {
             log("Sixornot - PREF_OBSERVER - overridelocale has changed", 1);
+            // TODO - check what this actually does
             reload();
         }
         if (aData === "showallips") {
@@ -189,13 +189,13 @@ startup = function (aData, aReason) {
     dns_handler.init();
 
     /*jslint es5: true */
-    // Import windowwatcher module (adds global symbols: watchWindows, unload)
+    // Import windowwatcher module (adds global symbols: watchWindows, unload, runOnWindows)
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
     // Import request cache module (adds global symbol: requests)
     Components.utils.import("resource://sixornot/includes/requestcache.jsm");
     // Import request observer module (adds global symbol: HTTP_REQUEST_OBSERVER)
     Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
-    // Import gui module (adds global symbols: insert_code, create_button)
+    // Import gui module (adds global symbols: insert_code, create_button, set_addressbar_icon_visibility, set_greyscale_icons)
     Components.utils.import("resource://sixornot/includes/gui.jsm");
     /*jslint es5: false */
 

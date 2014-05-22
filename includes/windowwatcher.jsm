@@ -53,7 +53,7 @@ Components.utils.import("resource://sixornot/includes/logger.jsm");
 
 /*jslint es5: false */
 
-var EXPORTED_SYMBOLS = ["watchWindows", "unload"];
+var EXPORTED_SYMBOLS = ["watchWindows", "unload", "runOnWindows"];
 
 
 var unload = (function () {
