@@ -324,6 +324,11 @@ dns = {
         var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_remote - resolving host: " + host, 2);
 
+        if (typeof host !== typeof "string") {
+            log("Sixornot(dns_worker) - dns:resolve_remote - Bad host, not a string", 1);
+            return ["FAIL"];
+        }
+
         switch(this.os) {
             case "darwin":
             case "linux":
@@ -335,6 +340,7 @@ dns = {
                 hints.ai_addrlen = 0;
 
                 addrinfo_ptr = this.addrinfo.ptr();
+                log("Sixornot(dns_worker) - about to call getaddrinfo, host: " + JSON.stringify(host) + ", hints.address(): " + hints.address() + ", addrinfo_ptr.address(): " + addrinfo_ptr.address());
                 ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
 
                 if (ret > 0 || addrinfo_ptr.isNull()) {

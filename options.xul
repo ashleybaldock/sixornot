@@ -3,7 +3,7 @@
 
     <setting type="bool"
              title="Show addressbar icon"
-             desc="Sets whether the SixOrNot icon is shown in the address bar or not"
+             desc="Sets whether the SixOrNot icon is shown in the address bar"
              pref="extensions.sixornot.showaddressicon"/>
 
     <setting type="bool"

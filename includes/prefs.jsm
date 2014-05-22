@@ -22,9 +22,6 @@
 // Provided by Firefox:
 /*global Components, Services */
 
-// Provided by Sixornot
-/*global */
-
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");

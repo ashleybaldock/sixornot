@@ -93,6 +93,9 @@ startup = function (aData, aReason) {
     // Init dns_handler
     dns_handler.init();
 
+    // Create default preferences (if they are missing)
+    prefs.create();
+
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
     Components.utils.import("resource://sixornot/includes/requestcache.jsm");
@@ -164,15 +167,6 @@ shutdown = function (aData, aReason) {
 /* ADDON_INSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
 install = function (aData, aReason) {
     "use strict";
-    // Set up sixornot resource alias
-    setup_resource(aData);
-
-    /*jslint es5: true */
-    Components.utils.import("resource://sixornot/includes/logger.jsm");
-    Components.utils.import("resource://sixornot/includes/prefs.jsm");
-    /*jslint es5: false */
-
-    prefs.create();
 };
 
 /* ADDON_UNINSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
