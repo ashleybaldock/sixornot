@@ -58,16 +58,6 @@ var gbi = function (node, child_id) {
 };
 
 
-/*
-    Core functionality
-*/
-
-// insert_code called for each new window via watchWindows
-// inserts code into browser
-// Listeners which trigger events should occur at the global level above this (e.g. httpeventlistener etc.)
-
-
-
 // TODO
 /*
     Handle all the same edge cases as before
@@ -198,8 +188,8 @@ var create_button = function () {
         type : "button",
         //viewId : "sixornot-panel", // 
         defaultArea : CustomizableUI.AREA_NAVBAR,
-        label : "Sixornot Button", // gt("label")
-        tooltiptext : "Sixornot",  // get("buttontooltiptext")
+        label : gt("label"),
+        tooltiptext : gt("tt_button"),
         // Attached to all non-custom widgets; a function that will be invoked before the widget gets a DOM node constructed, passing the document in which that will happen.
         onBeforeCreated : function (aDoc) {
         },
@@ -413,7 +403,7 @@ var create_addressbaricon = function (win) {
     addressbar_icon.setAttribute("height", "16");
     addressbar_icon.setAttribute("align", "center");
     addressbar_icon.setAttribute("pack", "center");
-    addressbar_icon.setAttribute("tooltiptext", "Show Sixornot panel");
+    addressbar_icon.setAttribute("tooltiptext", gt("tt_button"));
     if (!prefs.get_bool("showaddressicon")) {
         addressbar_icon.setAttribute("hidden", true);
     }

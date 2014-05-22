@@ -112,4 +112,3 @@ var PREF_OBSERVER_DNS = {
         Services.prefs.removeObserver(prefs.dns_prefs, PREF_OBSERVER_DNS);
     }
 };
-

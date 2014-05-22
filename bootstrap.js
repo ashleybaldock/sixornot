@@ -37,11 +37,10 @@ Components.utils.import("resource:///modules/CustomizableUI.jsm");
 /*jslint es5: false */
 
 // Addon-Global functions
-var startup;
-var shutdown;
-var install;
-var uninstall;
-var reload;
+var startup,
+    shutdown,
+    install,
+    uninstall;
 
 /*
  * Resource alias management (for resource:// URLs)
@@ -126,14 +125,6 @@ startup = function (aData, aReason) {
     });
 };
 
-/* Reload addon in all windows, e.g. when preferences change */
-reload = function () {
-    "use strict";
-    log("Sixornot - reload", 1);
-    unload();
-    watchWindows(insert_code);
-};
-
 /* APP_SHUTDOWN, ADDON_DISABLE, ADDON_UNINSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
 shutdown = function (aData, aReason) {
     "use strict";
@@ -181,4 +172,3 @@ uninstall = function (aData, aReason) {
     // Remove resource alias
     cleanup_resource();
 };
-

@@ -33,7 +33,7 @@ do
     then
         b64=`base64 $file`
         filename=`basename $file`
-        echo "    #sixornot-addressbaricon.grey.sixornot_${filename%\.*}, #sixornot-button.grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+        echo "    #sixornot-addressbaricon.sixornot_grey.sixornot_${filename%\.*}, #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
     fi
 done
 

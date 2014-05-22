@@ -603,7 +603,7 @@ var dns_handler = {
         var myhostname;
         log("Sixornot - dns_handler:local_firefox_async - resolving local host using Firefox builtin method", 2);
         myhostname = Components.classes["@mozilla.org/network/dns-service;1"]
-                        .getService(Components.interfaces.nsIDNSService).myHostName;    // TODO - use of getService
+                        .getService(Components.interfaces.nsIDNSService).myHostName;
         return this.remote_firefox_async(myhostname, callback);
     },
 

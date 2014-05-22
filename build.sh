@@ -11,6 +11,7 @@ mkdir ../dist/$version/src
 cp licence.txt ../dist/$version/src/
 cp options.xul ../dist/$version/src/
 cp bootstrap.js ../dist/$version/src/
+cp chrome.manifest ../dist/$version/src/
 cp install.rdf ../dist/$version/src/
 cp icon.png ../dist/$version/src/
 cp icon64.png ../dist/$version/src/
@@ -22,12 +23,15 @@ cp includes/gui.jsm ../dist/$version/src/includes/
 cp includes/locale.jsm ../dist/$version/src/includes/
 cp includes/logger.jsm ../dist/$version/src/includes/
 cp includes/prefs.jsm ../dist/$version/src/includes/
+cp includes/prefsobserver.jsm ../dist/$version/src/includes/
 cp includes/requestcache.jsm ../dist/$version/src/includes/
 cp includes/requestobserver.jsm ../dist/$version/src/includes/
 cp includes/windowwatcher.jsm ../dist/$version/src/includes/
-
-./gen_imagesrc.sh
 cp includes/imagesrc.jsm ../dist/$version/src/includes/
+
+mkdir ../dist/$version/src/skin
+./gen_css.sh
+cp skin/toolbar.css ../dist/$version/src/skin/
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale
