@@ -203,8 +203,8 @@ var get_icon_class = function (record) {
 var create_button = function () {
     return {
         id : "sixornot-button", // BUTTON_ID
-        type : "view",
-        viewId : "sixornot-panel", // 
+        type : "button",
+        //viewId : "sixornot-panel", // 
         defaultArea : CustomizableUI.AREA_NAVBAR,
         label : "Sixornot Button", // gt("label")
         tooltiptext : "Sixornot",  // get("buttontooltiptext")
@@ -234,6 +234,7 @@ var create_button = function () {
                                     "sixornot_6only", "sixornot_6only_cache",
                                     "sixornot_other", "sixornot_other_cache",
                                     "sixornot_proxy", "sixornot_error"];
+            var panel;
 
             var remove_sixornot_classes_from = function (node) {
                 sixornot_classes.forEach(function (item, index, items) {
@@ -306,33 +307,50 @@ var create_button = function () {
                     update_icon();
                 }
             };
+            var click_handler = function () {
+                panel.setAttribute("hidden", false);
+                panel.openPopup(node, panel.getAttribute("position"), 0, 0, false, false);
+            };
 
+            panel = create_panel(win, "sixornot-button-panel");
+            node.appendChild(panel);
+            set_current_tab_ids();
+            update_icon();
+
+            node.addEventListener("click", click_handler, false);
             win.addEventListener("sixornot-page-change-event", page_change_handler, false);
             win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
             win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
             win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
-
-            // TODO need to register unload callbacks for these events too
-            set_current_tab_ids();
-            update_icon();
 
             unload(function () {
                 log("Sixornot - Unload button UI for a window...", 2);
 
                 // win.removeEventListener("offline", onChangedOnlineStatus, false); TODO
                 // win.removeEventListener("online", onChangedOnlineStatus, false); TODO
+                node.removeEventListener("click", click_handler, false);
                 win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
                 win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
                 win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
                 win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
             }, win);
         },
+        onClick : function (aEvent) {
+            /*var doc = aEvent.target.ownerDocument;
+            var panel = doc.getElementById("sixornot-panel");
+            panel.setAttribute("hidden", false);
+            panel.openPopup(aEvent.target, panel.getAttribute("position"), 0, 0, false, false);*/
+        }
         // Only useful for views; a function that will be invoked when a user shows your view.
-        onViewShowing : function (aEvent) {
+        /*onViewShowing : function (aEvent) {
+            var doc = aEvent.target.ownerDocument;
+            doc.getElementById("sixornot-panel").setAttribute("hidden", false);
         },
         // Only useful for views; a function that will be invoked when a user hides your view.
         onViewHiding : function (aEvent) {
-        }
+            var doc = aEvent.target.ownerDocument;
+            doc.getElementById("sixornot-panel").setAttribute("hidden", true);
+        }*/
     };
 };
 
@@ -1372,7 +1390,8 @@ var insert_code = function (win) {
     }, win);
 
     // Create panel for button to display on this page
-    var button_panel = create_panel(win, "sixornot-panel");
+    //var button_panel = create_panel(win, "sixornot-panel");
+    //win.document.getElementById("PanelUI-multiView").appendChild(button_panel);
 
     // Create address bar icon
     // Add address bar icon only if desired by preferences
