@@ -37,8 +37,6 @@ var PREF_DNS= "network.dns.";
 
 var prefs = {
     defaults: {
-        nextitem:           "bookmarks-menu-button-container",
-        toolbar:            "nav-bar",
         showaddressicon:    false,
         greyscaleicons:     false,
         loglevel:           0,

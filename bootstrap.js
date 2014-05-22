@@ -24,7 +24,7 @@
 /*global APP_STARTUP, APP_SHUTDOWN, ADDON_ENABLE, ADDON_DISABLE, ADDON_INSTALL, ADDON_UNINSTALL, ADDON_UPGRADE, ADDON_DOWNGRADE */
 
 // Provided in included modules:
-/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button set_addressbar_icon_visibility, set_greyscale_icons */
+/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button, set_addressbar_icon_visibility, set_greyscale_icons */
 
 /*
  * Constants and global variables
@@ -36,105 +36,12 @@ Components.utils.import("resource://gre/modules/AddonManager.jsm");
 Components.utils.import("resource:///modules/CustomizableUI.jsm");
 /*jslint es5: false */
 
-// Define all used globals
-// Note: Due to execution as a bootstrapless addon these aren't really global
-// but are within the scope of this extension
-
-// Prefs observer object - TODO - replace with built-in, or move to module
-var PREF_OBSERVER;
-var PREF_OBSERVER_DNS;
-
-// Global functions
-// Main functionality
+// Addon-Global functions
 var startup;
 var shutdown;
 var install;
 var uninstall;
 var reload;
-
-
-/*
- * Sixornot Preferences observer
- * Watches our preferences so that if the user changes them manually we update to reflect the changes
- */
-PREF_OBSERVER = {
-    observe: function (aSubject, aTopic, aData) {
-        "use strict";
-        log("Sixornot - PREF_OBSERVER - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
-        if (aTopic.valueOf() !== "nsPref:changed") {
-            return;
-        }
-        if (!prefs.defaults.hasOwnProperty(aData)) {
-            return;
-        }
-
-        if (aData === "showaddressicon") {
-            log("Sixornot - PREF_OBSERVER - addressicon has changed", 1);
-            runOnWindows(set_addressbar_icon_visibility);
-        }
-        if (aData === "greyscaleicons") {
-            log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 1);
-            runOnWindows(set_greyscale_icons);
-        }
-        if (aData === "loglevel") {
-            log("Sixornot - PREF_OBSERVER - loglevel has changed", 1);
-        }
-        if (aData === "overridelocale") {
-            log("Sixornot - PREF_OBSERVER - overridelocale has changed", 1);
-            // TODO - check what this actually does
-            reload();
-        }
-        if (aData === "showallips") {
-            log("Sixornot - PREF_OBSERVER - showallips has changed", 1);
-        }
-    },
-
-    register: function () {
-        "use strict";
-        Services.prefs.addObserver(prefs.sixornot_prefs, PREF_OBSERVER, false);
-    },
-
-    unregister: function () {
-        "use strict";
-        Services.prefs.removeObserver(prefs.sixornot_prefs, PREF_OBSERVER);
-    }
-};
-
-/*
- * DNS Preferences observer
- * Watches built-in Firefox preferences which have an impact on DNS resolution.
- */
-PREF_OBSERVER_DNS = {
-    observe: function (aSubject, aTopic, aData) {
-        "use strict";
-        log("Sixornot - PREF_OBSERVER_DNS - aSubject: " + aSubject + ", aTopic: " + aTopic.valueOf() + ", aData: " + aData, 2);
-        if (aTopic.valueOf() !== "nsPref:changed") {
-            return;
-        }
-
-        if (aData === "disableIPv6") {
-            reload();
-        }
-        if (aData === "ipv4OnlyDomains") {
-            log("Sixornot - PREF_OBSERVER_DNS - ipv4OnlyDomains has changed", 1);
-            reload();
-        }
-    },
-
-    register: function () {
-        "use strict";
-        Services.prefs.addObserver(prefs.dns_prefs, PREF_OBSERVER_DNS, false);
-    },
-
-    unregister: function () {
-        "use strict";
-        Services.prefs.removeObserver(prefs.dns_prefs, PREF_OBSERVER_DNS);
-    }
-};
-
-
-
-
 
 /*
  * Resource alias management (for resource:// URLs)
@@ -179,9 +86,7 @@ startup = function (aData, aReason) {
     // Import logging module (adds global symbols: log, parse_exception)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/logger.jsm");
-    // Import prefs module (adds global: symbol prefs)
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
-    // Import dns module (adds global symbol: dns_handler)
     Components.utils.import("resource://sixornot/includes/dns.jsm");
     /*jslint es5: false */
 
@@ -189,13 +94,10 @@ startup = function (aData, aReason) {
     dns_handler.init();
 
     /*jslint es5: true */
-    // Import windowwatcher module (adds global symbols: watchWindows, unload, runOnWindows)
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
-    // Import request cache module (adds global symbol: requests)
     Components.utils.import("resource://sixornot/includes/requestcache.jsm");
-    // Import request observer module (adds global symbol: HTTP_REQUEST_OBSERVER)
     Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
-    // Import gui module (adds global symbols: insert_code, create_button, set_addressbar_icon_visibility, set_greyscale_icons)
+    Components.utils.import("resource://sixornot/includes/prefsobserver.jsm");
     Components.utils.import("resource://sixornot/includes/gui.jsm");
     /*jslint es5: false */
 
@@ -244,6 +146,7 @@ shutdown = function (aData, aReason) {
 
         // Unload our own code modules
         Components.utils.unload("resource://sixornot/includes/gui.jsm");
+        Components.utils.unload("resource://sixornot/includes/prefsbserver.jsm");
         Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");
         Components.utils.unload("resource://sixornot/includes/requestcache.jsm");
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
@@ -264,13 +167,8 @@ install = function (aData, aReason) {
     // Set up sixornot resource alias
     setup_resource(aData);
 
-    // Import logging module (adds global symbols log, parse_exception)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/logger.jsm");
-    /*jslint es5: false */
-
-    // Import prefs module (adds global symbol prefs)
-    /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
     /*jslint es5: false */
 
