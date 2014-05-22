@@ -47,7 +47,6 @@ var PREF_OBSERVER_DNS;
 
 // Global functions
 // Main functionality
-var insert_code;
 var startup;
 var shutdown;
 var install;
@@ -203,7 +202,6 @@ startup = function (aData, aReason) {
     // Load callback for when our addon finishes loading
     AddonManager.getAddonByID(aData.id, function (addon, data) {
         // Run dns_handler tests
-        // Only run these if debug level is set to 2 or higher
         if (prefs.get_int("loglevel") >= 2) {
             dns_handler.test_normalise_ip6();
             dns_handler.test_typeof_ip6();
