@@ -24,7 +24,7 @@
 /*global APP_STARTUP, APP_SHUTDOWN, ADDON_ENABLE, ADDON_DISABLE, ADDON_INSTALL, ADDON_UNINSTALL, ADDON_UPGRADE, ADDON_DOWNGRADE */
 
 // Provided in included modules:
-/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests */
+/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button */
 
 
 /*
@@ -196,9 +196,8 @@ startup = function (aData, aReason) {
     Components.utils.import("resource://sixornot/includes/requestcache.jsm");
     // Import request observer module (adds global symbol: HTTP_REQUEST_OBSERVER)
     Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
-    // Import gui module (adds global symbol: insert_code)
+    // Import gui module (adds global symbols: insert_code, create_button)
     Components.utils.import("resource://sixornot/includes/gui.jsm");
-    Components.utils.import("resource://sixornot/includes/imagesrc.jsm");
     /*jslint es5: false */
 
     // Load callback for when our addon finishes loading
@@ -215,81 +214,7 @@ startup = function (aData, aReason) {
         watchWindows(insert_code);
 
         // Create button UI using Australis method
-        CustomizableUI.createWidget({
-            id : "sixornot-button", // BUTTON_ID
-            type : "view",
-            viewId : "sixornot-panel", // 
-            defaultArea : CustomizableUI.AREA_NAVBAR,
-            label : "Sixornot Button", // gt("label")
-            tooltiptext : "Sixornot",  // get("buttontooltiptext")
-            // Attached to all non-custom widgets; a function that will be invoked before the widget gets a DOM node constructed, passing the document in which that will happen.
-            onBeforeCreated : function (aDoc) {
-            },
-            // Attached to all widgets; a function that will be invoked whenever the widget has a DOM node constructed, passing the constructed node as an argument.
-            onCreated : function (node) {
-                // TODO create closure for this stuff
-
-                // TODO
-                // This should be shared code with the address bar icon
-                // Have an object/closure with the event handlers which bind to the window
-                // that the node passed into the constructor method belongs to
-                // (Also unload these event handlers when needed)
-                // This will simply change the class of the node, which in turn
-                // changes the icon - all logic about the icon is thus shared between button
-                // and address bar
-
-                log("Sixornot - button UI created");
-                var win = node.ownerDocument.defaultView;
-                var currentTabInnerID = 0;
-                var currentTabOuterID = 0;
-                // Change icon via class (icon set via stylesheet)
-                var update_icon = function () {
-                    // Change class of button to correct icon
-                };
-                var set_current_tab_ids = function () {
-                };
-
-                // Event handlers to bind
-                var tabselect_handler = function (evt) {
-                    log("Sixornot - onCreated:tabselect_handler fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
-                    set_current_tab_ids();
-                    update_icon();
-                };
-                var pageshow_handler = function (evt) {
-                    log("Sixornot - onCreated:pageshow_handler fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
-                    set_current_tab_ids();
-                    update_icon();
-                };
-                var page_change_handler = function (evt) {
-                    log("Sixornot - onCreated:page_change_handler fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
-                    set_current_tab_ids();
-                    if (evt.detail.outer_id === currentTabOuterID) {
-                        update_icon();
-                    }
-                };
-                var on_dns_complete = function (evt) {
-                    log("Sixornot - onCreated:on_dns_complete fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
-                    set_current_tab_ids();
-                    if (evt.detail.outer_id === currentTabOuterID) {
-                        update_icon();
-                    }
-                };
-
-                win.addEventListener("sixornot-page-change-event", page_change_handler, false);
-                win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
-                win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
-                win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
-
-                // TODO need to register unload callbacks for these events too
-                set_current_tab_ids();
-            },
-            // Only useful for views; a function that will be invoked when a user shows your view.
-            onViewShowing : function (aEvent) {
-            },
-            // Only useful for views; a function that will be invoked when a user hides your view.
-            onViewHiding : function (aEvent) {
-            }
-        });
+        CustomizableUI.createWidget(create_button());
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
         PREF_OBSERVER.register();

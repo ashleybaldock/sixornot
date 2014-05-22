@@ -28,6 +28,7 @@
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource:///modules/CustomizableUI.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/locale.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
@@ -38,7 +39,7 @@ Components.utils.import("resource://sixornot/includes/dns.jsm");
 /*jslint es5: false */
 
 // Module globals
-var EXPORTED_SYMBOLS = ["insert_code"];
+var EXPORTED_SYMBOLS = ["insert_code", "create_button"];
 
 var PREF_BRANCH_SIXORNOT = Services.prefs.getBranch("extensions.sixornot.");
 
@@ -79,6 +80,177 @@ var gbi = function (node, child_id) {
     Allow expanding of panel items to show full detail for any item
         The main page always shows full details
 */
+
+/* Create button widget specification object with callbacks + closure */
+var create_button = function () {
+    return {
+        id : "sixornot-button", // BUTTON_ID
+        type : "view",
+        viewId : "sixornot-panel", // 
+        defaultArea : CustomizableUI.AREA_NAVBAR,
+        label : "Sixornot Button", // gt("label")
+        tooltiptext : "Sixornot",  // get("buttontooltiptext")
+        // Attached to all non-custom widgets; a function that will be invoked before the widget gets a DOM node constructed, passing the document in which that will happen.
+        onBeforeCreated : function (aDoc) {
+        },
+        // Attached to all widgets; a function that will be invoked whenever the widget has a DOM node constructed, passing the constructed node as an argument.
+        onCreated : function (node) {
+            // TODO create closure for this stuff
+
+            // TODO
+            // This should be shared code with the address bar icon
+            // Have an object/closure with the event handlers which bind to the window
+            // that the node passed into the constructor method belongs to
+            // (Also unload these event handlers when needed)
+            // This will simply change the class of the node, which in turn
+            // changes the icon - all logic about the icon is thus shared between button
+            // and address bar
+
+            log("Sixornot - button UI created");
+            log("Sixornot - button classes: " + node.className);
+            var win = node.ownerDocument.defaultView;
+            var currentTabInnerID = 0;
+            var currentTabOuterID = 0;
+            var sixornot_classes = ["sixornot_4only", "sixornot_4only_cache",
+                                    "sixornot_4pot6", "sixornot_4pot6_cache",
+                                    "sixornot_6and4", "sixornot_6and4_cache",
+                                    "sixornot_6only", "sixornot_6only_cache",
+                                    "sixornot_other", "sixornot_other_cache",
+                                    "sixornot_proxy", "sixornot_error"];
+
+            var remove_sixornot_classes_from = function (node) {
+                sixornot_classes.forEach(function (item, index, items) {
+                    node.classList.remove(item);
+                });
+            };
+            var add_class_to_node = function (new_item_class, node) {
+                node.classList.add(new_item_class);
+            };
+
+            var getCurrentHost = function () {
+                return win.content.document.location.hostname;
+            };
+
+            var get_icon_class = function (record) {
+                if (record.address_family === 4) {
+                    if (record.ipv6s.length !== 0) {
+                        // Actual is v4, DNS is v4 + v6 -> Orange
+                        return "sixornot_4pot6";
+                    } else {
+                        // Actual is v4, DNS is v4 -> Red
+                        return "sixornot_4only";
+                    }
+                } else if (record.address_family === 6) {
+                    if (record.ipv4s.length === 0) {
+                        // Actual is v6, DNS is v6 -> Blue
+                        return "sixornot_6only";
+                    } else {
+                        // Actual is v6, DNS is v4 + v6 -> Green
+                        return "sixornot_6and4";
+                    }
+                } else if (record.address_family === 2) {
+                    // address family 2 is cached responses
+                    if (record.ipv6s.length === 0) {
+                        if (record.ipv4s.length === 0) {
+                            // No addresses, grey cache icon
+                            return "sixornot_other_cache";
+                        } else {
+                            // Only v4 addresses from DNS, red cache icon
+                            return "sixornot_4only_cache";
+                        }
+                    } else {
+                        if (record.ipv4s.length === 0) {
+                            // Only v6 addresses from DNS, blue cache icon
+                            return "sixornot_6only_cache";
+                        } else {
+                            // Both kinds of addresses from DNS, yellow cache icon
+                            return "sixornot_4pot6_cache";
+                        }
+                    }
+                } else if (record.address_family === 1) {
+                    return "sixornot_other_cache";
+                } else if (record.address_family === 0) {
+                    // This indicates that no addresses were available but request is not cached
+                    return "sixornot_error";
+                }
+            };
+
+            // Change icon via class (icon set via stylesheet)
+            var update_icon = function () {
+                // Change class of button to correct icon
+                var hosts = requests.cache[currentTabInnerID];
+
+                /* Parse array searching for the main host (which matches the current location) */
+                if (!hosts || !hosts.some(function (item, index, items) {
+                    if (item.host === getCurrentHost()) {
+                        var new_icon_class = get_icon_class(item);
+                        if (!node.classList.contains(new_icon_class)) {
+                            remove_sixornot_classes_from(node);
+                            add_class_to_node(new_icon_class, node);
+                        }
+                        return true;
+                    }
+                })) {
+                    // No matching entry for main host (probably a local file)
+                    remove_sixornot_classes_from(node);
+                    add_class_to_node("sixornot_other", node);
+                }
+            };
+
+            var set_current_tab_ids = function () {
+                var domWindow, domWindowUtils;
+                domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
+                domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
+
+                currentTabInnerID = domWindowUtils.currentInnerWindowID;
+                currentTabOuterID = domWindowUtils.outerWindowID;
+            };
+
+            // Event handlers to bind
+            var tabselect_handler = function (evt) {
+                log("Sixornot - onCreated:tabselect_handler fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+                log("Sixornot - button classes: " + node.className);
+                set_current_tab_ids();
+                update_icon();
+            };
+            var pageshow_handler = function (evt) {
+                log("Sixornot - onCreated:pageshow_handler fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+                set_current_tab_ids();
+                update_icon();
+            };
+            var page_change_handler = function (evt) {
+                log("Sixornot - onCreated:page_change_handler fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+                set_current_tab_ids();
+                if (evt.detail.outer_id === currentTabOuterID) {
+                    update_icon();
+                }
+            };
+            var on_dns_complete = function (evt) {
+                log("Sixornot - onCreated:on_dns_complete fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+                set_current_tab_ids();
+                if (evt.detail.outer_id === currentTabOuterID) {
+                    update_icon();
+                }
+            };
+
+            win.addEventListener("sixornot-page-change-event", page_change_handler, false);
+            win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+            win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
+            win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
+
+            // TODO need to register unload callbacks for these events too
+            set_current_tab_ids();
+            update_icon();
+        },
+        // Only useful for views; a function that will be invoked when a user shows your view.
+        onViewShowing : function (aEvent) {
+        },
+        // Only useful for views; a function that will be invoked when a user hides your view.
+        onViewHiding : function (aEvent) {
+        }
+    };
+};
 
 
 /* Should be called once for each window of the browser */
