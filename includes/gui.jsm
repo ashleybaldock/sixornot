@@ -1341,21 +1341,41 @@ var insert_code = function (win) {
     win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
         getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(uri, 1);
 
-    unload(function () {
-        log("Sixornot - stylesheet unload function", 2);
-        win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
-            getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(uri, 1);
-    }, win);
-
     // Create address bar icon
     log("Sixornot - insert_code: add addressicon", 1);
     create_addressbaricon(win);
 
-    // Create legacy button (only for non-Australis browsers)
+    // UI only required for pre-Australis browsers
     if (!CustomizableUIAvailable) {
+        /* On pre-Australis platforms the panel for customisation of the toolbars
+         * is a different XUL document. We need to inject our CSS modifications
+         * into this document each time it is loaded */
+        var injectStyleSheet = function (evt) {
+            //var doc = evt.originalTarget;
+            //log("Sixornot --- page load into iframe", 1);
+            //log("Sixornot --- docURI: " + doc.documentURI, 1);
+            var win = evt.originalTarget.defaultView;
+            win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
+                getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(uri, 1);
+            log("Sixornot --- loaded stylesheet into toolbar customizer", 1);
+        };
+        var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
+        iframe.addEventListener('load', injectStyleSheet, true); 
+        //var panel = win.document.getElementById("customizeToolbarSheetPopup");
+        //panel.addEventListener("popupshown", temp2, false);
+
         log("Sixornot - insert_code: add legacy button", 1);
+        // Create legacy button (only for non-Australis browsers)
         create_legacy_button(win);
     }
+
+    unload(function () {
+        log("Sixornot - stylesheet unload function", 2);
+        win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
+            getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(uri, 1);
+
+        iframe.removeEventListener("load", injectStyleSheet, true);
+    }, win);
 };
 
 var set_addressbar_icon_visibility = function (win) {

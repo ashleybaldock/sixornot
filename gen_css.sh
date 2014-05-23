@@ -16,8 +16,9 @@ cat > $outfile <<END_OF_FILE
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
-@-moz-document url("chrome://browser/content/browser.xul"),
-               url("chrome://navigator/content/navigator.xul") {
+/*@-moz-document url("chrome://browser/content/browser.xul"),
+               url("chrome://navigator/content/navigator.xul"),
+               url("chrome://global/content/customizeToolbar.xul") {*/
 END_OF_FILE
 
 
@@ -67,11 +68,11 @@ then
     echo "    #sixornot-button[cui-areatype=\"menu-panel\"], toolbarpaletteitem[place=\"palette\"] > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
 fi
 
-#if test -f "$icon_file24"
-#then
-#    b64=`base64 $icon_file24`
-#    echo "    toolbarpalette > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
-#fi
+if test -f "$icon_file24"
+then
+    b64=`base64 $icon_file24`
+    echo "    toolbarpalette > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+fi
 
 cat >> $outfile <<END_OF_FILE
 
@@ -84,5 +85,5 @@ list-style-image: url("chrome://aus-view/skin/icon32-dark.png");
   /*#sixornot-panel {
     width: 20em;
   }*/
-}
+/*}*/
 END_OF_FILE

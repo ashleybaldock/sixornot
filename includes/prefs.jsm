@@ -38,7 +38,7 @@ var prefs = {
         nextitem:           "",
         showaddressicon:    false,
         greyscaleicons:     false,
-        loglevel:           0,
+        loglevel:           2,
         overridelocale:     "",
         showallips:         false
     },
