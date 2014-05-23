@@ -6,7 +6,7 @@
 
         <em:id>sixornot@entropy.me.uk</em:id>
         <em:name>SixOrNot</em:name>
-        <em:version>0.8.0</em:version>
+        <em:version>0.8.1</em:version>
         <em:description>IPv6 status indicator</em:description>
         <em:type>2</em:type>
 
