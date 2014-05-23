@@ -130,7 +130,22 @@ var runOnLoad = function (win, callback) {
 
         // Now that the window has loaded, only handle browser windows
         if (win.document.documentElement.getAttribute("windowtype") === "navigator:browser") {
-            callback(win);
+            // SeaMonkey invokes load callbacks before window.gBrowser becomes available
+            // This breaks the addon, so wait up to a second for it before running callback
+            var count = 0;
+            var gBrowserCheck = function () {
+                if (win.gBrowser) {
+                    log("Sixornot - WindowWatcher - gBrowser exists", 1);
+                    callback(win);
+                } else if (count < 10) {
+                    log("Sixornot - WindowWatcher - waiting on gBrowser: " + count, 1);
+                    count += 1;
+                    win.setTimeout(gBrowserCheck, 100);
+                } else {
+                    log("Sixornot - WindowWatcher - gBrowser failed to become available in time", 0);
+                }
+            };
+            gBrowserCheck();
         }
     }, false);
 };
