@@ -313,6 +313,10 @@ var create_button = function () {
     };
 };
 
+// Create widget which handles shared logic between button/addresbar icon
+var create_sixornot_widget = function (node, panel, win) {
+};
+
 /* Create the address bar icon and set up callbacks */
 var create_addressbaricon = function (win) {
     var addressbar_icon, urlbaricons, starbutton, panel, update_icon,
@@ -320,7 +324,6 @@ var create_addressbaricon = function (win) {
         pageshow_handler, on_dns_complete;
     log("Sixornot - insert_code:create_addressbaricon", 2);
 
-    var doc = win.document;
     var currentTabInnerID = 0;
     var currentTabOuterID = 0;
     var current_host = function () {
@@ -366,14 +369,10 @@ var create_addressbaricon = function (win) {
         log("Sixornot - insert_code:create_addressbaricon:tabselect_handler", 2);
         set_current_tab_ids();
         update_icon_for_node(addressbar_icon);
-        //addressbar_icon.style.listStyleImage = "url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAACc1BMVEUAAn00XZU0XZQ1YJcAAn8bOHAgPnYtVIsgP3csUokcOXAtVI4vVJIbOG8zW5spS44bN3AtUZYkQowpTYcgOoodNY0WKIQYK4oRH4ESI4cMGH4NGoQIEHwJEYIFCXsoSJIFCoIBBHABBHYAAVsjP5AbMocAAVwAAmAAAlwAAnQAAnYAAlwAAl////8CCMtwu/cSIc0AAMQAA8pbmusKE8kAAMMCCMp2xf9SiecADMkKE81lqe9dnO5orvRxu/hSiehUjeyFu/J0wvh3xftOhr1MheZip+5AfuRZjuhRiedxvPhUi+pis/ZarvVHeORuufdGd+N1w//h6Pq1x/MxaeCCpew7buEtZN9NfORHeONJeudJeuY7euSVxfQ8Zd89aOM5Y94mVdvd5PjZ4/lcmuxenvDt8fxKcOApV9s8Zd49Z+I8Z+E/huez0PYxU9oxVN4sT9gcQ9br7/vj5vkYQNUAJM/S2Pbq7PoPONMuUdkxVN0xVNz1+f3A1vYmQdUmQtkkP9QGIs7x8/yequwADskAIc5oe+EVM9IhPNMnQdgnQtd1wvjl7fsbMNEdMNYcMNGu1PeLmOgAB8gAAL+/xfLb4fgaL9EcMNUcMdRwu/iRu/Fcm+sTItIMHMwACsfExvLf4vi6ue/k5fkkLc8GEMkSItESIc8AA8h0v/wKE8sJFM6BqO0NFsoABsYYY99ma916gOIIEslUjOsNGMpEi+hdne9nq/JJe+gCCNIlX94ECssABMoAAMkEC8sCCNECCM9nrfNKgLcAApgAA81mqe92xPoAA84AAp1Jl+tfsfZzwPVyvPiwwfHBzfRoqu9hpu5nrPKAnGMNAAAALXRSTlOZl5eZmy8AiwCIM52eJ5+XJ5mXlpeZl5mXmZeZl5mdmZ6ZoC6ZlzsANI6QPACY+MiSAAABEUlEQVR4Xi3AA3IDARQA0J8mtW0bi1i1bdu2bdu2bdvWkTrT2QcikqJkksA/EllYUAhk7p463gn2Do5iII+xsTF3a0+vN58PzG9VHCSOb/mPzq92vVHfP/xfKymQTkyiT2RmVVZ1jh/SjyxlQc7GlhO5gThtu7i6cfY9tEHB+8T3zD8gMCg4JDQsPMIADKNjYuPiEz6/klNS09IzFEEpOyc3L7+gsKi4pLSsvEIZVKprauvqGxqbmpGW1rZ2VVDr6u7h9iH9A4ND3OGRUXXQwCfxqemZ2bn5hUV8aVkTtNbWGZtb1J3dPeYBg8fTAV30lIWeX1CZl1co6/pGD/TvH2grBNrzixEYm5hSgEAxM7f4Ayr4YqHx0CIpAAAAAElFTkSuQmCC')";
-        log("Sixornot --------- addressbar_icon classes: " + addressbar_icon.classList, 1);
-        log("Sixornot --------- addressbar_icon style: " + addressbar_icon.style.listStyleImage, 1);
-        log("Sixornot --------- addressbar_icon style: " + addressbar_icon.style.backgroundImage, 1);
     };
 
     pageshow_handler = function (evt) {
-        log("Sixornot - insert_code:create_addressbaricon:pageshow_handler", 1);
+        log("Sixornot - insert_code:create_addressbaricon:pageshow_handler", 2);
         set_current_tab_ids();
         update_icon_for_node(addressbar_icon);
     };
@@ -399,9 +398,8 @@ var create_addressbaricon = function (win) {
     };
 
     /* Create address bar icon */
+    var doc = win.document;
     addressbar_icon = doc.createElement("box");
-
-    /* Address bar icon setup */
     addressbar_icon.setAttribute("id", ADDRESSBAR_ICON_ID);
     addressbar_icon.setAttribute("width", "16");
     addressbar_icon.setAttribute("height", "16");
