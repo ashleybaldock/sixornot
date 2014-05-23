@@ -185,147 +185,12 @@ var remove_greyscale_class_from_node = function (node) {
 };
 
 
-/* Create button widget specification object with callbacks + closure */
-var create_button = function () {
-    return {
-        id : BUTTON_ID,
-        type : "button",
-        defaultArea : CustomizableUI.AREA_NAVBAR,
-        label : gt("label"),
-        tooltiptext : gt("tt_button"),
-        // Attached to all widgets; a function that will be invoked whenever the widget has a DOM node constructed, passing the constructed node as an argument.
-        onCreated : function (node) {
-            log("Sixornot - button UI created");
-            log("Sixornot - button classes: " + node.className);
-
-            // TODO
-            // This should be shared code with the address bar icon
-            // Have an object/closure with the event handlers which bind to the window
-            // that the node passed into the constructor method belongs to
-            // (Also unload these event handlers when needed)
-            // This will simply change the class of the node, which in turn
-            // changes the icon - all logic about the icon is thus shared between button
-            // and address bar
-
-            var panel;
-
-            var win = node.ownerDocument.defaultView;
-            var current_host = function () {
-                return win.content.document.location.hostname;
-            };
-
-            var currentTabInnerID = 0;
-            var currentTabOuterID = 0;
-            var set_current_tab_ids = function () {
-                var domWindow, domWindowUtils;
-                domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
-                domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
-
-                currentTabInnerID = domWindowUtils.currentInnerWindowID;
-                currentTabOuterID = domWindowUtils.outerWindowID;
-            };
-
-            // Change icon via class (icon set via stylesheet)
-            var update_icon_for_node = function (node) {
-                var hosts = requests.cache[currentTabInnerID];
-
-                /* Parse array searching for the main host (which matches the current location) */
-                if (!hosts || !hosts.some(function (item, index, items) {
-                    if (item.host === current_host()) {
-                        var new_icon_class = get_icon_class(item);
-                        if (!node.classList.contains(new_icon_class)) {
-                            remove_sixornot_classes_from(node);
-                            add_class_to_node(new_icon_class, node);
-                        }
-                        return true;
-                    }
-                })) {
-                    // No matching entry for main host (probably a local file)
-                    remove_sixornot_classes_from(node);
-                    add_class_to_node("sixornot_other", node);
-                }
-            };
-
-            // Event handlers to bind
-            var tabselect_handler = function (evt) {
-                log("Sixornot - onCreated:tabselect_handler fired - currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
-                set_current_tab_ids();
-                update_icon_for_node(node);
-            };
-            var pageshow_handler = function (evt) {
-                log("Sixornot - onCreated:pageshow_handler fired - currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
-                set_current_tab_ids();
-                update_icon_for_node(node);
-            };
-            var page_change_handler = function (evt) {
-                log("Sixornot - onCreated:page_change_handler fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
-                set_current_tab_ids();
-                if (evt.detail.outer_id === currentTabOuterID) {
-                    update_icon_for_node(node);
-                }
-            };
-            var on_dns_complete = function (evt) {
-                log("Sixornot - onCreated:on_dns_complete fired - evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
-                set_current_tab_ids();
-                if (evt.detail.outer_id === currentTabOuterID) {
-                    update_icon_for_node(node);
-                }
-            };
-            var click_handler = function () {
-                panel.setAttribute("hidden", false);
-                panel.openPopup(node, panel.getAttribute("position"), 0, 0, false, false);
-            };
-
-            // Add panel for info display
-            panel = create_panel(win, "sixornot-button-panel");
-            node.appendChild(panel);
-
-            // Ensure tab ID is set upon loading into window
-            set_current_tab_ids();
-
-            // Update greyscale property + icon
-            if (prefs.get_bool("greyscaleicons")) {
-                add_greyscale_class_to_node(node);
-            } else {
-                remove_greyscale_class_from_node(node);
-            }
-            update_icon_for_node(node);
-
-            node.addEventListener("click", click_handler, false);
-            win.addEventListener("sixornot-page-change-event", page_change_handler, false);
-            win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
-            win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
-            win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
-
-            unload(function () {
-                log("Sixornot - Unload button UI for a window...", 2);
-
-                // win.removeEventListener("offline", onChangedOnlineStatus, false); TODO
-                // win.removeEventListener("online", onChangedOnlineStatus, false); TODO
-                node.removeEventListener("click", click_handler, false);
-                win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
-                win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
-                win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
-                win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
-            }, win);
-        }
-    };
-};
-
 // Create widget which handles shared logic between button/addresbar icon
-var create_sixornot_widget = function (node, panel, win) {
-};
-
-/* Create the address bar icon and set up callbacks */
-var create_addressbaricon = function (win) {
-    var addressbar_icon, urlbaricons, starbutton, panel, update_icon,
+var create_sixornot_widget = function (node, win) {
+    var panel, current_tab_inner_id, current_tab_outer_id,
         click_handler, page_change_handler, tabselect_handler,
         pageshow_handler, on_dns_complete;
-    log("Sixornot - insert_code:create_addressbaricon", 2);
 
-    var currentTabInnerID = 0;
-    var currentTabOuterID = 0;
     var current_host = function () {
         return win.content.document.location.hostname;
     };
@@ -335,13 +200,13 @@ var create_addressbaricon = function (win) {
         domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                             .getInterface(Components.interfaces.nsIDOMWindowUtils);
 
-        currentTabInnerID = domWindowUtils.currentInnerWindowID;
-        currentTabOuterID = domWindowUtils.outerWindowID;
+        current_tab_inner_id = domWindowUtils.currentInnerWindowID;
+        current_tab_outer_id = domWindowUtils.outerWindowID;
     };
 
     // Change icon via class (icon set via stylesheet)
     var update_icon_for_node = function (node) {
-        var hosts = requests.cache[currentTabInnerID];
+        var hosts = requests.cache[current_tab_inner_id];
 
         /* Parse array searching for the main host (which matches the current location) */
         if (!hosts || !hosts.some(function (item, index, items) {
@@ -362,43 +227,109 @@ var create_addressbaricon = function (win) {
 
     click_handler = function () {
         panel.setAttribute("hidden", false);
-        panel.openPopup(addressbar_icon, panel.getAttribute("position"), 0, 0, false, false);
+        panel.openPopup(node, panel.getAttribute("position"), 0, 0, false, false);
     };
 
     tabselect_handler = function (evt) {
         log("Sixornot - insert_code:create_addressbaricon:tabselect_handler", 2);
         set_current_tab_ids();
-        update_icon_for_node(addressbar_icon);
+        update_icon_for_node(node);
     };
 
     pageshow_handler = function (evt) {
         log("Sixornot - insert_code:create_addressbaricon:pageshow_handler", 2);
         set_current_tab_ids();
-        update_icon_for_node(addressbar_icon);
+        update_icon_for_node(node);
     };
 
     /* Called whenever a Sixornot page change event is emitted */
     page_change_handler = function (evt) {
-        log("Sixornot - insert_code:create_addressbaricon:page_change_handler - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+        log("Sixornot - insert_code:create_addressbaricon:page_change_handler - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 1);
         set_current_tab_ids();
-        // Ignore updates for windows other than this one
-        if (evt.detail.outer_id === currentTabOuterID) {
-            update_icon_for_node(addressbar_icon);
+        if (evt.detail.outer_id === current_tab_outer_id) {
+            update_icon_for_node(node);
         }
     };
 
     /* Called whenever a Sixornot dns lookup event is heard */
     on_dns_complete = function (evt) {
-        log("Sixornot - insert_code:create_addressbaricon:on_dns_complete - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+        log("Sixornot - widget:on_dns_complete - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 1);
         set_current_tab_ids();
-        // Ignore updates for windows other than this one
-        if (evt.detail.outer_id === currentTabOuterID) {
-            update_icon_for_node(addressbar_icon);
+        if (evt.detail.outer_id === current_tab_outer_id) {
+            update_icon_for_node(node);
         }
     };
 
+    /* Create a panel to show details when clicked */
+    panel = create_panel(win, node.id + "-panel");
+    node.appendChild(panel);
+
+    // Ensure tab ID is set upon loading into window
+    set_current_tab_ids();
+
+    // Update greyscale property + icon
+    if (prefs.get_bool("greyscaleicons")) {
+        add_greyscale_class_to_node(node);
+    } else {
+        remove_greyscale_class_from_node(node);
+    }
+    update_icon_for_node(node);
+
+    /* Add event listeners */
+    node.addEventListener("click", click_handler, false);
+    win.addEventListener("sixornot-page-change-event", page_change_handler, false);
+    win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+    win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
+    win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
+
+    unload(function () {
+        log("Sixornot - widget unload function", 2);
+        /* Clear event handlers */
+        // win.removeEventListener("offline", onChangedOnlineStatus, false); TODO
+        // win.removeEventListener("online", onChangedOnlineStatus, false); TODO
+        node.removeEventListener("click", click_handler, false);
+        win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
+        win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+        win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
+        win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
+
+        /* Remove panel UI */
+        panel.parentNode.removeChild(panel);
+    }, win);
+};
+
+/* Create button for non-Australis browsers */
+var create_legacy_button = function () {
+};
+
+/* Create button widget specification for CustomizableUI */
+var create_button = function () {
+    return {
+        id : BUTTON_ID,
+        type : "button",
+        defaultArea : CustomizableUI.AREA_NAVBAR,
+        label : gt("label"),
+        tooltiptext : gt("tt_button"),
+        onCreated : function (node) {
+            var win = node.ownerDocument.defaultView;
+            log("Sixornot - button UI created", 2);
+
+            // Create Sixornot widget for this node
+            create_sixornot_widget(node, win);
+
+            unload(function () {
+                log("Sixornot - Unload button UI for a window...", 2);
+            }, win);
+        }
+    };
+};
+
+/* Create address bar icon (all browsers) */
+var create_addressbaricon = function (win) {
+    var addressbar_icon, urlbaricons, starbutton, doc;
+
     /* Create address bar icon */
-    var doc = win.document;
+    doc = win.document;
     addressbar_icon = doc.createElement("box");
     addressbar_icon.setAttribute("id", ADDRESSBAR_ICON_ID);
     addressbar_icon.setAttribute("width", "16");
@@ -412,14 +343,9 @@ var create_addressbaricon = function (win) {
     /* Box must contain at least one child or it doesn't display */
     addressbar_icon.appendChild(doc.createElement("image"));
 
-    /* Create a panel to show details when clicked */
-    panel = create_panel(win, "sixornot-addressbaricon-panel");
-    addressbar_icon.appendChild(panel);
-
     /* Position the icon */
     urlbaricons = gbi(doc, "urlbar-icons");
     starbutton = gbi(doc, "star-button");
-
     /* If star icon visible, insert before it, otherwise just append to urlbaricons */
     if (!starbutton) {
         urlbaricons.appendChild(addressbar_icon);
@@ -427,34 +353,12 @@ var create_addressbaricon = function (win) {
         urlbaricons.insertBefore(addressbar_icon, starbutton);
     }
 
-    // Ensure tab ID is set upon loading into window
-    set_current_tab_ids();
+    // Create Sixornot widget for this node
+    create_sixornot_widget(addressbar_icon, win);
 
-    // Update greyscale property + icon
-    if (prefs.get_bool("greyscaleicons")) {
-        add_greyscale_class_to_node(addressbar_icon);
-    } else {
-        remove_greyscale_class_from_node(addressbar_icon);
-    }
-    update_icon_for_node(addressbar_icon);
-
-    /* Add event listeners */
-    addressbar_icon.addEventListener("click", click_handler, false);
-    win.addEventListener("sixornot-page-change-event", page_change_handler, false);
-    win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
-    win.gBrowser.tabContainer.addEventListener("TabSelect", tabselect_handler, false);
-    win.gBrowser.addEventListener("pageshow", pageshow_handler, false);
-
-    /* Add a callback to unload to remove the icon */
+    /* Add unload callback to remove the icon */
     unload(function () {
         log("Sixornot - address bar unload function", 2);
-
-        /* Clear event handlers */
-        addressbar_icon.removeEventListener("click", click_handler, false);
-        win.removeEventListener("sixornot-page-change-event", page_change_handler, false);
-        win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
-        win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
-        win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
 
         /* Remove UI */
         addressbar_icon.parentNode.removeChild(addressbar_icon);
