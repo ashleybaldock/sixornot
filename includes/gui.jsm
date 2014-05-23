@@ -342,7 +342,12 @@ var create_legacy_button = function (win) {
     customize_handler = function (evt) {
         var button_parent, button_nextitem, toolbar_id, nextitem_id;
         log("Sixornot - insert_code:create_button:customize_handler");
+        log("Sixornot ----- button customise, button classList: " + button.classList, 1);
+        log("Sixornot ----- button customise, button listStyleImage: " + button.style.listStyleImage, 1);
+        log("Sixornot ----- button customise, button parent classList: " + button.parentNode.classList, 1);
+        log("Sixornot ----- button customise, button parent id: " + button.parentNode.id, 1);
         if (button) {
+            log("Sixornot ----- button customise, button exists", 1);
             button_parent = button.parentNode;
             button_nextitem = button.nextSibling;
             if (button_parent && button_parent.localName === "toolbar") {

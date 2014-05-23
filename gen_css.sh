@@ -3,9 +3,12 @@
 # Generate the imagesrc.jsm file containing image data for use by addon
 
 outfile="skin/toolbar.css"
-icon_file="./images/sixornot_icon_32.png"
-imagedir_colour="./images/colour/16/*.png"
-imagedir_grey="./images/grey/16/*.png"
+icon_file32="./images/sixornot_icon_32.png"
+icon_file24="./images/sixornot_icon_24.png"
+imagedir16_colour="./images/colour/16/*.png"
+imagedir16_grey="./images/grey/16/*.png"
+imagedir24_colour="./images/colour/24/*.png"
+imagedir24_grey="./images/grey/24/*.png"
 
 
 cat > $outfile <<END_OF_FILE
@@ -18,7 +21,7 @@ cat > $outfile <<END_OF_FILE
 END_OF_FILE
 
 
-for file in $imagedir_colour
+for file in $imagedir16_colour
 do
     if test -f "$file" 
     then
@@ -28,7 +31,7 @@ do
     fi
 done
 
-for file in $imagedir_grey
+for file in $imagedir16_grey
 do
     if test -f "$file" 
     then
@@ -38,12 +41,37 @@ do
     fi
 done
 
+for file in $imagedir24_colour
+do
+    if test -f "$file" 
+    then
+        b64=`base64 $file`
+        filename=`basename $file`
+        echo "    toolbox[iconsize=\"large\"] #sixornot-button.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+    fi
+done
 
-if test -f "$icon_file"
+for file in $imagedir24_grey
+do
+    if test -f "$file" 
+    then
+        b64=`base64 $file`
+        filename=`basename $file`
+        echo "    toolbox[iconsize=\"large\"] #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+    fi
+done
+
+if test -f "$icon_file32"
 then
-    b64=`base64 $icon_file`
+    b64=`base64 $icon_file32`
     echo "    #sixornot-button[cui-areatype=\"menu-panel\"], toolbarpaletteitem[place=\"palette\"] > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
 fi
+
+#if test -f "$icon_file24"
+#then
+#    b64=`base64 $icon_file24`
+#    echo "    toolbarpalette > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+#fi
 
 cat >> $outfile <<END_OF_FILE
 
