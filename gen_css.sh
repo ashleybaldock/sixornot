@@ -4,8 +4,8 @@
 
 outfile="skin/toolbar.css"
 icon_file="./images/sixornot_icon_32.png"
-imagedir_colour="./images/colour/*.png"
-imagedir_grey="./images/grey/*.png"
+imagedir_colour="./images/colour/16/*.png"
+imagedir_grey="./images/grey/16/*.png"
 
 
 cat > $outfile <<END_OF_FILE
