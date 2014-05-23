@@ -38,15 +38,13 @@
         </em:targetApplication>
 
         <!-- SeaMonkey -->
-        <!-- SeaMonkey appears not to be using Australis for now, which this version of my addon has been
-             optimised for
         <em:targetApplication>
             <Description>
                 <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id>
-                <em:minVersion>2.6</em:minVersion>
-                <em:maxVersion>2.7.*</em:maxVersion>
+                <em:minVersion>2.26</em:minVersion>
+                <em:maxVersion>2.26.*</em:maxVersion>
             </Description>
-        </em:targetApplication>-->
+        </em:targetApplication>
 
     </Description>      
 </RDF>

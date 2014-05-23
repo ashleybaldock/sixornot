@@ -26,14 +26,15 @@
 // Provided in included modules:
 /*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button, set_addressbar_icon_visibility, set_greyscale_icons */
 
-/*
- * Constants and global variables
- */
-// Import needed code modules
+var CustomizableUIAvailable = true, e;
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://gre/modules/AddonManager.jsm");
-Components.utils.import("resource:///modules/CustomizableUI.jsm");
+try {
+    Components.utils.import("resource:///modules/CustomizableUI.jsm");
+} catch (e) {
+    CustomizableUIAvailable = false;
+}
 /*jslint es5: false */
 
 // Addon-Global functions
@@ -85,6 +86,7 @@ startup = function (aData, aReason) {
     // Import logging module (adds global symbols: log, parse_exception)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/logger.jsm");
+    log("Startup exception was: " + e);
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
     Components.utils.import("resource://sixornot/includes/dns.jsm");
     /*jslint es5: false */
@@ -116,7 +118,13 @@ startup = function (aData, aReason) {
         watchWindows(insert_code);
 
         // Create button UI using Australis method
-        CustomizableUI.createWidget(create_button());
+        if (CustomizableUIAvailable) {
+            log("Sixornot - CustomizableUI available, loading button", 1);
+            CustomizableUI.createWidget(create_button());
+        } else {
+            log("Sixornot - CustomizableUI unavailable, loading legacy button", 1);
+            // TODO
+        }
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
         PREF_OBSERVER.register();
@@ -132,7 +140,13 @@ shutdown = function (aData, aReason) {
         // Unload all UI via init-time unload() callbacks
         unload();
 
-        CustomizableUI.destroyWidget("sixornot-button");
+        if (CustomizableUIAvailable) {
+            log("Sixornot - CustomizableUI available, unloading button", 1);
+            CustomizableUI.destroyWidget("sixornot-button");
+        } else {
+            log("Sixornot - CustomizableUI available, unloading legacy button", 1);
+            // TODO
+        }
 
         HTTP_REQUEST_OBSERVER.unregister();
         PREF_OBSERVER_DNS.unregister();

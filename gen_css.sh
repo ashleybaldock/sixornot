@@ -13,7 +13,8 @@ cat > $outfile <<END_OF_FILE
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
-@-moz-document url("chrome://browser/content/browser.xul") {
+@-moz-document url("chrome://browser/content/browser.xul"),
+               url("chrome://navigator/content/navigator.xul") {
 END_OF_FILE
 
 
