@@ -86,7 +86,6 @@ startup = function (aData, aReason) {
     // Import logging module (adds global symbols: log, parse_exception)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/logger.jsm");
-    log("Startup exception was: " + e);
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
     Components.utils.import("resource://sixornot/includes/dns.jsm");
     /*jslint es5: false */
@@ -122,8 +121,7 @@ startup = function (aData, aReason) {
             log("Sixornot - CustomizableUI available, loading button", 1);
             CustomizableUI.createWidget(create_button());
         } else {
-            log("Sixornot - CustomizableUI unavailable, loading legacy button", 1);
-            // TODO
+            log("Sixornot - CustomizableUI unavailable", 1);
         }
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
@@ -144,8 +142,7 @@ shutdown = function (aData, aReason) {
             log("Sixornot - CustomizableUI available, unloading button", 1);
             CustomizableUI.destroyWidget("sixornot-button");
         } else {
-            log("Sixornot - CustomizableUI available, unloading legacy button", 1);
-            // TODO
+            log("Sixornot - CustomizableUI unavailable", 1);
         }
 
         HTTP_REQUEST_OBSERVER.unregister();

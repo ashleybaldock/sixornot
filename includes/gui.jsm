@@ -231,20 +231,20 @@ var create_sixornot_widget = function (node, win) {
     };
 
     tabselect_handler = function (evt) {
-        log("Sixornot - insert_code:create_addressbaricon:tabselect_handler", 2);
+        log("Sixornot - widget:tabselect_handler", 2);
         set_current_tab_ids();
         update_icon_for_node(node);
     };
 
     pageshow_handler = function (evt) {
-        log("Sixornot - insert_code:create_addressbaricon:pageshow_handler", 2);
+        log("Sixornot - widget:pageshow_handler", 2);
         set_current_tab_ids();
         update_icon_for_node(node);
     };
 
     /* Called whenever a Sixornot page change event is emitted */
     page_change_handler = function (evt) {
-        log("Sixornot - insert_code:create_addressbaricon:page_change_handler - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 1);
+        log("Sixornot - widget:page_change_handler - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 1);
         set_current_tab_ids();
         if (evt.detail.outer_id === current_tab_outer_id) {
             update_icon_for_node(node);
@@ -292,14 +292,84 @@ var create_sixornot_widget = function (node, win) {
         win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
         win.gBrowser.tabContainer.removeEventListener("TabSelect", tabselect_handler, false);
         win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
-
-        /* Remove panel UI */
-        panel.parentNode.removeChild(panel);
     }, win);
 };
 
 /* Create button for non-Australis browsers */
-var create_legacy_button = function () {
+var create_legacy_button = function (win) {
+    var button, doc, customize_handler,
+        toolbar_id, toolbar, nextitem_id, nextitem;
+    doc = win.document;
+    /* Create the button */
+    button = doc.createElement("toolbarbutton");
+
+    /* Iconized button setup */
+    button.setAttribute("id", BUTTON_ID);
+    button.setAttribute("label", gt("label"));
+    button.setAttribute("class", "toolbarbutton-1 chromeclass-toolbar-additional");
+    button.setAttribute("tooltiptext", gt("tt_button"));
+    button.setAttribute("type", "menu");
+    button.setAttribute("orient", "horizontal");
+
+    /* Add button to toolbox palette, since it needs a parent */
+    gbi(doc, "navigator-toolbox").palette.appendChild(button);
+
+    /* Move to location specified in prefs
+       If location is blank, then it isn't moved (stays in toolbox palette) */
+    toolbar_id = prefs.get_char("toolbar");
+    if (toolbar_id !== "") {
+        toolbar = gbi(doc, toolbar_id);
+
+        nextitem_id = prefs.get_char("nextitem");
+        if (nextitem_id === "") {
+            // Add to end of the specified bar
+            toolbar.insertItem(BUTTON_ID);
+        } else {
+            // Add to specified position, if nextID is found
+            nextitem = gbi(doc, nextitem_id);
+            if (nextitem && nextitem.parentNode.id === toolbar_id) {
+                toolbar.insertItem(BUTTON_ID, nextitem);
+            } else {
+                toolbar.insertItem(BUTTON_ID);
+            }
+        }
+    }
+
+    /*
+    * When button location is customised store the new location in preferences
+    * so we can load into the same place next time
+    */
+    customize_handler = function (evt) {
+        var button_parent, button_nextitem, toolbar_id, nextitem_id;
+        log("Sixornot - insert_code:create_button:customize_handler");
+        if (button) {
+            button_parent = button.parentNode;
+            button_nextitem = button.nextSibling;
+            if (button_parent && button_parent.localName === "toolbar") {
+                toolbar_id = button_parent.id;
+                nextitem_id = button_nextitem && button_nextitem.id;
+            }
+        }
+        prefs.set_char("toolbar", toolbar_id || "");
+        prefs.set_char("nextitem", nextitem_id || "");
+    };
+
+    /* Add event listeners */
+    win.addEventListener("aftercustomization", customize_handler, false);
+
+    // Create Sixornot widget for this node
+    create_sixornot_widget(button, win);
+
+    /* Add a callback to unload to remove the button */
+    unload(function () {
+        log("Sixornot - legacy button unload", 2);
+
+        /* Clear event handlers */
+        win.removeEventListener("aftercustomization", customize_handler, false);
+
+        /* Remove UI */
+        button.parentNode.removeChild(button);
+    }, win);
 };
 
 /* Create button widget specification for CustomizableUI */
@@ -318,7 +388,7 @@ var create_button = function () {
             create_sixornot_widget(node, win);
 
             unload(function () {
-                log("Sixornot - Unload button UI for a window...", 2);
+                log("Sixornot - button unload", 2);
             }, win);
         }
     };
@@ -358,7 +428,7 @@ var create_addressbaricon = function (win) {
 
     /* Add unload callback to remove the icon */
     unload(function () {
-        log("Sixornot - address bar unload function", 2);
+        log("Sixornot - address bar icon unload", 2);
 
         /* Remove UI */
         addressbar_icon.parentNode.removeChild(addressbar_icon);
@@ -1245,7 +1315,9 @@ var create_panel = function (win, panel_id) {
         win.gBrowser.removeEventListener("pageshow", pageshow_handler, false);
         //win.gBrowser.removeEventListener("DOMContentLoaded", on_page_change, false);
         // Remove UI
-        panel.parentNode.removeChild(panel);
+        if (panel.parentNode) {
+            panel.parentNode.removeChild(panel);
+        }
     }, win);
 
     return panel;
@@ -1273,6 +1345,12 @@ var insert_code = function (win) {
     // Create address bar icon
     log("Sixornot - insert_code: add addressicon", 1);
     create_addressbaricon(win);
+
+    // Create legacy button (only for non-Australis browsers)
+    if (!CustomizableUIAvailable) {
+        log("Sixornot - insert_code: add legacy button", 1);
+        create_legacy_button(win);
+    }
 };
 
 var set_addressbar_icon_visibility = function (win) {
