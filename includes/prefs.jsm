@@ -105,10 +105,10 @@ var prefs = {
     create: function () {
         "use strict";
         var key, val;
-        for (key in this.PREFS) {
-            if (this.PREFS.hasOwnProperty(key)) {
+        for (key in this.defaults) {
+            if (this.defaults.hasOwnProperty(key)) {
                 // Preserve pre-existing values for preferences in case user has modified them
-                val = this.PREFS[key];
+                val = this.defaults[key];
                 if (typeof(val) === typeof(true)) {
                     if (this.PREF_BRANCH_SIXORNOT.getPrefType(key) === Services.prefs.PREF_INVALID) {
                         this.PREF_BRANCH_SIXORNOT.setBoolPref(key, val);

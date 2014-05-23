@@ -132,11 +132,13 @@ var on_examine_response = function(subject, topic) {
     // Fetch DOM window associated with this request
     nC = http_channel.notificationCallbacks;
     if (!nC) {
-        nC = http_channel.loadGroup.notificationCallbacks;
+        if (http_channel.loadGroup) {
+            nC = http_channel.loadGroup.notificationCallbacks;
+        }
     }
     if (!nC) {
         // Unable to determine which window intiated this http request
-        log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Unable to determine notificationCallbacks for this http_channel", 0);
+        log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Unable to determine notificationCallbacks for this http_channel", 1);
         return;
     }
 
@@ -168,12 +170,12 @@ var on_examine_response = function(subject, topic) {
             remoteAddress = http_channel_internal.remoteAddress;
             remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
         } catch (e1) {
-            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 0);
+            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
             remoteAddress = "";
             remoteAddressFamily = 0;
         }
     } else {
-        log("Sixornot - HTTP_REQUEST_OBSERVER - NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 0);
+        log("Sixornot - HTTP_REQUEST_OBSERVER - NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
         remoteAddress = "";
         remoteAddressFamily = 2;
     }
@@ -222,7 +224,7 @@ var on_examine_response = function(subject, topic) {
         /* SECONDARY PAGE LOAD */
         // Not new, inner window ID will be correct by now so add entries to request cache
         if (!requests.cache[domWindowInner]) {
-            log("SN: requests.cache[" + domWindowInner + "] set to: []", 0);
+            log("SN: requests.cache[" + domWindowInner + "] set to: []", 1);
             requests.cache[domWindowInner] = [];
         }
         // If host already in list update IP address if needed

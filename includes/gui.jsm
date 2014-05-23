@@ -186,13 +186,9 @@ var create_button = function () {
     return {
         id : BUTTON_ID,
         type : "button",
-        //viewId : "sixornot-panel", // 
         defaultArea : CustomizableUI.AREA_NAVBAR,
         label : gt("label"),
         tooltiptext : gt("tt_button"),
-        // Attached to all non-custom widgets; a function that will be invoked before the widget gets a DOM node constructed, passing the document in which that will happen.
-        onBeforeCreated : function (aDoc) {
-        },
         // Attached to all widgets; a function that will be invoked whenever the widget has a DOM node constructed, passing the constructed node as an argument.
         onCreated : function (node) {
             log("Sixornot - button UI created");
@@ -1361,7 +1357,7 @@ var insert_code = function (win) {
     unload(function () {
         log("Sixornot - stylesheet unload function", 2);
         win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
-            getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(uri, 1);
+            getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(uri, 1);
     }, win);
 
     // Create address bar icon

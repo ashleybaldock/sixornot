@@ -340,7 +340,7 @@ dns = {
                 hints.ai_addrlen = 0;
 
                 addrinfo_ptr = this.addrinfo.ptr();
-                log("Sixornot(dns_worker) - about to call getaddrinfo, host: " + JSON.stringify(host) + ", hints.address(): " + hints.address() + ", addrinfo_ptr.address(): " + addrinfo_ptr.address());
+                log("Sixornot(dns_worker) - about to call getaddrinfo, host: " + JSON.stringify(host) + ", hints.address(): " + hints.address() + ", addrinfo_ptr.address(): " + addrinfo_ptr.address(), 2);
                 ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
 
                 if (ret > 0 || addrinfo_ptr.isNull()) {
