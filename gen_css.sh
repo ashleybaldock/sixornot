@@ -3,7 +3,8 @@
 # Generate the imagesrc.jsm file containing image data for use by addon
 
 outfile="skin/toolbar.css"
-icon_file32="./images/sixornot_icon_32.png"
+icon_file32_colour="./images/sixornot_icon_32.png"
+icon_file32_grey="./images/sixornot_icon_32_grey.png"
 icon_file24="./images/sixornot_icon_24.png"
 imagedir16_colour="./images/colour/16/*.png"
 imagedir16_grey="./images/grey/16/*.png"
@@ -16,9 +17,9 @@ cat > $outfile <<END_OF_FILE
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
-/*@-moz-document url("chrome://browser/content/browser.xul"),
+@-moz-document url("chrome://browser/content/browser.xul"),
                url("chrome://navigator/content/navigator.xul"),
-               url("chrome://global/content/customizeToolbar.xul") {*/
+               url("chrome://global/content/customizeToolbar.xul") {
 END_OF_FILE
 
 
@@ -62,17 +63,27 @@ do
     fi
 done
 
-if test -f "$icon_file32"
+if test -f "$icon_file32_colour"
 then
-    b64=`base64 $icon_file32`
-    echo "    #sixornot-button[cui-areatype=\"menu-panel\"], toolbarpaletteitem[place=\"palette\"] > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+    b64=`base64 $icon_file32_colour`
+    echo "    #CustomizeToolbarWindow #sixornot-button, #sixornot-button[cui-areatype=\"menu-panel\"], toolbarpaletteitem[place=\"palette\"] > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+fi
+if test -f "$icon_file32_grey"
+then
+    b64=`base64 $icon_file32_grey`
+    echo "    #CustomizeToolbarWindow #sixornot-button.sixornot_grey, #sixornot-button[cui-areatype=\"menu-panel\"].sixornot_grey, toolbarpaletteitem[place=\"palette\"] > #sixornot-button.sixornot_grey { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
 fi
 
-if test -f "$icon_file24"
-then
-    b64=`base64 $icon_file24`
-    echo "    toolbarpalette > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
-fi
+#cat >> $outfile <<END_OF_FILE
+#}
+#@-moz-document url("chrome://global/content/customizeToolbar.xul") {
+#END_OF_FILE
+#
+#if test -f "$icon_file24"
+#then
+#    b64=`base64 $icon_file24`
+#    echo "    #sixornot-button.sixornot_grey, #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+#fi
 
 cat >> $outfile <<END_OF_FILE
 
@@ -85,5 +96,5 @@ list-style-image: url("chrome://aus-view/skin/icon32-dark.png");
   /*#sixornot-panel {
     width: 20em;
   }*/
-/*}*/
+}
 END_OF_FILE

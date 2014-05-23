@@ -1,26 +1,44 @@
 # TODO
 
-Update documentation (pretty much completely)
 
-
-# 0.8.0
-Rewrite of some core bits to handle various cases better
+# Known bugs:
+On Australis, changing the greyscale setting while the button is not displayed
+results in the button not conforming to the setting
 
 # 0.8.1
+Fix legacy button for SeaMonkey/pre-Australis Firefox
+
+# 0.8.2
+Local IP address display
+ - refresh on tooltip show
+ - Should be hidden by default, expand to show/hide
+Private browsing mode checks
+Update documentation
+
+# 0.8.3
+Refactoring panel to improve code
 Warnings for ip6_disabled and ip4only_domain
 Add settings to panel, since we can't link to about:addons easily
+Update documentation
 
-# TODO FUTURE
-Add back local address display refresh on tooltip show
- Should be hidden by default, expand to show/hide
-Handling for edge-cases and special pages (text)
-Add ability to copy a list of all files fetched to clipboard (per-domain)
+# 0.8.4
+Proxy detection + info
 Add better proxy detection (per-connection) and icon display
  Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
  Same way that DNS lookups are done, with a callback
+Update documentation
 
-# TODO Future
-Preference to set whether icon should come before or after the star icon
+# TODO FUTURE
+Version for alternative Firefoxes (which aren't following Australis)
+Handling for edge-cases and special pages (text)
+Add ability to copy a list of all files fetched to clipboard (per-domain)
+Icon display in status bar on SeaMonkey/Firefox alternatives
+
+
+# Done
+
+# 0.8.0
+Fix Australis breakages & refactor
 
 # 0.7.1
 Fix memory leaks in cache

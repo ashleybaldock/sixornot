@@ -391,10 +391,6 @@ var create_button = function () {
 
             // Create Sixornot widget for this node
             create_sixornot_widget(node, win);
-
-            unload(function () {
-                log("Sixornot - button unload", 2);
-            }, win);
         }
     };
 };
