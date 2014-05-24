@@ -39,7 +39,7 @@ do
     then
         b64=`base64 $file`
         filename=`basename $file`
-        echo "    #sixornot-addressbaricon.sixornot_${filename%\.*}, #sixornot-button.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+        echo "    .sixornot-panel image.sixornot_${filename%\.*}, #sixornot-addressbaricon.sixornot_${filename%\.*}, #sixornot-button.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
     fi
 done
 
@@ -49,7 +49,7 @@ do
     then
         b64=`base64 $file`
         filename=`basename $file`
-        echo "    #sixornot-addressbaricon.sixornot_grey.sixornot_${filename%\.*}, #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
+        echo "    .sixornot_grey .sixornot-panel image.sixornot_${filename%\.*}, #sixornot-addressbaricon.sixornot_grey.sixornot_${filename%\.*}, #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
     fi
 done
 

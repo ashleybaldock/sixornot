@@ -23,7 +23,7 @@
 /*global Components, Services, ChromeWorker */
 
 // Provided by Sixornot
-/*global gt, log, parse_exception, prefs, dns_handler, imagesrc, windowWatcher, unload, requests */
+/*global gt, log, parse_exception, prefs, dns_handler, windowWatcher, unload, requests */
 
 var CustomizableUIAvailable = true, e;
 /*jslint es5: true */
@@ -37,7 +37,6 @@ Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/locale.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
-Components.utils.import("resource://sixornot/includes/imagesrc.jsm");
 Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 /*jslint es5: false */
@@ -72,53 +71,6 @@ var gbi = function (node, child_id) {
         The main page always shows full details
 */
 
-/* Returns the correct icon source entry for a given record */
-// TODO
-// Expand this to account for proxies
-// Also account for error conditions, e.g. using v4 with no v4 in DNS
-var get_icon_source = function (record) {
-    if (record.address_family === 4) {
-        if (record.ipv6s.length !== 0) {
-            // Actual is v4, DNS is v4 + v6 -> Orange
-            return imagesrc.get("4pot6");
-        } else {
-            // Actual is v4, DNS is v4 -> Red
-            return imagesrc.get("4only");
-        }
-    } else if (record.address_family === 6) {
-        if (record.ipv4s.length === 0) {
-            // Actual is v6, DNS is v6 -> Blue
-            return imagesrc.get("6only");
-        } else {
-            // Actual is v6, DNS is v4 + v6 -> Green
-            return imagesrc.get("6and4");
-        }
-    } else if (record.address_family === 2) {
-        // address family 2 is cached responses
-        if (record.ipv6s.length === 0) {
-            if (record.ipv4s.length === 0) {
-                // No addresses, grey cache icon
-                return imagesrc.get("other_cache");
-            } else {
-                // Only v4 addresses from DNS, red cache icon
-                return imagesrc.get("4only_cache");
-            }
-        } else {
-            if (record.ipv4s.length === 0) {
-                // Only v6 addresses from DNS, blue cache icon
-                return imagesrc.get("6only_cache");
-            } else {
-                // Both kinds of addresses from DNS, yellow cache icon
-                return imagesrc.get("4pot6_cache");
-            }
-        }
-    } else if (record.address_family === 1) {
-        return imagesrc.get("other_cache");
-    } else if (record.address_family === 0) {
-        // This indicates that no addresses were available but request is not cached
-        return imagesrc.get("error");
-    }
-};
 var get_icon_class = function (record) {
     if (record.address_family === 4) {
         if (record.ipv6s.length !== 0) {
@@ -177,6 +129,13 @@ var remove_sixornot_classes_from = function (node) {
 var add_class_to_node = function (new_item_class, node) {
     node.classList.add(new_item_class);
 };
+var update_node_icon_for_host = function (node, host_record) {
+    var new_icon_class = get_icon_class(host_record);
+    if (!node.classList.contains(new_icon_class)) {
+        remove_sixornot_classes_from(node);
+        add_class_to_node(new_icon_class, node);
+    }
+};
 var add_greyscale_class_to_node = function (node) {
     node.classList.add("sixornot_grey");
 };
@@ -211,11 +170,7 @@ var create_sixornot_widget = function (node, win) {
         /* Parse array searching for the main host (which matches the current location) */
         if (!hosts || !hosts.some(function (item, index, items) {
             if (item.host === current_host()) {
-                var new_icon_class = get_icon_class(item);
-                if (!node.classList.contains(new_icon_class)) {
-                    remove_sixornot_classes_from(node);
-                    add_class_to_node(new_icon_class, node);
-                }
+                update_node_icon_for_host(node, item);
                 return true;
             }
         })) {
@@ -445,12 +400,12 @@ var create_panel = function (win, panel_id) {
     on_count_change, on_dns_complete, on_tab_select,
     panel_vbox, remote_grid, remote_rows, remote_cols, title_remote,
     remote_anchor, title_local, settingslabel, urllabel, urlhbox,
-    get_hosts, get_host, force_scrollbars, new_line, grid_contents, remove_all,
+    force_scrollbars, new_line, grid_contents, remove_all,
     generate_all;
 
     var doc = win.document;
-    var currentTabInnerID = 0;
-    var currentTabOuterID = 0;
+    var current_tab_inner_id = 0;
+    var current_tab_outer_id = 0;
 
     /* Return the host part of the current window's location */
     var current_host = function () {
@@ -463,13 +418,12 @@ var create_panel = function (win, panel_id) {
         domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                             .getInterface(Components.interfaces.nsIDOMWindowUtils);
 
-        currentTabInnerID = domWindowUtils.currentInnerWindowID;
-        currentTabOuterID = domWindowUtils.outerWindowID;
+        current_tab_inner_id = domWindowUtils.currentInnerWindowID;
+        current_tab_outer_id = domWindowUtils.outerWindowID;
     };
 
     // Panel setup
     panel = doc.createElement("panel");
-    //panel.setAttribute("noautohide", true);
     panel.setAttribute("type", "arrow");
     panel.setAttribute("id", panel_id);
     panel.setAttribute("hidden", true);
@@ -550,34 +504,6 @@ var create_panel = function (win, panel_id) {
     /* Functions */
 
     /* Get the hosts list for the current window */
-    get_hosts = function () {
-        // Get IDs for lookup
-        var currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
-            .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-            .getInterface(Components.interfaces.nsIDOMWindowUtils)
-            .currentInnerWindowID;
-        if (requests.cache[currentWindowID] !== undefined) {
-            return requests.cache[currentWindowID];
-        }
-    };
-
-    /* Get a particular host entry for current window based on host name */
-    get_host = function (hostname) {
-        var currentWindowID, requestCacheLookup, i;
-        // Get IDs for lookup
-        currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
-            .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-            .getInterface(Components.interfaces.nsIDOMWindowUtils)
-            .currentInnerWindowID;
-        requestCacheLookup = requests.cache[currentWindowID];
-
-        // Locate the requested item in the lookup entry
-        for (i = 0; i < requestCacheLookup.length; i += 1) {
-            if (requestCacheLookup[i] !== undefined && requestCacheLookup[i].host === hostname) {
-                return requestCacheLookup[i];
-            }
-        }
-    };
 
     /* Ensure panel contents visible with scrollbars */
     force_scrollbars = function () {
@@ -611,7 +537,6 @@ var create_panel = function (win, panel_id) {
        e.g. header or the preceeding list item */
     new_line = function (host, addafter) {
         var copy_full, create_header_row, header_row;
-        log("Sixornot - new_line", 1);
         // Due to closure this is available to all functions defined inside this one
         copy_full = "";
 
@@ -619,10 +544,8 @@ var create_panel = function (win, panel_id) {
         create_header_row = function (addafter) {
             var create_showhide, create_icon, create_count, create_hostname,
                 create_ips, row;
-            log("Sixornot - create_header_row", 1);
             create_showhide = function (addto) {
                 var showhide, update;
-                log("Sixornot - create_showhide", 1);
 
                 /* Create DOM UI elements */
                 showhide = doc.createElement("label");
@@ -672,13 +595,12 @@ var create_panel = function (win, panel_id) {
             };
             create_icon = function (addto) {
                 var icon, update;
-                log("Sixornot - create_icon", 1);
                 /* Create DOM UI elements */
                 icon = doc.createElement("image");
                 icon.setAttribute("width", "16");
                 icon.setAttribute("height", "16");
                 update = function () {
-                    icon.setAttribute("src", get_icon_source(host));
+                    update_node_icon_for_host(icon, host);
                 };
                 /* Update element on create */
                 update();
@@ -693,7 +615,6 @@ var create_panel = function (win, panel_id) {
             };
             create_count = function (addto) {
                 var count, update;
-                log("Sixornot - create_count", 1);
                 /* Create DOM UI elements */
                 count = doc.createElement("label");
 
@@ -720,7 +641,6 @@ var create_panel = function (win, panel_id) {
             };
             create_hostname = function (addto) {
                 var hostname, update;
-                log("Sixornot - create_hostname", 1);
                 /* Create DOM UI elements */
                 hostname = doc.createElement("label");
                 hostname.setAttribute("value", host.host);
@@ -770,7 +690,6 @@ var create_panel = function (win, panel_id) {
                The rest are IP addresses looked up from DNS */
             create_ips = function (addto) {
                 var update, address_box;
-                log("Sixornot - create_conip", 1);
                 /* Create DOM UI elements */
                 address_box = doc.createElement("vbox");
 
@@ -945,6 +864,15 @@ var create_panel = function (win, panel_id) {
     };
     generate_all = function () {
         log("Sixornot - panel:generate_all", 2);
+        var get_hosts = function () {
+            var currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
+                .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                .currentInnerWindowID;
+            if (requests.cache[currentWindowID] !== undefined) {
+                return requests.cache[currentWindowID];
+            }
+        };
         var hosts = get_hosts();
 
         // In this case we're on a page which has no cached info
@@ -980,8 +908,8 @@ var create_panel = function (win, panel_id) {
         if (evt.target.sixornot_copytext) {
             try {
                 evt.stopPropagation();
-                log("Sixornot - panel:on_click - sixornot_copytext '" + evt.target.sixornot_copytext + "' to clipboard", 0);
-                Components.classes["@mozilla.org/widget/clipboardhelper;1"]     // TODO use of getService
+                log("Sixornot - panel:on_click - sixornot_copytext '" + evt.target.sixornot_copytext + "' to clipboard", 1);
+                Components.classes["@mozilla.org/widget/clipboardhelper;1"]
                     .getService(Components.interfaces.nsIClipboardHelper)
                     .copyString(evt.target.sixornot_copytext);
             } catch (e_copytext) {
@@ -1048,7 +976,6 @@ var create_panel = function (win, panel_id) {
     // in the cache matching this page
     // 
     on_show_panel = function (evt) {
-        log("Sixornot - panel:on_show_panel", 1);
         try {
             remove_all();
             generate_all();
@@ -1062,17 +989,17 @@ var create_panel = function (win, panel_id) {
     // If so repopulate grid_contents list as per show panel
     on_page_change = function (evt) {
         log("Sixornot - panel:on_page_change", 1);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
         if (panel.state !== "open") {
             log("Sixornot - on_page_change - skipping (panel is closed)", 2);
             return;
         }
-        if (evt.detail.outer_id !== currentTabOuterID) {
+        if (evt.detail.outer_id !== current_tab_outer_id) {
             log("Sixornot - on_page_change - skipping (outer ID mismatch)", 2);
             return;
         }
         set_current_tab_ids();
-        if (evt.detail.inner_id !== currentTabInnerID) {
+        if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_page_change - skipping (inner ID mismatch)", 2);
             return;
         }
@@ -1087,15 +1014,33 @@ var create_panel = function (win, panel_id) {
     // If so add a new host into grid_contents (in correct sort position)
     on_new_host = function (evt) {
         log("Sixornot - panel:on_new_host", 2);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
         if (panel.state !== "open") {
             log("Sixornot - on_new_host - skipping (panel is closed)", 2);
             return;
         }
-        if (evt.detail.inner_id !== currentTabInnerID) {
+        if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_new_host - skipping (inner ID mismatch)", 2);
             return;
         }
+
+        /* Get a particular host entry for current window based on host name */
+        var get_host = function (hostname) {
+            var currentWindowID, requestCacheLookup, i;
+            // Get IDs for lookup
+            currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
+                .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                .currentInnerWindowID;
+            requestCacheLookup = requests.cache[currentWindowID];
+
+            // Locate the requested item in the lookup entry
+            for (i = 0; i < requestCacheLookup.length; i += 1) {
+                if (requestCacheLookup[i] !== undefined && requestCacheLookup[i].host === hostname) {
+                    return requestCacheLookup[i];
+                }
+            }
+        };
 
         try {
             // TODO put this in the right position based on some ordering
@@ -1134,12 +1079,12 @@ var create_panel = function (win, panel_id) {
     // And update its icon
     on_address_change = function (evt) {
         log("Sixornot - panel:on_address_change", 1);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 1);
+        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 1);
         if (panel.state !== "open") {
             log("Sixornot - on_address_change - skipping (panel is closed)", 2);
             return;
         }
-        if (evt.detail.inner_id !== currentTabInnerID) {
+        if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_address_change - skipping (inner ID mismatch)", 2);
             return;
         }
@@ -1162,12 +1107,12 @@ var create_panel = function (win, panel_id) {
     // Look up matching host entry in grid_contents and update its count
     on_count_change = function (evt) {
         log("Sixornot - panel:on_count_change", 1);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
         if (panel.state !== "open") {
             log("Sixornot - on_count_change - skipping (panel is closed)", 2);
             return;
         }
-        if (evt.detail.inner_id !== currentTabInnerID) {
+        if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_count_change - skipping (inner ID mismatch)", 2);
             return;
         }
@@ -1191,14 +1136,14 @@ var create_panel = function (win, panel_id) {
     // Update icon
     on_dns_complete = function (evt) {
         log("Sixornot - panel:on_dns_complete", 1);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", currentTabOuterID: " + currentTabOuterID + ", currentTabInnerID: " + currentTabInnerID, 2);
+        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
 
         // TODO - unsubscribe from events when panel is closed to avoid this check
         if (panel.state !== "open") {
             log("Sixornot - on_dns_complete - skipping (panel is closed)", 2);
             return;
         }
-        if (evt.detail.inner_id !== currentTabInnerID) {
+        if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_dns_complete - skipping (inner ID mismatch)", 2);
             return;
         }
@@ -1329,6 +1274,10 @@ var insert_code = function (win) {
         iframe.addEventListener('load', injectStyleSheet, true); 
         //var panel = win.document.getElementById("customizeToolbarSheetPopup");
         //panel.addEventListener("popupshown", temp2, false);
+        unload(function () {
+            log("Sixornot - legacy toolbar customizer stylesheet  unload function", 2);
+            iframe.removeEventListener("load", injectStyleSheet, true);
+        }, win);
 
         log("Sixornot - insert_code: add legacy button", 1);
         // Create legacy button (only for non-Australis browsers)
@@ -1339,8 +1288,6 @@ var insert_code = function (win) {
         log("Sixornot - stylesheet unload function", 2);
         win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
             getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(uri, 1);
-
-        iframe.removeEventListener("load", injectStyleSheet, true);
     }, win);
 };
 

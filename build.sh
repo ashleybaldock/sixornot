@@ -27,7 +27,6 @@ cp includes/prefsobserver.jsm ../dist/$version/src/includes/
 cp includes/requestcache.jsm ../dist/$version/src/includes/
 cp includes/requestobserver.jsm ../dist/$version/src/includes/
 cp includes/windowwatcher.jsm ../dist/$version/src/includes/
-cp includes/imagesrc.jsm ../dist/$version/src/includes/
 
 mkdir ../dist/$version/src/skin
 ./gen_css.sh

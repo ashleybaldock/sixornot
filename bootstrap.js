@@ -155,7 +155,6 @@ shutdown = function (aData, aReason) {
         Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");
         Components.utils.unload("resource://sixornot/includes/requestcache.jsm");
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
-        Components.utils.unload("resource://sixornot/includes/imagesrc.jsm");
         Components.utils.unload("resource://sixornot/includes/locale.jsm");
         // Shutdown dns_handler
         dns_handler.shutdown();
