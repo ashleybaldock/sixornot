@@ -60,6 +60,48 @@ var gbi = function (node, child_id) {
     }
 };
 
+// Utility functions (move into own module?)
+var open_preferences = function () {
+    var currentWindow, currentBrowser, e;
+    // Add tab to most recent window, regardless of where this function was called from
+    try {
+        currentWindow = Services.wm.getMostRecentWindow("navigator:browser");
+        currentWindow.focus();
+        if (currentWindow.toEM) {
+            currentWindow.toEM("addons://detail/sixornot@entropy.me.uk");
+        } else if (currentWindow.BrowserOpenAddonsMgr) {
+            currentWindow.BrowserOpenAddonsMgr("addons://detail/sixornot@entropy.me.uk");
+        } else {
+            currentBrowser = currentWindow.getBrowser();
+            currentBrowser.selectedTab = currentBrowser.addTab("about:addons");
+        }
+    } catch (e) {
+        Components.utils.reportError(e);
+    }
+};
+var open_hyperlink = function (link) {
+    var currentWindow, currentBrowser, e;
+    // Add tab to most recent window, regardless of where this function was called from
+    try {
+        currentWindow = Services.wm.getMostRecentWindow("navigator:browser");
+        currentWindow.focus();
+        currentBrowser = currentWindow.getBrowser();
+        currentBrowser.selectedTab = currentBrowser.addTab(link);
+    } catch (e) {
+        Components.utils.reportError(e);
+    }
+};
+var copy_to_clipboard = function (text) {
+    var e;
+    log("Sixornot - copy_to_clipboard: '" + text + "'", 2);
+    try {
+        Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+            .getService(Components.interfaces.nsIClipboardHelper)
+            .copyString(text);
+    } catch (e) {
+        Components.utils.reportError(e);
+    }
+};
 
 // TODO
 /*
@@ -491,31 +533,43 @@ var create_panel = function (win, panel_id) {
     // Local IPv6 addresses
 
     // Settings link
-    settingslabel = doc.createElement("description");
+    settingslabel = doc.createElement("label");
     settingslabel.setAttribute("value", gt("header_settings"));
     settingslabel.setAttribute("tooltiptext", gt("tt_open_settings"));
     settingslabel.classList.add("sixornot-link");
     settingslabel.classList.add("sixornot-title");
     settingslabel.sixornot_openprefs = true;
-    grid_rows.appendChild(settingslabel);
+    //grid_rows.appendChild(settingslabel);
 
     // Add link to Sixornot website to UI
-    urllabel = doc.createElement("description");
+    urllabel = doc.createElement("label");
     urllabel.setAttribute("value", gt("sixornot_documentation"));
-    urllabel.setAttribute("crop", "none");
     urllabel.classList.add("sixornot-link");
     urllabel.classList.add("sixornot-title");
     urllabel.sixornot_hyperlink = gt("sixornot_weblink");
     urllabel.setAttribute("tooltiptext", gt("tt_gotowebsite"));
-    urlhbox = doc.createElement("urlhbox");
+
+    var spacer = doc.createElement("label");
+    spacer.setAttribute("value", " - ");
+    spacer.classList.add("sixornot-title");
+
+    var make_spacer = function () {
+        var spacer = doc.createElement("spacer");
+        spacer.setAttribute("flex", "1");
+        return spacer;
+    };
+
+    urlhbox = doc.createElement("hbox");
+    urlhbox.appendChild(make_spacer());
+    urlhbox.appendChild(settingslabel);
+    urlhbox.appendChild(spacer);
     urlhbox.appendChild(urllabel);
-    urlhbox.setAttribute("align", "end");
+    urlhbox.appendChild(make_spacer());
+    urlhbox.setAttribute("align", "center");
     panel_vbox.appendChild(urlhbox);
 
 
     /* Functions */
-
-    /* Get the hosts list for the current window */
 
     /* Ensure panel contents visible with scrollbars */
     force_scrollbars = function () {
@@ -939,30 +993,22 @@ var create_panel = function (win, panel_id) {
     };
 
 
-
     /* Handles click events on any panel element
        Actions are defined by custom properties applied to the event target element
        One or more of these can be triggered */
     on_click = function (evt) {
-        var currentWindow, currentBrowser;
         log("Sixornot - panel:on_click", 1);
         /* If element has sixornot_copytext, then copy it to clipboard */
         if (evt.target.sixornot_copytext) {
-            try {
-                evt.stopPropagation();
-                log("Sixornot - panel:on_click - sixornot_copytext '" + evt.target.sixornot_copytext + "' to clipboard", 1);
-                Components.classes["@mozilla.org/widget/clipboardhelper;1"]
-                    .getService(Components.interfaces.nsIClipboardHelper)
-                    .copyString(evt.target.sixornot_copytext);
-            } catch (e_copytext) {
-                Components.utils.reportError(e_copytext);
-            }
+            log("Sixornot - panel:on_click - sixornot_copytext", 2);
+            copy_to_clipboard(evt.target.sixornot_copytext);
+            evt.stopPropagation();
         }
         /* If element has show/hide behaviour, toggle and trigger refresh */
         if (evt.target.sixornot_showhide) {
             try {
                 evt.stopPropagation();
-                log("Sixornot - panel:on_click - showhide", 1);
+                log("Sixornot - panel:on_click - showhide", 2);
                 // Locate matching element and trigger refresh
                 if (!grid_remote_entries.some(function (item, index, items) {
                     if (item.host.host === evt.target.sixornot_host) {
@@ -980,35 +1026,17 @@ var create_panel = function (win, panel_id) {
         }
         /* Element should open preferences when clicked */
         if (evt.target.sixornot_openprefs) {
-            try {
-                evt.stopPropagation();
-                panel.hidePopup();
-                log("Sixornot - panel:on_click - openprefs", 1);
-                // Add tab to most recent window, regardless of where this function was called from
-                currentWindow = Services.wm.getMostRecentWindow("navigator:browser");
-                currentWindow.focus();
-                currentBrowser = currentWindow.getBrowser();
-                currentBrowser.selectedTab = currentBrowser.addTab("about:addons");
-                // TODO link should open Sixornot, but this isn't currently possible
-                //currentWindow.getBrowser().contentWindow.wrappedJSObject.loadView("addons://detail/sixornot@entropy.me.uk");
-            } catch (e_openprefs) {
-                Components.utils.reportError(e_openprefs);
-            }
+            log("Sixornot - panel:on_click - openprefs", 2);
+            panel.hidePopup();
+            open_preferences();
+            evt.stopPropagation();
         }
         /* Element should open hyperlink when clicked */
         if (evt.target.sixornot_hyperlink) {
-            try {
-                log("Sixornot - panel:on_click - open hyperlink", 1);
-                evt.stopPropagation();
-                panel.hidePopup();
-                // Add tab to most recent window, regardless of where this function was called from
-                currentWindow = Services.wm.getMostRecentWindow("navigator:browser");
-                currentWindow.focus();
-                currentBrowser = currentWindow.getBrowser();
-                currentBrowser.selectedTab = currentBrowser.addTab(evt.target.sixornot_hyperlink);
-            } catch (e_hyperlink) {
-                Components.utils.reportError(e_hyperlink);
-            }
+            log("Sixornot - panel:on_click - open hyperlink", 2);
+            panel.hidePopup();
+            open_hyperlink(evt.target.sixornot_hyperlink);
+            evt.stopPropagation();
         }
     };
 
