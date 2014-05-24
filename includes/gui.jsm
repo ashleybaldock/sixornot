@@ -1090,15 +1090,26 @@ var create_panel = function (win, panel_id) {
             };
             local_dns_cancel = null;
             if (ips[0] === "FAIL") {
-                host_info.ipv6s = [];
-                host_info.ipv4s = [];
                 host_info.dns_status = "failure";
             } else {
-                host_info.ipv6s = ips.filter(dns_handler.is_ip6);
-                host_info.ipv4s = ips.filter(dns_handler.is_ip4);
+                if (prefs.get_bool("showallips")) {
+                    host_info.ipv6s = ips.filter(dns_handler.is_ip6);
+                    host_info.ipv4s = ips.filter(dns_handler.is_ip4);
+                } else {
+                    host_info.ipv6s = ips.filter(function (addr) {
+                        return (dns_handler.is_ip6(addr)
+                            && ["6to4", "teredo", "global"]
+                                .indexOf(dns_handler.typeof_ip6(addr)) != -1);
+                    });
+                    host_info.ipv4s = ips.filter(function (addr) {
+                        return (dns_handler.is_ip4(addr)
+                            && ["rfc1918", "6to4relay", "global"]
+                                .indexOf(dns_handler.typeof_ip4(addr)) != -1);
+                    });
+                }
                 host_info.dns_status = "complete";
             }
-            host_info.hostname = dns_handler.get_local_hostname();
+            host_info.host = dns_handler.get_local_hostname();
 
             grid_local_entries_remove_all();
             grid_local_entries_generate(host_info);

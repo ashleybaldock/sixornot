@@ -40,7 +40,8 @@ var prefs = {
         greyscaleicons:     false,
         loglevel:           0,
         overridelocale:     "",
-        showallips:         false
+        showallips:         false,
+        showlocal:          true
     },
 
     sixornot_prefs: PREF_SIXORNOT,
