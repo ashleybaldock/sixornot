@@ -989,13 +989,8 @@ var create_panel = function (win, panel_id) {
         win.gBrowser.addEventListener("pageshow", on_pageshow, false);
     };
 
-    // On show panel
-    // If so remove all entries in grid_contents list
-    // Then create a new entry in grid_contents (new_grid_line()) for each element
-    // in the cache matching this page
-    // Subscribe to update events while panel is open
     on_popupshowing = function (evt) {
-        log("Sixornot - panel:on_popupshowing", 1);
+        log("Sixornot - panel:on_popupshowing", 2);
         register_callbacks();
         try {
             remove_all();
@@ -1005,17 +1000,15 @@ var create_panel = function (win, panel_id) {
         }
     };
 
-    // Unsubscribe from update events while panel is closed
     on_popuphiding = function (evt) {
-        log("Sixornot - panel:on_popuphiding", 1);
+        log("Sixornot - panel:on_popuphiding", 2);
         unregister_callbacks();
     };
 
     // Check if tab innerID matches event innerID
     // If so repopulate grid_contents list as per show panel
     on_page_change = function (evt) {
-        log("Sixornot - panel:on_page_change", 1);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
+        log("Sixornot - panel:on_page_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
 
         if (evt.detail.outer_id !== current_tab_outer_id) {
             log("Sixornot - on_page_change - skipping (outer ID mismatch)", 2);
@@ -1034,8 +1027,7 @@ var create_panel = function (win, panel_id) {
     // Check if mainhost matches
     // If so add a new host into grid_contents (in correct sort position)
     on_new_host = function (evt) {
-        log("Sixornot - panel:on_new_host", 2);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
+        log("Sixornot - panel:on_new_host - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
 
         if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_new_host - skipping (inner ID mismatch)", 2);
@@ -1093,8 +1085,7 @@ var create_panel = function (win, panel_id) {
     // Check if mainhost matches
     // If so look up matching host entry in grid_contents + update its connection IP
     on_address_change = function (evt) {
-        log("Sixornot - panel:on_address_change", 1);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 1);
+        log("Sixornot - panel:on_address_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 1);
 
         if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_address_change - skipping (inner ID mismatch)", 2);
@@ -1116,8 +1107,7 @@ var create_panel = function (win, panel_id) {
 
     // Look up matching host entry in grid_contents and update its count
     on_count_change = function (evt) {
-        log("Sixornot - panel:on_count_change", 1);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
+        log("Sixornot - panel:on_count_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
 
         if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_count_change - skipping (inner ID mismatch)", 2);
@@ -1139,8 +1129,7 @@ var create_panel = function (win, panel_id) {
 
     // Look up matching host entry + call update_ips() which rebuilds the set of addresses
     on_dns_complete = function (evt) {
-        log("Sixornot - panel:on_dns_complete", 1);
-        log("evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
+        log("Sixornot - panel:on_dns_complete - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_outer_id: " + current_tab_outer_id + ", current_tab_inner_id: " + current_tab_inner_id, 2);
 
         if (evt.detail.inner_id !== current_tab_inner_id) {
             log("Sixornot - on_dns_complete - skipping (inner ID mismatch)", 2);
@@ -1181,7 +1170,6 @@ var create_panel = function (win, panel_id) {
         force_scrollbars();
     };
 
-
     // Add event listeners for children
     panel.addEventListener("click", on_click, false);
     panel.addEventListener("popupshowing", on_popupshowing, false);
@@ -1189,16 +1177,14 @@ var create_panel = function (win, panel_id) {
 
     // Add a callback to our unload list to remove the UI when addon is disabled
     unload(function () {
-        log("Sixornot - Unload panel callback", 2);
-        // Remove event listeners for children
+        log("Sixornot - Unload panel", 2);
         panel.removeEventListener("click", on_click, false);
-        // Remove event listeners
         panel.removeEventListener("popupshowing", on_popupshowing, false);
         panel.removeEventListener("popuphiding", on_popuphiding, false);
 
-        // Following should only be bound if panel is open at time of unload
+        // If panel is open at time of unload unregister callbacks
         unregister_callbacks();
-        //win.gBrowser.removeEventListener("DOMContentLoaded", on_page_change, false);
+
         // Remove UI
         if (panel.parentNode) {
             panel.parentNode.removeChild(panel);
