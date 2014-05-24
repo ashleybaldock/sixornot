@@ -7,6 +7,7 @@ results in the button not conforming to the setting
 
 # 0.8.1
 Fix legacy button for SeaMonkey/pre-Australis Firefox
+Fix placement of legacy button + mechanism for inserting it into toolbar
 
 # 0.8.2
 Local IP address display

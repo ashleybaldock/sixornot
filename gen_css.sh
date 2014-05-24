@@ -20,6 +20,16 @@ cat > $outfile <<END_OF_FILE
 @-moz-document url("chrome://browser/content/browser.xul"),
                url("chrome://navigator/content/navigator.xul"),
                url("chrome://global/content/customizeToolbar.xul") {
+
+/* Panel styles */
+
+    .sixornot-panel .sixornot-bold { font-weight: bold; }
+    .sixornot-panel .sixornot-link { cursor: pointer !important; }
+    .sixornot-panel .sixornot-link:hover { text-decoration: underline; }
+    .sixornot-panel .sixornot-title { text-align: center; font-size: smaller; }
+
+/* Icon styles */
+
 END_OF_FILE
 
 
