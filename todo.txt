@@ -6,20 +6,21 @@ On Australis, changing the greyscale setting while the button is not displayed
 results in the button not conforming to the setting
 
 # 0.8.1
-Fix legacy button for SeaMonkey/pre-Australis Firefox
+Fix legacy button for SeaMonkey/pre-Australis Firefox                       - DONE
 Fix placement of legacy button + mechanism for inserting it into toolbar
+Direct link to preferences pane                                             - DONE
+Better display of settings/online help links                                - DONE
 
 # 0.8.2
 Local IP address display
- - refresh on tooltip show
+ - refresh on tooltip show                                                  - DONE
  - Should be hidden by default, expand to show/hide
 Private browsing mode checks
 Update documentation
 
 # 0.8.3
-Refactoring panel to improve code
+Refactoring panel to improve code                                           - PARTIAL
 Warnings for ip6_disabled and ip4only_domain
-Add settings to panel, since we can't link to about:addons easily
 Update documentation
 
 # 0.8.4

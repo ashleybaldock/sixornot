@@ -430,7 +430,7 @@ var create_panel = function (win, panel_id) {
     panel_vbox, grid, grid_rows, grid_cols,
     remote_anchor, local_anchor,
     create_panel_links,
-    force_scrollbars, new_line, 
+    force_scrollbars, 
     local_dns_cancel;
 
     var doc = win.document;
@@ -524,15 +524,11 @@ var create_panel = function (win, panel_id) {
                     //        a domain, do DNS lookups and add data to cache etc. (fallback behaviour)
                 } else {
                     hosts.forEach(function (host, index, items) {
-                        try {
-                            if (this.entries.length > 0) {
-                                this.entries.push(new_line(host,
-                                    this.entries[this.entries.length - 1].get_last_element()));
-                            } else {
-                                this.entries.push(new_line(host, this));
-                            }
-                        } catch (e) {
-                            Components.utils.reportError(e);
+                        if (this.entries.length > 0) {
+                            this.entries.push(create_remote_listing_row(
+                                this.entries[this.entries.length - 1], host));
+                        } else {
+                            this.entries.push(create_remote_listing_row(this, host));
                         }
                     }, this);
                 }
@@ -553,12 +549,12 @@ var create_panel = function (win, panel_id) {
                         }
                     })) {
                         // Add new entry
-                        this.entries.push(new_line(host,
-                            this.entries[this.entries.length - 1].get_last_element()));
+                        this.entries.push(create_remote_listing_row(
+                            this.entries[this.entries.length - 1], host));
                     }
                 } else {
                     // Push first item onto grid
-                    this.entries.push(new_line(host, this));
+                    this.entries.push(create_remote_listing_row(this, host));
                 }
             },
             update_address_for_host: function (host_name) {
@@ -936,10 +932,6 @@ var create_panel = function (win, panel_id) {
                 row.parentNode.removeChild(row);
             },
 
-            /* Return the last element, useful for inserting another element after this one */
-            get_last_element: function () {
-                return this.row;
-            },
             /* Adds the contents of this object after the specified element */
             add_after: function (element) {
                 if (this.row.nextSibling) {
@@ -951,6 +943,11 @@ var create_panel = function (win, panel_id) {
         };
     };
 
+    /* Object representing one host entry in the panel
+       Takes a reference to a member of the request cache as argument
+       and links to that member to reflect its state
+       Also takes a reference to the element to add this element after
+       e.g. header or the preceeding list item */
     var create_remote_listing_row = function (addafter, host) {
         var row = doc.createElement("row");
         row.setAttribute("align", "start");
@@ -959,6 +956,7 @@ var create_panel = function (win, panel_id) {
 
         /* Object representing row of entry */
         return {
+            host: host,
             icon: create_icon(row, host),
             count: create_count(row, host),
             hostname: create_hostname(row, host),
@@ -982,54 +980,20 @@ var create_panel = function (win, panel_id) {
                 } else {
                     row.parentNode.appendChild(element);
                 }
-            }
-        };
-    };
-
-    /* Object representing one host entry in the panel
-       Takes a reference to a member of the request cache as argument
-       and links to that member to reflect its state
-       Also takes a reference to the element to add this element after
-       e.g. header or the preceeding list item */
-    new_line = function (host, addafter) {
-        return {
-            host: host,
-            listing_row: create_remote_listing_row(addafter, host),
-            remove: function () {
-                this.listing_row.remove();
-            },
-            show_detail: function () {
-                this.listing_row.showhide.update();
-            },
-            hide_detail: function () {
-                this.listing_row.showhide.update();
-            },
-            update_address: function () {
-                // TODO optimisation - only update connection IP
-                this.listing_row.ips.update();
-                this.listing_row.icon.update();
             },
             update_ips: function () {
                 // TODO optimisation - only update DNS IPs
-                this.listing_row.ips.update();
-                this.listing_row.showhide.update();
-                this.listing_row.icon.update();
+                this.ips.update();
+                this.showhide.update();
+                this.icon.update();
+            },
+            update_address: function () {
+                // TODO optimisation - only update connection IP
+                this.ips.update();
+                this.icon.update();
             },
             update_count: function () {
-                this.listing_row.count.update();
-            },
-
-            /* Return the last element, useful for inserting another element after this one */
-            get_last_element: function () {
-                return this.listing_row;
-            },
-            /* Adds the contents of this object after the specified element */
-            add_after: function (element) {
-                if (this.listing_row.nextSibling) {
-                    this.listing_row.parentNode.insertBefore(element, this.listing_row.nextSibling);
-                } else {
-                    this.listing_row.parentNode.appendChild(element);
-                }
+                this.count.update();
             }
         };
     };
