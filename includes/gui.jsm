@@ -430,8 +430,8 @@ var create_panel = function (win, panel_id) {
     panel_vbox, grid, grid_rows, grid_cols,
     remote_anchor, local_anchor,
     create_panel_links,
-    force_scrollbars, new_line, grid_remote_entries, grid_remote_entries_remove_all,
-    grid_remote_entries_generate_all, local_dns_cancel;
+    force_scrollbars, new_line, 
+    local_dns_cancel;
 
     var doc = win.document;
 
@@ -494,10 +494,113 @@ var create_panel = function (win, panel_id) {
             },
             entries: [],
             remove_all_entries: function () {
+                log("Sixornot - remote_anchor:remove_all_entries", 2);
+                this.entries.forEach(function (item, index, items) {
+                    try {
+                        item.remove();
+                    } catch (e) {
+                        Components.utils.reportError(e);
+                    }
+                });
+                this.entries = [];
             },
             generate_all_entries: function () {
+                log("Sixornot - remote_anchor:generate_all_entries", 2);
+                var get_hosts = function () {
+                    var currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
+                        .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                        .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                        .currentInnerWindowID;
+                    if (requests.cache[currentWindowID] !== undefined) {
+                        return requests.cache[currentWindowID];
+                    }
+                };
+                var hosts = get_hosts();
+
+                // In this case we're on a page which has no cached info
+                if (hosts === undefined) {
+                    // TODO - Add logic here to display useful messages for other pages
+                    // TODO - If we're on a page which we have no cached data for, but which has
+                    //        a domain, do DNS lookups and add data to cache etc. (fallback behaviour)
+                } else {
+                    hosts.forEach(function (host, index, items) {
+                        try {
+                            if (this.entries.length > 0) {
+                                this.entries.push(new_line(host,
+                                    this.entries[this.entries.length - 1].get_last_element()));
+                            } else {
+                                this.entries.push(new_line(host, this));
+                            }
+                        } catch (e) {
+                            Components.utils.reportError(e);
+                        }
+                    }, this);
+                }
             },
             generate_entry_for_host: function (host) {
+                // TODO put this in the right position based on some ordering
+                if (this.entries.length > 0) {
+                    if (!this.entries.some(function (item, index, items) {
+                        // TODO - this shouldn't be able to happen!
+                        // If item is already in the array, don't add a duplicate
+                        // Just update the existing one instead
+                        if (item.host.host === host.host) {
+                            log("Adding duplicate!!", 1);
+                            item.update_address();
+                            item.update_ips();
+                            item.update_count();
+                            return true;
+                        }
+                    })) {
+                        // Add new entry
+                        this.entries.push(new_line(host,
+                            this.entries[this.entries.length - 1].get_last_element()));
+                    }
+                } else {
+                    // Push first item onto grid
+                    this.entries.push(new_line(host, this));
+                }
+            },
+            update_address_for_host: function (host_name) {
+                if (!this.entries.some(function (item, index, items) {
+                    if (item.host.host === host_name) {
+                        item.update_address();
+                        return true;
+                    }
+                })) {
+                    log("Sixornot - remote_anchor:update_address_for_host - host matching '" + host_name + "' not found in entries", 1);
+                }
+            },
+            update_count_for_host: function (host_name) {
+                if (!this.entries.some(function (item, index, items) {
+                    if (item.host.host === host_name) {
+                        item.update_count();
+                        return true;
+                    }
+                })) {
+                    log("Sixornot - remote_anchor:update_count_for_host - host matching '" + host_name + "' not found in entries", 1);
+                }
+            },
+            update_ips_for_host: function (host_name) {
+                if (!this.entries.some(function (item, index, items) {
+                    if (item.host.host === host_name) {
+                        item.update_ips();
+                        return true;
+                    }
+                })) {
+                    log("Sixornot - remote_anchor:update_ips_for_host - host matching '" + host_name + "' not found in entries", 1);
+                }
+            },
+            toggle_detail_for_host: function (host_name) {
+                if (!this.entries.some(function (item, index, items) {
+                    if (item.host.host === host_name) {
+                        item.host.show_detail = !item.host.show_detail;
+                        item.update_ips();
+                        return true;
+                    }
+                })) {
+                    log("Sixornot - remote_anchor:toggle_detail_for_host - host matching '" + host_name + "' not found in entries", 1);
+                }
             }
         };
     }();
@@ -932,60 +1035,6 @@ var create_panel = function (win, panel_id) {
     };
 
 
-
-    /* Add/remove listings for remote servers from the display grid */
-
-    // Array of all remote listings in the layout grid
-    grid_remote_entries = [];
-
-    grid_remote_entries_remove_all = function () {
-        log("Sixornot - panel:grid_remote_entries_remove_all", 2);
-        grid_remote_entries.forEach(function (item, index, items) {
-            try {
-                item.remove();
-            } catch (e) {
-                Components.utils.reportError(e);
-            }
-        });
-        grid_remote_entries = [];
-    };
-    grid_remote_entries_generate_all = function () {
-        log("Sixornot - panel:grid_remote_entries_generate_all", 2);
-        var get_hosts = function () {
-            var currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
-                .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                .getInterface(Components.interfaces.nsIDOMWindowUtils)
-                .currentInnerWindowID;
-            if (requests.cache[currentWindowID] !== undefined) {
-                return requests.cache[currentWindowID];
-            }
-        };
-        var hosts = get_hosts();
-
-        // In this case we're on a page which has no cached info
-        if (hosts === undefined) {
-            // TODO - Add logic here to display useful messages for other pages
-            // TODO - If we're on a page which we have no cached data for, but which has
-            //        a domain, do DNS lookups and add data to cache etc. (fallback behaviour)
-        } else {
-            hosts.forEach(function (host, index, items) {
-                // For each host in hosts add a line object to the grid_remote_entries array
-                // These will be added to the DOM after the previous one, or after the
-                // anchor element if none have been created yet
-                try {
-                    if (grid_remote_entries.length > 0) {
-                        grid_remote_entries.push(new_line(host, grid_remote_entries[grid_remote_entries.length - 1].get_last_element()));
-                    } else {
-                        grid_remote_entries.push(new_line(host, remote_anchor));
-                    }
-                } catch (e) {
-                    Components.utils.reportError(e);
-                }
-            });
-        }
-    };
-
-
     /* Handles click events on any panel element
        Actions are defined by custom properties applied to the event target element
        One or more of these can be triggered */
@@ -999,23 +1048,9 @@ var create_panel = function (win, panel_id) {
         }
         /* If element has show/hide behaviour, toggle and trigger refresh */
         if (evt.target.sixornot_showhide) {
-            try {
-                evt.stopPropagation();
-                log("Sixornot - panel:on_click - showhide", 2);
-                // Locate matching element and trigger refresh
-                if (!grid_remote_entries.some(function (item, index, items) {
-                    if (item.host.host === evt.target.sixornot_host) {
-                        log("Sixornot - panel:on_click - ", 1);
-                        item.host.show_detail = !item.host.show_detail;
-                        item.update_ips();
-                        return true;
-                    }
-                })) {
-                        log("Sixornot - panel:on_click - no matching host found", 1);
-                }
-            } catch (e_showhide) {
-                Components.utils.reportError(e_showhide);
-            }
+            log("Sixornot - panel:on_click - showhide", 2);
+            remote_anchor.toggle_detail_for_host(evt.target.sixornot_host);
+            evt.stopPropagation();
         }
         /* Element should open preferences when clicked */
         if (evt.target.sixornot_openprefs) {
@@ -1100,8 +1135,8 @@ var create_panel = function (win, panel_id) {
         log("Sixornot - panel:on_popupshowing", 2);
         register_callbacks();
         try {
-            grid_remote_entries_remove_all();
-            grid_remote_entries_generate_all();
+            remote_anchor.remove_all_entries();
+            remote_anchor.generate_all_entries();
         } catch (e) {
             Components.utils.reportError(e);
         }
@@ -1128,8 +1163,8 @@ var create_panel = function (win, panel_id) {
             log("Sixornot - on_page_change - skipping (inner ID mismatch)", 2);
             return;
         }
-        grid_remote_entries_remove_all();
-        grid_remote_entries_generate_all();
+        remote_anchor.remove_all_entries();
+        remote_anchor.generate_all_entries();
         force_scrollbars();
     };
 
@@ -1160,29 +1195,7 @@ var create_panel = function (win, panel_id) {
         };
 
         try {
-            // TODO put this in the right position based on some ordering
-            if (grid_remote_entries.length > 0) {
-                if (!grid_remote_entries.some(function (item, index, items) {
-                    // TODO - this shouldn't be able to happen!
-                    // If item is already in the array, don't add a duplicate
-                    // Just update the existing one instead
-                    if (item.host.host === evt.detail.host) {
-                        log("Adding duplicate!!", 0);
-                        item.update_address();
-                        item.update_ips();
-                        item.update_count();
-                        return true;
-                    }
-                })) {
-                    // Add new entry
-                    log("Adding new entry!!", 0);
-                    grid_remote_entries.push(new_line(get_host(evt.detail.host), grid_remote_entries[grid_remote_entries.length - 1].get_last_element()));
-                }
-            } else {
-                // Push first item onto grid
-                log("Adding initial!!", 0);
-                grid_remote_entries.push(new_line(get_host(evt.detail.host), remote_anchor));
-            }
+            remote_anchor.generate_entry_for_host(get_host(evt.detail.host));
         } catch (e) {
             Components.utils.reportError(e);
         }
@@ -1196,18 +1209,7 @@ var create_panel = function (win, panel_id) {
             log("Sixornot - on_address_change - skipping (inner ID mismatch)", 2);
             return;
         }
-        try {
-            if (!grid_remote_entries.some(function (item, index, items) {
-                if (item.host.host === evt.detail.host) {
-                    item.update_address();
-                    return true;
-                }
-            })) {
-                    log("Sixornot - on_address_change - matching host not found!", 1);
-            }
-        } catch (e) {
-            Components.utils.reportError(e);
-        }
+        remote_anchor.update_address_for_host(evt.detail.host)
     };
 
     on_count_change = function (evt) {
@@ -1217,18 +1219,7 @@ var create_panel = function (win, panel_id) {
             log("Sixornot - on_count_change - skipping (inner ID mismatch)", 2);
             return;
         }
-        try {
-            if (!grid_remote_entries.some(function (item, index, items) {
-                if (item.host.host === evt.detail.host) {
-                    item.update_count();
-                    return true;
-                }
-            })) {
-                    log("Sixornot - on_count_change - matching host not found!", 1);
-            }
-        } catch (e) {
-            Components.utils.reportError(e);
-        }
+        remote_anchor.update_count_for_host(evt.detail.host)
     };
 
     on_dns_complete = function (evt) {
@@ -1238,19 +1229,7 @@ var create_panel = function (win, panel_id) {
             log("Sixornot - on_dns_complete - skipping (inner ID mismatch)", 2);
             return;
         }
-        try {
-            if (!grid_remote_entries.some(function (item, index, items) {
-                if (item.host.host === evt.detail.host) {
-                    log("Sixornot - on_dns_complete - updating ips and icon", 1);
-                        item.update_ips();
-                    return true;
-                }
-            })) {
-                    log("Sixornot - on_dns_complete - matching host not found!", 1);
-            }
-        } catch (e) {
-            Components.utils.reportError(e);
-        }
+        remote_anchor.update_ips_for_host(evt.detail.host)
         // TODO optimisation - this only needs to be called if the height is changed (e.g. if showing full detail for this host)
         force_scrollbars();
     };
@@ -1258,16 +1237,16 @@ var create_panel = function (win, panel_id) {
     on_tab_select = function (evt) {
         log("Sixornot - panel:on_tab_select", 1);
         set_current_tab_ids();
-        grid_remote_entries_remove_all();
-        grid_remote_entries_generate_all();
+        remote_anchor.remove_all_entries();
+        remote_anchor.generate_all_entries();
         force_scrollbars();
     };
 
     on_pageshow = function (evt) {
         log("Sixornot - panel:on_pageshow", 1);
         set_current_tab_ids();
-        grid_remote_entries_remove_all();
-        grid_remote_entries_generate_all();
+        remote_anchor.remove_all_entries();
+        remote_anchor.generate_all_entries();
         force_scrollbars();
     };
 
