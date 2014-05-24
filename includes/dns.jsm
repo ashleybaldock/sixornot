@@ -1,7 +1,7 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: BSD License
  * 
- * Copyright (c) 2008-2012 Timothy Baldock. All Rights Reserved.
+ * Copyright (c) 2008-2014 Timothy Baldock. All Rights Reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * 
@@ -37,8 +37,8 @@ var EXPORTED_SYMBOLS = ["dns_handler"];
 
 // The DNS Handler which does most of the work of the extension
 var dns_handler = {
-    remote_ctypes: true,
-    local_ctypes: true,
+    can_resolve_remote_using_ctypes: true,
+    can_resolve_local_using_ctypes: true,
 
     callback_ids: [],
     next_callback_id: 0,
@@ -53,11 +53,6 @@ var dns_handler = {
         checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
         log: 254,           // A logging message (sent from worker to main thread only)
         init: 255           // Initialise dns in the worker
-    },
-
-    handle_worker_message: function (evt) {
-    },
-    handle_worker_error: function (evt) {
     },
 
     /* Initialises the native dns resolver (if possible) - call this first! */
@@ -76,17 +71,17 @@ var dns_handler = {
         this.worker.onmessage = function (evt) {  
             var data, callback;
             data = JSON.parse(evt.data);
-            log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 2);
+            log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 3);
 
             if (data.reqid === that.reqids.log) {
                 // Log message from dns_worker
                 log(data.content[0], data.content[1]);
             } else if (data.reqid === that.reqids.checkremote) {
                 // checkremote, set remote ctypes status
-                that.remote_ctypes = data.content;
+                that.can_resolve_remote_using_ctypes = data.content;
             } else if (data.reqid === that.reqids.checklocal) {
                 // checklocal, set local ctypes status
-                that.local_ctypes = data.content;
+                that.can_resolve_local_using_ctypes = data.content;
             } else if (data.reqid === that.reqids.init) {
                 // Initialisation acknowledgement
                 log("Sixornot - dns_handler:onworkermessage - init ack received", 2);
@@ -234,23 +229,13 @@ var dns_handler = {
             // e.g. 192.168.2.10 comes before 192.168.20.10
             // Compare expanded addresses, e.g. 010.011.002.003 with 010.012.001.019
             // Return -1 if a < b, 0 if a == b, 1 if a > b
-        }
-        // They are not equal
-        else if (typeof_a === "global")
-        {
+        } else if (typeof_a === "global") {
             return -1;  // a comes before b
-        }
-        else if (typeof_b === "global")
-        {
+        } else if (typeof_b === "global") {
             return 1;   // b comes before a
-        }
-        // Neither of them are global
-        else if (typeof_a === "rfc1918")
-        {
+        } else if (typeof_a === "rfc1918") {
             return -1;  // a comes before b
-        }
-        else if (typeof_b === "rfc1918")
-        {
+        } else if (typeof_b === "rfc1918") {
             return 1;   // b comes before a
         }
     },
@@ -264,48 +249,29 @@ var dns_handler = {
             return false;
         }
         split_address = ip_address.split(".").map(Number);
-        if (split_address[0] === 0)
-        {
+        if (split_address[0] === 0) {
             return "route";
-        }
-        else if (split_address[0] === 127)
-        {
+        } else if (split_address[0] === 127) {
             return "localhost";
-        }
-        else if (split_address[0] === 10
+        } else if (split_address[0] === 10
              || (split_address[0] === 172 && split_address[1] >= 16 && split_address[1] <= 31)
-             || (split_address[0] === 192 && split_address[1] === 168))
-        {
+             || (split_address[0] === 192 && split_address[1] === 168)) {
             return "rfc1918";
-        }
-        else if (split_address[0] === 169 && split_address[1] === 254)
-        {
+        } else if (split_address[0] === 169 && split_address[1] === 254) {
             return "linklocal";
-        }
-        else if (split_address[0] >= 240)
-        {
+        } else if (split_address[0] >= 240) {
             return "reserved";
-        }
-        else if ((split_address[0] === 192 && split_address[1] === 0  && split_address[2] === 2)
+        } else if ((split_address[0] === 192 && split_address[1] === 0  && split_address[2] === 2)
               || (split_address[0] === 198 && split_address[1] === 51 && split_address[2] === 100)
-              || (split_address[0] === 203 && split_address[1] === 0  && split_address[2] === 113))
-        {
+              || (split_address[0] === 203 && split_address[1] === 0  && split_address[2] === 113)) {
             return "documentation";
-        }
-        else if (split_address[0] === 192 && split_address[1] === 88 && split_address[2] === 99)
-        {
+        } else if (split_address[0] === 192 && split_address[1] === 88 && split_address[2] === 99) {
             return "6to4relay";
-        }
-        else if (split_address[0] === 198 && [18,19].indexOf(split_address[1]) !== -1)
-        {
+        } else if (split_address[0] === 198 && [18,19].indexOf(split_address[1]) !== -1) {
             return "benchmark";
-        }
-        else if (split_address[0] >= 224 && split_address[0] <= 239)
-        {
+        } else if (split_address[0] >= 224 && split_address[0] <= 239) {
             return "multicast";
-        }
-        else
-        {
+        } else {
             return "global";
         }
     },
@@ -571,25 +537,22 @@ var dns_handler = {
         return false;
     },
 
-    /* Finding local IP address(es)
-       Uses either the built-in Firefox method or OS-native depending on availability */
+    /* Resolve local IP address(es) */
     resolve_local_async : function (callback) {
         "use strict";
-        log("Sixornot - dns_handler:resolve_local_async");
-        if (this.local_ctypes) {
-            // If remote resolution is happening via ctypes...
-            return this.local_ctypes_async(callback);
+        log("Sixornot - dns_handler:resolve_local_async", 2);
+        if (this.can_resolve_local_using_ctypes) {
+            return this.resolve_local_using_ctypes_async(callback);
         } else {
-            // Else if using firefox methods
-            return this.local_firefox_async(callback);
+            return this.resolve_local_using_firefox_async(callback);
         }
     },
 
     /* Use dns_worker thread to perform OS-native DNS lookup for the local host */
-    local_ctypes_async : function (callback) {
+    resolve_local_using_ctypes_async : function (callback) {
         "use strict";
         var new_callback_id;
-        log("Sixornot - dns_handler:local_ctypes_async - selecting resolver for local host lookup", 2);
+        log("Sixornot - dns_handler:resolve_local_using_ctypes_async", 2);
         new_callback_id = this.add_callback_id(callback);
 
         this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.locallookup, "content": null}));
@@ -597,35 +560,33 @@ var dns_handler = {
         return this.make_cancel_obj(new_callback_id);
     },
 
-    /* Proxy to remote_firefox_async since it does much the same thing */
-    local_firefox_async : function (callback) {
+    /* Proxy to resolve_remote_using_firefox_async since it does much the same thing */
+    resolve_local_using_firefox_async : function (callback) {
         "use strict";
-        var myhostname;
-        log("Sixornot - dns_handler:local_firefox_async - resolving local host using Firefox builtin method", 2);
-        myhostname = Components.classes["@mozilla.org/network/dns-service;1"]
-                        .getService(Components.interfaces.nsIDNSService).myHostName;
-        return this.remote_firefox_async(myhostname, callback);
+        log("Sixornot - dns_handler:resolve_local_using_firefox_async", 2);
+        return this.resolve_remote_using_firefox_async(this.get_local_hostname(), callback);
     },
 
+    get_local_hostname : function () {
+        return Components.classes["@mozilla.org/network/dns-service;1"]
+                .getService(Components.interfaces.nsIDNSService).myHostName;
+    },
 
-    /* Finding remote IP address(es)
-       Resolve IP address(es) of a remote host using DNS */
+    /* Resolve remote IP address(es) */
     resolve_remote_async : function (host, callback) {
         "use strict";
-        if (this.remote_ctypes) {
-            // If remote resolution is happening via ctypes...
-            return this.remote_ctypes_async(host, callback);
+        if (this.can_resolve_remote_using_ctypes) {
+            return this.resolve_remote_using_ctypes_async(host, callback);
         } else {
-            // Else if using firefox methods
-            return this.remote_firefox_async(host, callback);
+            return this.resolve_remote_using_firefox_async(host, callback);
         }
     },
 
     /* Use dns_worker thread to perform OS-native DNS lookup for a remote host */
-    remote_ctypes_async : function (host, callback) {
+    resolve_remote_using_ctypes_async : function (host, callback) {
         "use strict";
         var new_callback_id;
-        log("Sixornot - dns_handler:remote_ctypes_async - host: " + host + ", callback: " + callback, 2);
+        log("Sixornot - dns_handler:resolve_remote_using_ctypes_async - host: " + host + ", callback: " + callback, 2);
         new_callback_id = this.add_callback_id(callback);
 
         this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.remotelookup, "content": host}));
@@ -633,10 +594,10 @@ var dns_handler = {
         return this.make_cancel_obj(new_callback_id);
     },
 
-    remote_firefox_async : function (host, callback) {
+    resolve_remote_using_firefox_async : function (host, callback) {
         "use strict";
         var my_callback;
-        log("Sixornot - dns_handler:remote_firefox_async - host: " + host + ", callback: " + callback, 2);
+        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - host: " + host + ", callback: " + callback, 2);
 
         my_callback = {
             onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
@@ -648,10 +609,10 @@ var dns_handler = {
                 // Request has failed for some reason
                 if (nsstatus !== 0 || !dnsresponse || !dnsresponse.hasMore()) {
                     if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST) {
-                        log("Sixornot - dns_handler:remote_firefox_async - resolve host failed, unknown host", 1);
+                        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolve host failed, unknown host", 1);
                         callback(["FAIL"]);
                     } else {
-                        log("Sixornot - dns_handler:remote_firefox_async - resolve host failed, status: " + nsstatus, 1);
+                        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolve host failed, status: " + nsstatus, 1);
                         callback(["FAIL"]);
                     }
                     // Address was not found in DNS for some reason
@@ -668,7 +629,7 @@ var dns_handler = {
         };
         try {
             return Components.classes["@mozilla.org/network/dns-service;1"]
-                    .getService(Components.interfaces.nsIDNSService)    // TODO - use of getService
+                    .getService(Components.interfaces.nsIDNSService)
                     .asyncResolve(host, 0, my_callback, Services.tm.currentThread);
         } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
@@ -685,7 +646,7 @@ var dns_handler = {
     find_callback_by_id : function (callback_id) {
         "use strict";
         var f;
-        log("Sixornot - dns_handler:find_callback_by_id - callback_id: " + callback_id, 2);
+        log("Sixornot - dns_handler:find_callback_by_id - callback_id: " + callback_id, 3);
         // Callback IDs is an array of 2-item arrays - [ID, callback]
         f = function (a) {
             return a[0];
@@ -698,7 +659,7 @@ var dns_handler = {
     remove_callback_id : function (callback_id) {
         "use strict";
         var i;
-        log("Sixornot - dns_handler:remove_callback_id - callback_id: " + callback_id, 2);
+        log("Sixornot - dns_handler:remove_callback_id - callback_id: " + callback_id, 3);
         i = this.find_callback_by_id(callback_id);
         if (i !== -1) {
             // Return the callback function
@@ -711,7 +672,7 @@ var dns_handler = {
     // Add a callback to the callback_ids array with the next available ID
     add_callback_id : function (callback) {
         "use strict";
-        log("Sixornot - dns_handler:add_callback_id", 2);
+        log("Sixornot - dns_handler:add_callback_id", 3);
         // Use next available callback ID, return that ID
         this.next_callback_id = this.next_callback_id + 1;
         this.callback_ids.push([this.next_callback_id, callback]);
@@ -721,7 +682,7 @@ var dns_handler = {
     make_cancel_obj : function (callback_id) {
         "use strict";
         var obj;
-        log("Sixornot - dns_handler:make_cancel_obj - callback_id: " + callback_id, 2);
+        log("Sixornot - dns_handler:make_cancel_obj - callback_id: " + callback_id, 3);
         obj = {
             cancel : function () {
                 // Remove ID from callback_ids if it exists there
@@ -739,7 +700,7 @@ var dns_handler = {
     // Cancels an active ctypes DNS lookup request currently being actioned by Worker
     cancel_request : function (request) {
         "use strict";
-        log("Sixornot - dns_handler:cancel_request - request: " + request, 2);
+        log("Sixornot - dns_handler:cancel_request - request: " + request, 3);
         try {
             // This function can be called with request as a null or undefined value
             if (request) {
@@ -765,24 +726,4 @@ var dns_handler = {
         // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
         return (proxyinfo !== null) && (proxyinfo.flags && proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
     } */
-
-/*
-    // Convert a base10 representation of a number into a base16 one (zero-padded to two characters, input number less than 256)
-    to_hex : function (int_string)
-    {
-        var hex;
-        hex = Number(int_string).toString(16);
-        if (hex.length < 2)
-        {
-            hex = "0" + hex;
-        }
-        return hex;
-    },
-
-    // Ensure decimal number has no spaces etc.
-    to_decimal : function (int_string)
-    {
-        return Number(int_string).toString(10);
-    },
-*/
 };
