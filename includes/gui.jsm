@@ -723,6 +723,14 @@ var panel_ui = {
     create_local_listing_row: function (doc, addafter, host_info) {
         var row = doc.createElement("row");
         row.setAttribute("align", "start");
+        var update_row_visibility = function () {
+            if (prefs.get_bool("showlocal")) {
+                row.classList.remove("sixornot-invisible");
+            } else {
+                row.classList.add("sixornot-invisible");
+            }
+        };
+        update_row_visibility();
         /* Add this element after the last one */
         addafter.add_after(row);
         row.appendChild(doc.createElement("label"));
@@ -737,7 +745,6 @@ var panel_ui = {
                 this.ips.remove();
                 row.parentNode.removeChild(row);
             },
-
             /* Adds the contents of this object after the specified element */
             add_after: function (element) {
                 if (this.row.nextSibling) {
@@ -745,6 +752,9 @@ var panel_ui = {
                 } else {
                     this.row.parentNode.appendChild(element);
                 }
+            },
+            update_visibility: function () {
+                update_row_visibility();
             }
         };
     },
@@ -932,13 +942,16 @@ var panel_ui = {
         var showhide_spacer = doc.createElement("label");
         showhide_spacer.classList.add("sixornot-title");
         showhide_spacer.classList.add("sixornot-hidden");
-        if (prefs.get_bool("showlocal")) {
-            showhide_local.setAttribute("value", "[" + gt("hide_text") + "]");
-            showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
-        } else {
-            showhide_local.setAttribute("value", "[" + gt("show_text") + "]");
-            showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
-        }
+        var set_showhide_text = function () {
+            if (prefs.get_bool("showlocal")) {
+                showhide_local.setAttribute("value", "[" + gt("hide_text") + "]");
+                showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
+            } else {
+                showhide_local.setAttribute("value", "[" + gt("show_text") + "]");
+                showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
+            }
+        };
+        set_showhide_text();
         var hbox = doc.createElement("hbox");
         hbox.appendChild(showhide_spacer);
         hbox.appendChild(make_spacer());
@@ -966,6 +979,18 @@ var panel_ui = {
             generate_entry_for_host: function (host_info) {
                 log("Sixornot - panel:local_anchor:generate_entry_for_host", 2);
                 this.entries.push(panel_ui.create_local_listing_row(doc, this, host_info));
+            },
+            toggle_local_address_display: function () {
+                // Toggle preference setting
+                prefs.set_bool("showlocal", !prefs.get_bool("showlocal"));
+                this.update_local_address_display();
+            },
+            update_local_address_display: function () {
+                // Update display to match preference setting
+                set_showhide_text();
+                this.entries.forEach(function (item) {
+                    item.update_visibility();
+                });
             }
         };
     },
@@ -1061,6 +1086,7 @@ var create_panel = function (win, panel_id) {
         remote_anchor.generate_entries_for_hosts(
             get_hosts_for_inner_window(current_tab_ids.inner));
 
+        local_anchor.update_local_address_display();
         local_address_info.get_local_host_info(function (host_info) {
             local_anchor.remove_all_entries();
             local_anchor.generate_entry_for_host(host_info);
@@ -1087,6 +1113,12 @@ var create_panel = function (win, panel_id) {
         if (evt.target.sixornot_showhide) {
             log("Sixornot - panel:on_click - showhide", 2);
             remote_anchor.toggle_detail_for_host(evt.target.sixornot_host);
+            evt.stopPropagation();
+        }
+        /* Toggle local address display */
+        if (evt.target.sixornot_showhide_local) {
+            log("Sixornot - panel:on_click - showhide_local", 2);
+            local_anchor.toggle_local_address_display();
             evt.stopPropagation();
         }
         /* Element should open preferences when clicked */

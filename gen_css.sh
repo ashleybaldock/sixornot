@@ -28,6 +28,7 @@ cat > $outfile <<END_OF_FILE
     .sixornot-panel .sixornot-link:hover { text-decoration: underline; }
     .sixornot-panel .sixornot-title { text-align: center; font-size: smaller; }
     .sixornot-panel .sixornot-hidden { visibility: hidden; }
+    .sixornot-panel .sixornot-invisible { display: none; }
 
 /* Icon styles */
 
