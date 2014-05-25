@@ -920,24 +920,46 @@ var panel_ui = {
         var title_local = doc.createElement("label");
         title_local.setAttribute("value", gt("header_local"));
         title_local.classList.add("sixornot-title");
-        parent_element.appendChild(title_local);
+        var make_spacer = function () {
+            var spacer = doc.createElement("spacer");
+            spacer.setAttribute("flex", "1");
+            return spacer;
+        };
+        var showhide_local = doc.createElement("label");
+        showhide_local.classList.add("sixornot-title");
+        showhide_local.classList.add("sixornot-link");
+        showhide_local.sixornot_showhide_local = true;
+        var showhide_spacer = doc.createElement("label");
+        showhide_spacer.classList.add("sixornot-title");
+        showhide_spacer.classList.add("sixornot-hidden");
+        if (prefs.get_bool("showlocal")) {
+            showhide_local.setAttribute("value", "[" + gt("hide_text") + "]");
+            showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
+        } else {
+            showhide_local.setAttribute("value", "[" + gt("show_text") + "]");
+            showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
+        }
+        var hbox = doc.createElement("hbox");
+        hbox.appendChild(showhide_spacer);
+        hbox.appendChild(make_spacer());
+        hbox.appendChild(title_local);
+        hbox.appendChild(make_spacer());
+        hbox.appendChild(showhide_local);
+        hbox.setAttribute("align", "center");
+        parent_element.appendChild(hbox);
         return {
             entries: [],
             add_after: function (element) {
-                if (title_local.nextSibling) {
-                    parent_element.insertBefore(element, title_local.nextSibling);
+                if (hbox.nextSibling) {
+                    parent_element.insertBefore(element, hbox.nextSibling);
                 } else {
                     parent_element.appendChild(element);
                 }
             },
             remove_all_entries: function () {
                 log("Sixornot - panel:local_anchor:remove_all_entries", 2);
-                this.entries.forEach(function (item, index, items) {
-                    try {
-                        item.remove();
-                    } catch (e) {
-                        Components.utils.reportError(e);
-                    }
+                this.entries.forEach(function (item) {
+                    item.remove();
                 });
                 this.entries = [];
             },
