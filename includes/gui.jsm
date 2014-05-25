@@ -60,6 +60,22 @@ var gbi = function (node, child_id) {
     }
 };
 
+var get_hosts_for_inner_window = function (inner_window) {
+    return requests.cache[inner_window]; // May be undefined
+};
+var get_host_by_hostname_from_inner_window = function (inner_window, hostname) {
+    var matching_hosts, hosts = requests.cache[inner_window];
+    if (hosts) {
+        matching_hosts = hosts.filter(function (item) {
+            return item.host === hostname;
+        });
+        if (matching_hosts.length > 0) {
+            return matching_hosts[0];
+        }
+    }
+    return undefined;
+};
+
 // Utility functions (move into own module?)
 var open_preferences = function () {
     var currentWindow, currentBrowser, e;
@@ -244,7 +260,7 @@ var create_current_tab_ids = function (win) {
 
             this.inner = domWindowUtils.currentInnerWindowID;
             this.outer = domWindowUtils.outerWindowID;
-        },
+        }
     };
 };
 
@@ -482,412 +498,8 @@ var create_addressbaricon = function (win) {
     }, win);
 };
 
-
-/* Creates and sets up a panel to display information which can then be bound to an icon */
-var create_panel = function (win, panel_id) {
-    var doc, panel, register_callbacks, unregister_callbacks,
-    on_click, on_popupshowing, on_popuphiding, on_page_change,
-    on_new_host, on_address_change, on_pageshow,
-    on_count_change, on_dns_complete, on_tab_select,
-    panel_vbox, grid, grid_rows, grid_cols,
-    remote_anchor, local_anchor,
-    create_panel_links,
-    force_scrollbars, current_tab_ids, local_address_info;
-
-    doc = win.document;
-
-    current_tab_ids = create_current_tab_ids(win);
-    local_address_info = create_local_address_info();
-
-    // Panel setup
-    panel = doc.createElement("panel");
-    panel.setAttribute("type", "arrow");
-    panel.setAttribute("id", panel_id);
-    panel.setAttribute("hidden", true);
-    panel.setAttribute("position", "bottomcenter topright");
-    panel.classList.add("sixornot-panel");
-
-    // This contains everything else in the panel, vertical orientation
-    panel_vbox = doc.createElement("vbox");
-    panel_vbox.setAttribute("flex", "1");
-    panel_vbox.style.overflowY = "auto";
-    panel_vbox.style.overflowX = "hidden";
-    panel.appendChild(panel_vbox);
-
-    // Build containing panel UI
-    grid = doc.createElement("grid");
-    grid_rows = doc.createElement("rows");
-    grid_cols = doc.createElement("columns");
-    // 5 columns wide - icon, count, host, address, show/hide
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid.appendChild(grid_cols);
-    grid.appendChild(grid_rows);
-    panel_vbox.appendChild(grid);
-
-    // Add remote title anchor object
-    remote_anchor = function () {
-        // Add "Remote" title
-        var title_remote = doc.createElement("label");
-        title_remote.setAttribute("value", gt("header_remote"));
-        title_remote.classList.add("sixornot-title");
-        grid_rows.appendChild(title_remote);
-        return {
-            add_after: function (element) {
-                if (title_remote.nextSibling) {
-                    grid_rows.insertBefore(element, title_remote.nextSibling);
-                } else {
-                    grid_rows.appendChild(element);
-                }
-            },
-            entries: [],
-            remove_all_entries: function () {
-                log("Sixornot - remote_anchor:remove_all_entries", 2);
-                this.entries.forEach(function (item, index, items) {
-                    try {
-                        item.remove();
-                    } catch (e) {
-                        Components.utils.reportError(e);
-                    }
-                });
-                this.entries = [];
-            },
-            generate_all_entries: function () {
-                log("Sixornot - remote_anchor:generate_all_entries", 2);
-                var get_hosts = function () {
-                    var currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
-                        .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                        .getInterface(Components.interfaces.nsIDOMWindowUtils)
-                        .currentInnerWindowID;
-                    if (requests.cache[currentWindowID] !== undefined) {
-                        return requests.cache[currentWindowID];
-                    }
-                };
-                var hosts = get_hosts();
-
-                // In this case we're on a page which has no cached info
-                if (hosts === undefined) {
-                    // TODO - Add logic here to display useful messages for other pages
-                    // TODO - If we're on a page which we have no cached data for, but which has
-                    //        a domain, do DNS lookups and add data to cache etc. (fallback behaviour)
-                } else {
-                    hosts.forEach(function (host, index, items) {
-                        if (this.entries.length > 0) {
-                            this.entries.push(create_remote_listing_row(
-                                this.entries[this.entries.length - 1], host));
-                        } else {
-                            this.entries.push(create_remote_listing_row(this, host));
-                        }
-                    }, this);
-                }
-            },
-            generate_entry_for_host: function (host) {
-                // TODO put this in the right position based on some ordering
-                if (this.entries.length > 0) {
-                    if (!this.entries.some(function (item, index, items) {
-                        // TODO - this shouldn't be able to happen!
-                        // If item is already in the array, don't add a duplicate
-                        // Just update the existing one instead
-                        if (item.host.host === host.host) {
-                            log("Adding duplicate!!", 1);
-                            item.update_address();
-                            item.update_ips();
-                            item.update_count();
-                            return true;
-                        }
-                    })) {
-                        // Add new entry
-                        this.entries.push(create_remote_listing_row(
-                            this.entries[this.entries.length - 1], host));
-                    }
-                } else {
-                    // Push first item onto grid
-                    this.entries.push(create_remote_listing_row(this, host));
-                }
-            },
-            update_address_for_host: function (host_name) {
-                if (!this.entries.some(function (item, index, items) {
-                    if (item.host.host === host_name) {
-                        item.update_address();
-                        return true;
-                    }
-                })) {
-                    log("Sixornot - remote_anchor:update_address_for_host - host matching '" + host_name + "' not found in entries", 1);
-                }
-            },
-            update_count_for_host: function (host_name) {
-                if (!this.entries.some(function (item, index, items) {
-                    if (item.host.host === host_name) {
-                        item.update_count();
-                        return true;
-                    }
-                })) {
-                    log("Sixornot - remote_anchor:update_count_for_host - host matching '" + host_name + "' not found in entries", 1);
-                }
-            },
-            update_ips_for_host: function (host_name) {
-                if (!this.entries.some(function (item, index, items) {
-                    if (item.host.host === host_name) {
-                        item.update_ips();
-                        return true;
-                    }
-                })) {
-                    log("Sixornot - remote_anchor:update_ips_for_host - host matching '" + host_name + "' not found in entries", 1);
-                }
-            },
-            toggle_detail_for_host: function (host_name) {
-                if (!this.entries.some(function (item, index, items) {
-                    if (item.host.host === host_name) {
-                        item.host.show_detail = !item.host.show_detail;
-                        item.update_ips();
-                        return true;
-                    }
-                })) {
-                    log("Sixornot - remote_anchor:toggle_detail_for_host - host matching '" + host_name + "' not found in entries", 1);
-                }
-            }
-        };
-    }();
-
-
-    // Add local title anchor object
-    local_anchor = function () {
-        // Add "Local" title (TODO - replace with element with "hide" method)
-        var title_local = doc.createElement("label");
-        title_local.setAttribute("value", gt("header_local"));
-        title_local.classList.add("sixornot-title");
-        grid_rows.appendChild(title_local);
-        return {
-            add_after: function (element) {
-                if (title_local.nextSibling) {
-                    grid_rows.insertBefore(element, title_local.nextSibling);
-                } else {
-                    grid_rows.appendChild(element);
-                }
-            },
-            entries: [],
-            remove_all_entries: function () {
-                log("Sixornot - panel:local_anchor:remove_all_entries", 2);
-                this.entries.forEach(function (item, index, items) {
-                    try {
-                        item.remove();
-                    } catch (e) {
-                        Components.utils.reportError(e);
-                    }
-                });
-                this.entries = [];
-            },
-            generate_entry_for_host: function (host_info) {
-                log("Sixornot - panel:local_anchor:generate_entry_for_host", 2);
-                this.entries.push(create_local_listing_row(this, host_info));
-            }
-        };
-    }();
-
-    create_panel_links = function (parent_element) {
-        var settingslabel, urllabel, spacer, urlhbox,
-            make_spacer;
-        // Settings link
-        settingslabel = doc.createElement("label");
-        settingslabel.setAttribute("value", gt("header_settings"));
-        settingslabel.setAttribute("tooltiptext", gt("tt_open_settings"));
-        settingslabel.classList.add("sixornot-link");
-        settingslabel.classList.add("sixornot-title");
-        settingslabel.sixornot_openprefs = true;
-
-        urllabel = doc.createElement("label");
-        urllabel.setAttribute("value", gt("sixornot_documentation"));
-        urllabel.classList.add("sixornot-link");
-        urllabel.classList.add("sixornot-title");
-        urllabel.sixornot_hyperlink = gt("sixornot_weblink");
-        urllabel.setAttribute("tooltiptext", gt("tt_gotowebsite"));
-
-        spacer = doc.createElement("label");
-        spacer.setAttribute("value", " - ");
-        spacer.classList.add("sixornot-title");
-
-        make_spacer = function () {
-            var spacer = doc.createElement("spacer");
-            spacer.setAttribute("flex", "1");
-            return spacer;
-        };
-
-        urlhbox = doc.createElement("hbox");
-        urlhbox.appendChild(make_spacer());
-        urlhbox.appendChild(settingslabel);
-        urlhbox.appendChild(spacer);
-        urlhbox.appendChild(urllabel);
-        urlhbox.appendChild(make_spacer());
-        urlhbox.setAttribute("align", "center");
-        parent_element.appendChild(urlhbox);
-    }(grid_rows);
-
-
-    /* Functions */
-
-    /* Ensure panel contents visible with scrollbars */
-    force_scrollbars = function () {
-        if (panel_vbox.clientHeight > panel.clientHeight) {
-            panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
-            // TODO if panel width changes after this is applied horizontal fit breaks
-            //panel.setAttribute("minwidth", panel_vbox.clientWidth + 40);
-        }
-    };
-
-
-    /* UI components */
-
-    var create_showhide = function (addto, host) {
-        var showhide, update;
-
-        /* Create DOM UI elements */
-        showhide = doc.createElement("label");
-        showhide.setAttribute("value", "");
-
-        showhide.sixornot_host = host.host;
-        showhide.sixornot_showhide = true;
-        showhide.classList.add("sixornot-link");
-
-        update = function () {
-            var count = 0;
-            host.ipv6s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    count += 1;
-                }
-            });
-            host.ipv4s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    count += 1;
-                }
-            });
-            if (count > 0) {
-                if (host.show_detail) {
-                    showhide.setAttribute("value", "[" + gt("hide_text") + "]");
-                    showhide.setAttribute("hidden", false);
-                    showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));
-                } else {
-                    showhide.setAttribute("value", "[+" + count + "]");
-                    showhide.setAttribute("hidden", false);
-                    showhide.setAttribute("tooltiptext", gt("tt_show_detail"));
-                }
-            } else {
-                showhide.setAttribute("value", "");
-                showhide.setAttribute("hidden", true);
-            }
-        };
-        /* Update elements on create */
-        update();
-        addto.appendChild(showhide);
-        /* Return object for interacting with DOM elements */
-        return {
-            update: update,
-            remove: function () {
-                addto.removeChild(showhide);
-            }
-        };
-    };
-
-    var create_icon = function (addto, host) {
-        var icon, update;
-        /* Create DOM UI elements */
-        icon = doc.createElement("image");
-        icon.setAttribute("width", "16");
-        icon.setAttribute("height", "16");
-        update = function () {
-            update_node_icon_for_host(icon, host);
-        };
-        /* Update element on create */
-        update();
-        addto.appendChild(icon);
-        /* Return object for interacting with DOM element */
-        return {
-            update: update,
-            remove: function () {
-                addto.removeChild(icon);
-            }
-        };
-    };
-
-    var create_count = function (addto, host) {
-        var count, update;
-        /* Create DOM UI elements */
-        count = doc.createElement("label");
-
-        count.setAttribute("tooltiptext", gt("tt_copycount"));
-        update = function () {
-            if (host.count > 0) {
-                count.setAttribute("value", "(" + host.count + ")");
-            } else {
-                count.setAttribute("value", "");
-            }
-            // TODO Add real copy text here
-            //count.sixornot_copytext = "count copy text";
-        };
-        /* Update element on create */
-        update();
-        addto.appendChild(count);
-        /* Return object for interacting with DOM element */
-        return {
-            update: update,
-            remove: function () {
-                addto.removeChild(count);
-            }
-        };
-    };
-
-    var create_hostname = function (addto, host) {
-        var hostname, update;
-        /* Create DOM UI elements */
-        hostname = doc.createElement("label");
-        hostname.setAttribute("value", host.host);
-        if (host.host === win.content.document.location.hostname) {
-            hostname.classList.add("sixornot-bold");
-        } else {
-            hostname.classList.remove("sixornot-bold");
-        }
-
-        hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
-        update = function () {
-            var text = host.host;
-            if (host.address !== "") {
-                text = text + "," + host.address;
-            }
-            /* Sort the lists of addresses */
-            host.ipv6s.sort(function (a, b) {
-                return dns_handler.sort_ip6.call(dns_handler, a, b);
-            });
-            host.ipv4s.sort(function (a, b) {
-                return dns_handler.sort_ip4.call(dns_handler, a, b);
-            });
-            host.ipv6s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    text = text + "," + address;
-                }
-            });
-            host.ipv4s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    text = text + "," + address;
-                }
-            });
-            hostname.sixornot_copytext = text;
-            hostname.classList.add("sixornot-link");
-        };
-        /* Update element on create */
-        update();
-        addto.appendChild(hostname);
-        /* Return object for interacting with DOM element */
-        return {
-            update: update,
-            remove: function () {
-                addto.removeChild(hostname);
-            }
-        };
-    };
-
-    var create_ips = function (addto, host) {
+var panel_ui = {
+    create_ips: function (doc, addto, host) {
         var update, address_box;
         /* Create DOM UI elements */
         address_box = doc.createElement("vbox");
@@ -964,9 +576,151 @@ var create_panel = function (win, panel_id) {
                 addto.removeChild(address_box);
             }
         };
-    };
+    },
+    create_showhide: function (doc, addto, host) {
+        var showhide, update;
 
-    var create_local_listing_row = function (addafter, host_info) {
+        /* Create DOM UI elements */
+        showhide = doc.createElement("label");
+        showhide.setAttribute("value", "");
+
+        showhide.sixornot_host = host.host;
+        showhide.sixornot_showhide = true;
+        showhide.classList.add("sixornot-link");
+
+        update = function () {
+            var count = 0;
+            host.ipv6s.forEach(function (address, index, addresses) {
+                if (address !== host.address) {
+                    count += 1;
+                }
+            });
+            host.ipv4s.forEach(function (address, index, addresses) {
+                if (address !== host.address) {
+                    count += 1;
+                }
+            });
+            if (count > 0) {
+                if (host.show_detail) {
+                    showhide.setAttribute("value", "[" + gt("hide_text") + "]");
+                    showhide.setAttribute("hidden", false);
+                    showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));
+                } else {
+                    showhide.setAttribute("value", "[+" + count + "]");
+                    showhide.setAttribute("hidden", false);
+                    showhide.setAttribute("tooltiptext", gt("tt_show_detail"));
+                }
+            } else {
+                showhide.setAttribute("value", "");
+                showhide.setAttribute("hidden", true);
+            }
+        };
+        /* Update elements on create */
+        update();
+        addto.appendChild(showhide);
+        /* Return object for interacting with DOM elements */
+        return {
+            update: update,
+            remove: function () {
+                addto.removeChild(showhide);
+            }
+        };
+    },
+    create_icon: function (doc, addto, host) {
+        var icon, update;
+        /* Create DOM UI elements */
+        icon = doc.createElement("image");
+        icon.setAttribute("width", "16");
+        icon.setAttribute("height", "16");
+        update = function () {
+            update_node_icon_for_host(icon, host);
+        };
+        /* Update element on create */
+        update();
+        addto.appendChild(icon);
+        /* Return object for interacting with DOM element */
+        return {
+            update: update,
+            remove: function () {
+                addto.removeChild(icon);
+            }
+        };
+    },
+    create_count: function (doc, addto, host) {
+        var count, update;
+        /* Create DOM UI elements */
+        count = doc.createElement("label");
+
+        count.setAttribute("tooltiptext", gt("tt_copycount"));
+        update = function () {
+            if (host.count > 0) {
+                count.setAttribute("value", "(" + host.count + ")");
+            } else {
+                count.setAttribute("value", "");
+            }
+            // TODO Add real copy text here
+            //count.sixornot_copytext = "count copy text";
+        };
+        /* Update element on create */
+        update();
+        addto.appendChild(count);
+        /* Return object for interacting with DOM element */
+        return {
+            update: update,
+            remove: function () {
+                addto.removeChild(count);
+            }
+        };
+    },
+    create_hostname: function (doc, addto, host) {
+        var hostname, update;
+        /* Create DOM UI elements */
+        hostname = doc.createElement("label");
+        hostname.setAttribute("value", host.host);
+        if (host.host === doc.defaultView.content.document.location.hostname) {
+            hostname.classList.add("sixornot-bold");
+        } else {
+            hostname.classList.remove("sixornot-bold");
+        }
+
+        hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
+        update = function () {
+            var text = host.host;
+            if (host.address !== "") {
+                text = text + "," + host.address;
+            }
+            /* Sort the lists of addresses */
+            host.ipv6s.sort(function (a, b) {
+                return dns_handler.sort_ip6.call(dns_handler, a, b);
+            });
+            host.ipv4s.sort(function (a, b) {
+                return dns_handler.sort_ip4.call(dns_handler, a, b);
+            });
+            host.ipv6s.forEach(function (address, index, addresses) {
+                if (address !== host.address) {
+                    text = text + "," + address;
+                }
+            });
+            host.ipv4s.forEach(function (address, index, addresses) {
+                if (address !== host.address) {
+                    text = text + "," + address;
+                }
+            });
+            hostname.sixornot_copytext = text;
+            hostname.classList.add("sixornot-link");
+        };
+        /* Update element on create */
+        update();
+        addto.appendChild(hostname);
+        /* Return object for interacting with DOM element */
+        return {
+            update: update,
+            remove: function () {
+                addto.removeChild(hostname);
+            }
+        };
+    },
+    create_local_listing_row: function (doc, addafter, host_info) {
         var row = doc.createElement("row");
         row.setAttribute("align", "start");
         /* Add this element after the last one */
@@ -976,8 +730,8 @@ var create_panel = function (win, panel_id) {
 
         return {
             host_info: host_info,
-            hostname: create_hostname(row, host_info),
-            ips: create_ips(row, host_info),
+            hostname: panel_ui.create_hostname(doc, row, host_info),
+            ips: panel_ui.create_ips(doc, row, host_info),
             remove: function () {
                 this.hostname.remove();
                 this.ips.remove();
@@ -993,14 +747,13 @@ var create_panel = function (win, panel_id) {
                 }
             }
         };
-    };
-
+    },
     /* Object representing one host entry in the panel
        Takes a reference to a member of the request cache as argument
        and links to that member to reflect its state
        Also takes a reference to the element to add this element after
        e.g. header or the preceeding list item */
-    var create_remote_listing_row = function (addafter, host) {
+    create_remote_listing_row: function (doc, addafter, host) {
         var row = doc.createElement("row");
         row.setAttribute("align", "start");
         /* Add this element after the last one */
@@ -1009,11 +762,11 @@ var create_panel = function (win, panel_id) {
         /* Object representing row of entry */
         return {
             host: host,
-            icon: create_icon(row, host),
-            count: create_count(row, host),
-            hostname: create_hostname(row, host),
-            ips: create_ips(row, host),
-            showhide: create_showhide(row, host),
+            icon: panel_ui.create_icon(doc, row, host),
+            count: panel_ui.create_count(doc, row, host),
+            hostname: panel_ui.create_hostname(doc, row, host),
+            ips: panel_ui.create_ips(doc, row, host),
+            showhide: panel_ui.create_showhide(doc, row, host),
             /* Remove this element and all children */
             remove: function () {
                 // Remove children
@@ -1048,11 +801,257 @@ var create_panel = function (win, panel_id) {
                 this.count.update();
             }
         };
+    },
+    create_remote_anchor: function (doc, parent_element) {
+        // Add "Remote" title
+        var title_remote = doc.createElement("label");
+        title_remote.setAttribute("value", gt("header_remote"));
+        title_remote.classList.add("sixornot-title");
+        parent_element.appendChild(title_remote);
+        return {
+            entries: [],
+            add_after: function (element) {
+                if (title_remote.nextSibling) {
+                    parent_element.insertBefore(element, title_remote.nextSibling);
+                } else {
+                    parent_element.appendChild(element);
+                }
+            },
+            remove_all_entries: function () {
+                log("Sixornot - remote_anchor:remove_all_entries", 2);
+                this.entries.forEach(function (item, index, items) {
+                    try {
+                        item.remove();
+                    } catch (e) {
+                        Components.utils.reportError(e);
+                    }
+                });
+                this.entries = [];
+            },
+            generate_entries_for_hosts: function (hosts) {
+                log("Sixornot - remote_anchor:generate_entries_for_hosts: " + hosts, 2);
+                // In this case we're on a page which has no cached info
+                if (hosts === undefined) {
+                    // TODO - Add logic here to display useful messages for other pages
+                    // TODO - If we're on a page which we have no cached data for, but which has
+                    //        a domain, do DNS lookups and add data to cache etc. (fallback behaviour)
+                } else {
+                    hosts.forEach(function (host) {
+                        this.generate_entry_for_host(host);
+                        /*if (this.entries.length > 0) {
+                            this.entries.push(panel_ui.create_remote_listing_row(doc, 
+                                this.entries[this.entries.length - 1], host));
+                        } else {
+                            this.entries.push(panel_ui.create_remote_listing_row(doc, this, host));
+                        }*/
+                    }, this);
+                }
+            },
+            generate_entry_for_host: function (host) {
+                log("Sixornot - remote_anchor:generate_entry_for_host: " + host, 2);
+                // TODO put this in the right position based on some ordering
+                if (this.entries.length > 0) {
+                    if (!this.entries.some(function (item) {
+                        // TODO - this shouldn't be able to happen!
+                        // If item is already in the array, don't add a duplicate
+                        // Just update the existing one instead
+                        if (item.host.host === host.host) {
+                            log("Adding duplicate!!", 1);
+                            item.update_address();
+                            item.update_ips();
+                            item.update_count();
+                            return true;
+                        }
+                    })) {
+                        // Add new entry
+                        this.entries.push(panel_ui.create_remote_listing_row(doc, 
+                            this.entries[this.entries.length - 1], host));
+                    }
+                } else {
+                    // Push first item onto grid
+                    this.entries.push(panel_ui.create_remote_listing_row(doc, this, host));
+                }
+            },
+            update_address_for_host: function (host_name) {
+                if (!this.entries.some(function (item, index, items) {
+                    if (item.host.host === host_name) {
+                        item.update_address();
+                        return true;
+                    }
+                })) {
+                    log("Sixornot - remote_anchor:update_address_for_host - host matching '" + host_name + "' not found in entries", 1);
+                }
+            },
+            update_count_for_host: function (host_name) {
+                if (!this.entries.some(function (item, index, items) {
+                    if (item.host.host === host_name) {
+                        item.update_count();
+                        return true;
+                    }
+                })) {
+                    log("Sixornot - remote_anchor:update_count_for_host - host matching '" + host_name + "' not found in entries", 1);
+                }
+            },
+            update_ips_for_host: function (host_name) {
+                if (!this.entries.some(function (item, index, items) {
+                    if (item.host.host === host_name) {
+                        item.update_ips();
+                        return true;
+                    }
+                })) {
+                    log("Sixornot - remote_anchor:update_ips_for_host - host matching '" + host_name + "' not found in entries", 1);
+                }
+            },
+            toggle_detail_for_host: function (host_name) {
+                if (!this.entries.some(function (item, index, items) {
+                    if (item.host.host === host_name) {
+                        item.host.show_detail = !item.host.show_detail;
+                        item.update_ips();
+                        return true;
+                    }
+                })) {
+                    log("Sixornot - remote_anchor:toggle_detail_for_host - host matching '" + host_name + "' not found in entries", 1);
+                }
+            }
+        };
+    },
+    create_local_anchor: function (doc, parent_element) {
+        // Add "Local" title (TODO - replace with element with "hide" method)
+        var title_local = doc.createElement("label");
+        title_local.setAttribute("value", gt("header_local"));
+        title_local.classList.add("sixornot-title");
+        parent_element.appendChild(title_local);
+        return {
+            entries: [],
+            add_after: function (element) {
+                if (title_local.nextSibling) {
+                    parent_element.insertBefore(element, title_local.nextSibling);
+                } else {
+                    parent_element.appendChild(element);
+                }
+            },
+            remove_all_entries: function () {
+                log("Sixornot - panel:local_anchor:remove_all_entries", 2);
+                this.entries.forEach(function (item, index, items) {
+                    try {
+                        item.remove();
+                    } catch (e) {
+                        Components.utils.reportError(e);
+                    }
+                });
+                this.entries = [];
+            },
+            generate_entry_for_host: function (host_info) {
+                log("Sixornot - panel:local_anchor:generate_entry_for_host", 2);
+                this.entries.push(panel_ui.create_local_listing_row(doc, this, host_info));
+            }
+        };
+    },
+    create_panel_links: function (doc, parent_element) {
+        var settingslabel, urllabel, spacer, urlhbox,
+            make_spacer;
+        // Settings link
+        settingslabel = doc.createElement("label");
+        settingslabel.setAttribute("value", gt("header_settings"));
+        settingslabel.setAttribute("tooltiptext", gt("tt_open_settings"));
+        settingslabel.classList.add("sixornot-link");
+        settingslabel.classList.add("sixornot-title");
+        settingslabel.sixornot_openprefs = true;
+
+        urllabel = doc.createElement("label");
+        urllabel.setAttribute("value", gt("sixornot_documentation"));
+        urllabel.classList.add("sixornot-link");
+        urllabel.classList.add("sixornot-title");
+        urllabel.sixornot_hyperlink = gt("sixornot_weblink");
+        urllabel.setAttribute("tooltiptext", gt("tt_gotowebsite"));
+
+        spacer = doc.createElement("label");
+        spacer.setAttribute("value", " - ");
+        spacer.classList.add("sixornot-title");
+
+        make_spacer = function () {
+            var spacer = doc.createElement("spacer");
+            spacer.setAttribute("flex", "1");
+            return spacer;
+        };
+
+        urlhbox = doc.createElement("hbox");
+        urlhbox.appendChild(make_spacer());
+        urlhbox.appendChild(settingslabel);
+        urlhbox.appendChild(spacer);
+        urlhbox.appendChild(urllabel);
+        urlhbox.appendChild(make_spacer());
+        urlhbox.setAttribute("align", "center");
+        parent_element.appendChild(urlhbox);
+    }
+};
+
+/* Creates and sets up a panel to display information which can then be bound to an icon */
+var create_panel = function (win, panel_id) {
+    var doc, panel, register_callbacks, unregister_callbacks,
+    panel_vbox, grid, grid_rows, grid_cols,
+    remote_anchor, local_anchor,
+    force_scrollbars, current_tab_ids, local_address_info,
+    on_click, on_popupshowing, on_popuphiding, on_page_change,
+    on_new_host, on_address_change, on_pageshow,
+    on_count_change, on_dns_complete, on_tab_select;
+
+    doc = win.document;
+    current_tab_ids = create_current_tab_ids(win);
+    local_address_info = create_local_address_info();
+
+    /* Ensure panel contents visible with scrollbars */
+    force_scrollbars = function () {
+        if (panel_vbox.clientHeight > panel.clientHeight) {
+            panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
+            // TODO if panel width changes after this is applied horizontal fit breaks
+            //panel.setAttribute("minwidth", panel_vbox.clientWidth + 40);
+        }
     };
 
+    /* Event handlers */
 
-    /* Handles click events on any panel element
-       Actions are defined by custom properties applied to the event target element
+    unregister_callbacks = function () {
+        win.removeEventListener("sixornot-page-change-event", on_page_change, false);
+        win.removeEventListener("sixornot-new-host-event", on_new_host, false);
+        win.removeEventListener("sixornot-address-change-event", on_address_change, false);
+        win.removeEventListener("sixornot-count-change-event", on_count_change, false);
+        win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+        win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
+        win.gBrowser.removeEventListener("pageshow", on_pageshow, false);
+    };
+    register_callbacks = function () {
+        win.addEventListener("sixornot-page-change-event", on_page_change, false);
+        win.addEventListener("sixornot-new-host-event", on_new_host, false);
+        win.addEventListener("sixornot-address-change-event", on_address_change, false);
+        win.addEventListener("sixornot-count-change-event", on_count_change, false);
+        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+        win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
+        win.gBrowser.addEventListener("pageshow", on_pageshow, false);
+    };
+
+    on_popupshowing = function (evt) {
+        log("Sixornot - panel:on_popupshowing", 2);
+        register_callbacks();
+        current_tab_ids.set();
+
+        remote_anchor.remove_all_entries();
+        remote_anchor.generate_entries_for_hosts(
+            get_hosts_for_inner_window(current_tab_ids.inner));
+
+        local_address_info.get_local_host_info(function (host_info) {
+            local_anchor.remove_all_entries();
+            local_anchor.generate_entry_for_host(host_info);
+        });
+    };
+
+    on_popuphiding = function (evt) {
+        log("Sixornot - panel:on_popuphiding", 2);
+        unregister_callbacks();
+        local_address_info.cancel();
+    };
+
+    /* Actions are defined by custom properties applied to the event target element
        One or more of these can be triggered */
     on_click = function (evt) {
         log("Sixornot - panel:on_click", 1);
@@ -1084,48 +1083,6 @@ var create_panel = function (win, panel_id) {
         }
     };
 
-    /* Event handlers */
-
-    unregister_callbacks = function () {
-        win.removeEventListener("sixornot-page-change-event", on_page_change, false);
-        win.removeEventListener("sixornot-new-host-event", on_new_host, false);
-        win.removeEventListener("sixornot-address-change-event", on_address_change, false);
-        win.removeEventListener("sixornot-count-change-event", on_count_change, false);
-        win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
-        win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
-        win.gBrowser.removeEventListener("pageshow", on_pageshow, false);
-    };
-    register_callbacks = function () {
-        win.addEventListener("sixornot-page-change-event", on_page_change, false);
-        win.addEventListener("sixornot-new-host-event", on_new_host, false);
-        win.addEventListener("sixornot-address-change-event", on_address_change, false);
-        win.addEventListener("sixornot-count-change-event", on_count_change, false);
-        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
-        win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
-        win.gBrowser.addEventListener("pageshow", on_pageshow, false);
-    };
-
-    on_popupshowing = function (evt) {
-        log("Sixornot - panel:on_popupshowing", 2);
-        register_callbacks();
-        try {
-            remote_anchor.remove_all_entries();
-            remote_anchor.generate_all_entries();
-        } catch (e) {
-            Components.utils.reportError(e);
-        }
-        local_address_info.get_local_host_info(function (host_info) {
-            local_anchor.remove_all_entries();
-            local_anchor.generate_entry_for_host(host_info);
-        });
-    };
-
-    on_popuphiding = function (evt) {
-        log("Sixornot - panel:on_popuphiding", 2);
-        unregister_callbacks();
-        local_address_info.cancel();
-    };
-
     on_page_change = function (evt) {
         log("Sixornot - panel:on_page_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
 
@@ -1139,7 +1096,8 @@ var create_panel = function (win, panel_id) {
             return;
         }
         remote_anchor.remove_all_entries();
-        remote_anchor.generate_all_entries();
+        remote_anchor.generate_entries_for_hosts(
+            get_hosts_for_inner_window(current_tab_ids.inner));
         force_scrollbars();
     };
 
@@ -1151,30 +1109,11 @@ var create_panel = function (win, panel_id) {
             return;
         }
 
-        /* Get a particular host entry for current window based on host name */
-        var get_host = function (hostname) {
-            var currentWindowID, requestCacheLookup, i;
-            // Get IDs for lookup
-            currentWindowID = win.gBrowser.mCurrentBrowser.contentWindow
-                .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                .getInterface(Components.interfaces.nsIDOMWindowUtils)
-                .currentInnerWindowID;
-            requestCacheLookup = requests.cache[currentWindowID];
-
-            // Locate the requested item in the lookup entry
-            for (i = 0; i < requestCacheLookup.length; i += 1) {
-                if (requestCacheLookup[i] !== undefined && requestCacheLookup[i].host === hostname) {
-                    return requestCacheLookup[i];
-                }
-            }
-        };
-
-        try {
-            remote_anchor.generate_entry_for_host(get_host(evt.detail.host));
-        } catch (e) {
-            Components.utils.reportError(e);
+        var host = get_host_by_hostname_from_inner_window(current_tab_ids.inner, evt.detail.host);
+        if (host) {
+            remote_anchor.generate_entry_for_host(host);
+            force_scrollbars();
         }
-        force_scrollbars();
     };
 
     on_address_change = function (evt) {
@@ -1213,7 +1152,8 @@ var create_panel = function (win, panel_id) {
         log("Sixornot - panel:on_tab_select", 1);
         current_tab_ids.set();
         remote_anchor.remove_all_entries();
-        remote_anchor.generate_all_entries();
+        remote_anchor.generate_entries_for_hosts(
+            get_hosts_for_inner_window(current_tab_ids.inner));
         force_scrollbars();
     };
 
@@ -1221,9 +1161,43 @@ var create_panel = function (win, panel_id) {
         log("Sixornot - panel:on_pageshow", 1);
         current_tab_ids.set();
         remote_anchor.remove_all_entries();
-        remote_anchor.generate_all_entries();
+        remote_anchor.generate_entries_for_hosts(
+            get_hosts_for_inner_window(current_tab_ids.inner));
         force_scrollbars();
     };
+
+    // Panel setup
+    panel = doc.createElement("panel");
+    panel.setAttribute("type", "arrow");
+    panel.setAttribute("id", panel_id);
+    panel.setAttribute("hidden", true);
+    panel.setAttribute("position", "bottomcenter topright");
+    panel.classList.add("sixornot-panel");
+
+    // This contains everything else in the panel, vertical orientation
+    panel_vbox = doc.createElement("vbox");
+    panel_vbox.setAttribute("flex", "1");
+    panel_vbox.style.overflowY = "auto";
+    panel_vbox.style.overflowX = "hidden";
+    panel.appendChild(panel_vbox);
+
+    // Build containing panel UI
+    grid = doc.createElement("grid");
+    grid_rows = doc.createElement("rows");
+    grid_cols = doc.createElement("columns");
+    // 5 columns wide - icon, count, host, address, show/hide
+    grid_cols.appendChild(doc.createElement("column"));
+    grid_cols.appendChild(doc.createElement("column"));
+    grid_cols.appendChild(doc.createElement("column"));
+    grid_cols.appendChild(doc.createElement("column"));
+    grid_cols.appendChild(doc.createElement("column"));
+    grid.appendChild(grid_cols);
+    grid.appendChild(grid_rows);
+    panel_vbox.appendChild(grid);
+
+    remote_anchor = panel_ui.create_remote_anchor(doc, grid_rows);
+    local_anchor = panel_ui.create_local_anchor(doc, grid_rows);
+    panel_ui.create_panel_links(doc, grid_rows);
 
     panel.addEventListener("click", on_click, false);
     panel.addEventListener("popupshowing", on_popupshowing, false);
