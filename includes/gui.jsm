@@ -1355,26 +1355,6 @@ var insert_code = function (win) {
             /* On pre-Australis platforms the panel for customisation of the toolbars
              * is a different XUL document. We need to inject our CSS modifications
              * into this document each time it is loaded */
-            var panel = win.document.getElementById("customizeToolbarWindow");
-            if (panel) {
-                log("Sixornot - found CustomizeToolbarWindow by id!", 1);
-            }
-            //log("Sixornot - first child of customizeToolbarSheetPopup: " + panel.firstChild.id, 1);
-            var iframes = win.document.getElementsByTagName("iframe");
-            for (var i = 0; i < iframes.length; i++) { 
-                log("Sixornot - iframe parent: " + iframes[i].parentNode.id + ", iframe id: " + iframes[i].id + ", iframe parent node localName: " + iframes[i].parentNode.localName, 1);
-            }
-            var windows = Services.wm.getEnumerator(null);
-            var aWindow;
-            while (windows.hasMoreElements()) {
-                aWindow = windows.getNext();
-                if (aWindow.id === "CustomizeToolbarWindow") {
-                    log("Sixornot - found CustomizeToolbarWindow!", 1);
-                } else {
-                    log("Sixornot - found window: " + aWindow.id, 1);
-                }
-            }
-            
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
                 log("Sixornot - found customizeToolbarSheetIFrame - adding load callback", 1);
