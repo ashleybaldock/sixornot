@@ -2,11 +2,11 @@
 
 # Generate the imagesrc.jsm file containing image data for use by addon
 
-outfile_base="skin/base.css" # For all browsers
-outfile_large="skin/large.css" # For linux and SeaMonkey
-outfile_cust="skin/customize.css" # Customize panel on SeaMonkey + Firefox Australis
-outfile_cust_ffp29="skin/customize_pre29.css" # Customize panel on pre-29 Firefox
-outfile_cust_ffp29_linux="skin/customize_pre29_linux.css" # Customize panel pre-29 Firefox (Linux)
+outfile_base="css/base.css" # For all browsers
+outfile_large="css/large.css" # For linux and SeaMonkey
+outfile_cust="css/customize.css" # Customize panel on SeaMonkey + Firefox Australis
+outfile_cust_ffp29="css/customize_pre29.css" # Customize panel on pre-29 Firefox
+outfile_cust_ffp29_linux="css/customize_pre29_linux.css" # Customize panel pre-29 Firefox (Linux)
 
 icon_file32_colour="./images/sixornot_icon_32.png"
 icon_file32_grey="./images/sixornot_icon_32_grey.png"
@@ -22,6 +22,7 @@ imagedir24_grey="./images/grey/24/*.png"
 
 # Base icons and rules for all browsers
 
+echo "gen_css.sh - Generating $outfile_base"
 cat > $outfile_base <<END_OF_FILE
 /* This file is generated automatically by gen_css.sh */
 
@@ -71,6 +72,7 @@ END_OF_FILE
 
 # Large icons for FF pre-29 Linux & SeaMonkey
 
+echo "gen_css.sh - Generating $outfile_large"
 cat > $outfile_large <<END_OF_FILE
 /* This file is generated automatically by gen_css.sh */
 
@@ -109,6 +111,7 @@ END_OF_FILE
 
 # Customize panel for SeaMonkey and Australis
 
+echo "gen_css.sh - Generating $outfile_cust"
 cat > $outfile_cust <<END_OF_FILE
 /* This file is generated automatically by gen_css.sh */
 
@@ -138,6 +141,7 @@ END_OF_FILE
 
 # Customize panel for pre-Australis Firefox
 
+echo "gen_css.sh - Generating $outfile_cust_ffp29"
 cat > $outfile_cust_ffp29 <<END_OF_FILE
 /* This file is generated automatically by gen_css.sh */
 
@@ -166,6 +170,7 @@ END_OF_FILE
 
 # Customize panel for pre-Australis Firefox (Linux)
 
+echo "gen_css.sh - Generating $outfile_cust_ffp29_linux"
 cat > $outfile_cust_ffp29_linux <<END_OF_FILE
 /* This file is generated automatically by gen_css.sh */
 
@@ -191,6 +196,7 @@ fi
 cat >> $outfile_cust_ffp29_linux <<END_OF_FILE
 }
 END_OF_FILE
+echo "gen_css.sh - done"
 
 #cat >> $outfile <<END_OF_FILE
 #}
@@ -208,7 +214,7 @@ END_OF_FILE
 #  /* Necessary to mimic the behavior of all other buttons, which are darker when
 #pressed.
 ##aus-view-button:hover:active:not([disabled="true"]):not([cui-areatype="menu-panel"]) {
-#list-style-image: url("chrome://aus-view/skin/icon32-dark.png");
+#list-style-image: url("chrome://aus-view/css/icon32-dark.png");
 #}*/
 #
 #  /*#sixornot-panel {

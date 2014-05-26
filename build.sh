@@ -11,7 +11,6 @@ mkdir ../dist/$version/src
 cp licence.txt ../dist/$version/src/
 cp options.xul ../dist/$version/src/
 cp bootstrap.js ../dist/$version/src/
-cp chrome.manifest ../dist/$version/src/
 cp install.rdf ../dist/$version/src/
 cp icon.png ../dist/$version/src/
 cp icon64.png ../dist/$version/src/
@@ -28,13 +27,13 @@ cp includes/requestcache.jsm ../dist/$version/src/includes/
 cp includes/requestobserver.jsm ../dist/$version/src/includes/
 cp includes/windowwatcher.jsm ../dist/$version/src/includes/
 
-mkdir ../dist/$version/src/skin
+mkdir ../dist/$version/src/css
 ./gen_css.sh
-cp skin/base.css ../dist/$version/src/skin/
-cp skin/large.css ../dist/$version/src/skin/
-cp skin/customize.css ../dist/$version/src/skin/
-cp skin/customize_pre29.css ../dist/$version/src/skin/
-cp skin/customize_pre29_linux.css ../dist/$version/src/skin/
+cp css/base.css ../dist/$version/src/css/
+cp css/large.css ../dist/$version/src/css/
+cp css/customize.css ../dist/$version/src/css/
+cp css/customize_pre29.css ../dist/$version/src/css/
+cp css/customize_pre29_linux.css ../dist/$version/src/css/
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale

@@ -1296,11 +1296,11 @@ var get_application = function () {
 };
 
 var stylesheets = {
-    base: Services.io.newURI("chrome://sixornot/skin/base.css", null, null),
-    large: Services.io.newURI("chrome://sixornot/skin/large.css", null, null),
-    customize: Services.io.newURI("chrome://sixornot/skin/customize.css", null, null),
-    customize_ffp29: Services.io.newURI("chrome://sixornot/skin/customize_pre29.css", null, null),
-    customize_ffp29_linux: Services.io.newURI("chrome://sixornot/skin/customize_pre29_linux.css", null, null)
+    base: Services.io.newURI("resource://sixornot/css/base.css", null, null),
+    large: Services.io.newURI("resource://sixornot/css/large.css", null, null),
+    customize: Services.io.newURI("resource://sixornot/css/customize.css", null, null),
+    customize_ffp29: Services.io.newURI("resource://sixornot/css/customize_pre29.css", null, null),
+    customize_ffp29_linux: Services.io.newURI("resource://sixornot/css/customize_pre29_linux.css", null, null)
 };
 
 var inject_stylesheet_into_window = function (win, sheet) {
@@ -1326,8 +1326,6 @@ var inject_stylesheet_into_window_with_unload = function (win, sheet) {
 var insert_code = function (win) {
     "use strict";
     // Add stylesheet
-    // TODO - can we build an nsIURI directly from a resource:// URL to avoid
-    //        needing to have a chrome.manifest with a skin in it?
     inject_stylesheet_into_window_with_unload(win, stylesheets.base);
 
     // Create address bar icon
@@ -1395,8 +1393,6 @@ var insert_code = function (win) {
                 log("Sixornot - on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
             }
         };
-        win.addEventListener("beforecustomization", on_beforecustomization, false);
-        win.addEventListener("aftercustomization", on_aftercustomization, false);
 
         // TODO - this needs to happen once on startup, not every time a window is opened
         var newWindow = function (subject, topic) {
@@ -1416,6 +1412,9 @@ var insert_code = function (win) {
                 }
             }
         };
+
+        win.addEventListener("beforecustomization", on_beforecustomization, false);
+        win.addEventListener("aftercustomization", on_aftercustomization, false);
         Services.ww.registerNotification(newWindow);
 
         unload(function () {
