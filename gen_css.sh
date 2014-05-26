@@ -2,9 +2,15 @@
 
 # Generate the imagesrc.jsm file containing image data for use by addon
 
-outfile="skin/toolbar.css"
+outfile_base="skin/base.css" # For all browsers
+outfile_large="skin/large.css" # For linux and SeaMonkey
+outfile_cust="skin/customize.css" # For customize panel on SeaMonkey + Firefox Australis
+outfile_cust_ffp29="skin/customize_pre29.css" # For customize panel on pre-29 Firefox
+
 icon_file32_colour="./images/sixornot_icon_32.png"
 icon_file32_grey="./images/sixornot_icon_32_grey.png"
+icon_file16_colour="./images/colour/16/6only.png"
+icon_file16_grey="./images/grey/16/6only.png"
 icon_file24="./images/sixornot_icon_24.png"
 imagedir16_colour="./images/colour/16/*.png"
 imagedir16_grey="./images/grey/16/*.png"
@@ -12,14 +18,16 @@ imagedir24_colour="./images/colour/24/*.png"
 imagedir24_grey="./images/grey/24/*.png"
 
 
-cat > $outfile <<END_OF_FILE
+# Base icons and rules for all browsers
+               # url("chrome://global/content/customizeToolbar.xul") {
+cat > $outfile_base <<END_OF_FILE
 /* This file is generated automatically by gen_css.sh */
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
+/* Rules for Firefox and SeaMonkey */
 @-moz-document url("chrome://browser/content/browser.xul"),
-               url("chrome://navigator/content/navigator.xul"),
-               url("chrome://global/content/customizeToolbar.xul") {
+               url("chrome://navigator/content/navigator.xul") {
 
 /* Panel styles */
 
@@ -42,7 +50,7 @@ do
     then
         b64=`base64 $file`
         filename=`basename $file`
-        echo "    .sixornot-panel image.sixornot_${filename%\.*}, #sixornot-addressbaricon.sixornot_${filename%\.*}, #sixornot-button.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile
+        echo "    .sixornot-panel image.sixornot_${filename%\.*}, #sixornot-addressbaricon.sixornot_${filename%\.*}, #sixornot-button.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_base
     fi
 done
 
@@ -52,9 +60,28 @@ do
     then
         b64=`base64 $file`
         filename=`basename $file`
-        echo "    .sixornot_grey .sixornot-panel image.sixornot_${filename%\.*}, #sixornot-addressbaricon.sixornot_grey.sixornot_${filename%\.*}, #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile
+        echo "    .sixornot_grey .sixornot-panel image.sixornot_${filename%\.*}, #sixornot-addressbaricon.sixornot_grey.sixornot_${filename%\.*}, #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_base
     fi
 done
+
+cat >> $outfile_base <<END_OF_FILE
+}
+END_OF_FILE
+
+# Large icons for FF pre-29 Linux & SeaMonkey
+
+cat > $outfile_large <<END_OF_FILE
+/* This file is generated automatically by gen_css.sh */
+
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+/* Rules for Firefox and SeaMonkey */
+@-moz-document url("chrome://browser/content/browser.xul"),
+               url("chrome://navigator/content/navigator.xul") {
+
+/* Large icons used for Linux (pre-FF 29) and SeaMonkey */
+
+END_OF_FILE
 
 for file in $imagedir24_colour
 do
@@ -62,7 +89,7 @@ do
     then
         b64=`base64 $file`
         filename=`basename $file`
-        echo "    toolbox[iconsize=\"large\"] #sixornot-button.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile
+        echo "    toolbox[iconsize=\"large\"] #sixornot-button.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_large
     fi
 done
 
@@ -72,20 +99,72 @@ do
     then
         b64=`base64 $file`
         filename=`basename $file`
-        echo "    toolbox[iconsize=\"large\"] #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile
+        echo "    toolbox[iconsize=\"large\"] #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_large
     fi
 done
+
+cat >> $outfile_large <<END_OF_FILE
+}
+END_OF_FILE
+
+# Customize panel for SeaMonkey and Australis
+
+cat > $outfile_cust <<END_OF_FILE
+/* This file is generated automatically by gen_css.sh */
+
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+/* Rules for Firefox and SeaMonkey customize panel */
+@-moz-document url("chrome://browser/content/browser.xul"),
+               url("chrome://global/content/customizeToolbar.xul") {
+
+/* Customize panel icons for SeaMonkey and FF Australis */
+
+END_OF_FILE
 
 if test -f "$icon_file32_colour"
 then
     b64=`base64 $icon_file32_colour`
-    echo "    #CustomizeToolbarWindow #sixornot-button, #sixornot-button[cui-areatype=\"menu-panel\"], toolbarpaletteitem[place=\"palette\"] > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile
+    echo "    #CustomizeToolbarWindow #sixornot-button, #sixornot-button[cui-areatype=\"menu-panel\"], toolbarpaletteitem[place=\"palette\"] > #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust
 fi
 if test -f "$icon_file32_grey"
 then
     b64=`base64 $icon_file32_grey`
-    echo "    #CustomizeToolbarWindow #sixornot-button.sixornot_grey, #sixornot-button[cui-areatype=\"menu-panel\"].sixornot_grey, toolbarpaletteitem[place=\"palette\"] > #sixornot-button.sixornot_grey { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile
+    echo "    #CustomizeToolbarWindow #sixornot-button.sixornot_grey, #sixornot-button[cui-areatype=\"menu-panel\"].sixornot_grey, toolbarpaletteitem[place=\"palette\"] > #sixornot-button.sixornot_grey { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust
 fi
+
+cat >> $outfile_cust <<END_OF_FILE
+}
+END_OF_FILE
+
+# Customize panel for pre-Australis Firefox
+
+cat > $outfile_cust_ffp29 <<END_OF_FILE
+/* This file is generated automatically by gen_css.sh */
+
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+/* Rules for Firefox and SeaMonkey customize panel */
+@-moz-document url("chrome://global/content/customizeToolbar.xul") {
+
+/* Customize panel icons for pre-Australis Firefox */
+
+END_OF_FILE
+
+if test -f "$icon_file16_colour"
+then
+    b64=`base64 $icon_file16_colour`
+    echo "    #CustomizeToolbarWindow #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust_ffp29
+fi
+if test -f "$icon_file16_grey"
+then
+    b64=`base64 $icon_file16_grey`
+    echo "    #CustomizeToolbarWindow #sixornot-button.sixornot_grey { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust_ffp29
+fi
+
+cat >> $outfile_cust_ffp29 <<END_OF_FILE
+}
+END_OF_FILE
 
 #cat >> $outfile <<END_OF_FILE
 #}
@@ -98,16 +177,16 @@ fi
 #    echo "    #sixornot-button.sixornot_grey, #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
 #fi
 
-cat >> $outfile <<END_OF_FILE
-
-  /* Necessary to mimic the behavior of all other buttons, which are darker when
-pressed.
-#aus-view-button:hover:active:not([disabled="true"]):not([cui-areatype="menu-panel"]) {
-list-style-image: url("chrome://aus-view/skin/icon32-dark.png");
-}*/
-
-  /*#sixornot-panel {
-    width: 20em;
-  }*/
-}
-END_OF_FILE
+#cat >> $outfile <<END_OF_FILE
+#
+#  /* Necessary to mimic the behavior of all other buttons, which are darker when
+#pressed.
+##aus-view-button:hover:active:not([disabled="true"]):not([cui-areatype="menu-panel"]) {
+#list-style-image: url("chrome://aus-view/skin/icon32-dark.png");
+#}*/
+#
+#  /*#sixornot-panel {
+#    width: 20em;
+#  }*/
+#}
+#END_OF_FILE

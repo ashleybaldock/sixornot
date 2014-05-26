@@ -30,7 +30,10 @@ cp includes/windowwatcher.jsm ../dist/$version/src/includes/
 
 mkdir ../dist/$version/src/skin
 ./gen_css.sh
-cp skin/toolbar.css ../dist/$version/src/skin/
+cp skin/base.css ../dist/$version/src/skin/
+cp skin/large.css ../dist/$version/src/skin/
+cp skin/customize.css ../dist/$version/src/skin/
+cp skin/customize_pre29.css ../dist/$version/src/skin/
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale

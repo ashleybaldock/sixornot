@@ -1276,36 +1276,83 @@ var create_panel = function (win, panel_id) {
 };
 
 
+var get_os = function () {
+    // Returns "WINNT" on Windows Vista, XP, 2000, and NT systems;  
+    // "Linux" on GNU/Linux; and "Darwin" on Mac OS X.  
+    return Components.classes["@mozilla.org/xre/app-info;1"]  
+            .getService(Components.interfaces.nsIXULRuntime).OS;  
+};
+
+var get_application = function () {
+    const FIREFOX_ID = "{ec8030f7-c20a-464f-9b0e-13a3a9e97384}";
+    const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";
+    var appInfo = Components.classes["@mozilla.org/xre/app-info;1"]
+                    .getService(Components.interfaces.nsIXULAppInfo);
+    if(appInfo.ID == FIREFOX_ID) {
+        return "firefox";
+    } else if(appInfo.ID == SEAMONKEY_ID) {
+        return "seamonkey";
+    }
+};
+
+var stylesheets = {
+    base: Services.io.newURI("chrome://sixornot/skin/base.css", null, null),
+    large: Services.io.newURI("chrome://sixornot/skin/large.css", null, null),
+    customize: Services.io.newURI("chrome://sixornot/skin/customize.css", null, null),
+    customize_ffp29: Services.io.newURI("chrome://sixornot/skin/customize_pre29.css", null, null)
+};
+
+var inject_stylesheet_into_window = function (win, sheet) {
+    log("Sixornot - injecting stylesheet: '" + sheet.prePath + sheet.path + "' into window: '" + win.name, 2);
+    win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+        .getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(sheet, 1);
+};
+var remove_stylesheet_from_window = function (win, sheet) {
+    log("Sixornot - removing stylesheet: '" + sheet.prePath + sheet.path + "' from window: '" + win.name, 2);
+    win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+        .getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(sheet, 1);
+};
+var inject_stylesheet_into_window_with_unload = function (win, sheet) {
+    inject_stylesheet_into_window(win, sheet);
+
+    unload(function () {
+        remove_stylesheet_from_window(win, sheet);
+    }, win);
+};
+
+
 /* Should be called once for each window of the browser */
 var insert_code = function (win) {
     "use strict";
-    var uri;
-
     // Add stylesheet
     // TODO - can we build an nsIURI directly from a resource:// URL to avoid
     //        needing to have a chrome.manifest with a skin in it?
-    uri = Services.io.newURI("chrome://sixornot/skin/toolbar.css", null, null);
-    win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
-        getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(uri, 1);
+    // Need several stylesheets to cope with possible versions
+    // Australis - only needs 16px icons
+    // FF pre-29 - needs 16px icons except linux where 24px also needed
+    //           - needs 16px icon for customize palette
+    // SeaMonkey - needs 16px and 24px icons
+    inject_stylesheet_into_window_with_unload(win, stylesheets.base);
 
     // Create address bar icon
     log("Sixornot - insert_code: add addressicon", 1);
     create_addressbaricon(win);
 
     // UI only required for pre-Australis browsers
-    if (!CustomizableUIAvailable) {
-        var inject_stylesheet = function (win) {
-            log("Sixornot - inject_stylesheet", 1);
-            win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
-                getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(uri, 1);
-            log("Sixornot --- loaded stylesheet into toolbar customizer", 1);
-        };
-        var remove_stylesheet = function (win) {
-            log("Sixornot - remove_stylesheet", 1);
-            win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
-                getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(uri, 1);
-            log("Sixornot --- removed stylesheet from toolbar customizer", 1);
-        };
+    if (CustomizableUIAvailable) {
+        // Australis, load normal customization sheet too
+        inject_stylesheet_into_window_with_unload(win, stylesheets.customize);
+    } else {
+        var customize_sheet = stylesheets.customize;
+        // Detect application and OS
+        // Firefox pre-Australis needs a different sheet loaded into customize panel
+        if (get_application() === "firefox") {
+            customize_sheet = stylesheets.customize_ffp29;
+        }
+        // SeaMonkey and Linux FF need large icon sets
+        if (get_application() === "seamonkey" || get_os() === "Linux") {
+            inject_stylesheet_into_window_with_unload(win, stylesheets.large);
+        }
         var on_beforecustomization = function (evt) {
             log("Sixornot - on_beforecustomization", 1);
             /* On pre-Australis platforms the panel for customisation of the toolbars
@@ -1314,7 +1361,7 @@ var insert_code = function (win) {
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
                 log("Sixornot - found customizeToolbarSheetIFrame - adding load callback", 1);
-                inject_stylesheet(iframe.contentWindow);
+                inject_stylesheet_into_window(iframe.contentWindow, customize_sheet);
             } else {
                 log("Sixornot - failed to find customizeToolbarSheetIFrame", 1);
             }
@@ -1324,7 +1371,7 @@ var insert_code = function (win) {
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
                 log("Sixornot - on_aftercustomization - found customizeToolbarSheetIFrame", 1);
-                remove_stylesheet(iframe.contentWindow);
+                remove_stylesheet_from_window(iframe.contentWindow, customize_sheet);
             } else {
                 log("Sixornot - on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
             }
@@ -1341,12 +1388,6 @@ var insert_code = function (win) {
         // Create legacy button (only for non-Australis browsers)
         create_legacy_button(win);
     }
-
-    unload(function () {
-        log("Sixornot - stylesheet unload function", 2);
-        win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
-            getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(uri, 1);
-    }, win);
 };
 
 var set_addressbar_icon_visibility = function (win) {
