@@ -4,14 +4,16 @@
 
 outfile_base="skin/base.css" # For all browsers
 outfile_large="skin/large.css" # For linux and SeaMonkey
-outfile_cust="skin/customize.css" # For customize panel on SeaMonkey + Firefox Australis
-outfile_cust_ffp29="skin/customize_pre29.css" # For customize panel on pre-29 Firefox
+outfile_cust="skin/customize.css" # Customize panel on SeaMonkey + Firefox Australis
+outfile_cust_ffp29="skin/customize_pre29.css" # Customize panel on pre-29 Firefox
+outfile_cust_ffp29_linux="skin/customize_pre29_linux.css" # Customize panel pre-29 Firefox (Linux)
 
 icon_file32_colour="./images/sixornot_icon_32.png"
 icon_file32_grey="./images/sixornot_icon_32_grey.png"
 icon_file16_colour="./images/colour/16/6only.png"
 icon_file16_grey="./images/grey/16/6only.png"
-icon_file24="./images/sixornot_icon_24.png"
+icon_file24_colour="./images/colour/24/6only.png"
+icon_file24_grey="./images/grey/24/6only.png"
 imagedir16_colour="./images/colour/16/*.png"
 imagedir16_grey="./images/grey/16/*.png"
 imagedir24_colour="./images/colour/24/*.png"
@@ -19,13 +21,12 @@ imagedir24_grey="./images/grey/24/*.png"
 
 
 # Base icons and rules for all browsers
-               # url("chrome://global/content/customizeToolbar.xul") {
+
 cat > $outfile_base <<END_OF_FILE
 /* This file is generated automatically by gen_css.sh */
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
-/* Rules for Firefox and SeaMonkey */
 @-moz-document url("chrome://browser/content/browser.xul"),
                url("chrome://navigator/content/navigator.xul") {
 
@@ -75,7 +76,6 @@ cat > $outfile_large <<END_OF_FILE
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
-/* Rules for Firefox and SeaMonkey */
 @-moz-document url("chrome://browser/content/browser.xul"),
                url("chrome://navigator/content/navigator.xul") {
 
@@ -114,7 +114,6 @@ cat > $outfile_cust <<END_OF_FILE
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
-/* Rules for Firefox and SeaMonkey customize panel */
 @-moz-document url("chrome://browser/content/browser.xul"),
                url("chrome://global/content/customizeToolbar.xul") {
 
@@ -144,7 +143,6 @@ cat > $outfile_cust_ffp29 <<END_OF_FILE
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
-/* Rules for Firefox and SeaMonkey customize panel */
 @-moz-document url("chrome://global/content/customizeToolbar.xul") {
 
 /* Customize panel icons for pre-Australis Firefox */
@@ -163,6 +161,34 @@ then
 fi
 
 cat >> $outfile_cust_ffp29 <<END_OF_FILE
+}
+END_OF_FILE
+
+# Customize panel for pre-Australis Firefox (Linux)
+
+cat > $outfile_cust_ffp29_linux <<END_OF_FILE
+/* This file is generated automatically by gen_css.sh */
+
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+@-moz-document url("chrome://global/content/customizeToolbar.xul") {
+
+/* Customize panel icons for pre-Australis Firefox (Linux) */
+
+END_OF_FILE
+
+if test -f "$icon_file24_colour"
+then
+    b64=`base64 $icon_file24_colour`
+    echo "    #CustomizeToolbarWindow #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust_ffp29_linux
+fi
+if test -f "$icon_file24_grey"
+then
+    b64=`base64 $icon_file24_grey`
+    echo "    #CustomizeToolbarWindow #sixornot-button.sixornot_grey { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust_ffp29_linux
+fi
+
+cat >> $outfile_cust_ffp29_linux <<END_OF_FILE
 }
 END_OF_FILE
 

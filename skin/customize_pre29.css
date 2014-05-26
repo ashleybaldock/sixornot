@@ -2,7 +2,6 @@
 
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
-/* Rules for Firefox and SeaMonkey customize panel */
 @-moz-document url("chrome://global/content/customizeToolbar.xul") {
 
 /* Customize panel icons for pre-Australis Firefox */

@@ -1299,16 +1299,17 @@ var stylesheets = {
     base: Services.io.newURI("chrome://sixornot/skin/base.css", null, null),
     large: Services.io.newURI("chrome://sixornot/skin/large.css", null, null),
     customize: Services.io.newURI("chrome://sixornot/skin/customize.css", null, null),
-    customize_ffp29: Services.io.newURI("chrome://sixornot/skin/customize_pre29.css", null, null)
+    customize_ffp29: Services.io.newURI("chrome://sixornot/skin/customize_pre29.css", null, null),
+    customize_ffp29_linux: Services.io.newURI("chrome://sixornot/skin/customize_pre29_linux.css", null, null)
 };
 
 var inject_stylesheet_into_window = function (win, sheet) {
-    log("Sixornot - injecting stylesheet: '" + sheet.prePath + sheet.path + "' into window: '" + win.name, 2);
+    log("Sixornot - injecting stylesheet: '" + sheet.prePath + sheet.path + "' into window: '" + win.name + "'", 2);
     win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
         .getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(sheet, 1);
 };
 var remove_stylesheet_from_window = function (win, sheet) {
-    log("Sixornot - removing stylesheet: '" + sheet.prePath + sheet.path + "' from window: '" + win.name, 2);
+    log("Sixornot - removing stylesheet: '" + sheet.prePath + sheet.path + "' from window: '" + win.name + "'", 2);
     win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
         .getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(sheet, 1);
 };
@@ -1327,11 +1328,6 @@ var insert_code = function (win) {
     // Add stylesheet
     // TODO - can we build an nsIURI directly from a resource:// URL to avoid
     //        needing to have a chrome.manifest with a skin in it?
-    // Need several stylesheets to cope with possible versions
-    // Australis - only needs 16px icons
-    // FF pre-29 - needs 16px icons except linux where 24px also needed
-    //           - needs 16px icon for customize palette
-    // SeaMonkey - needs 16px and 24px icons
     inject_stylesheet_into_window_with_unload(win, stylesheets.base);
 
     // Create address bar icon
@@ -1349,6 +1345,9 @@ var insert_code = function (win) {
         if (get_application() === "firefox") {
             customize_sheet = stylesheets.customize_ffp29;
         }
+        if (get_os() === "Linux") {
+            customize_sheet = stylesheets.customize_ffp29_linux;
+        }
         // SeaMonkey and Linux FF need large icon sets
         if (get_application() === "seamonkey" || get_os() === "Linux") {
             inject_stylesheet_into_window_with_unload(win, stylesheets.large);
@@ -1358,6 +1357,26 @@ var insert_code = function (win) {
             /* On pre-Australis platforms the panel for customisation of the toolbars
              * is a different XUL document. We need to inject our CSS modifications
              * into this document each time it is loaded */
+            var panel = win.document.getElementById("customizeToolbarWindow");
+            if (panel) {
+                log("Sixornot - found CustomizeToolbarWindow by id!", 1);
+            }
+            //log("Sixornot - first child of customizeToolbarSheetPopup: " + panel.firstChild.id, 1);
+            var iframes = win.document.getElementsByTagName("iframe");
+            for (var i = 0; i < iframes.length; i++) { 
+                log("Sixornot - iframe parent: " + iframes[i].parentNode.id + ", iframe id: " + iframes[i].id + ", iframe parent node localName: " + iframes[i].parentNode.localName, 1);
+            }
+            var windows = Services.wm.getEnumerator(null);
+            var aWindow;
+            while (windows.hasMoreElements()) {
+                aWindow = windows.getNext();
+                if (aWindow.id === "CustomizeToolbarWindow") {
+                    log("Sixornot - found CustomizeToolbarWindow!", 1);
+                } else {
+                    log("Sixornot - found window: " + aWindow.id, 1);
+                }
+            }
+            
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
                 log("Sixornot - found customizeToolbarSheetIFrame - adding load callback", 1);
@@ -1378,10 +1397,32 @@ var insert_code = function (win) {
         };
         win.addEventListener("beforecustomization", on_beforecustomization, false);
         win.addEventListener("aftercustomization", on_aftercustomization, false);
+
+        // TODO - this needs to happen once on startup, not every time a window is opened
+        var newWindow = function (subject, topic) {
+            if (topic === "domwindowopened") {
+                var win = subject.QueryInterface(Components.interfaces.nsIDOMWindow);
+                if (win.document.readyState === "complete") {
+                    if (win.document.documentURI === "chrome://global/content/customizeToolbar.xul") {
+                        inject_stylesheet_into_window(win, customize_sheet);
+                    }
+                } else {
+                    win.addEventListener("load", function load_once () {
+                        win.removeEventListener("load", load_once, false);
+                        if (win.document.documentURI === "chrome://global/content/customizeToolbar.xul") {
+                            inject_stylesheet_into_window(win, customize_sheet);
+                        }
+                    });
+                }
+            }
+        };
+        Services.ww.registerNotification(newWindow);
+
         unload(function () {
             log("Sixornot - legacy toolbar unload function", 2);
             win.removeEventListener("beforecustomization", on_beforecustomization, false);
             win.removeEventListener("aftercustomization", on_aftercustomization, false);
+            Services.ww.unregisterNotification(newWindow);
         }, win);
 
         log("Sixornot - insert_code: add legacy button", 1);

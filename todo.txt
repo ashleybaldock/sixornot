@@ -6,33 +6,36 @@ On Australis, changing the greyscale setting while the button is not displayed
 results in the button not conforming to the setting
 
 # 0.8.1
+Refactoring panel to improve code                                           - DONE
 Fix legacy button for SeaMonkey/pre-Australis Firefox                       - DONE
-Fix placement of legacy button + mechanism for inserting it into toolbar
 FF 24.5 - Listen for customizeToolbar events and inject stylesheet          - DONE
 FF 24.5 - Button style for large icons (should be same as small)            - DONE
 FF 24.5 - Button style in customize dialog (needs to be small icon)         - DONE
 FF 24.5 - Test customisation of UI
+Linux customize panel (popup window) detection + stylesheet inject          - DONE
+ - Need to only inject into each panel once!
 Direct link to preferences pane                                             - DONE
 Better display of settings/online help links                                - DONE
 Test on FF 24, SeaMonkey 2.26, FF 29
 Test on FF 30/31 and future versions of SeaMonkey
 Test on Linux
+Test on Palemoon
 
 # 0.8.2
 Local IP address display                                                    - DONE
  - refresh on tooltip show                                                  - DONE
+ - Fix tooltip display for first line of addresses
 Private browsing mode checks                                                - DONE
-Update documentation
+Update documentation + screenshots
 
 # 1.0.0
 Release to get out of beta...
 
 # 1.1.0
-Refactoring panel to improve code                                           - DONE
 Warnings for ip6_disabled and ip4only_domain
 Update documentation
 
-# 0.8.4
+# 1.2.0
 Proxy detection + info
 Add better proxy detection (per-connection) and icon display
  Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
