@@ -1294,25 +1294,71 @@ var insert_code = function (win) {
 
     // UI only required for pre-Australis browsers
     if (!CustomizableUIAvailable) {
-        /* On pre-Australis platforms the panel for customisation of the toolbars
-         * is a different XUL document. We need to inject our CSS modifications
-         * into this document each time it is loaded */
-        var injectStyleSheet = function (evt) {
+        var inject_stylesheet = function (win) {
+            log("Sixornot - inject_stylesheet", 1);
             //var doc = evt.originalTarget;
             //log("Sixornot --- page load into iframe", 1);
             //log("Sixornot --- docURI: " + doc.documentURI, 1);
-            var win = evt.originalTarget.defaultView;
             win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
                 getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(uri, 1);
             log("Sixornot --- loaded stylesheet into toolbar customizer", 1);
         };
-        var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
-        iframe.addEventListener('load', injectStyleSheet, true); 
-        //var panel = win.document.getElementById("customizeToolbarSheetPopup");
-        //panel.addEventListener("popupshown", temp2, false);
+        var remove_stylesheet = function (win) {
+            log("Sixornot - remove_stylesheet", 1);
+            win.QueryInterface(Components.interfaces.nsIInterfaceRequestor).
+                getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(uri, 1);
+            log("Sixornot --- removed stylesheet from toolbar customizer", 1);
+        };
+        // chrome://browser/content/browser.xul
+        // FF 24.5 - the iframe isn't there until the first time the customize dialog is shown
+        // Maybe listen for customise and attempt this then?
+        var on_beforecustomization = function (evt) {
+            log("Sixornot - on_beforecustomization", 1);
+            /* On pre-Australis platforms the panel for customisation of the toolbars
+             * is a different XUL document. We need to inject our CSS modifications
+             * into this document each time it is loaded */
+            /*var on_load = function (evt) {
+                log("Sixornot - on_load", 1);
+                inject_stylesheet(evt.originalTarget.defaultView);
+            };*/
+            var on_unload = function (evt) {
+                log("Sixornot - on_unload", 1);
+                log("Sixornot - window name: " + evt.originalTarget.defaultView.name, 2);
+                log("Sixornot - window document URI: " + evt.originalTarget.defaultView.document.documentURI, 2);
+            };
+            var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
+            if (iframe) {
+                log("Sixornot - found customizeToolbarSheetIFrame - adding load callback", 1);
+                inject_stylesheet(iframe.contentWindow);
+                //iframe.addEventListener('load', on_load, true); 
+                iframe.addEventListener('unload', on_unload, true); 
+                //var panel = win.document.getElementById("customizeToolbarSheetPopup");
+                //panel.addEventListener("popupshown", temp2, false);
+                unload(function () {
+                    log("Sixornot - legacy toolbar customizer stylesheet - unload function", 2);
+                    //iframe.removeEventListener("load", on_load, true);
+                    iframe.removeEventListener('unload', on_unload, true); 
+                }, win);
+            } else {
+                log("Sixornot - failed to find customizeToolbarSheetIFrame", 1);
+            }
+        };
+        var on_aftercustomization = function (evt) {
+            log("Sixornot - on_aftercustomization", 1);
+            var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
+            if (iframe) {
+                log("Sixornot - on_aftercustomization - found customizeToolbarSheetIFrame", 1);
+                remove_stylesheet(iframe.contentWindow);
+            } else {
+                log("Sixornot - on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
+            }
+        };
+        win.addEventListener("beforecustomization", on_beforecustomization, false);
+        win.addEventListener("aftercustomization", on_aftercustomization, false);
         unload(function () {
-            log("Sixornot - legacy toolbar customizer stylesheet  unload function", 2);
-            iframe.removeEventListener("load", injectStyleSheet, true);
+            log("Sixornot - legacy toolbar unload function", 2);
+            win.removeEventListener("beforecustomization", on_beforecustomization, false);
+            win.removeEventListener("aftercustomization", on_aftercustomization, false);
         }, win);
 
         log("Sixornot - insert_code: add legacy button", 1);
