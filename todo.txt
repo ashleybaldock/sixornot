@@ -8,18 +8,26 @@ results in the button not conforming to the setting
 # 0.8.1
 Fix legacy button for SeaMonkey/pre-Australis Firefox                       - DONE
 Fix placement of legacy button + mechanism for inserting it into toolbar
+FF 24.5 - Listen for customizeToolbar events and inject stylesheet          - DONE
+FF 24.5 - Button style for large icons (should be same as small)
+FF 24.5 - Button style in customize dialog (needs to be small icon)
+FF 24.5 - Test customisation of UI
 Direct link to preferences pane                                             - DONE
 Better display of settings/online help links                                - DONE
+Test on FF 24.5, SeaMonkey 2.26, FF 29
+Test on FF 30/31 and future versions of SeaMonkey
 
 # 0.8.2
-Local IP address display
+Local IP address display                                                    - DONE
  - refresh on tooltip show                                                  - DONE
- - Should be hidden by default, expand to show/hide
-Private browsing mode checks
+Private browsing mode checks                                                - DONE
 Update documentation
 
-# 0.8.3
-Refactoring panel to improve code                                           - PARTIAL
+# 1.0.0
+Release to get out of beta...
+
+# 1.1.0
+Refactoring panel to improve code                                           - DONE
 Warnings for ip6_disabled and ip4only_domain
 Update documentation
 
