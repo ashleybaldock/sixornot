@@ -102,6 +102,7 @@ startup = function (aData, aReason) {
     Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
     Components.utils.import("resource://sixornot/includes/prefsobserver.jsm");
     Components.utils.import("resource://sixornot/includes/gui.jsm");
+    Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
     /*jslint es5: false */
 
     // Load callback for when our addon finishes loading
@@ -122,6 +123,9 @@ startup = function (aData, aReason) {
             CustomizableUI.createWidget(create_button());
         } else {
             log("Sixornot - CustomizableUI unavailable", 1);
+            stylesheet.inject_into_new_windows_with_path(
+                stylesheet.get_customize_sheet_for_platform(),
+                "chrome://global/content/customizeToolbar.xul");
         }
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
@@ -139,10 +143,7 @@ shutdown = function (aData, aReason) {
         unload();
 
         if (CustomizableUIAvailable) {
-            log("Sixornot - CustomizableUI available, unloading button", 1);
             CustomizableUI.destroyWidget("sixornot-button");
-        } else {
-            log("Sixornot - CustomizableUI unavailable", 1);
         }
 
         HTTP_REQUEST_OBSERVER.unregister();
@@ -150,6 +151,7 @@ shutdown = function (aData, aReason) {
         PREF_OBSERVER.unregister();
 
         // Unload our own code modules
+        Components.utils.unload("resource://sixornot/includes/stylesheet.jsm");
         Components.utils.unload("resource://sixornot/includes/gui.jsm");
         Components.utils.unload("resource://sixornot/includes/prefsobserver.jsm");
         Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");

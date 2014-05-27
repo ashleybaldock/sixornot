@@ -1,7 +1,7 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: BSD License
  * 
- * Copyright (c) 2008-2014 Timothy Baldock. All Rights Reserved.
+ * Copyright (c) 2014 Timothy Baldock. All Rights Reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * 
@@ -23,7 +23,7 @@
 /*global Components, Services, ChromeWorker */
 
 // Provided by Sixornot
-/*global gt, log, parse_exception, prefs, dns_handler, windowWatcher, unload, requests */
+/*global gt, log, parse_exception, prefs, dns_handler, windowWatcher, unload, requests, stylesheet */
 
 var CustomizableUIAvailable = true, e;
 /*jslint es5: true */
@@ -33,12 +33,14 @@ try {
 } catch (e) {
     CustomizableUIAvailable = false;
 }
+Components.utils.import("resource://sixornot/includes/env.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/locale.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
+Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
 /*jslint es5: false */
 
 // Module globals
@@ -1276,57 +1278,11 @@ var create_panel = function (win, panel_id) {
 };
 
 
-var get_os = function () {
-    // Returns "WINNT" on Windows Vista, XP, 2000, and NT systems;  
-    // "Linux" on GNU/Linux; and "Darwin" on Mac OS X.  
-    return Components.classes["@mozilla.org/xre/app-info;1"]  
-            .getService(Components.interfaces.nsIXULRuntime).OS;  
-};
-
-var get_application = function () {
-    const FIREFOX_ID = "{ec8030f7-c20a-464f-9b0e-13a3a9e97384}";
-    const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";
-    var appInfo = Components.classes["@mozilla.org/xre/app-info;1"]
-                    .getService(Components.interfaces.nsIXULAppInfo);
-    if(appInfo.ID == FIREFOX_ID) {
-        return "firefox";
-    } else if(appInfo.ID == SEAMONKEY_ID) {
-        return "seamonkey";
-    }
-};
-
-var stylesheets = {
-    base: Services.io.newURI("resource://sixornot/css/base.css", null, null),
-    large: Services.io.newURI("resource://sixornot/css/large.css", null, null),
-    customize: Services.io.newURI("resource://sixornot/css/customize.css", null, null),
-    customize_ffp29: Services.io.newURI("resource://sixornot/css/customize_pre29.css", null, null),
-    customize_ffp29_linux: Services.io.newURI("resource://sixornot/css/customize_pre29_linux.css", null, null)
-};
-
-var inject_stylesheet_into_window = function (win, sheet) {
-    log("Sixornot - injecting stylesheet: '" + sheet.prePath + sheet.path + "' into window: '" + win.name + "'", 2);
-    win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-        .getInterface(Components.interfaces.nsIDOMWindowUtils).loadSheet(sheet, 1);
-};
-var remove_stylesheet_from_window = function (win, sheet) {
-    log("Sixornot - removing stylesheet: '" + sheet.prePath + sheet.path + "' from window: '" + win.name + "'", 2);
-    win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-        .getInterface(Components.interfaces.nsIDOMWindowUtils).removeSheet(sheet, 1);
-};
-var inject_stylesheet_into_window_with_unload = function (win, sheet) {
-    inject_stylesheet_into_window(win, sheet);
-
-    unload(function () {
-        remove_stylesheet_from_window(win, sheet);
-    }, win);
-};
-
-
 /* Should be called once for each window of the browser */
 var insert_code = function (win) {
     "use strict";
     // Add stylesheet
-    inject_stylesheet_into_window_with_unload(win, stylesheets.base);
+    stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.base);
 
     // Create address bar icon
     log("Sixornot - insert_code: add addressicon", 1);
@@ -1335,21 +1291,15 @@ var insert_code = function (win) {
     // UI only required for pre-Australis browsers
     if (CustomizableUIAvailable) {
         // Australis, load normal customization sheet too
-        inject_stylesheet_into_window_with_unload(win, stylesheets.customize);
+        stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.customize);
     } else {
-        var customize_sheet = stylesheets.customize;
-        // Detect application and OS
-        // Firefox pre-Australis needs a different sheet loaded into customize panel
-        if (get_application() === "firefox") {
-            customize_sheet = stylesheets.customize_ffp29;
-        }
-        if (get_os() === "Linux") {
-            customize_sheet = stylesheets.customize_ffp29_linux;
-        }
         // SeaMonkey and Linux FF need large icon sets
-        if (get_application() === "seamonkey" || get_os() === "Linux") {
-            inject_stylesheet_into_window_with_unload(win, stylesheets.large);
+        // TODO - does Linux firefox still need big icons on Australis?
+        if (env.application() === "seamonkey" || env.os() === "Linux") {
+            stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.large);
         }
+
+        var customize_sheet = stylesheet.get_customize_sheet_for_platform();
         var on_beforecustomization = function (evt) {
             log("Sixornot - on_beforecustomization", 1);
             /* On pre-Australis platforms the panel for customisation of the toolbars
@@ -1358,7 +1308,7 @@ var insert_code = function (win) {
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
                 log("Sixornot - found customizeToolbarSheetIFrame - adding load callback", 1);
-                inject_stylesheet_into_window(iframe.contentWindow, customize_sheet);
+                stylesheet.inject_into_window(iframe.contentWindow, customize_sheet);
             } else {
                 log("Sixornot - failed to find customizeToolbarSheetIFrame", 1);
             }
@@ -1368,40 +1318,19 @@ var insert_code = function (win) {
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
                 log("Sixornot - on_aftercustomization - found customizeToolbarSheetIFrame", 1);
-                remove_stylesheet_from_window(iframe.contentWindow, customize_sheet);
+                stylesheet.remove_from_window(iframe.contentWindow, customize_sheet);
             } else {
                 log("Sixornot - on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
             }
         };
 
-        // TODO - this needs to happen once on startup, not every time a window is opened
-        var newWindow = function (subject, topic) {
-            if (topic === "domwindowopened") {
-                var win = subject.QueryInterface(Components.interfaces.nsIDOMWindow);
-                if (win.document.readyState === "complete") {
-                    if (win.document.documentURI === "chrome://global/content/customizeToolbar.xul") {
-                        inject_stylesheet_into_window(win, customize_sheet);
-                    }
-                } else {
-                    win.addEventListener("load", function load_once () {
-                        win.removeEventListener("load", load_once, false);
-                        if (win.document.documentURI === "chrome://global/content/customizeToolbar.xul") {
-                            inject_stylesheet_into_window(win, customize_sheet);
-                        }
-                    });
-                }
-            }
-        };
-
         win.addEventListener("beforecustomization", on_beforecustomization, false);
         win.addEventListener("aftercustomization", on_aftercustomization, false);
-        Services.ww.registerNotification(newWindow);
 
         unload(function () {
             log("Sixornot - legacy toolbar unload function", 2);
             win.removeEventListener("beforecustomization", on_beforecustomization, false);
             win.removeEventListener("aftercustomization", on_aftercustomization, false);
-            Services.ww.unregisterNotification(newWindow);
         }, win);
 
         log("Sixornot - insert_code: add legacy button", 1);

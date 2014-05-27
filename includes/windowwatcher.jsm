@@ -198,4 +198,3 @@ var watchWindows = function (callback) {
         Services.ww.unregisterNotification(windowWatcher);
     });
 };
-

@@ -19,8 +19,10 @@ Better display of settings/online help links                                - DO
 Test on FF 24, SeaMonkey 2.26, FF 29
 Test on FF 30/31 and future versions of SeaMonkey
 Test on Linux
+ - Does Linux Australis FF still need large icons?
 Test on Palemoon
 Panel layout - spacing between sections + above bottom links
+Test to make sure unload() callbacks all happen if a window has been opened and then closed again
 
 # 0.8.2
 Local IP address display                                                    - DONE
