@@ -262,7 +262,7 @@ dns = {
                     adapter = adapter.Next.contents;
                 }
 
-                log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
+                log("Sixornot(dns_worker) - dns:resolve_local(WIN) - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
 
             case "darwin":
@@ -308,7 +308,7 @@ dns = {
 
                 this.freeifaddrs(ifaddr_ptr);
 
-                log("Sixornot(dns_worker) - dns:resolve_local - Found the following addresses: " + addresses, 2);
+                log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
 
             default:
@@ -381,7 +381,7 @@ dns = {
 
                 this.freeaddrinfo(addrinfo_ptr);
 
-                log("Sixornot(dns_worker) - dns:resolve_remote(OSX) - Found the following addresses: " + addresses, 2);
+                log("Sixornot(dns_worker) - dns:resolve_remote(OSX/Linux) - Found the following addresses: " + addresses, 2);
                 return addresses.slice();
 
             case "winnt":
@@ -454,7 +454,7 @@ dns = {
 
                 this.freeaddrinfo(addrinfo_ptr);
 
-                log("Sixornot(dns_worker) - dns:resolve_remote - Found the following addresses: " + addresses, 1);
+                log("Sixornot(dns_worker) - dns:resolve_remote(WIN) - Found the following addresses: " + addresses, 1);
                 return addresses.slice();
 
             default:

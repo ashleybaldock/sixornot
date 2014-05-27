@@ -1277,6 +1277,49 @@ var create_panel = function (win, panel_id) {
     return panel;
 };
 
+var legacy_insert_code = function (win) {
+    // SeaMonkey and Linux FF need large icon sets
+    if (env.application() === "seamonkey" || env.os() === "Linux") {
+        stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.large);
+    }
+    var customize_sheet = stylesheet.get_customize_sheet_for_platform();
+    var on_beforecustomization = function (evt) {
+        log("Sixornot - on_beforecustomization", 1);
+        /* On pre-Australis platforms the panel for customisation of the toolbars
+         * is a different XUL document. We need to inject our CSS modifications
+         * into this document each time it is loaded */
+        var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
+        if (iframe) {
+            log("Sixornot - found customizeToolbarSheetIFrame - adding load callback", 1);
+            stylesheet.inject_into_window(iframe.contentWindow, customize_sheet);
+        } else {
+            log("Sixornot - failed to find customizeToolbarSheetIFrame", 1);
+        }
+    };
+    var on_aftercustomization = function (evt) {
+        log("Sixornot - on_aftercustomization", 1);
+        var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
+        if (iframe) {
+            log("Sixornot - on_aftercustomization - found customizeToolbarSheetIFrame", 1);
+            stylesheet.remove_from_window(iframe.contentWindow, customize_sheet);
+        } else {
+            log("Sixornot - on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
+        }
+    };
+
+    win.addEventListener("beforecustomization", on_beforecustomization, false);
+    win.addEventListener("aftercustomization", on_aftercustomization, false);
+
+    unload(function () {
+        log("Sixornot - legacy toolbar unload function", 2);
+        win.removeEventListener("beforecustomization", on_beforecustomization, false);
+        win.removeEventListener("aftercustomization", on_aftercustomization, false);
+    }, win);
+
+    log("Sixornot - insert_code: add legacy button", 1);
+    // Create legacy button (only for non-Australis browsers)
+    create_legacy_button(win);
+};
 
 /* Should be called once for each window of the browser */
 var insert_code = function (win) {
@@ -1290,52 +1333,9 @@ var insert_code = function (win) {
 
     // UI only required for pre-Australis browsers
     if (CustomizableUIAvailable) {
-        // Australis, load normal customization sheet too
         stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.customize);
     } else {
-        // SeaMonkey and Linux FF need large icon sets
-        // TODO - does Linux firefox still need big icons on Australis?
-        if (env.application() === "seamonkey" || env.os() === "Linux") {
-            stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.large);
-        }
-
-        var customize_sheet = stylesheet.get_customize_sheet_for_platform();
-        var on_beforecustomization = function (evt) {
-            log("Sixornot - on_beforecustomization", 1);
-            /* On pre-Australis platforms the panel for customisation of the toolbars
-             * is a different XUL document. We need to inject our CSS modifications
-             * into this document each time it is loaded */
-            var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
-            if (iframe) {
-                log("Sixornot - found customizeToolbarSheetIFrame - adding load callback", 1);
-                stylesheet.inject_into_window(iframe.contentWindow, customize_sheet);
-            } else {
-                log("Sixornot - failed to find customizeToolbarSheetIFrame", 1);
-            }
-        };
-        var on_aftercustomization = function (evt) {
-            log("Sixornot - on_aftercustomization", 1);
-            var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
-            if (iframe) {
-                log("Sixornot - on_aftercustomization - found customizeToolbarSheetIFrame", 1);
-                stylesheet.remove_from_window(iframe.contentWindow, customize_sheet);
-            } else {
-                log("Sixornot - on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
-            }
-        };
-
-        win.addEventListener("beforecustomization", on_beforecustomization, false);
-        win.addEventListener("aftercustomization", on_aftercustomization, false);
-
-        unload(function () {
-            log("Sixornot - legacy toolbar unload function", 2);
-            win.removeEventListener("beforecustomization", on_beforecustomization, false);
-            win.removeEventListener("aftercustomization", on_aftercustomization, false);
-        }, win);
-
-        log("Sixornot - insert_code: add legacy button", 1);
-        // Create legacy button (only for non-Australis browsers)
-        create_legacy_button(win);
+        legacy_insert_code(win);
     }
 };
 
