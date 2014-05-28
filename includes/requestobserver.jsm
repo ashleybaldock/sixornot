@@ -66,6 +66,7 @@ var create_new_entry = function (host, address, address_family, inner, outer) {
         host: host,
         address: address,
         address_family: address_family,
+        remote: true,
         show_detail: true,
         count: 1,
         ipv6s: [],

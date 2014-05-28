@@ -151,6 +151,7 @@ shutdown = function (aData, aReason) {
         PREF_OBSERVER.unregister();
 
         // Unload our own code modules
+        Components.utils.unload("resource://sixornot/includes/env.jsm");
         Components.utils.unload("resource://sixornot/includes/stylesheet.jsm");
         Components.utils.unload("resource://sixornot/includes/gui.jsm");
         Components.utils.unload("resource://sixornot/includes/prefsobserver.jsm");

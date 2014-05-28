@@ -21,13 +21,13 @@ Test on FF 30/31 and future versions of SeaMonkey
 Test on Linux
  - Does Linux Australis FF still need large icons? (NO)                     - DONE
 Test on Palemoon
-Panel layout - spacing between sections + above bottom links
+Panel layout - spacing between sections + above bottom links                - DONE
 Test to make sure unload() callbacks all happen if a window has been opened and then closed again
 
 # 0.8.2
 Local IP address display                                                    - DONE
  - refresh on tooltip show                                                  - DONE
- - Fix tooltip display for first line of addresses
+ - Fix tooltip display for first line of addresses                          - DONE
 Private browsing mode checks                                                - DONE
 Update documentation + screenshots
 
@@ -37,6 +37,11 @@ Release to get out of beta...
 # 1.1.0
 Warnings for ip6_disabled and ip4only_domain
 Update documentation
+Refactor requestcache/requestobserver
+ - Unify host listing object with local host listing object
+ - Accessor methods for cache/waitinglist
+ - Move methods to destroy entries into requests object
+ - Abstract implementation of cache - maybe change from an array
 
 # 1.2.0
 Proxy detection + info

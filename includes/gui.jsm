@@ -62,9 +62,11 @@ var gbi = function (node, child_id) {
     }
 };
 
+// TODO - move this method into requests object
 var get_hosts_for_inner_window = function (inner_window) {
     return requests.cache[inner_window]; // May be undefined
 };
+// TODO - move this method into requests object
 var get_host_by_hostname_from_inner_window = function (inner_window, hostname) {
     var matching_hosts, hosts = requests.cache[inner_window];
     if (hosts) {
@@ -174,6 +176,7 @@ var create_local_address_info = function () {
             ipv6s          : [],
             host           : "",
             address        : "",
+            remote         : false,
             address_family : 0,
             show_detail    : true,
             dns_status     : "pending"
@@ -250,6 +253,8 @@ var remove_greyscale_class_from_node = function (node) {
     node.classList.remove("sixornot_grey");
 };
 
+// Consumers of sixornot events need to know the inner and outer window IDs of the
+// window/tab which is currently active and that they are associated with
 var create_current_tab_ids = function (win) {
     return {
         inner: 0,
@@ -513,26 +518,28 @@ var panel_ui = {
                 address_box.removeChild(address_box.firstChild);
             }
             // Add the first entry (connection IP)
-            conipaddr = doc.createElement("label");
-            conipaddr.sixornot_host = host.host;
-            if (host.address_family === 6) {
-                conipaddr.setAttribute("value", host.address);
-                conipaddr.sixornot_copytext = host.address;
-                conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                conipaddr.classList.add("sixornot-link");
-            } else if (host.address_family === 4) {
-                conipaddr.setAttribute("value", host.address);
-                conipaddr.sixornot_copytext = host.address;
-                conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                conipaddr.classList.add("sixornot-link");
-            } else if (host.address_family === 2) {
-                conipaddr.setAttribute("value", gt("addr_cached"));
-                conipaddr.sixornot_copytext = "";
-            } else {
-                conipaddr.setAttribute("value", gt("addr_unavailable"));
-                conipaddr.sixornot_copytext = "";
+            if (host.remote) {
+                conipaddr = doc.createElement("label");
+                conipaddr.sixornot_host = host.host;
+                if (host.address_family === 6) {
+                    conipaddr.setAttribute("value", host.address);
+                    conipaddr.sixornot_copytext = host.address;
+                    conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                    conipaddr.classList.add("sixornot-link");
+                } else if (host.address_family === 4) {
+                    conipaddr.setAttribute("value", host.address);
+                    conipaddr.sixornot_copytext = host.address;
+                    conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                    conipaddr.classList.add("sixornot-link");
+                } else if (host.address_family === 2) {
+                    conipaddr.setAttribute("value", gt("addr_cached"));
+                    conipaddr.sixornot_copytext = "";
+                } else {
+                    conipaddr.setAttribute("value", gt("addr_unavailable"));
+                    conipaddr.sixornot_copytext = "";
+                }
+                address_box.appendChild(conipaddr);
             }
-            address_box.appendChild(conipaddr);
 
             if (host.show_detail) {
                 // Add the other addresses (if any)
@@ -961,6 +968,7 @@ var panel_ui = {
         hbox.appendChild(make_spacer());
         hbox.appendChild(showhide_local);
         hbox.setAttribute("align", "center");
+        hbox.style.marginTop = "3px";
         parent_element.appendChild(hbox);
         return {
             entries: [],
@@ -1031,6 +1039,7 @@ var panel_ui = {
         urlhbox.appendChild(urllabel);
         urlhbox.appendChild(make_spacer());
         urlhbox.setAttribute("align", "center");
+        urlhbox.style.marginTop = "3px";
         parent_element.appendChild(urlhbox);
     }
 };
