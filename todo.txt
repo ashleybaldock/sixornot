@@ -5,27 +5,8 @@
 On Australis, changing the greyscale setting while the button is not displayed
 results in the button not conforming to the setting
 
-# 0.8.1
-Refactoring panel to improve code                                           - DONE
-Fix legacy button for SeaMonkey/pre-Australis Firefox                       - DONE
-FF 24.5 - Listen for customizeToolbar events and inject stylesheet          - DONE
-FF 24.5 - Button style for large icons (should be same as small)            - DONE
-FF 24.5 - Button style in customize dialog (needs to be small icon)         - DONE
-Linux customize panel (popup window) detection + stylesheet inject          - DONE
- - Need to only inject into each panel once!                                - DONE
-Direct link to preferences pane                                             - DONE
-Better display of settings/online help links                                - DONE
- - Does Linux Australis FF still need large icons? (NO)                     - DONE
-Panel layout - spacing between sections + above bottom links                - DONE
 
-# 0.8.2
-Local IP address display                                                    - DONE
- - refresh on tooltip show                                                  - DONE
- - Fix tooltip display for first line of addresses                          - DONE
-Private browsing mode checks                                                - DONE
-Update documentation + screenshots                                          - DONE
-
-# 1.0.0
+# 1.0.0/0.8.3
 Release to get out of beta...
 Test to make sure unload() callbacks all happen if a window has
  been opened and then closed again
@@ -54,13 +35,32 @@ Update documentation
 investigate channelIsForDownload on nsIHttpChannelInternal
 
 # TODO FUTURE
-Version for alternative Firefoxes (which aren't following Australis)
 Handling for edge-cases and special pages (text)
 Add ability to copy a list of all files fetched to clipboard (per-domain)
 Icon display in status bar on SeaMonkey/Firefox alternatives
 
 
 # Done
+
+# 0.8.2
+Local IP address display                                                    - DONE
+ - refresh on tooltip show                                                  - DONE
+ - Fix tooltip display for first line of addresses                          - DONE
+Private browsing mode checks                                                - DONE
+Update documentation + screenshots                                          - DONE
+
+# 0.8.1
+Refactoring panel to improve code                                           - DONE
+Fix legacy button for SeaMonkey/pre-Australis Firefox                       - DONE
+FF 24.5 - Listen for customizeToolbar events and inject stylesheet          - DONE
+FF 24.5 - Button style for large icons (should be same as small)            - DONE
+FF 24.5 - Button style in customize dialog (needs to be small icon)         - DONE
+Linux customize panel (popup window) detection + stylesheet inject          - DONE
+ - Need to only inject into each panel once!                                - DONE
+Direct link to preferences pane                                             - DONE
+Better display of settings/online help links                                - DONE
+ - Does Linux Australis FF still need large icons? (NO)                     - DONE
+Panel layout - spacing between sections + above bottom links                - DONE
 
 # 0.8.0
 Fix Australis breakages & refactor
