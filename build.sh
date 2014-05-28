@@ -41,8 +41,10 @@ cp css/customize_pre29_linux.css ../dist/$version/src/css/
 mkdir ../dist/$version/src/locale
 mkdir ../dist/$version/src/locale/en
 cp locale/en/sixornot.properties ../dist/$version/src/locale/en/
+cp locale/en/options.dtd ../dist/$version/src/locale/en/
 mkdir ../dist/$version/src/locale/ru
 cp locale/ru/sixornot.properties ../dist/$version/src/locale/ru/
+cp locale/ru/options.dtd ../dist/$version/src/locale/ru/
 
 # Create .zip file from build directory (with .xpi file extension)
 cd ../dist/$version/src/

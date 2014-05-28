@@ -954,9 +954,11 @@ var panel_ui = {
         var set_showhide_text = function () {
             if (prefs.get_bool("showlocal")) {
                 showhide_local.setAttribute("value", "[" + gt("hide_text") + "]");
+                showhide_local.setAttribute("tooltiptext", gt("tt_hide_local"));
                 showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
             } else {
                 showhide_local.setAttribute("value", "[" + gt("show_text") + "]");
+                showhide_local.setAttribute("tooltiptext", gt("tt_show_local"));
                 showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
             }
         };

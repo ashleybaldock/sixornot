@@ -1,19 +1,22 @@
 <?xml version="1.0" ?>
+
+<!DOCTYPE window SYSTEM "chrome://sixornot/locale/options.dtd">
+
 <vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 
     <setting type="bool"
-             title="Show addressbar icon"
-             desc="Sets whether the SixOrNot icon is shown in the address bar"
+             title="&options_showaddressicon.label;"
+             desc="&options_showaddressicon.desc;"
              pref="extensions.sixornot.showaddressicon"/>
 
     <setting type="bool"
-             title="Greyscale mode"
-             desc="Sets whether colour is used as a means of representing information"
+             title="&options_greyscaleicons.label;"
+             desc="&options_greyscaleicons.desc;"
              pref="extensions.sixornot.greyscaleicons"/>
 
     <setting type="bool"
-             title="Show all local IPs"
-             desc="Sets whether non-routeable local IP addresses (e.g. linklocal) are shown"
+             title="&options_showallips.label;"
+             desc="&options_showallips.desc;"
              pref="extensions.sixornot.showallips"/>
 
 </vbox>

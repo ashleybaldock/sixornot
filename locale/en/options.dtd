@@ -1,0 +1,6 @@
+<!ENTITY options_showaddressicon.label "Show icon in address bar">
+<!ENTITY options_showaddressicon.desc "Enable display of the SixOrNot icon in the address bar.">
+<!ENTITY options_greyscaleicons.label "Greyscale icons">
+<!ENTITY options_greyscaleicons.desc "Enable the greyscale icon set.">
+<!ENTITY options_showallips.label "Show all local IPs in panel">
+<!ENTITY options_showallips.desc "Enable display of non-routeable local IP addresses in the panel.">
