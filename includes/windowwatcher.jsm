@@ -125,13 +125,23 @@ var unload = (function () {
 var runOnLoad = function (win, callback) {
     "use strict";
     // Listen for one load event before checking the window type
+    log("Sixornot - runOnLoad", 1);
     win.addEventListener("load", function load_once () {
+        log("Sixornot - runOnLoad - loaded", 1);
         win.removeEventListener("load", load_once, false);
 
         // Now that the window has loaded, only handle browser windows
         if (win.document.documentElement.getAttribute("windowtype") === "navigator:browser") {
+            log("Sixornot - runOnLoad - type: navigator:browser", 1);
             // SeaMonkey invokes load callbacks before window.gBrowser becomes available
             // This breaks the addon, so wait up to a second for it before running callback
+
+            // TODO
+            /* SeaMonkey compatibility: gBrowser is only set when
+             window.getBrowser() is called for the first time. */
+            //if ('getBrowser' in window)
+            //    window.getBrowser();
+
             var count = 0;
             var gBrowserCheck = function () {
                 if (win.gBrowser) {
@@ -166,9 +176,11 @@ var runOnWindows = function (callback) {
         // Only run the callback immediately if the browser is completely loaded
         browserWindow = browserWindows.getNext();
         if (browserWindow.document.readyState === "complete") {
+            log("Sixornot - runOnWindows:readyState:complete", 1);
             callback(browserWindow);
         } else {
             // Wait for the window to load before continuing
+            log("Sixornot - runOnWindows:runOnLoad", 1);
             runOnLoad(browserWindow, callback);
         }
     }
@@ -182,16 +194,19 @@ var runOnWindows = function (callback) {
  */
 var watchWindows = function (callback) {
     "use strict";
-    // Add functionality to existing windows
-    runOnWindows(callback);
-
     // Watch for new browser windows opening then wait for them to load
     function windowWatcher (subject, topic) {
         if (topic === "domwindowopened") {
+            log("Sixornot - windowWatcher:domwindowopened", 1);
             runOnLoad(subject, callback);
         }
     }
+    log("Sixornot - watchWindows - registering notification", 1);
     Services.ww.registerNotification(windowWatcher);
+
+    // Add functionality to existing windows
+    log("Sixornot - watchWindows - running on existing windows", 1);
+    runOnWindows(callback);
 
     // Make sure to stop watching for windows if we're unloading
     unload(function () {

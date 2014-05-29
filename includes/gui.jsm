@@ -611,7 +611,8 @@ var panel_ui = {
             });
             if (count > 0) {
                 if (host.show_detail) {
-                    showhide.setAttribute("value", "[" + gt("hide_text") + "]");
+                    //showhide.setAttribute("value", "[" + gt("hide_text") + "]");
+                    showhide.setAttribute("value", "[-]");
                     showhide.setAttribute("hidden", false);
                     showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));
                 } else {
@@ -1335,6 +1336,12 @@ var legacy_insert_code = function (win) {
 /* Should be called once for each window of the browser */
 var insert_code = function (win) {
     "use strict";
+    // Don't insert into windows that already have UI
+    if (win.document.getElementById(ADDRESSBAR_ICON_ID)) {
+        log("Sixornot - insert_code: skipping window - UI already exists", 1);
+        return;
+    }
+
     // Add stylesheet
     stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.base);
 

@@ -80,6 +80,8 @@ var stylesheet = {
             }
         };
 
+        // Could also use chrome-document-global-created events for this
+
         Services.ww.registerNotification(on_new_window);
 
         // Make sure to stop watching for windows if we're unloading
