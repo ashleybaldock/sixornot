@@ -1,0 +1,13 @@
+<!--
+   SixOrNot localization file
+   Version: 1.0.0
+   Translated by: Leartin
+   Last updated: 2014-05-29
+-->
+
+<!ENTITY options_showaddressicon.label "Icon in der Adressleiste anzeigen">
+<!ENTITY options_showaddressicon.desc "Aktiviert die Anzeige des SixOrNot-Icons in der Adresszeile.">
+<!ENTITY options_greyscaleicons.label "Graue Icons">
+<!ENTITY options_greyscaleicons.desc "Aktiviert farblose Versionen des Icons.">
+<!ENTITY options_showallips.label "Zeige alle lokalen IPs an">
+<!ENTITY options_showallips.desc "Aktiviert die Anzeige von lokalen IP-Adressen, welche nicht geroutet werden können.">
