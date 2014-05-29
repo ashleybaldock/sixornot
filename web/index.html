@@ -72,7 +72,7 @@
 <li><b>Remote</b>
 <p>For each domain contacted to load the current page a listing appears in this section. The main domain of the site is displayed in bold text. The first IP address listed for each entry is the address the browser used to connect, the remaining addresses are those retrieved from DNS records for the domain.</p>
 
-<p>Subsequent entries in the list are for domains which additional resources have been loaded from, e.g. images from content delivery networks. Again, the first address is the actual connection, the rest are from DNS. You can click on the [+XX] link to expand DNS information for the secondary connections, and then click on the [Hide] link to hide them again. The number to the left of the domain indicates the total number of connections made to that domain while loading this page.</p>
+<p>Subsequent entries in the list are for domains which additional resources have been loaded from, e.g. images from content delivery networks. Again, the first address is the actual connection, the rest are from DNS. You can click on the [+XX] link to expand DNS information for the secondary connections, and then click on the [-] link to hide them again. The number to the left of the domain indicates the total number of connections made to that domain while loading this page.</p>
 
 </li>
 <li><b>Local</b>
@@ -126,9 +126,19 @@
 
     <p>These options can also be configured via the following boolean values in "about:config":</p>
 
-    <pre>extensions.sixornot.showaddressicon</pre>
-    <pre>extensions.sixornot.greyscaleicons</pre>
-    <pre>extensions.sixornot.showallips</pre>
+    <pre>extensions.sixornot.showaddressicon = false</pre>
+    <pre>extensions.sixornot.greyscaleicons = false</pre>
+    <pre>extensions.sixornot.showallips = false</pre>
+
+    <p>Additionally, the following settings in about:config may be useful:</p>
+
+    <pre>extensions.sixornot.loglevel = 0</pre>
+
+    <p>This sets the SixOrNot logging output level - default is 0 (only errors), 1, 2 and 3 provide increasingly verbose logging output. Useful if you encounter a bug and need to send the log output to help me diagnose it.</p>
+
+    <pre>extensions.sixornot.overridelocale</pre>
+
+    <p>SixOrNot will, by default, try to load a translation for its UI that matches your system (falling back to English if it doesn't have a matching locale). You can override this behaviour and set a locale string manually using this setting. E.g. to set it to use English, specify "en". Note: This setting does not affect translation of the settings panel.</p>
 
     <p>The other extensions.sixornot settings should not generally be changed manually.</p>
 
