@@ -611,7 +611,6 @@ var panel_ui = {
             });
             if (count > 0) {
                 if (host.show_detail) {
-                    //showhide.setAttribute("value", "[" + gt("hide_text") + "]");
                     showhide.setAttribute("value", "[-]");
                     showhide.setAttribute("hidden", false);
                     showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));

@@ -20,9 +20,18 @@
 			</Description>
 		</em:localized>
 
+		<em:localized>
+			<Description>
+				<em:locale>de</em:locale>
+				<em:name>SixOrNot</em:name>
+				<em:translator>Leartin</em:translator>
+			</Description>
+		</em:localized>
+
         <em:creator>Timothy Baldock</em:creator>
 
 		<em:translator>Roman Azarenko</em:translator> <!-- Russian -->
+		<em:translator>Leartin</em:translator> <!-- German -->
 
         <em:homepageURL>http://entropy.me.uk/sixornot/</em:homepageURL>
 
