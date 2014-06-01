@@ -16,7 +16,7 @@
 				<em:name>SixOrNot</em:name>
 				<em:description>Индикатор состояния IPv6</em:description>
 				<em:creator>Тимоти Белдок</em:creator>
-				<em:translator>Роман Азаренко</em:translator> <!-- Русский -->
+				<em:translator>ForstWoof</em:translator> <!-- Русский -->
 			</Description>
 		</em:localized>
 
@@ -30,7 +30,7 @@
 
         <em:creator>Timothy Baldock</em:creator>
 
-		<em:translator>Roman Azarenko</em:translator> <!-- Russian -->
+        <em:translator>ForstWoof</em:translator> <!-- Russian -->
 		<em:translator>Leartin</em:translator> <!-- German -->
 
         <em:homepageURL>http://entropy.me.uk/sixornot/</em:homepageURL>

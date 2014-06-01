@@ -34,7 +34,9 @@ Use in display of local addresses in panel
  - Highlight addresses used to load pages?
 
 Detection of IP addresses which aren't returned for DNS lookup on local hostname
- - E.g. tunnel addresses
+ - E.g. tunnel addresses (working now)
+Retrieve interface information along with addresses
+Retrieve netmask information for each address and display (e.g. 1999::1/64)
 
 # 1.2.0
 Proxy detection + info
