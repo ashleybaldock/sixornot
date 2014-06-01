@@ -11,12 +11,19 @@ Release to get out of beta...
 Test to make sure unload() callbacks all happen if a window has
  been opened and then closed again                                          - DONE
 Update Russian translation                                                  - DONE
-Test on Linux                                                               - DONE
-Test on FF 24, SeaMonkey 2.26, FF 29
- - FF 24.5 - Test customisation of UI
-Test on FF 30/31 and future versions of SeaMonkey
-Test on Palemoon
-Review documentation + screenshots
+Test on Linux                                                               - 
+Test on FF 24, SeaMonkey 2.26, FF 29                                        -
+ - FF 24.5 - Test customisation of UI                                       -
+Test on FF 30/31 and future versions of SeaMonkey                           -
+Test on Palemoon                                                            -
+Review documentation + screenshots                                          -
+
+Check use of firefox async resolver - seems broken on OSX                   -
+
+Refactor dns_worker
+ - Split OS-specific code into different workers
+ - Generic worker using Firefox built-ins (fallback)
+ - All switching between workers happens at top level to avoid lots of if...else
 
 # 1.1.0
 Warnings for ip6_disabled and ip4only_domain
@@ -28,21 +35,17 @@ Refactor requestcache/requestobserver
  - Accessor methods for cache/waitinglist
  - Move methods to destroy entries into requests object
  - Abstract implementation of cache - maybe change from an array
-Refactor dns_worker
- - Split OS-specific code into different workers
- - Generic worker using Firefox built-ins (fallback)
- - All switching between workers happens at top level to avoid lots of if...else
 
 Test internationalised domain names handling by native resolvers
 
 Collect nsIHttpChannelInternal.localAddress info for each request
-Use in display of local addresses in panel
  - Highlight addresses used to load pages?
 
-Detection of IP addresses which aren't returned for DNS lookup on local hostname
- - E.g. tunnel addresses (working now)
 Retrieve interface information along with addresses
+ - Display local addresses per interface
 Retrieve netmask information for each address and display (e.g. 1999::1/64)
+ - Probably only possible on Vista+ for windows
+ - Also collect tunnel interface IPs on Vista+
 
 # 1.2.0
 Proxy detection + info
