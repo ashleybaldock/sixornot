@@ -9,16 +9,19 @@ results in the button not conforming to the setting
 # 1.0.0/0.8.3
 Release to get out of beta...
 Test to make sure unload() callbacks all happen if a window has
- been opened and then closed again
-Review documentation + screenshots
+ been opened and then closed again                                          - DONE
+Update Russian translation                                                  - DONE
+Test on Linux                                                               - DONE
 Test on FF 24, SeaMonkey 2.26, FF 29
  - FF 24.5 - Test customisation of UI
 Test on FF 30/31 and future versions of SeaMonkey
-Test on Linux
 Test on Palemoon
+Review documentation + screenshots
 
 # 1.1.0
 Warnings for ip6_disabled and ip4only_domain
+ - ip4only_domain should show a badge next to affected domains
+ - ip6_disabled should show a warning on the panel
 Update documentation
 Refactor requestcache/requestobserver
  - Unify host listing object with local host listing object
@@ -31,8 +34,9 @@ Proxy detection + info
 Add better proxy detection (per-connection) and icon display
  Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
  Same way that DNS lookups are done, with a callback
-Update documentation
+Disable native DNS resolution for proxied connections
 investigate channelIsForDownload on nsIHttpChannelInternal
+Update documentation
 
 # TODO FUTURE
 Handling for edge-cases and special pages (text)

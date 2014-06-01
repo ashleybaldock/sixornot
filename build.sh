@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script builds the SixOrNot addon ready for distribution
-version="0.8.3"
+version="1.0b1"
 
 # Create build directory by version
 mkdir ../dist/$version
