@@ -29,6 +29,13 @@ Refactor requestcache/requestobserver
  - Move methods to destroy entries into requests object
  - Abstract implementation of cache - maybe change from an array
 
+Collect nsIHttpChannelInternal.localAddress info for each request
+Use in display of local addresses in panel
+ - Highlight addresses used to load pages?
+
+Detection of IP addresses which aren't returned for DNS lookup on local hostname
+ - E.g. tunnel addresses
+
 # 1.2.0
 Proxy detection + info
 Add better proxy detection (per-connection) and icon display

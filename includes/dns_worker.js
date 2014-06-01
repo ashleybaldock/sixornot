@@ -280,24 +280,27 @@ dns = {
                 addresses = [];
 
                 for (;;) {
-                    switch(ifaddr.ifa_addr.contents.sa_family) {
-                        case this.AF_INET:
-                            sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
-                            this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
-                            if (addresses.indexOf(addrbuf.readString()) === -1)
-                            {
-                                addresses.push(addrbuf.readString());
-                            }
-                            break;
+                    log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Addresses for interface: '" + ifaddr.ifa_name.readString() + "'", 1);
+                    if (!ifaddr.ifa_addr.isNull()) {
+                        switch(ifaddr.ifa_addr.contents.sa_family) {
+                            case this.AF_INET:
+                                sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
+                                this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
+                                if (addresses.indexOf(addrbuf.readString()) === -1)
+                                {
+                                    addresses.push(addrbuf.readString());
+                                }
+                                break;
 
-                        case this.AF_INET6:
-                            sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
-                            this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
-                            if (addresses.indexOf(addrbuf.readString()) === -1)
-                            {
-                                addresses.push(addrbuf.readString());
-                            }
-                            break;
+                            case this.AF_INET6:
+                                sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
+                                this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
+                                if (addresses.indexOf(addrbuf.readString()) === -1)
+                                {
+                                    addresses.push(addrbuf.readString());
+                                }
+                                break;
+                        }
                     }
 
                     if (ifaddr.ifa_next.isNull()) {
