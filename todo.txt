@@ -28,6 +28,12 @@ Refactor requestcache/requestobserver
  - Accessor methods for cache/waitinglist
  - Move methods to destroy entries into requests object
  - Abstract implementation of cache - maybe change from an array
+Refactor dns_worker
+ - Split OS-specific code into different workers
+ - Generic worker using Firefox built-ins (fallback)
+ - All switching between workers happens at top level to avoid lots of if...else
+
+Test internationalised domain names handling by native resolvers
 
 Collect nsIHttpChannelInternal.localAddress info for each request
 Use in display of local addresses in panel
@@ -51,6 +57,7 @@ Update documentation
 Handling for edge-cases and special pages (text)
 Add ability to copy a list of all files fetched to clipboard (per-domain)
 Icon display in status bar on SeaMonkey/Firefox alternatives
+Reverse DNS lookups? (local/remote)
 
 
 # Done

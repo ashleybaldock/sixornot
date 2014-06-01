@@ -1,7 +1,7 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: BSD License
  * 
- * Copyright (c) 2008-2011 Timothy Baldock. All Rights Reserved.
+ * Copyright (c) 2008-2014 Timothy Baldock. All Rights Reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * 
@@ -207,121 +207,354 @@ dns = {
         }
     },
 
+    // Input is 32bit number, right-shift until right-most bit is 1 then output
+    get_ipv4_prefix : function (mask) {
+        var lookup = {
+            0x00000001: 1,
+            0x00000003: 2,
+            0x00000007: 3,
+            0x0000000f: 4,
+            0x0000001f: 5,
+            0x0000003f: 6,
+            0x0000007f: 7,
+            0x000000ff: 8,
+            0x000001ff: 9,
+            0x000003ff: 10,
+            0x000007ff: 11,
+            0x00000fff: 12,
+            0x00001fff: 13,
+            0x00003fff: 14,
+            0x00007fff: 15,
+            0x0000ffff: 16,
+            0x0001ffff: 17,
+            0x0003ffff: 18,
+            0x0007ffff: 19,
+            0x000fffff: 20,
+            0x001fffff: 21,
+            0x003fffff: 22,
+            0x007fffff: 23,
+            0x00ffffff: 24,
+            0x01ffffff: 25,
+            0x03ffffff: 26,
+            0x07ffffff: 27,
+            0x0fffffff: 28,
+            0x1fffffff: 29,
+            0x3fffffff: 30,
+            0x7fffffff: 31,
+            0xffffffff: 32
+        };
+        log("Sixornot - get_ipv4_prefix - input: " + mask, 1);
+        return lookup[mask];
+    },
+    // Input is array of chars, for each one use lookup table and add to total
+    get_ipv6_prefix : function (mask) {
+        var sum = 0;
+        var lookup = {
+            0x00: 0,
+            0x80: 1,
+            0xc0: 2,
+            0xe0: 3,
+            0xf0: 4,
+            0xf8: 5,
+            0xfc: 6,
+            0xfe: 7,
+            0xff: 8,
+        };
+
+        for (var i = 0; i < mask.length; i++) {
+            if (mask[i] === 0) {
+                return sum;
+            }
+            sum += lookup[mask[i]];
+        }
+        return sum
+    },
+
+    resolve_local_winnt : function () {
+        "use strict";
+        var ret, addresses, sa, address, ifaddr, ifaddr_ptr,
+            adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize,
+            netmask, netmaskbuf;
+        log("Sixornot(dns_worker) - dns:resolve_local_winnt", 2);
+
+        adapbuf   = (ctypes.uint8_t.array(8192))();
+        adapsize  = ctypes.unsigned_long(8192);
+        /*jslint bitwise: true */
+        adapflags = this.GAA_FLAG_SKIP_ANYCAST | this.GAA_FLAG_SKIP_MULTICAST  | this.GAA_FLAG_SKIP_DNS_SERVER | this.GAA_FLAG_SKIP_FRIENDLY_NAME;
+        /*jslint bitwise: false */
+
+        ret = this.GetAdaptersAddresses(this.AF_UNSPEC, adapflags, null, adapbuf, adapsize.address());
+
+        if (ret > 0) {
+            log("Sixornot(dns_worker) - dns:resolve_local - GetAdaptersAddresses failed with exit code: " + ret, 1);
+            return ["FAIL"];
+        }
+
+        adapter  = ctypes.cast(adapbuf, this.ipAdapterAddresses);
+        addrbuf  = (ctypes.char.array(128))();
+        addrsize = ctypes.uint32_t();
+        addresses = [];
+
+        // Loop through returned addresses and add them to array
+        for (; !adapter.Next.isNull(); adapter = adapter.Next.contents) {
+            if (adapter.IfType === this.IF_TYPE_SOFTWARE_LOOPBACK
+             || adapter.IfType === this.IF_TYPE_TUNNEL
+             || adapter.FirstUnicastAddress.isNull()) {
+                // TODO interface name
+                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Address for interface: '" + "---" + "' is null, skipping", 1);
+                continue;
+            }
+
+            address = adapter.FirstUnicastAddress.contents;
+
+            for (; !address.Next.isNull(); address = address.Next.contents) {
+                if (address.Address.lpSockaddr.contents.sa_family === this.AF_INET
+                 || address.Address.lpSockaddr.contents.sa_family === this.AF_INET6) {
+                    addrsize.value = 128;
+                    this.WSAAddressToString(address.Address.lpSockaddr, address.Address.iSockaddrLength, null, addrbuf, addrsize.address());
+                    if (addresses.indexOf(addrbuf.readString()) === -1) {
+                        addresses.push(addrbuf.readString());
+                    }
+                }
+            }
+        }
+
+        log("Sixornot(dns_worker) - dns:resolve_local(WIN) - Found the following addresses: " + addresses, 2);
+        return addresses.slice();
+    },
+
+    resolve_local_darwin : function () {
+        log("Sixornot(dns_worker) - dns:resolve_local_linux", 2);
+        return this.resolve_local_linux();
+    },
+
+    resolve_local_linux : function () {
+        "use strict";
+        var ret, addresses, sa, address, ifaddr, ifaddr_ptr,
+            adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize,
+            netmask, netmaskbuf;
+        log("Sixornot(dns_worker) - dns:resolve_local_linux", 2);
+
+        ifaddr_ptr = this.ifaddrs.ptr();
+        ret = this.getifaddrs(ifaddr_ptr.address());
+
+        if (ret > 0 || ifaddr_ptr.isNull()) {
+            log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Got no results from getifaddrs", 1);
+            return ["FAIL"];
+        }
+
+        // TODO
+        // Change addresses to be an array of interface info dicts:
+        // { interface: <interface name>,
+        //   ipv4s: [ <array of IPv4 addresses> ],
+        //   ipv6s: [ <array of IPv6 addresses> ],
+        //   <other interface info>
+        // }
+        // IP Address:
+        // { address: <ip address>,
+        //   family: <4 or 6>, (or maybe others too)
+        //   netmask: <network mask>,
+        //   prefix: <prefix length>
+        // }
+
+        ifaddr    = ifaddr_ptr.contents;
+        addrbuf   = (ctypes.char.array(128))();
+        netmaskbuf   = (ctypes.char.array(128))();
+        addresses = [];
+        for (; !ifaddr.ifa_next.isNull(); ifaddr = ifaddr.ifa_next.contents) {
+            log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Addresses for interface: '" + ifaddr.ifa_name.readString() + "'", 1);
+            if (ifaddr.ifa_addr.isNull()) {
+                log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "' is null, skipping", 1);
+                continue;
+            }
+
+            if (ifaddr.ifa_addr.contents.sa_family === this.AF_INET) {
+                sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
+                this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
+                if (!ifaddr.ifa_netmask.isNull()) {
+                    netmask = ctypes.cast(ifaddr.ifa_netmask.contents, this.sockaddr_in);
+                    this.inet_ntop(netmask.sin_family, netmask.addressOfField("sin_addr"), netmaskbuf, 128);
+                    log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + netmaskbuf.readString() + "', prefix: '" + this.get_ipv4_prefix(netmask.sin_addr) + "'", 1);
+                } else {
+                    log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + "null" + "', prefix: '" + "N/A"  + "'", 1);
+                }
+                if (addresses.indexOf(addrbuf.readString()) === -1)
+                {
+                    addresses.push(addrbuf.readString());
+                }
+            }
+
+            if (ifaddr.ifa_addr.contents.sa_family === this.AF_INET6) {
+                sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
+                this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
+
+                if (!ifaddr.ifa_netmask.isNull()) {
+                    netmask = ctypes.cast(ifaddr.ifa_netmask.contents, this.sockaddr_in6);
+                    this.inet_ntop(netmask.sin6_family, netmask.addressOfField("sin6_addr"), netmaskbuf, 128);
+                    log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + netmaskbuf.readString() + "', prefix: '" + this.get_ipv6_prefix(netmask.sin6_addr) + "'", 1);
+                } else {
+                    log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + "null" + "', prefix: '" + "N/A"  + "'", 1);
+                }
+                if (addresses.indexOf(addrbuf.readString()) === -1)
+                {
+                    addresses.push(addrbuf.readString());
+                }
+            }
+        }
+
+        this.freeifaddrs(ifaddr_ptr);
+
+        log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Found the following addresses: " + addresses, 2);
+        return addresses.slice();
+    },
+
     resolve_local : function () {
         "use strict";
-        var ret, addresses, sa, address, ifaddr, ifaddr_ptr, adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_local", 2);
 
         switch(this.os) {
             case "winnt":
-                adapbuf   = (ctypes.uint8_t.array(8192))();
-                adapsize  = ctypes.unsigned_long(8192);
-                /*jslint bitwise: true */
-                adapflags = this.GAA_FLAG_SKIP_ANYCAST | this.GAA_FLAG_SKIP_MULTICAST  | this.GAA_FLAG_SKIP_DNS_SERVER | this.GAA_FLAG_SKIP_FRIENDLY_NAME;
-                /*jslint bitwise: false */
-
-                ret = this.GetAdaptersAddresses(this.AF_UNSPEC, adapflags, null, adapbuf, adapsize.address());
-
-                if (ret > 0) {
-                    log("Sixornot(dns_worker) - dns:resolve_local - GetAdaptersAddresses failed with exit code: " + ret, 1);
-                    return ["FAIL"];
-                }
-
-                adapter  = ctypes.cast(adapbuf, this.ipAdapterAddresses);
-                addrbuf  = (ctypes.char.array(128))();
-                addrsize = ctypes.uint32_t();
-                addresses = [];
-
-                // Loop through returned addresses and add them to array
-                for (;;) {
-                    if (adapter.IfType !== this.IF_TYPE_SOFTWARE_LOOPBACK && adapter.IfType !== this.IF_TYPE_TUNNEL && !adapter.FirstUnicastAddress.isNull()) {
-                        address = adapter.FirstUnicastAddress.contents;
-
-                        for (;;) {
-                            switch (address.Address.lpSockaddr.contents.sa_family) {
-                                case this.AF_INET:
-                                case this.AF_INET6:
-                                    addrsize.value = 128;
-                                    this.WSAAddressToString(address.Address.lpSockaddr, address.Address.iSockaddrLength, null, addrbuf, addrsize.address());
-                                    if (addresses.indexOf(addrbuf.readString()) === -1) {
-                                        addresses.push(addrbuf.readString());
-                                    }
-                                    break;
-                            }
-
-                            if (address.Next.isNull()) {
-                                break;
-                            }
-                            address = address.Next.contents;
-                        }
-                    }
-
-                    if (adapter.Next.isNull()) {
-                        break;
-                    }
-                    adapter = adapter.Next.contents;
-                }
-
-                log("Sixornot(dns_worker) - dns:resolve_local(WIN) - Found the following addresses: " + addresses, 2);
-                return addresses.slice();
+                return this.resolve_local_winnt();
 
             case "darwin":
+                return this.resolve_local_darwin();
+
             case "linux":
-                ifaddr_ptr = this.ifaddrs.ptr();
-                ret = this.getifaddrs(ifaddr_ptr.address());
-
-                if (ret > 0 || ifaddr_ptr.isNull()) {
-                    log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Got no results from getifaddrs", 1);
-                    return ["FAIL"];
-                }
-
-                ifaddr    = ifaddr_ptr.contents;
-                addrbuf   = (ctypes.char.array(128))();
-                addresses = [];
-
-                for (;;) {
-                    log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Addresses for interface: '" + ifaddr.ifa_name.readString() + "'", 1);
-                    if (!ifaddr.ifa_addr.isNull()) {
-                        switch(ifaddr.ifa_addr.contents.sa_family) {
-                            case this.AF_INET:
-                                sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
-                                this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
-                                if (addresses.indexOf(addrbuf.readString()) === -1)
-                                {
-                                    addresses.push(addrbuf.readString());
-                                }
-                                break;
-
-                            case this.AF_INET6:
-                                sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
-                                this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
-                                if (addresses.indexOf(addrbuf.readString()) === -1)
-                                {
-                                    addresses.push(addrbuf.readString());
-                                }
-                                break;
-                        }
-                    }
-
-                    if (ifaddr.ifa_next.isNull()) {
-                        break;
-                    }
-                    ifaddr = ifaddr.ifa_next.contents;
-                }
-
-                this.freeifaddrs(ifaddr_ptr);
-
-                log("Sixornot(dns_worker) - dns:resolve_local(OSX/Linux) - Found the following addresses: " + addresses, 2);
-                return addresses.slice();
+                return this.resolve_local_linux();
 
             default:
                 log("Sixornot(dns_worker) - dns:resolve_local - Unknown operating system!", 1);
                 return ["FAIL"];
         }
-
     },
 
-    // Proxy to ctypes getaddrinfo functionality
+    resolve_remote_winnt : function (host) {
+        "use strict";
+        var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
+        log("Sixornot(dns_worker) - dns:resolve_remote_winnt", 2);
+
+        // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
+        //
+        // The following comment in <winsock2.h> is the best documentation I found
+        // on AI_ADDRCONFIG for Windows:
+        //   Flags used in "hints" argument to getaddrinfo()
+        //       - AI_ADDRCONFIG is supported starting with Vista
+        //       - default is AI_ADDRCONFIG ON whether the flag is set or not
+        //         because the performance penalty in not having ADDRCONFIG in
+        //         the multi-protocol stack environment is severe;
+        //         this defaulting may be disabled by specifying the AI_ALL flag,
+        //         in that case AI_ADDRCONFIG must be EXPLICITLY specified to
+        //         enable ADDRCONFIG behavior
+        //
+        // Not only is AI_ADDRCONFIG unnecessary, but it can be harmful.  If the
+        // computer is not connected to a network, AI_ADDRCONFIG causes getaddrinfo
+        // to fail with WSANO_DATA (11004) for "localhost", probably because of the
+        // following note on AI_ADDRCONFIG in the MSDN getaddrinfo page:
+        //   The IPv4 or IPv6 loopback address is not considered a valid global
+        //   address.
+        // See http://crbug.com/5234.
+        hints = this.addrinfo();
+        hints.ai_flags = this.AI_ALL;
+        hints.ai_family = this.AF_UNSPEC;
+        hints.ai_socktype = 0;
+        hints.ai_protocol = 0;
+        hints.ai_addrlen = 0;
+
+        addrinfo_ptr = this.addrinfo.ptr();
+        ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
+
+        if (ret > 0 || addrinfo_ptr.isNull()) {
+            log("Sixornot(dns_worker) - dns:resolve_remote(WIN) - Got no results from getaddrinfo", 1);
+            return ["FAIL"];
+        }
+
+        addrinfo  = addrinfo_ptr.contents;
+        addrbuf   = (ctypes.char.array(128))();
+        addrsize  = ctypes.uint32_t();
+        addresses = [];
+
+        for (; !addrinfo.ai_next.isNull(); addrinfo = addrinfo.ai_next.contents) {
+            if (addrinfo.ai_addr.contents.sa_family === this.AF_INET) {
+                addrsize.value = 128;
+                this.WSAAddressToString(addrinfo.ai_addr, 16, null, addrbuf, addrsize.address());
+                if (addresses.indexOf(addrbuf.readString()) === -1)
+                {
+                    addresses.push(addrbuf.readString());
+                }
+            }
+
+            if (addrinfo.ai_addr.contents.sa_family === this.AF_INET6) {
+                addrsize.value = 128;
+                this.WSAAddressToString(addrinfo.ai_addr, 28, null, addrbuf, addrsize.address());
+                if (addresses.indexOf(addrbuf.readString()) === -1)
+                {
+                    addresses.push(addrbuf.readString());
+                }
+            }
+        }
+
+        this.freeaddrinfo(addrinfo_ptr);
+
+        log("Sixornot(dns_worker) - dns:resolve_remote(WIN) - Found the following addresses: " + addresses, 1);
+        return addresses.slice();
+    },
+
+    resolve_remote_darwin : function (host) {
+        "use strict";
+        log("Sixornot(dns_worker) - dns:resolve_remote_darwin", 2);
+        return this.resolve_remote_linux(host);
+    },
+
+    resolve_remote_linux : function (host) {
+        "use strict";
+        var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
+        log("Sixornot(dns_worker) - dns:resolve_remote_linux", 2);
+
+        hints = this.addrinfo();
+        hints.ai_flags = 0x0;
+        hints.ai_family = this.AF_UNSPEC;
+        hints.ai_socktype = 0;
+        hints.ai_protocol = 0;
+        hints.ai_addrlen = 0;
+
+        addrinfo_ptr = this.addrinfo.ptr();
+        log("Sixornot(dns_worker) - about to call getaddrinfo, host: " + JSON.stringify(host) + ", hints.address(): " + hints.address() + ", addrinfo_ptr.address(): " + addrinfo_ptr.address(), 2);
+        ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
+
+        if (ret > 0 || addrinfo_ptr.isNull()) {
+            log("Sixornot(dns_worker) - dns:resolve_remote(OSX/Linux) - Got no results from getaddrinfo", 1);
+            return ["FAIL"];
+        }
+
+        addrinfo  = addrinfo_ptr.contents;
+        addrbuf   = (ctypes.char.array(128))();
+        addresses = [];
+
+        for (; !addrinfo.ai_next.isNull(); addrinfo = addrinfo.ai_next.contents) {
+            if (addrinfo.ai_addr.contents.sa_family === this.AF_INET) {
+                sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in);
+                this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
+                if (addresses.indexOf(addrbuf.readString()) === -1)
+                {
+                    addresses.push(addrbuf.readString());
+                }
+            }
+            if (addrinfo.ai_addr.contents.sa_family === this.AF_INET6) {
+                sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in6);
+                this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
+                if (addresses.indexOf(addrbuf.readString()) === -1)
+                {
+                    addresses.push(addrbuf.readString());
+                }
+            }
+        }
+
+        this.freeaddrinfo(addrinfo_ptr);
+
+        log("Sixornot(dns_worker) - dns:resolve_remote(OSX/Linux) - Found the following addresses: " + addresses, 2);
+        return addresses.slice();
+    },
+
     resolve_remote : function (host) {
         "use strict";
         var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
@@ -334,131 +567,13 @@ dns = {
 
         switch(this.os) {
             case "darwin":
+                return this.resolve_remote_darwin(host);
+
             case "linux":
-                hints = this.addrinfo();
-                hints.ai_flags = 0x0;
-                hints.ai_family = this.AF_UNSPEC;
-                hints.ai_socktype = 0;
-                hints.ai_protocol = 0;
-                hints.ai_addrlen = 0;
-
-                addrinfo_ptr = this.addrinfo.ptr();
-                log("Sixornot(dns_worker) - about to call getaddrinfo, host: " + JSON.stringify(host) + ", hints.address(): " + hints.address() + ", addrinfo_ptr.address(): " + addrinfo_ptr.address(), 2);
-                ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
-
-                if (ret > 0 || addrinfo_ptr.isNull()) {
-                    log("Sixornot(dns_worker) - dns:resolve_remote(OSX/Linux) - Got no results from getaddrinfo", 1);
-                    return ["FAIL"];
-                }
-
-                addrinfo  = addrinfo_ptr.contents;
-                addrbuf   = (ctypes.char.array(128))();
-                addresses = [];
-
-                for (;;) {
-                    switch(addrinfo.ai_addr.contents.sa_family) {
-                        case this.AF_INET:
-                            sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in);
-                            this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
-                            if (addresses.indexOf(addrbuf.readString()) === -1)
-                            {
-                                addresses.push(addrbuf.readString());
-                            }
-                            break;
-
-                        case this.AF_INET6:
-                            sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in6);
-                            this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
-                            if (addresses.indexOf(addrbuf.readString()) === -1)
-                            {
-                                addresses.push(addrbuf.readString());
-                            }
-                            break;
-                    }
-
-                    if (addrinfo.ai_next.isNull()) {
-                        break;
-                    }
-                    addrinfo = addrinfo.ai_next.contents;
-                }
-
-                this.freeaddrinfo(addrinfo_ptr);
-
-                log("Sixornot(dns_worker) - dns:resolve_remote(OSX/Linux) - Found the following addresses: " + addresses, 2);
-                return addresses.slice();
+                return this.resolve_remote_linux(host);
 
             case "winnt":
-                // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
-                //
-                // The following comment in <winsock2.h> is the best documentation I found
-                // on AI_ADDRCONFIG for Windows:
-                //   Flags used in "hints" argument to getaddrinfo()
-                //       - AI_ADDRCONFIG is supported starting with Vista
-                //       - default is AI_ADDRCONFIG ON whether the flag is set or not
-                //         because the performance penalty in not having ADDRCONFIG in
-                //         the multi-protocol stack environment is severe;
-                //         this defaulting may be disabled by specifying the AI_ALL flag,
-                //         in that case AI_ADDRCONFIG must be EXPLICITLY specified to
-                //         enable ADDRCONFIG behavior
-                //
-                // Not only is AI_ADDRCONFIG unnecessary, but it can be harmful.  If the
-                // computer is not connected to a network, AI_ADDRCONFIG causes getaddrinfo
-                // to fail with WSANO_DATA (11004) for "localhost", probably because of the
-                // following note on AI_ADDRCONFIG in the MSDN getaddrinfo page:
-                //   The IPv4 or IPv6 loopback address is not considered a valid global
-                //   address.
-                // See http://crbug.com/5234.
-                hints = this.addrinfo();
-                hints.ai_flags = this.AI_ALL;
-                hints.ai_family = this.AF_UNSPEC;
-                hints.ai_socktype = 0;
-                hints.ai_protocol = 0;
-                hints.ai_addrlen = 0;
-
-                addrinfo_ptr = this.addrinfo.ptr();
-                ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
-
-                if (ret > 0 || addrinfo_ptr.isNull()) {
-                    log("Sixornot(dns_worker) - dns:resolve_remote(WIN) - Got no results from getaddrinfo", 1);
-                    return ["FAIL"];
-                }
-
-                addrinfo  = addrinfo_ptr.contents;
-                addrbuf   = (ctypes.char.array(128))();
-                addrsize  = ctypes.uint32_t();
-                addresses = [];
-
-                for (;;) {
-                    switch(addrinfo.ai_addr.contents.sa_family) {
-                        case this.AF_INET:
-                            addrsize.value = 128;
-                            this.WSAAddressToString(addrinfo.ai_addr, 16, null, addrbuf, addrsize.address());
-                            if (addresses.indexOf(addrbuf.readString()) === -1)
-                            {
-                                addresses.push(addrbuf.readString());
-                            }
-                            break;
-
-                        case this.AF_INET6:
-                            addrsize.value = 128;
-                            this.WSAAddressToString(addrinfo.ai_addr, 28, null, addrbuf, addrsize.address());
-                            if (addresses.indexOf(addrbuf.readString()) === -1)
-                            {
-                                addresses.push(addrbuf.readString());
-                            }
-                            break;
-                    }
-
-                    if (addrinfo.ai_next.isNull()) {
-                        break;
-                    }
-                    addrinfo = addrinfo.ai_next.contents;
-                }
-
-                this.freeaddrinfo(addrinfo_ptr);
-
-                log("Sixornot(dns_worker) - dns:resolve_remote(WIN) - Found the following addresses: " + addresses, 1);
-                return addresses.slice();
+                return this.resolve_remote_winnt(host);
 
             default:
                 log("Sixornot(dns_worker) - dns:resolve_remote - Unknown operating system!", 1);
@@ -860,16 +975,23 @@ dns = {
             ]);
 
         /* From: http://msdn.microsoft.com/en-us/library/aa366066(v=vs.85).aspx
-        struct _IP_ADAPTER_UNICAST_ADDRESS {
-            union {
+            typedef struct _IP_ADAPTER_UNICAST_ADDRESS {
+              union {
                 struct {
-                    ULONG   Length;
-                    DWORD   Flags;
+                  ULONG Length;
+                  DWORD Flags;
                 };
-            };
-            struct _IP_ADAPTER_UNICAST_ADDRESS *Next;
-            SOCKET_ADDRESS                      Address;
-            // Remaining members not implemented (not needed)
+              };
+              struct _IP_ADAPTER_UNICAST_ADDRESS  *Next;
+              SOCKET_ADDRESS                     Address;
+              IP_PREFIX_ORIGIN                   PrefixOrigin;
+              IP_SUFFIX_ORIGIN                   SuffixOrigin;
+              IP_DAD_STATE                       DadState;
+              ULONG                              ValidLifetime;
+              ULONG                              PreferredLifetime;
+              ULONG                              LeaseLifetime;
+              UINT8                              OnLinkPrefixLength;  (Vista+ only)
+            } IP_ADAPTER_UNICAST_ADDRESS, *PIP_ADAPTER_UNICAST_ADDRESS;
         }; */
         this.ipAdapterUnicastAddress.define([
             { Length  : ctypes.uint32_t                  },
