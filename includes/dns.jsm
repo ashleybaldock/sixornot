@@ -34,14 +34,66 @@ Components.utils.import("resource://sixornot/includes/prefs.jsm");
 
 var EXPORTED_SYMBOLS = ["dns_handler"];
 
+var callbacks = {
+    // Set up request map, which will map async requests to their callbacks
+    // Every time a request is started its callback is added to the callback_ids
+    // When a request is completed the callback_ids can be queried to find the correct
+    // callback to call.
+
+    // callback_ids is an array of 2-item arrays - [ID <int>, callback <func>]
+    callback_ids : [],
+    next_id : 0,
+
+    // Index this.callback_ids and return required callback
+    find_by_id : function (callback_id) {
+        "use strict";
+        log("Sixornot - callbacks.find_by_id - callback_id: " + callback_id, 3);
+        // Returns -1 if ID not found
+        return this.callback_ids.map(function (a) {
+            return a[0];
+        }).indexOf(callback_id);
+    },
+
+    remove : function (callback_id) {
+        "use strict";
+        var i;
+        i = this.find_by_id(callback_id);
+        if (i !== -1) {
+            log("Sixornot - callbacks.remove - found and removed callback_id: " + callback_id, 3);
+            // Return the callback function
+            return this.callback_ids.splice(i, 1)[0][1];
+        }
+        // If ID not found, return false
+        log("Sixornot - callbacks.remove - could not find callback_id: " + callback_id, 3);
+        return false;
+    },
+
+    add : function (callback) {
+        "use strict";
+        // Use next available callback ID, return that ID
+        this.next_id = this.next_id + 1;
+        this.callback_ids.push([this.next_id, callback]);
+        log("Sixornot - callbacks.add - added new callback with id: " + this.next_id, 3);
+        return this.next_id;
+    },
+
+    make_cancel_obj : function (callback_id) {
+        "use strict";
+        log("Sixornot - dns_handler:make_cancel_obj - callback_id: " + callback_id, 3);
+        return {
+            cancel : function () {
+                log("Sixornot - cancel_obj - cancelling callback_id: " + callback_id, 3);
+                // Remove ID from callback_ids if it exists there
+                callbacks.remove(callback_id);
+            }
+        };
+    }
+};
 
 // The DNS Handler which does most of the work of the extension
 var dns_handler = {
     can_resolve_remote_using_ctypes: true,
     can_resolve_local_using_ctypes: true,
-
-    callback_ids: [],
-    next_callback_id: 0,
 
     worker: null,
 
@@ -88,7 +140,7 @@ var dns_handler = {
             } else if (data.reqid === that.reqids.remotelookup ||
                        data.reqid === that.reqids.locallookup) {
                 // remotelookup/locallookup, find correct callback and call it
-                callback = that.remove_callback_id(data.callbackid);
+                callback = callbacks.remove(data.callbackid);
                 // Execute callback
                 if (callback) {
                     callback(data.content);
@@ -96,17 +148,9 @@ var dns_handler = {
             }
         };
 
-        //this.worker.addEventListener("error", function (err) {
         this.worker.onerror = function (err) {
             log(err.message + ", " + err.filename + ", " + err.lineno, 1);
         };
-
-        // Set up request map, which will map async requests to their callbacks
-        // Every time a request is started its callback is added to the callback_ids
-        // When a request is completed the callback_ids can be queried to find the correct
-        // callback to call.
-        this.callback_ids = [];
-        this.next_callback_id = 0;
 
         // Finally init the worker
         this.worker.postMessage(JSON.stringify({"reqid": this.reqids.init,
@@ -125,6 +169,107 @@ var dns_handler = {
         // sent by the worker after shutdown from triggering anything
         this.worker.onmessage = null;
         this.worker.onerror = null;
+    },
+
+    get_local_hostname : function () {
+        return Components.classes["@mozilla.org/network/dns-service;1"]
+                .getService(Components.interfaces.nsIDNSService).myHostName;
+    },
+
+    /* Resolve local IP address(es) */
+    resolve_local_async : function (callback) {
+        "use strict";
+        log("Sixornot - dns_handler:resolve_local_async", 2);
+        if (this.can_resolve_local_using_ctypes) {
+            return this.resolve_local_using_ctypes_async(callback);
+        } else {
+            return this.resolve_local_using_firefox_async(callback);
+        }
+    },
+
+    /* Use dns_worker thread to perform OS-native DNS lookup for the local host */
+    resolve_local_using_ctypes_async : function (callback) {
+        "use strict";
+        var new_callback_id;
+        log("Sixornot - dns_handler:resolve_local_using_ctypes_async", 2);
+        new_callback_id = callbacks.add(callback);
+
+        this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.locallookup, "content": null}));
+
+        return callbacks.make_cancel_obj(new_callback_id);
+    },
+
+    /* Proxy to resolve_remote_using_firefox_async since it does much the same thing */
+    resolve_local_using_firefox_async : function (callback) {
+        "use strict";
+        log("Sixornot - dns_handler:resolve_local_using_firefox_async", 2);
+        return this.resolve_remote_using_firefox_async(this.get_local_hostname(), callback);
+    },
+
+    /* Resolve remote IP address(es) */
+    resolve_remote_async : function (host, callback) {
+        "use strict";
+        if (this.can_resolve_remote_using_ctypes) {
+            return this.resolve_remote_using_ctypes_async(host, callback);
+        } else {
+            return this.resolve_remote_using_firefox_async(host, callback);
+        }
+    },
+
+    /* Use dns_worker thread to perform OS-native DNS lookup for a remote host */
+    resolve_remote_using_ctypes_async : function (host, callback) {
+        "use strict";
+        var new_callback_id;
+        log("Sixornot - dns_handler:resolve_remote_using_ctypes_async - host: " + host + ", callback: " + callback, 2);
+        new_callback_id = callbacks.add(callback);
+
+        this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.remotelookup, "content": host}));
+
+        return callbacks.make_cancel_obj(new_callback_id);
+    },
+
+    resolve_remote_using_firefox_async : function (host, callback) {
+        "use strict";
+        var my_callback;
+        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - host: " + host + ", callback: " + callback, 2);
+
+        my_callback = {
+            onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
+                var ip_addresses;
+                // Request has been cancelled - ignore
+                if (nsstatus === Components.results.NS_ERROR_ABORT) {
+                    return;
+                }
+                // Request has failed for some reason
+                if (nsstatus !== 0 || !dnsresponse || !dnsresponse.hasMore()) {
+                    if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST) {
+                        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolve host failed, unknown host", 1);
+                        callback(["FAIL"]);
+                    } else {
+                        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolve host failed, status: " + nsstatus, 1);
+                        callback(["FAIL"]);
+                    }
+                    // Address was not found in DNS for some reason
+                    return;  
+                }
+                // Otherwise address was found
+                ip_addresses = [];
+                while (dnsresponse.hasMore()) {
+                    ip_addresses.push(dnsresponse.getNextAddrAsString());
+                }
+                // Call callback for this request with ip_addresses array as argument
+                callback(ip_addresses);
+            }
+        };
+        try {
+            return Components.classes["@mozilla.org/network/dns-service;1"]
+                    .getService(Components.interfaces.nsIDNSService)
+                    .asyncResolve(host, 0, my_callback, Services.tm.currentThread);
+        } catch (e) {
+            Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
+            callback(["FAIL"]);
+            return null;
+        }
     },
 
 
@@ -537,162 +682,6 @@ var dns_handler = {
         return false;
     },
 
-    /* Resolve local IP address(es) */
-    resolve_local_async : function (callback) {
-        "use strict";
-        log("Sixornot - dns_handler:resolve_local_async", 2);
-        if (this.can_resolve_local_using_ctypes) {
-            return this.resolve_local_using_ctypes_async(callback);
-        } else {
-            return this.resolve_local_using_firefox_async(callback);
-        }
-    },
-
-    /* Use dns_worker thread to perform OS-native DNS lookup for the local host */
-    resolve_local_using_ctypes_async : function (callback) {
-        "use strict";
-        var new_callback_id;
-        log("Sixornot - dns_handler:resolve_local_using_ctypes_async", 2);
-        new_callback_id = this.add_callback_id(callback);
-
-        this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.locallookup, "content": null}));
-
-        return this.make_cancel_obj(new_callback_id);
-    },
-
-    /* Proxy to resolve_remote_using_firefox_async since it does much the same thing */
-    resolve_local_using_firefox_async : function (callback) {
-        "use strict";
-        log("Sixornot - dns_handler:resolve_local_using_firefox_async", 2);
-        return this.resolve_remote_using_firefox_async(this.get_local_hostname(), callback);
-    },
-
-    get_local_hostname : function () {
-        return Components.classes["@mozilla.org/network/dns-service;1"]
-                .getService(Components.interfaces.nsIDNSService).myHostName;
-    },
-
-    /* Resolve remote IP address(es) */
-    resolve_remote_async : function (host, callback) {
-        "use strict";
-        if (this.can_resolve_remote_using_ctypes) {
-            return this.resolve_remote_using_ctypes_async(host, callback);
-        } else {
-            return this.resolve_remote_using_firefox_async(host, callback);
-        }
-    },
-
-    /* Use dns_worker thread to perform OS-native DNS lookup for a remote host */
-    resolve_remote_using_ctypes_async : function (host, callback) {
-        "use strict";
-        var new_callback_id;
-        log("Sixornot - dns_handler:resolve_remote_using_ctypes_async - host: " + host + ", callback: " + callback, 2);
-        new_callback_id = this.add_callback_id(callback);
-
-        this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.remotelookup, "content": host}));
-
-        return this.make_cancel_obj(new_callback_id);
-    },
-
-    resolve_remote_using_firefox_async : function (host, callback) {
-        "use strict";
-        var my_callback;
-        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - host: " + host + ", callback: " + callback, 2);
-
-        my_callback = {
-            onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
-                var ip_addresses;
-                // Request has been cancelled - ignore
-                if (nsstatus === Components.results.NS_ERROR_ABORT) {
-                    return;
-                }
-                // Request has failed for some reason
-                if (nsstatus !== 0 || !dnsresponse || !dnsresponse.hasMore()) {
-                    if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST) {
-                        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolve host failed, unknown host", 1);
-                        callback(["FAIL"]);
-                    } else {
-                        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolve host failed, status: " + nsstatus, 1);
-                        callback(["FAIL"]);
-                    }
-                    // Address was not found in DNS for some reason
-                    return;  
-                }
-                // Otherwise address was found
-                ip_addresses = [];
-                while (dnsresponse.hasMore()) {
-                    ip_addresses.push(dnsresponse.getNextAddrAsString());
-                }
-                // Call callback for this request with ip_addresses array as argument
-                callback(ip_addresses);
-            }
-        };
-        try {
-            return Components.classes["@mozilla.org/network/dns-service;1"]
-                    .getService(Components.interfaces.nsIDNSService)
-                    .asyncResolve(host, 0, my_callback, Services.tm.currentThread);
-        } catch (e) {
-            Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
-            callback(["FAIL"]);
-            return null;
-        }
-    },
-
-
-    /*
-        ctypes dns callback handling functions
-    */
-    // Index this.callback_ids and return required callback
-    find_callback_by_id : function (callback_id) {
-        "use strict";
-        var f;
-        log("Sixornot - dns_handler:find_callback_by_id - callback_id: " + callback_id, 3);
-        // Callback IDs is an array of 2-item arrays - [ID, callback]
-        f = function (a) {
-            return a[0];
-        };
-        // Returns -1 if ID not found
-        return this.callback_ids.map(f).indexOf(callback_id);
-    },
-
-    // Search this.callback_ids for the ID in question, remove it if it exists
-    remove_callback_id : function (callback_id) {
-        "use strict";
-        var i;
-        log("Sixornot - dns_handler:remove_callback_id - callback_id: " + callback_id, 3);
-        i = this.find_callback_by_id(callback_id);
-        if (i !== -1) {
-            // Return the callback function
-            return this.callback_ids.splice(i, 1)[0][1];
-        }
-        // If ID not found, return false
-        return false;
-    },
-
-    // Add a callback to the callback_ids array with the next available ID
-    add_callback_id : function (callback) {
-        "use strict";
-        log("Sixornot - dns_handler:add_callback_id", 3);
-        // Use next available callback ID, return that ID
-        this.next_callback_id = this.next_callback_id + 1;
-        this.callback_ids.push([this.next_callback_id, callback]);
-        return this.next_callback_id;
-    },
-
-    make_cancel_obj : function (callback_id) {
-        "use strict";
-        var obj;
-        log("Sixornot - dns_handler:make_cancel_obj - callback_id: " + callback_id, 3);
-        obj = {
-            cancel : function () {
-                // Remove ID from callback_ids if it exists there
-                dns_handler.remove_callback_id(callback_id);
-            }
-        };
-        return obj;
-    },
-
-
     /*
         Misc.
     */
@@ -710,20 +699,4 @@ var dns_handler = {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
         }
     }
-
-    /* Non-async proxy lookup no longer allowed in Firefox 18 - not needed, but will need to re-implement this if it ever is!
-    // Returns true if the URL is set to have its DNS lookup proxied via SOCKS
-    is_proxied_dns : function (url) {
-        "use strict";
-        var uri, proxyinfo;
-        log("Sixornot - dns_handler:is_proxied_dns - url: " + url, 2);
-        uri = Services.io.newURI(url, null, null);
-        // Finds proxy (shouldn't block thread; we already did this lookup to load the page)
-        // TODO - do this async!
-        proxyinfo = Components.classes["@mozilla.org/network/protocol-proxy-service;1"]
-                    .getService(Components.interfaces.nsIProtocolProxyService)  // TODO - use of getService
-                    .resolve(uri, 0);
-        // "network.proxy.socks_remote_dns" pref must be set to true for Firefox to set TRANSPARENT_PROXY_RESOLVES_HOST flag when applicable
-        return (proxyinfo !== null) && (proxyinfo.flags && proxyinfo.TRANSPARENT_PROXY_RESOLVES_HOST);
-    } */
 };

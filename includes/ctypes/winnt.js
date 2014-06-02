@@ -16,19 +16,19 @@ var resolver = {
         this.local_ctypes  = true;
         try {
             // Library 1 needed only for local lookup
-            this.library1 = ctypes.open(this.win_library1);
-            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library1 + "'", 1);
+            this.library1 = ctypes.open(this.library1);
+            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.library1 + "'", 1);
         } catch (e) {
-            log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.win_library1 + "' - ctypes local lookup will be disabled", 0);
+            log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.library1 + "' - ctypes local lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.local_ctypes  = false;
         }
         try {
             // Library 2 needed for local and remote lookup
-            this.library2 = ctypes.open(this.win_library2);
-            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.win_library2 + "'", 1);
+            this.library2 = ctypes.open(this.library2);
+            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.library2 + "'", 1);
         } catch (e) {
-            log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.win_library2 + "' - ctypes local and remote lookup will be disabled", 0);
+            log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.library2 + "' - ctypes local and remote lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.remote_ctypes = false;
             this.local_ctypes  = false;
@@ -56,7 +56,7 @@ var resolver = {
         // Protocol
         this.IPPROTO_UNSPEC              = 0;
         this.IPPROTO_TCP                 = 6;
-        this.IPPROTO_UDP                 = 17;
+        this.IPPROTO_UDP                 = 19;
         this.IPPROTO_RM                  = 113;
         // Adaptor flags
         this.GAA_FLAG_SKIP_UNICAST       = 0x0001;

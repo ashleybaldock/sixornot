@@ -290,7 +290,7 @@ var resolver = {
         return addresses.slice();
     },
 
-    resolve_remote : function () {
+    resolve_remote : function (host) {
         "use strict";
         var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_remote_OSX", 2);

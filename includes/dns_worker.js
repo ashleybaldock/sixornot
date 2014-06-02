@@ -17,21 +17,13 @@
  * 
  * ***** END LICENSE BLOCK ***** */
 
-// Provided by Firefox:
-/*global XPCOM, ctypes, postMessage, close, onmessage: true */
-
-// Provided in included modules:
-/*global */
-
-// Provided in lazy getters
-/*global */
-
 // JSLint parameters
 /*jslint white: true */
 
+// Provided by Firefox:
+/*global XPCOM, importScript, ctypes, postMessage, close, onmessage: true */
 
 // Global variables defined by this script
-//var consoleService, log, parse_exception, dns;
 var log, parse_exception, dns;
 
 // Utility functions

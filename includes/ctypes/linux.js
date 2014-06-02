@@ -14,10 +14,10 @@ var resolver = {
         this.remote_ctypes = true;
         this.local_ctypes  = true;
         try {
-            this.library = ctypes.open(this.linux_library);
-            log("Sixornot(dns_worker) - dns:load_linux - opened library: '" + this.linux_library + "'", 1);
+            this.library = ctypes.open(this.library);
+            log("Sixornot(dns_worker) - dns:load_linux - opened library: '" + this.library + "'", 1);
         } catch (e) {
-            log("Sixornot(dns_worker) - dns:load_linux - cannot open '" + this.linux_library + "' - ctypes lookup will be disabled", 0);
+            log("Sixornot(dns_worker) - dns:load_linux - cannot open '" + this.library + "' - ctypes lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.local_ctypes  = false;
             this.remote_ctypes = false;
@@ -257,7 +257,7 @@ var resolver = {
         return addresses.slice();
     },
 
-    resolve_remote : function () {
+    resolve_remote : function (host) {
         "use strict";
         var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_remote_linux", 2);
