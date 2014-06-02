@@ -83,6 +83,7 @@ var resolver = {
         this.GAA_FLAG_SKIP_ANYCAST       = 0x0002;
         this.GAA_FLAG_SKIP_MULTICAST     = 0x0004;
         this.GAA_FLAG_SKIP_DNS_SERVER    = 0x0008;
+        this.GAA_FLAG_INCLUDE_PREFIX     = 0x0010;
         this.GAA_FLAG_SKIP_FRIENDLY_NAME = 0x0020;
 
         this.IF_TYPE_SOFTWARE_LOOPBACK   =  24;
@@ -106,8 +107,8 @@ var resolver = {
         }; */
         this.sockaddr.define([
             { sa_family : ctypes.unsigned_short          },      // Address family (2)
-            { sa_data   : ctypes.unsigned_char.array(28) }       // Address value (max possible size) (28)
-            ]);                                                  // (30)
+            { sa_data   : ctypes.unsigned_char.array(14) }       // Address value (14)
+            ]);                                                  // (16)
 
         /* From: http://msdn.microsoft.com/en-us/library/ms740496(v=vs.85).aspx
         struct sockaddr_in {
@@ -195,7 +196,8 @@ var resolver = {
             // Remaining members not implemented (not needed)
         }; */
         this.ipAdapterAddresses.define([
-            { alignment           : ctypes.uint64_t                  },
+            { Length              : ctypes.uint32_t                  },
+            { IfIndex             : ctypes.uint32_t                  },
             { Next                : this.ipAdapterAddresses.ptr      },
             { AdapterName         : ctypes.char.ptr                  },
             { FirstUnicastAddress : this.ipAdapterUnicastAddress.ptr },
@@ -312,8 +314,8 @@ var resolver = {
             netmask, netmaskbuf;
         log("Sixornot(dns_worker) - dns:resolve_local(winnt)", 2);
 
-        adapbuf   = (ctypes.uint8_t.array(8192))();
-        adapsize  = ctypes.unsigned_long(8192);
+        adapbuf   = (ctypes.uint8_t.array(15000))();
+        adapsize  = ctypes.unsigned_long(15000);
         /*jslint bitwise: true */
         adapflags = this.GAA_FLAG_SKIP_ANYCAST | this.GAA_FLAG_SKIP_MULTICAST  | this.GAA_FLAG_SKIP_DNS_SERVER | this.GAA_FLAG_SKIP_FRIENDLY_NAME;
         /*jslint bitwise: false */
@@ -325,31 +327,34 @@ var resolver = {
             return ["FAIL"];
         }
 
-        adapter  = ctypes.cast(adapbuf, this.ipAdapterAddresses);
+        adapter  = ctypes.cast(adapbuf, this.ipAdapterAddresses).address();
         addrbuf  = (ctypes.char.array(128))();
         addrsize = ctypes.uint32_t();
         addresses = [];
 
         // Loop through returned addresses and add them to array
-        for (; !adapter.Next.isNull(); adapter = adapter.Next.contents) {
-            if (adapter.IfType === this.IF_TYPE_SOFTWARE_LOOPBACK
-             || adapter.IfType === this.IF_TYPE_TUNNEL
-             || adapter.FirstUnicastAddress.isNull()) {
-                // TODO interface name
-                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Address for interface: '" + "---" + "' is null, skipping", 1);
+        for (; !adapter.isNull(); adapter = adapter.contents.Next) {
+            log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Getting IPs for interface: '" + adapter.contents.AdapterName.readString() + "'", 1);
+
+            if (adapter.contents.FirstUnicastAddress.isNull()) {
+                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - FirstUnicastAddress for interface: '" + adapter.contents.AdapterName.readString() + "' is null, skipping", 1);
                 continue;
             }
 
-            address = adapter.FirstUnicastAddress.contents;
-
-            for (; !address.Next.isNull(); address = address.Next.contents) {
-                if (address.Address.lpSockaddr.contents.sa_family === this.AF_INET
-                 || address.Address.lpSockaddr.contents.sa_family === this.AF_INET6) {
+            for (address = adapter.contents.FirstUnicastAddress;
+                 !address.isNull(); address = address.contents.Next) {
+                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - address.contents.Length: " + address.contents.Length, 1);
+                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - address.contents.Address.lpSockaddrLength: " + address.contents.Address.iSockaddrLength, 1);
+                if (address.contents.Address.lpSockaddr.contents.sa_family === this.AF_INET
+                 || address.contents.Address.lpSockaddr.contents.sa_family === this.AF_INET6) {
                     addrsize.value = 128;
-                    this.WSAAddressToString(address.Address.lpSockaddr, address.Address.iSockaddrLength, null, addrbuf, addrsize.address());
+                    this.WSAAddressToString(address.contents.Address.lpSockaddr, address.contents.Address.iSockaddrLength, null, addrbuf, addrsize.address());
+                    log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Address for interface: '" + adapter.contents.AdapterName.readString() + "' is: '" + addrbuf.readString() + "'", 1);
                     if (addresses.indexOf(addrbuf.readString()) === -1) {
                         addresses.push(addrbuf.readString());
                     }
+                } else {
+                    log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Address for interface: '" + adapter.contents.AdapterName.readString() + "' unknown type, skipping", 1);
                 }
             }
         }

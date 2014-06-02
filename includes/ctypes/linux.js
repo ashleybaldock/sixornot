@@ -226,26 +226,26 @@ var resolver = {
         //   prefix: <prefix length>
         // }
 
-        ifaddr    = ifaddr_ptr.contents;
         addrbuf   = (ctypes.char.array(128))();
         netmaskbuf   = (ctypes.char.array(128))();
         addresses = [];
-        for (; !ifaddr.ifa_next.isNull(); ifaddr = ifaddr.ifa_next.contents) {
-            log("Sixornot(dns_worker) - dns:resolve_local(linux) - Addresses for interface: '" + ifaddr.ifa_name.readString() + "'", 1);
-            if (ifaddr.ifa_addr.isNull()) {
-                log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "' is null, skipping", 1);
+
+        for (ifaddr = ifaddr_ptr; !ifaddr.isNull(); ifaddr = ifaddr.ifa_next) {
+            log("Sixornot(dns_worker) - dns:resolve_local(linux) - Addresses for interface: '" + ifaddr.contents.ifa_name.readString() + "'", 1);
+            if (ifaddr.contents.ifa_addr.isNull()) {
+                log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "' is null, skipping", 1);
                 continue;
             }
 
-            if (ifaddr.ifa_addr.contents.sa_family === this.AF_INET) {
-                sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in);
+            if (ifaddr.contents.ifa_addr.contents.sa_family === this.AF_INET) {
+                sa = ctypes.cast(ifaddr.contents.ifa_addr.contents, this.sockaddr_in);
                 this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
-                if (!ifaddr.ifa_netmask.isNull()) {
-                    netmask = ctypes.cast(ifaddr.ifa_netmask.contents, this.sockaddr_in);
+                if (!ifaddr.contents.ifa_netmask.isNull()) {
+                    netmask = ctypes.cast(ifaddr.contents.ifa_netmask.contents, this.sockaddr_in);
                     this.inet_ntop(netmask.sin_family, netmask.addressOfField("sin_addr"), netmaskbuf, 128);
-                    log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + netmaskbuf.readString() + "', prefix: '" + get_ipv4_prefix(netmask.sin_addr) + "'", 1);
+                    log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + netmaskbuf.readString() + "', prefix: '" + get_ipv4_prefix(netmask.sin_addr) + "'", 1);
                 } else {
-                    log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + "null" + "', prefix: '" + "N/A"  + "'", 1);
+                    log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + "null" + "', prefix: '" + "N/A"  + "'", 1);
                 }
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
@@ -253,16 +253,16 @@ var resolver = {
                 }
             }
 
-            if (ifaddr.ifa_addr.contents.sa_family === this.AF_INET6) {
-                sa = ctypes.cast(ifaddr.ifa_addr.contents, this.sockaddr_in6);
+            if (ifaddr.contents.ifa_addr.contents.sa_family === this.AF_INET6) {
+                sa = ctypes.cast(ifaddr.contents.ifa_addr.contents, this.sockaddr_in6);
                 this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
 
-                if (!ifaddr.ifa_netmask.isNull()) {
-                    netmask = ctypes.cast(ifaddr.ifa_netmask.contents, this.sockaddr_in6);
+                if (!ifaddr.contents.ifa_netmask.isNull()) {
+                    netmask = ctypes.cast(ifaddr.contents.ifa_netmask.contents, this.sockaddr_in6);
                     this.inet_ntop(netmask.sin6_family, netmask.addressOfField("sin6_addr"), netmaskbuf, 128);
-                    log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + netmaskbuf.readString() + "', prefix: '" + get_ipv6_prefix(netmask.sin6_addr) + "'", 1);
+                    log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + netmaskbuf.readString() + "', prefix: '" + get_ipv6_prefix(netmask.sin6_addr) + "'", 1);
                 } else {
-                    log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + "null" + "', prefix: '" + "N/A"  + "'", 1);
+                    log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + "null" + "', prefix: '" + "N/A"  + "'", 1);
                 }
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
@@ -298,21 +298,20 @@ var resolver = {
             return ["FAIL"];
         }
 
-        addrinfo  = addrinfo_ptr.contents;
         addrbuf   = (ctypes.char.array(128))();
         addresses = [];
 
-        for (; !addrinfo.ai_next.isNull(); addrinfo = addrinfo.ai_next.contents) {
-            if (addrinfo.ai_addr.contents.sa_family === this.AF_INET) {
-                sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in);
+        for (addrinfo = addrinfo_ptr; !addrinfo.isNull(); addrinfo = addrinfo.ai_next) {
+            if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET) {
+                sa = ctypes.cast(addrinfo.contents.ai_addr.contents, this.sockaddr_in);
                 this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
                 }
             }
-            if (addrinfo.ai_addr.contents.sa_family === this.AF_INET6) {
-                sa = ctypes.cast(addrinfo.ai_addr.contents, this.sockaddr_in6);
+            if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET6) {
+                sa = ctypes.cast(addrinfo.contents.ai_addr.contents, this.sockaddr_in6);
                 this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
