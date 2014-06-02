@@ -370,8 +370,11 @@ var resolver = {
         addresses = [];
 
         for (addrinfo = addrinfo_ptr; !addrinfo.isNull(); addrinfo = addrinfo.contents.ai_next) {
+            log("Sixornot(dns_worker) - resolve_remote(winnt) - next address", 1);
             if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET) {
+                addrsize.value = 128;
                 this.WSAAddressToString(addrinfo.contents.ai_addr, 16, null, addrbuf, addrsize.address());
+                log("Sixornot(dns_worker) - resolve_remote(winnt) - IPv4 address: " + addrbuf.readString(), 1);
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
@@ -379,7 +382,9 @@ var resolver = {
             }
 
             if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET6) {
+                addrsize.value = 128;
                 this.WSAAddressToString(addrinfo.contents.ai_addr, 28, null, addrbuf, addrsize.address());
+                log("Sixornot(dns_worker) - resolve_remote(winnt) - IPv6 address: " + addrbuf.readString(), 1);
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
