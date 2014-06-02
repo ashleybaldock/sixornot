@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script builds the SixOrNot addon ready for distribution
-version="1.0b2"
+version="1.0b3"
 
 # Create build directory by version
 mkdir ../dist/$version
@@ -29,6 +29,12 @@ cp includes/requestobserver.jsm ../dist/$version/src/includes/
 cp includes/windowwatcher.jsm ../dist/$version/src/includes/
 cp includes/stylesheet.jsm ../dist/$version/src/includes/
 cp includes/env.jsm ../dist/$version/src/includes/
+
+mkdir ../dist/$version/src/includes/ctypes
+cp includes/ctypes/base.js ../dist/$version/src/includes/ctypes/
+cp includes/ctypes/darwin.js ../dist/$version/src/includes/ctypes/
+cp includes/ctypes/linux.js ../dist/$version/src/includes/ctypes/
+cp includes/ctypes/winnt.js ../dist/$version/src/includes/ctypes/
 
 mkdir ../dist/$version/src/css
 ./gen_css.sh
