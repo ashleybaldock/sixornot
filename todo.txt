@@ -22,6 +22,7 @@ Test on Palemoon                                                            -
 Review documentation + screenshots                                          -
 
 # 1.1.0
+Multiple workers to speed up DNS resolution
 Warnings for ip6_disabled and ip4only_domain
  - ip4only_domain should show a badge next to affected domains
  - ip6_disabled should show a warning on the panel

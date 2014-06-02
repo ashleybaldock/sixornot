@@ -152,4 +152,5 @@ onmessage = function (evt) {
 resolver.init();
 postMessage(JSON.stringify({"reqid": reqids.checkremote, "content": resolver.remote_ctypes}));
 postMessage(JSON.stringify({"reqid": reqids.checklocal, "content": resolver.local_ctypes}));
+log("Sixornot(worker_base) - completed init", 1);
 
