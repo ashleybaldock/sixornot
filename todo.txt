@@ -10,8 +10,9 @@ results in the button not conforming to the setting
 Release to get out of beta...
 Refactor dns_worker                                                         - DONE
  - Split OS-specific code into different workers                            - DONE
-Test to make sure unload() callbacks all happen if a window has
+Test to make sure unload() callbacks all happen if a window has             - DONE
  been opened and then closed again                                          - DONE
+Only lookup local IPs on panel show if they aren't hidden                   - DONE
 Update Russian translation                                                  - DONE
 Test on Linux                                                               - 
 Test on FF 24, SeaMonkey 2.26, FF 29                                        -
@@ -19,8 +20,6 @@ Test on FF 24, SeaMonkey 2.26, FF 29                                        -
 Test on FF 30/31 and future versions of SeaMonkey                           -
 Test on Palemoon                                                            -
 Review documentation + screenshots                                          -
-
-Only lookup local IPs on panel show if they aren't hidden                   - DONE
 
 # 1.1.0
 Warnings for ip6_disabled and ip4only_domain

@@ -130,7 +130,7 @@ startup = function (aData, aReason) {
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
         PREF_OBSERVER.register();
-        PREF_OBSERVER_DNS.register();
+        //PREF_OBSERVER_DNS.register();
         HTTP_REQUEST_OBSERVER.register();
     });
 };
@@ -147,7 +147,7 @@ shutdown = function (aData, aReason) {
         }
 
         HTTP_REQUEST_OBSERVER.unregister();
-        PREF_OBSERVER_DNS.unregister();
+        //PREF_OBSERVER_DNS.unregister();
         PREF_OBSERVER.unregister();
 
         // Unload our own code modules
