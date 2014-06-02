@@ -230,7 +230,7 @@ var resolver = {
         netmaskbuf   = (ctypes.char.array(128))();
         addresses = [];
 
-        for (ifaddr = ifaddr_ptr; !ifaddr.isNull(); ifaddr = ifaddr.ifa_next) {
+        for (ifaddr = ifaddr_ptr; !ifaddr.isNull(); ifaddr = ifaddr.contents.ifa_next) {
             log("Sixornot(dns_worker) - dns:resolve_local(linux) - Addresses for interface: '" + ifaddr.contents.ifa_name.readString() + "'", 1);
             if (ifaddr.contents.ifa_addr.isNull()) {
                 log("Sixornot(dns_worker) - dns:resolve_local(linux) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "' is null, skipping", 1);
@@ -301,7 +301,7 @@ var resolver = {
         addrbuf   = (ctypes.char.array(128))();
         addresses = [];
 
-        for (addrinfo = addrinfo_ptr; !addrinfo.isNull(); addrinfo = addrinfo.ai_next) {
+        for (addrinfo = addrinfo_ptr; !addrinfo.isNull(); addrinfo = addrinfo.contents.ai_next) {
             if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET) {
                 sa = ctypes.cast(addrinfo.contents.ai_addr.contents, this.sockaddr_in);
                 this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);

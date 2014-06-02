@@ -91,8 +91,6 @@ var resolver = {
 
         // Define ctypes structures
         this.sockaddr                = ctypes.StructType("sockaddr");
-        this.sockaddr_in             = ctypes.StructType("sockaddr_in");
-        this.sockaddr_in6            = ctypes.StructType("sockaddr_in6");
         this.addrinfo                = ctypes.StructType("addrinfo");
         this.ipAdapterAddresses      = ctypes.StructType("_IP_ADAPTER_ADDRESSES");
         this.ipAdapterUnicastAddress = ctypes.StructType("_IP_ADAPTER_UNICAST_ADDRESS");
@@ -109,43 +107,6 @@ var resolver = {
             { sa_family : ctypes.unsigned_short          },      // Address family (2)
             { sa_data   : ctypes.unsigned_char.array(14) }       // Address value (14)
             ]);                                                  // (16)
-
-        /* From: http://msdn.microsoft.com/en-us/library/ms740496(v=vs.85).aspx
-        struct sockaddr_in {
-            short   sin_family;
-            u_short sin_port;
-            struct  in_addr sin_addr;
-            char    sin_zero[8];
-        }; */
-        this.sockaddr_in.define([
-            { sin_family : ctypes.short          },              // Address family (2)
-            { sin_port   : ctypes.unsigned_short },              // Socket port (2)
-            { sin_addr   : ctypes.unsigned_long  },              // Address value (or could be struct in_addr) (4)
-            { sin_zero   : ctypes.char.array(8)  }               // Padding (8)
-            ]);                                                  // (16)
-
-        /* From: http://msdn.microsoft.com/en-us/library/ms738560(v=VS.85).aspx
-        typedef struct in6_addr {
-          union {
-            u_char  Byte[16];
-            u_short Word[8];
-          } u;
-        };
-           From: http://msdn.microsoft.com/en-us/library/ms740496(v=vs.85).aspx
-        struct sockaddr_in6 {
-            short   sin6_family;
-            u_short sin6_port;
-            u_long  sin6_flowinfo;
-            struct  in6_addr sin6_addr;
-            u_long  sin6_scope_id;
-        }; */
-        this.sockaddr_in6.define([
-            { sin6_family   : ctypes.short                   },  // Address family (2)
-            { sin6_port     : ctypes.unsigned_short          },  // Socket port (2)
-            { sin6_flowinfo : ctypes.unsigned_long           },  // IP6 flow information (4)
-            { sin6_addr     : ctypes.unsigned_char.array(16) },  // IP6 address value (or could be struct in6_addr) (16)
-            { sin6_scope_id : ctypes.unsigned_long           }   // Scope zone index (4)
-            ]);                                                  // (28)
 
         /* From: http://msdn.microsoft.com/en-us/library/ms737530(v=vs.85).aspx
         struct addrinfo {
@@ -309,7 +270,7 @@ var resolver = {
 
     resolve_local : function () {
         "use strict";
-        var ret, addresses, sa, address, ifaddr, ifaddr_ptr,
+        var ret, addresses, address, ifaddr, ifaddr_ptr,
             adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize,
             netmask, netmaskbuf;
         log("Sixornot(dns_worker) - dns:resolve_local(winnt)", 2);
@@ -329,7 +290,7 @@ var resolver = {
 
         adapter  = ctypes.cast(adapbuf, this.ipAdapterAddresses).address();
         addrbuf  = (ctypes.char.array(128))();
-        addrsize = ctypes.uint32_t();
+        addrsize = ctypes.uint32_t(128);
         addresses = [];
 
         // Loop through returned addresses and add them to array
@@ -343,12 +304,13 @@ var resolver = {
 
             for (address = adapter.contents.FirstUnicastAddress;
                  !address.isNull(); address = address.contents.Next) {
-                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - address.contents.Length: " + address.contents.Length, 1);
                 log("Sixornot(dns_worker) - dns:resolve_local(winnt) - address.contents.Address.lpSockaddrLength: " + address.contents.Address.iSockaddrLength, 1);
                 if (address.contents.Address.lpSockaddr.contents.sa_family === this.AF_INET
                  || address.contents.Address.lpSockaddr.contents.sa_family === this.AF_INET6) {
+
                     addrsize.value = 128;
                     this.WSAAddressToString(address.contents.Address.lpSockaddr, address.contents.Address.iSockaddrLength, null, addrbuf, addrsize.address());
+
                     log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Address for interface: '" + adapter.contents.AdapterName.readString() + "' is: '" + addrbuf.readString() + "'", 1);
                     if (addresses.indexOf(addrbuf.readString()) === -1) {
                         addresses.push(addrbuf.readString());
@@ -365,7 +327,7 @@ var resolver = {
 
     resolve_remote : function (host) {
         "use strict";
-        var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
+        var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, addrsize;
         log("Sixornot(dns_worker) - dns:resolve_remote(winnt)", 2);
 
         // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
@@ -403,24 +365,21 @@ var resolver = {
             return ["FAIL"];
         }
 
-        addrinfo  = addrinfo_ptr.contents;
         addrbuf   = (ctypes.char.array(128))();
-        addrsize  = ctypes.uint32_t();
+        addrsize  = ctypes.uint32_t(128);
         addresses = [];
 
-        for (; !addrinfo.ai_next.isNull(); addrinfo = addrinfo.ai_next.contents) {
-            if (addrinfo.ai_addr.contents.sa_family === this.AF_INET) {
-                addrsize.value = 128;
-                this.WSAAddressToString(addrinfo.ai_addr, 16, null, addrbuf, addrsize.address());
+        for (addrinfo = addrinfo_ptr; !addrinfo.isNull(); addrinfo = addrinfo.contents.ai_next) {
+            if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET) {
+                this.WSAAddressToString(addrinfo.contents.ai_addr, 16, null, addrbuf, addrsize.address());
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
                 }
             }
 
-            if (addrinfo.ai_addr.contents.sa_family === this.AF_INET6) {
-                addrsize.value = 128;
-                this.WSAAddressToString(addrinfo.ai_addr, 28, null, addrbuf, addrsize.address());
+            if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET6) {
+                this.WSAAddressToString(addrinfo.contents.ai_addr, 28, null, addrbuf, addrsize.address());
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
