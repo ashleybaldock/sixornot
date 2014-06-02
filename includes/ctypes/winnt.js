@@ -301,7 +301,7 @@ var resolver = {
                 continue;
             } else {
                 log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Interface: '"
-                    + adapter.contents.AdapterName.readString() + "'", 1);
+                    + adapter.contents.AdapterName.readString() + "'", 2);
             }
 
             for (address = adapter.contents.FirstUnicastAddress;
@@ -311,6 +311,8 @@ var resolver = {
                     addrsize.value = 128;
                     this.WSAAddressToString(address.contents.Address.lpSockaddr,
                         address.contents.Address.iSockaddrLength, null, addrbuf, addrsize.address());
+                    log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Found address: '"
+                        + addrbuf.readString() + "'", 2);
 
                     if (addresses.indexOf(addrbuf.readString()) === -1) {
                         addresses.push(addrbuf.readString());

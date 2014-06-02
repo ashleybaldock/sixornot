@@ -231,7 +231,7 @@ var resolver = {
         var ret, addresses, sa, address, ifaddr, ifaddr_ptr,
             adapbuf, adapsize, adapflags, adapter, addrbuf, addrsize,
             netmask, netmaskbuf;
-        log("Sixornot(dns_worker) - dns:resolve_local_OSX", 2);
+        log("Sixornot(dns_worker) - dns:resolve_local(OSX)", 2);
 
         ifaddr_ptr = this.ifaddrs.ptr();
         ret = this.getifaddrs(ifaddr_ptr.address());
@@ -265,13 +265,14 @@ var resolver = {
                     + ifaddr.contents.ifa_name.readString() + "' - skipping", 1);
                 continue;
             } else {
-                log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Address on interface: '"
-                    + ifaddr.contents.ifa_name.readString() + "'", 2);
             }
 
             if (ifaddr.contents.ifa_addr.contents.sa_family === this.AF_INET) {
                 sa = ctypes.cast(ifaddr.contents.ifa_addr.contents, this.sockaddr_in);
                 this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
+                log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Found IPv4 address: '"
+                    + addrbuf.readString() + "' on interface: '"
+                    + ifaddr.contents.ifa_name.readString() + "'", 2);
                 /*if (!ifaddr.contents.ifa_netmask.isNull()) {
                     netmask = ctypes.cast(ifaddr.contents.ifa_netmask.contents, this.sockaddr_in);
                     this.inet_ntop(netmask.sin_family, netmask.addressOfField("sin_addr"), netmaskbuf, 128);
@@ -288,6 +289,9 @@ var resolver = {
             if (ifaddr.contents.ifa_addr.contents.sa_family === this.AF_INET6) {
                 sa = ctypes.cast(ifaddr.contents.ifa_addr.contents, this.sockaddr_in6);
                 this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
+                log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Found IPv6 address: '"
+                    + addrbuf.readString() + "' on interface: '"
+                    + ifaddr.contents.ifa_name.readString() + "'", 2);
                 /*if (!ifaddr.contents.ifa_netmask.isNull()) {
                     netmask = ctypes.cast(ifaddr.contents.ifa_netmask.contents, this.sockaddr_in6);
                     this.inet_ntop(netmask.sin6_family, netmask.addressOfField("sin6_addr"), netmaskbuf, 128);
