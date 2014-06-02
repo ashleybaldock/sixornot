@@ -90,6 +90,9 @@ var callbacks = {
     }
 };
 
+var dns_service = Components.classes["@mozilla.org/network/dns-service;1"]
+                    .getService(Components.interfaces.nsIDNSService);
+
 // The DNS Handler which does most of the work of the extension
 var dns_handler = {
     can_resolve_remote_using_ctypes: true,
@@ -106,6 +109,13 @@ var dns_handler = {
         log: 254,           // A logging message (sent from worker to main thread only)
         init: 255           // Initialise dns in the worker
     },
+
+    RESOLVE_BYPASS_CACHE:    0x01, //This flag suppresses the internal DNS lookup cache.
+    RESOLVE_CANONICAL_NAME:  0x02, //The canonical name of the specified host will be queried.
+    RESOLVE_PRIORITY_MEDIUM: 0x04, //The query is given medium priority.
+    RESOLVE_PRIORITY_LOW:    0x08, //The query is given lower priority.
+    RESOLVE_SPECULATE:       0x10, //Indicates request is speculative.
+    RESOLVE_DISABLE_IPV6:    0x20, //If this flag is set, only IPv4 addresses will be returned by asyncResolve() and resolve(). 
 
     /* Initialises the native dns resolver (if possible) - call this first! */
     init : function () {
@@ -258,13 +268,12 @@ var dns_handler = {
                     ip_addresses.push(dnsresponse.getNextAddrAsString());
                 }
                 // Call callback for this request with ip_addresses array as argument
+                log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolved addresses: " + ip_addresses, 2);
                 callback(ip_addresses);
             }
         };
         try {
-            return Components.classes["@mozilla.org/network/dns-service;1"]
-                    .getService(Components.interfaces.nsIDNSService)
-                    .asyncResolve(host, 0, my_callback, Services.tm.currentThread);
+            return dns_service.asyncResolve(host, 1, my_callback, null);
         } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
             callback(["FAIL"]);
