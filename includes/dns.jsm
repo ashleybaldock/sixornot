@@ -106,8 +106,7 @@ var dns_handler = {
         locallookup: 2,     // Perform dns.resolve_local lookup
         checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
         checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
-        log: 254,           // A logging message (sent from worker to main thread only)
-        init: 255           // Initialise dns in the worker
+        log: 254            // A logging message (sent from worker to main thread only)
     },
 
     RESOLVE_BYPASS_CACHE:    0x01, //This flag suppresses the internal DNS lookup cache.
@@ -121,10 +120,30 @@ var dns_handler = {
     init : function () {
         "use strict";
         var that;
-        log("Sixornot - dns_handler - init", 1);
 
-        // Initialise ChromeWorker which will be used to do DNS lookups either via ctypes or built-in DNS resolver
-        this.worker = new ChromeWorker("resource://sixornot/includes/dns_worker.js");
+        switch(Services.appinfo.OS.toLowerCase()) {
+            case "darwin":
+                log("Sixornot - dns_handler - init darwin ctypes resolver", 1);
+                this.worker = new ChromeWorker("resource://sixornot/includes/ctypes/darwin.js");
+                break;
+
+            case "linux":
+                log("Sixornot - dns_handler - init linux ctypes resolver", 1);
+                this.worker = new ChromeWorker("resource://sixornot/includes/ctypes/linux.js");
+                break;
+
+            case "winnt":
+                log("Sixornot - dns_handler - init winnt ctypes resolver", 1);
+                this.worker = new ChromeWorker("resource://sixornot/includes/ctypes/winnt.js");
+                break;
+
+            default:
+                // Fallback to using Firefox DNS resolver
+                log("Sixornot - dns_handler - init firefox resolver", 1);
+                this.can_resolve_remote_using_ctypes = false;
+                this.can_resolve_local_using_ctypes = false;
+                return;
+        }
 
         // Shim to get 'this'(that) to refer to dns_handler, not the
         // worker, when a message is received.
@@ -144,9 +163,6 @@ var dns_handler = {
             } else if (data.reqid === that.reqids.checklocal) {
                 // checklocal, set local ctypes status
                 that.can_resolve_local_using_ctypes = data.content;
-            } else if (data.reqid === that.reqids.init) {
-                // Initialisation acknowledgement
-                log("Sixornot - dns_handler:onworkermessage - init ack received", 2);
             } else if (data.reqid === that.reqids.remotelookup ||
                        data.reqid === that.reqids.locallookup) {
                 // remotelookup/locallookup, find correct callback and call it
@@ -161,10 +177,6 @@ var dns_handler = {
         this.worker.onerror = function (err) {
             log(err.message + ", " + err.filename + ", " + err.lineno, 1);
         };
-
-        // Finally init the worker
-        this.worker.postMessage(JSON.stringify({"reqid": this.reqids.init,
-            "content": Services.appinfo.OS.toLowerCase()}));
     },
 
     /* Shuts down the native dns resolver (if running) */

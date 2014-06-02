@@ -19,8 +19,6 @@
 
 /*jslint white: true, maxerr: 100, indent: 4 */
 
-importScripts("resource://sixornot/includes/ctypes/base.js");
-
 var resolver = {
     remote_ctypes: false,
     local_ctypes: false,
@@ -35,9 +33,9 @@ var resolver = {
         this.local_ctypes  = true;
         try {
             this.library = ctypes.open(this.library);
-            log("Sixornot(dns_worker) - dns:load_osx - opened library: '" + this.library + "'", 1);
         } catch (e) {
-            log("Sixornot(dns_worker) - dns:load_osx - cannot open '" + this.library + "' - ctypes lookup will be disabled", 0);
+            log("Sixornot(dns_worker) - dns:init(OSX) - cannot open '"
+                + this.library + "' - ctypes lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.local_ctypes  = false;
             this.remote_ctypes = false;
@@ -47,10 +45,7 @@ var resolver = {
         // Address family
         this.AF_UNSPEC      = 0;
         this.AF_INET        = 2;
-        this.AF_LINK        = 18;  // MAC Addresses
         this.AF_INET6       = 30;
-        // Socket type
-        this.SOCK_STREAM    = 1;
         // Protocol
         this.IPPROTO_UNSPEC = 0;
 
@@ -172,7 +167,7 @@ var resolver = {
                 this.inet_ntop = this.library.declare("inet_ntop", ctypes.default_abi,
                     ctypes.char.ptr, ctypes.int, ctypes.voidptr_t, ctypes.char.ptr, ctypes.uint32_t);
             } catch (e) {
-                log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'inet_ntop' function, local_ctypes and remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) - dns:init(OSX) - Unable to setup 'inet_ntop' function, local_ctypes and remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
                 this.remote_ctypes = false;
@@ -184,7 +179,7 @@ var resolver = {
                 this.getaddrinfo = this.library.declare("getaddrinfo", ctypes.default_abi,
                     ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
             } catch (e) {
-                log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'getaddrinfo' function, remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) - dns:init(OSX) - Unable to setup 'getaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
@@ -194,7 +189,7 @@ var resolver = {
                 this.freeaddrinfo = this.library.declare("freeaddrinfo", ctypes.default_abi,
                     ctypes.int, this.addrinfo.ptr);
             } catch (e) {
-                log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'freeaddrinfo' function, remote_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) - dns:init(OSX) - Unable to setup 'freeaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.remote_ctypes = false;
             }
@@ -205,7 +200,7 @@ var resolver = {
                 this.getifaddrs = this.library.declare("getifaddrs", ctypes.default_abi,
                     ctypes.int, this.ifaddrs.ptr.ptr);
             } catch (e) {
-                log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'getifaddrs' function, local_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) - dns:init(OSX) - Unable to setup 'getifaddrs' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
             }
@@ -215,7 +210,7 @@ var resolver = {
                 this.freeifaddrs = this.library.declare("freeifaddrs", ctypes.default_abi,
                     ctypes.void_t, this.ifaddrs.ptr);
             } catch (e) {
-                log("Sixornot(dns_worker) - dns:load_osx - Unable to setup 'freeifaddrs' function, local_ctypes disabled!", 0);
+                log("Sixornot(dns_worker) - dns:init(OSX) - Unable to setup 'freeifaddrs' function, local_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
                 this.local_ctypes = false;
             }
@@ -227,7 +222,8 @@ var resolver = {
             this.library = null;
         }
 
-        log("Sixornot(dns_worker) - init(OSX) - Ctypes init completed - remote_ctypes: " + this.remote_ctypes + ", local_ctypes: " + this.local_ctypes, 1);
+        log("Sixornot(dns_worker) - init(OSX) - Ctypes init completed - remote_ctypes: "
+            + this.remote_ctypes + ", local_ctypes: " + this.local_ctypes, 1);
     },
 
     resolve_local : function () {
@@ -264,22 +260,25 @@ var resolver = {
         addresses = [];
 
         for (ifaddr = ifaddr_ptr; !ifaddr.isNull(); ifaddr = ifaddr.contents.ifa_next) {
-            log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Addresses for interface: '" + ifaddr.contents.ifa_name.readString() + "'", 1);
             if (ifaddr.contents.ifa_addr.isNull()) {
-                log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "' is null, skipping", 1);
+                log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Null address on interface: '"
+                    + ifaddr.contents.ifa_name.readString() + "' - skipping", 1);
                 continue;
+            } else {
+                log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Address on interface: '"
+                    + ifaddr.contents.ifa_name.readString() + "'", 2);
             }
 
             if (ifaddr.contents.ifa_addr.contents.sa_family === this.AF_INET) {
                 sa = ctypes.cast(ifaddr.contents.ifa_addr.contents, this.sockaddr_in);
                 this.inet_ntop(sa.sin_family, sa.addressOfField("sin_addr"), addrbuf, 128);
-                if (!ifaddr.contents.ifa_netmask.isNull()) {
+                /*if (!ifaddr.contents.ifa_netmask.isNull()) {
                     netmask = ctypes.cast(ifaddr.contents.ifa_netmask.contents, this.sockaddr_in);
                     this.inet_ntop(netmask.sin_family, netmask.addressOfField("sin_addr"), netmaskbuf, 128);
                     log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + netmaskbuf.readString() + "', prefix: '" + get_ipv4_prefix(netmask.sin_addr) + "'", 1);
                 } else {
                     log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + "null" + "', prefix: '" + "N/A"  + "'", 1);
-                }
+                }*/
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
@@ -289,14 +288,13 @@ var resolver = {
             if (ifaddr.contents.ifa_addr.contents.sa_family === this.AF_INET6) {
                 sa = ctypes.cast(ifaddr.contents.ifa_addr.contents, this.sockaddr_in6);
                 this.inet_ntop(sa.sin6_family, sa.addressOfField("sin6_addr"), addrbuf, 128);
-
-                if (!ifaddr.contents.ifa_netmask.isNull()) {
+                /*if (!ifaddr.contents.ifa_netmask.isNull()) {
                     netmask = ctypes.cast(ifaddr.contents.ifa_netmask.contents, this.sockaddr_in6);
                     this.inet_ntop(netmask.sin6_family, netmask.addressOfField("sin6_addr"), netmaskbuf, 128);
                     log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + netmaskbuf.readString() + "', prefix: '" + get_ipv6_prefix(netmask.sin6_addr) + "'", 1);
                 } else {
                     log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Address for interface: '" + ifaddr.contents.ifa_name.readString() + "', address: '" + addrbuf.readString() + "', netmask: '" + "null" + "', prefix: '" + "N/A"  + "'", 1);
-                }
+                }*/
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
@@ -306,14 +304,19 @@ var resolver = {
 
         this.freeifaddrs(ifaddr_ptr);
 
-        log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Found the following addresses: " + addresses, 2);
+        log("Sixornot(dns_worker) - dns:resolve_local(OSX) - Found addresses: " + addresses, 2);
         return addresses.slice();
     },
 
     resolve_remote : function (host) {
         "use strict";
         var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, sa, addrsize;
-        log("Sixornot(dns_worker) - dns:resolve_remote_OSX", 2);
+        log("Sixornot(dns_worker) - dns:resolve_remote(OSX) - resolve host: '" + host + "'", 2);
+
+        if (typeof host !== typeof "string") {
+            log("Sixornot(dns_worker) - dns:resolve_remote(OSX) - Bad host, not a string", 1);
+            return ["FAIL"];
+        }
 
         hints = this.addrinfo();
         hints.ai_flags = 0x0;
@@ -323,7 +326,6 @@ var resolver = {
         hints.ai_addrlen = 0;
 
         addrinfo_ptr = this.addrinfo.ptr();
-        log("Sixornot(dns_worker) - about to call getaddrinfo, host: " + JSON.stringify(host) + ", hints.address(): " + hints.address() + ", addrinfo_ptr.address(): " + addrinfo_ptr.address(), 2);
         ret = this.getaddrinfo(host, null, hints.address(), addrinfo_ptr.address());
 
         if (ret > 0 || addrinfo_ptr.isNull()) {
@@ -367,4 +369,5 @@ var resolver = {
     }
 };
 
-resolver.init();
+importScripts("resource://sixornot/includes/ctypes/worker_base.js");
+

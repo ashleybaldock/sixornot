@@ -18,7 +18,6 @@ cp icon64.png ../dist/$version/src/
 
 mkdir ../dist/$version/src/includes
 cp includes/dns.jsm ../dist/$version/src/includes/
-cp includes/dns_worker.js ../dist/$version/src/includes/
 cp includes/gui.jsm ../dist/$version/src/includes/
 cp includes/locale.jsm ../dist/$version/src/includes/
 cp includes/logger.jsm ../dist/$version/src/includes/
@@ -31,7 +30,7 @@ cp includes/stylesheet.jsm ../dist/$version/src/includes/
 cp includes/env.jsm ../dist/$version/src/includes/
 
 mkdir ../dist/$version/src/includes/ctypes
-cp includes/ctypes/base.js ../dist/$version/src/includes/ctypes/
+cp includes/ctypes/worker_base.js ../dist/$version/src/includes/ctypes/
 cp includes/ctypes/darwin.js ../dist/$version/src/includes/ctypes/
 cp includes/ctypes/linux.js ../dist/$version/src/includes/ctypes/
 cp includes/ctypes/winnt.js ../dist/$version/src/includes/ctypes/

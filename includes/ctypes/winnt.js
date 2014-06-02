@@ -19,8 +19,6 @@
 
 /*jslint white: true, maxerr: 100, indent: 4 */
 
-importScripts("resource://sixornot/includes/ctypes/base.js");
-
 var resolver = {
     remote_ctypes: false,
     local_ctypes: false,
@@ -37,18 +35,18 @@ var resolver = {
         try {
             // Library 1 needed only for local lookup
             this.library1 = ctypes.open(this.library1);
-            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.library1 + "'", 1);
         } catch (e) {
-            log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.library1 + "' - ctypes local lookup will be disabled", 0);
+            log("Sixornot(dns_worker) - dns:load_win - cannot open '"
+                + this.library1 + "' - ctypes local lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.local_ctypes  = false;
         }
         try {
             // Library 2 needed for local and remote lookup
             this.library2 = ctypes.open(this.library2);
-            log("Sixornot(dns_worker) - dns:load_win - Running on Windows XP+, opened library: '" + this.library2 + "'", 1);
         } catch (e) {
-            log("Sixornot(dns_worker) - dns:load_win - cannot open '" + this.library2 + "' - ctypes local and remote lookup will be disabled", 0);
+            log("Sixornot(dns_worker) - dns:load_win - cannot open '"
+                + this.library2 + "' - ctypes local and remote lookup will be disabled", 0);
             log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 1);
             this.remote_ctypes = false;
             this.local_ctypes  = false;
@@ -120,14 +118,14 @@ var resolver = {
             struct addrinfo  *ai_next;
         }; */
         this.addrinfo.define([
-            { ai_flags     : ctypes.int        },                // Flags for getaddrinfo options
-            { ai_family    : ctypes.int        },                // Address family (UNSPEC, INET, INET6)
-            { ai_socktype  : ctypes.int        },                // Socket type (STREAM, DGRAM, RAW, RDM, SEQPACKET)
-            { ai_protocol  : ctypes.int        },                // Protocol type (TCP, UDP, RM)
-            { ai_addrlen   : ctypes.int        },                // Length in bytes of buffer pointed to by ai_addr member
-            { ai_canonname : ctypes.char.ptr   },                // Canonical name for host (if requested)
-            { ai_addr      : this.sockaddr.ptr },                // Pointer to sockaddr structure
-            { ai_next      : this.addrinfo.ptr }                 // Pointer to next addrinfo structure in linked list
+            { ai_flags     : ctypes.int        }, // Flags for getaddrinfo options
+            { ai_family    : ctypes.int        }, // Address family (UNSPEC, INET, INET6)
+            { ai_socktype  : ctypes.int        }, // Socket type (STREAM, DGRAM, RAW, RDM, SEQPACKET)
+            { ai_protocol  : ctypes.int        }, // Protocol type (TCP, UDP, RM)
+            { ai_addrlen   : ctypes.int        }, // Length in bytes of buffer pointed to by ai_addr
+            { ai_canonname : ctypes.char.ptr   }, // Canonical name for host (if requested)
+            { ai_addr      : this.sockaddr.ptr }, // Pointer to sockaddr structure
+            { ai_next      : this.addrinfo.ptr }  // Pointer to next addrinfo structure in linked list
             ]);
 
         // Used for local address lookup
@@ -209,7 +207,8 @@ var resolver = {
         if (this.remote_ctypes) {
             try {
                 this.getaddrinfo = this.library2.declare("getaddrinfo", ctypes.default_abi,
-                    ctypes.int, ctypes.char.ptr, ctypes.char.ptr, this.addrinfo.ptr, this.addrinfo.ptr.ptr);
+                    ctypes.int, ctypes.char.ptr, ctypes.char.ptr,
+                    this.addrinfo.ptr, this.addrinfo.ptr.ptr);
             } catch (e) {
                 log("Sixornot(dns_worker) - dns:load_win - Unable to setup 'getaddrinfo' function, remote_ctypes disabled!", 0);
                 log("Sixornot(dns_worker) EXCEPTION: " + parse_exception(e), 0);
@@ -265,7 +264,8 @@ var resolver = {
             this.library2 = null;
         }
 
-        log("Sixornot(dns_worker) - init(winnt) - Ctypes init completed - remote_ctypes: " + this.remote_ctypes + ", local_ctypes: " + this.local_ctypes, 1);
+        log("Sixornot(dns_worker) - init(winnt) - Ctypes init completed - remote_ctypes: "
+            + this.remote_ctypes + ", local_ctypes: " + this.local_ctypes, 1);
     },
 
     resolve_local : function () {
@@ -295,40 +295,43 @@ var resolver = {
 
         // Loop through returned addresses and add them to array
         for (; !adapter.isNull(); adapter = adapter.contents.Next) {
-            log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Getting IPs for interface: '" + adapter.contents.AdapterName.readString() + "'", 1);
-
             if (adapter.contents.FirstUnicastAddress.isNull()) {
-                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - FirstUnicastAddress for interface: '" + adapter.contents.AdapterName.readString() + "' is null, skipping", 1);
+                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Interface: '"
+                    + adapter.contents.AdapterName.readString() + "' has no addresses, skipping", 1);
                 continue;
+            } else {
+                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Interface: '"
+                    + adapter.contents.AdapterName.readString() + "'", 1);
             }
 
             for (address = adapter.contents.FirstUnicastAddress;
                  !address.isNull(); address = address.contents.Next) {
-                log("Sixornot(dns_worker) - dns:resolve_local(winnt) - address.contents.Address.lpSockaddrLength: " + address.contents.Address.iSockaddrLength, 1);
                 if (address.contents.Address.lpSockaddr.contents.sa_family === this.AF_INET
                  || address.contents.Address.lpSockaddr.contents.sa_family === this.AF_INET6) {
-
                     addrsize.value = 128;
-                    this.WSAAddressToString(address.contents.Address.lpSockaddr, address.contents.Address.iSockaddrLength, null, addrbuf, addrsize.address());
+                    this.WSAAddressToString(address.contents.Address.lpSockaddr,
+                        address.contents.Address.iSockaddrLength, null, addrbuf, addrsize.address());
 
-                    log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Address for interface: '" + adapter.contents.AdapterName.readString() + "' is: '" + addrbuf.readString() + "'", 1);
                     if (addresses.indexOf(addrbuf.readString()) === -1) {
                         addresses.push(addrbuf.readString());
                     }
-                } else {
-                    log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Address for interface: '" + adapter.contents.AdapterName.readString() + "' unknown type, skipping", 1);
                 }
             }
         }
 
-        log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Found the following addresses: " + addresses, 2);
+        log("Sixornot(dns_worker) - dns:resolve_local(winnt) - Found addresses: " + addresses, 2);
         return addresses.slice();
     },
 
     resolve_remote : function (host) {
         "use strict";
         var hints, ret, addresses, addrinfo, addrbuf, addrinfo_ptr, addrsize;
-        log("Sixornot(dns_worker) - dns:resolve_remote(winnt)", 2);
+        log("Sixornot(dns_worker) - dns:resolve_remote(winnt) - resolve host: '" + host + "'", 2);
+
+        if (typeof host !== typeof "string") {
+            log("Sixornot(dns_worker) - dns:resolve_remote(winnt) - Bad host, not a string", 1);
+            return ["FAIL"];
+        }
 
         // DO NOT USE AI_ADDRCONFIG ON WINDOWS.
         //
@@ -370,11 +373,9 @@ var resolver = {
         addresses = [];
 
         for (addrinfo = addrinfo_ptr; !addrinfo.isNull(); addrinfo = addrinfo.contents.ai_next) {
-            log("Sixornot(dns_worker) - resolve_remote(winnt) - next address", 1);
             if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET) {
-                addrsize.value = 128;
+                addrsize.value = 128; // Reset this each time as WSAAddressToString changes it
                 this.WSAAddressToString(addrinfo.contents.ai_addr, 16, null, addrbuf, addrsize.address());
-                log("Sixornot(dns_worker) - resolve_remote(winnt) - IPv4 address: " + addrbuf.readString(), 1);
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
@@ -382,9 +383,8 @@ var resolver = {
             }
 
             if (addrinfo.contents.ai_addr.contents.sa_family === this.AF_INET6) {
-                addrsize.value = 128;
+                addrsize.value = 128; // Reset this each time as WSAAddressToString changes it
                 this.WSAAddressToString(addrinfo.contents.ai_addr, 28, null, addrbuf, addrsize.address());
-                log("Sixornot(dns_worker) - resolve_remote(winnt) - IPv6 address: " + addrbuf.readString(), 1);
                 if (addresses.indexOf(addrbuf.readString()) === -1)
                 {
                     addresses.push(addrbuf.readString());
@@ -394,7 +394,8 @@ var resolver = {
 
         this.freeaddrinfo(addrinfo_ptr);
 
-        log("Sixornot(dns_worker) - dns:resolve_remote(winnt) - Found the following addresses: " + addresses, 1);
+        log("Sixornot(dns_worker) - dns:resolve_remote(winnt) - Found the following addresses: "
+            + addresses, 1);
         return addresses.slice();
     },
 
@@ -407,4 +408,5 @@ var resolver = {
     }
 };
 
-resolver.init();
+importScripts("resource://sixornot/includes/ctypes/worker_base.js");
+

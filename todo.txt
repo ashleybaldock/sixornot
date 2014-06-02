@@ -8,6 +8,8 @@ results in the button not conforming to the setting
 
 # 1.0.0/0.8.3
 Release to get out of beta...
+Refactor dns_worker                                                         - DONE
+ - Split OS-specific code into different workers                            - DONE
 Test to make sure unload() callbacks all happen if a window has
  been opened and then closed again                                          - DONE
 Update Russian translation                                                  - DONE
@@ -18,12 +20,7 @@ Test on FF 30/31 and future versions of SeaMonkey                           -
 Test on Palemoon                                                            -
 Review documentation + screenshots                                          -
 
-Check use of firefox async resolver - seems broken on OSX                   -
-
-Refactor dns_worker
- - Split OS-specific code into different workers
- - Generic worker using Firefox built-ins (fallback)
- - All switching between workers happens at top level to avoid lots of if...else
+Only lookup local IPs on panel show if they aren't hidden                   - DONE
 
 # 1.1.0
 Warnings for ip6_disabled and ip4only_domain

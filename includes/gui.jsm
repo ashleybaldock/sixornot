@@ -972,6 +972,8 @@ var panel_ui = {
         hbox.setAttribute("align", "center");
         hbox.style.marginTop = "3px";
         parent_element.appendChild(hbox);
+
+        var local_address_info = create_local_address_info();
         return {
             entries: [],
             add_after: function (element) {
@@ -1003,6 +1005,17 @@ var panel_ui = {
                 this.entries.forEach(function (item) {
                     item.update_visibility();
                 });
+                var that = this;
+                if (prefs.get_bool("showlocal")) {
+                    local_address_info.get_local_host_info(function (host_info) {
+                        that.remove_all_entries();
+                        that.generate_entry_for_host(host_info);
+                    });
+                }
+            },
+            on_panel_hiding : function () {
+                // Cancel local address lookup
+                local_address_info.cancel();
             }
         };
     },
@@ -1051,14 +1064,13 @@ var create_panel = function (win, panel_id) {
     var doc, panel, register_callbacks, unregister_callbacks,
     panel_vbox, grid, grid_rows, grid_cols,
     remote_anchor, local_anchor,
-    force_scrollbars, current_tab_ids, local_address_info,
+    force_scrollbars, current_tab_ids,
     on_click, on_popupshowing, on_popuphiding, on_page_change,
     on_new_host, on_address_change, on_pageshow,
     on_count_change, on_dns_complete, on_tab_select;
 
     doc = win.document;
     current_tab_ids = create_current_tab_ids(win);
-    local_address_info = create_local_address_info();
 
     /* Ensure panel contents visible with scrollbars */
     force_scrollbars = function () {
@@ -1100,16 +1112,11 @@ var create_panel = function (win, panel_id) {
             get_hosts_for_inner_window(current_tab_ids.inner));
 
         local_anchor.update_local_address_display();
-        local_address_info.get_local_host_info(function (host_info) {
-            local_anchor.remove_all_entries();
-            local_anchor.generate_entry_for_host(host_info);
-        });
     };
 
     on_popuphiding = function (evt) {
         log("Sixornot - panel:on_popuphiding", 2);
         unregister_callbacks();
-        local_address_info.cancel();
     };
 
     /* Actions are defined by custom properties applied to the event target element
