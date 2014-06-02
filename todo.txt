@@ -14,12 +14,14 @@ Test to make sure unload() callbacks all happen if a window has             - DO
  been opened and then closed again                                          - DONE
 Only lookup local IPs on panel show if they aren't hidden                   - DONE
 Update Russian translation                                                  - DONE
-Test on Linux                                                               - 
-Test on FF 24, SeaMonkey 2.26, FF 29                                        -
- - FF 24.5 - Test customisation of UI                                       -
-Test on FF 30/31 and future versions of SeaMonkey                           -
-Test on Palemoon                                                            -
+Test on Linux                                                               - DONE
+Test on FF 24, SeaMonkey 2.26, FF 29                                        - DONE
+ - FF 24.5 - Test customisation of UI                                       - DONE
+Test on FF 30/31 and future versions of SeaMonkey                           - DONE
+Test on Palemoon                                                            - DONE
 Review documentation + screenshots                                          -
+Update listing page
+German listing page localisation
 
 # 1.1.0
 Multiple workers to speed up DNS resolution
@@ -44,6 +46,8 @@ Retrieve netmask information for each address and display (e.g. 1999::1/64)
  - Probably only possible on Vista+ for windows
  - Also collect tunnel interface IPs on Vista+
 
+German translation for addon description
+
 # 1.2.0
 Proxy detection + info
 Add better proxy detection (per-connection) and icon display
@@ -58,6 +62,9 @@ Handling for edge-cases and special pages (text)
 Add ability to copy a list of all files fetched to clipboard (per-domain)
 Icon display in status bar on SeaMonkey/Firefox alternatives
 Reverse DNS lookups? (local/remote)
+Detection + conversion of embedded IPv4 addresses
+NAT64 prefixes
+Better greyscale icons (especially for cache entries)
 
 
 # Done

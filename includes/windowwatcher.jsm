@@ -133,8 +133,6 @@ var runOnLoad = function (win, callback) {
         // Now that the window has loaded, only handle browser windows
         if (win.document.documentElement.getAttribute("windowtype") === "navigator:browser") {
             log("Sixornot - runOnLoad - type: navigator:browser", 1);
-            // SeaMonkey invokes load callbacks before window.gBrowser becomes available
-            // This breaks the addon, so wait up to a second for it before running callback
 
             /* On SeaMonkey gBrowser only exists after getBrowser has been called */
             if (win.getBrowser) {
@@ -148,6 +146,8 @@ var runOnLoad = function (win, callback) {
             } else {
                 log("Sixornot - WindowWatcher - gBrowser not found!", 1);
             }
+        } else {
+            log("Sixornot - runOnLoad - skipping window: windowtype not navigator:browser", 1);
         }
     }, false);
 };
@@ -163,13 +163,17 @@ var runOnWindows = function (callback) {
     "use strict";
     var browserWindows, browserWindow;
     // Add functionality to existing windows
-    browserWindows = Services.wm.getEnumerator("navigator:browser");
+    browserWindows = Services.wm.getEnumerator(null);
     while (browserWindows.hasMoreElements()) {
         // Only run the callback immediately if the browser is completely loaded
         browserWindow = browserWindows.getNext();
         if (browserWindow.document.readyState === "complete") {
-            log("Sixornot - runOnWindows:readyState:complete", 1);
-            callback(browserWindow);
+            if (browserWindow.document.documentElement.getAttribute("windowtype") === "navigator:browser") {
+                log("Sixornot - runOnWindows:readyState:complete and windowtype is navigator:browser", 1);
+                callback(browserWindow);
+            } else {
+                log("Sixornot - runOnWindows:readyState:complete but windowtype not navigator:browser", 1);
+            }
         } else {
             // Wait for the window to load before continuing
             log("Sixornot - runOnWindows:runOnLoad", 1);
