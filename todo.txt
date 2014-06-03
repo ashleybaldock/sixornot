@@ -19,21 +19,30 @@ Test on FF 24, SeaMonkey 2.26, FF 29                                        - DO
  - FF 24.5 - Test customisation of UI                                       - DONE
 Test on FF 30/31 and future versions of SeaMonkey                           - DONE
 Test on Palemoon                                                            - DONE
-Review documentation + screenshots                                          -
+Confirm log level pref is set to 0
+
+Post-submission
 Update listing page
+ - Review summary and longer description
 German listing page localisation
+Update Russian listing page
+Review documentation + screenshots                                          -
 
 # 1.1.0
 Multiple workers to speed up DNS resolution
 Warnings for ip6_disabled and ip4only_domain
  - ip4only_domain should show a badge next to affected domains
  - ip6_disabled should show a warning on the panel
-Update documentation
 Refactor requestcache/requestobserver
  - Unify host listing object with local host listing object
  - Accessor methods for cache/waitinglist
  - Move methods to destroy entries into requests object
  - Abstract implementation of cache - maybe change from an array
+Refactor return objects from DNS lookups (wrapped IP address objects w/ type etc.)
+Optimise panel + other code
+ - Avoid lengthy IP type/ordering calls
+ - Avoid adding entries to panel until they are displayed
+Update documentation
 
 Test internationalised domain names handling by native resolvers
 
@@ -44,6 +53,7 @@ Retrieve interface information along with addresses
  - Display local addresses per interface
 Retrieve netmask information for each address and display (e.g. 1999::1/64)
  - Probably only possible on Vista+ for windows
+   - Split winnt worker into legacy XP one and newer Vista+ one (freeze XP one)
  - Also collect tunnel interface IPs on Vista+
 
 German translation for addon description
@@ -60,11 +70,13 @@ Update documentation
 # TODO FUTURE
 Handling for edge-cases and special pages (text)
 Add ability to copy a list of all files fetched to clipboard (per-domain)
+Record total size of objects downloaded from each site + display (in KB? etc.)
 Icon display in status bar on SeaMonkey/Firefox alternatives
 Reverse DNS lookups? (local/remote)
 Detection + conversion of embedded IPv4 addresses
 NAT64 prefixes
 Better greyscale icons (especially for cache entries)
+More info about IP address types, e.g. link-local, global etc.
 
 
 # Done

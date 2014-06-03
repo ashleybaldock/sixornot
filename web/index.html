@@ -156,13 +156,13 @@
 
     <h3><a name="OSSpecific_Windows2003"></a>Windows XP x64/Windows Server 2003<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>SixOrNot is fully compatible with Windows XP x64 and Windows Server 2003 (x86 and x64). On all these operating systems IPv6 must be manually installed. This can be done by using the command:</p>
+    <p>On Windows XP x64 and Windows Server 2003 (x86 and x64) IPv6 must be manually installed. This can be done by using the command:</p>
 
     <pre>netsh interface ipv6 install</pre>
 
     <p>The interface will then autoconfigure an IPv6 address, or, if autoconfiguration can't work for some reason manual configuration will be needed. See this Microsoft article for more information on configuring IPv6 in Windows XP x64/Windows Server 2003: <a href="http://support.microsoft.com/kb/325449">How to install and configure IP version 6 in Windows Server 2003 Enterprise Server</a>.</p>
 
-    <p>Please note: If the Windows XP x64/Windows Server 2003 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation.</p>
+    <p>Please note: If the Windows XP x64/Windows Server 2003 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation. Local address information may also be limited on pre-Vista operating systems.</p>
 
     <h3><a name="OSSpecific_WindowsXPx86"></a>Windows XP x86<a href="#OSSpecific">Operating System specific information</a></h3>
 
@@ -172,7 +172,7 @@
 
     <p>The interface will then autoconfigure an IPv6 address, or, if autoconfiguration can't work for some reason manual configuration will be needed. See this Microsoft article for more information on configuring IPv6 in Windows XP x86: <a href="http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/sag_ip_v6_imp_config_meth.mspx?mfr=true">IPv6 configuration methods</a>.</p>
 
-    <p>Please note: If the Windows XP x86 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation.</p>
+    <p>Please note: If the Windows XP x86 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation. Local address information may also be limited on pre-Vista operating systems.</p>
 
     <h3><a name="OSSpecific_Linux"></a>Linux<a href="#OSSpecific">Operating System specific information</a></h3>
 
@@ -180,7 +180,7 @@
 
     <h3><a name="OSSpecific_Other"></a>Other<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>Other OSes should also work - if you encounter any issues please contact me.</p>
+    <p>On other operating systems SixOrNot does not currently benefit from the ability to use native DNS resolution or local address lookup. This means that information about the local system's configured IP addresses may be limited, and information about remote IP addresses may be incomplete (particularly lacking IPv6 addresses on systems with no IPv6 connectivity). This is due to configuration-specific behaviour of Firefox's built-in DNS resolution. If you encounter any issues or have any questions about a specific operating system please contact me.</p>
 
 <h2><a name="IPConcepts"></a>IP Address Concepts<a href="#Menu">Menu</a></h2>
 
