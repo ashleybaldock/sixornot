@@ -1384,19 +1384,3 @@ var set_greyscale_icons = function (win) {
     }
 };
 
-
-
-
-
-    // TODO
-
-// Warnings
-// TODO add this to the panel before the rows
-/* if (dns_handler.is_ip6_disabled()) {
-    add_warning_line(gt("warn_ip6_disabled"));
-} */
-
-// TODO - this needs to be done for each host we lookup
-/* if (dns_handler.is_ip4only_domain(host)) {
-    add_warning_line(gt("warn_ip4only_domain"));
-} */

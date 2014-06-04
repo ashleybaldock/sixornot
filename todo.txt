@@ -21,14 +21,18 @@ Test on FF 30/31 and future versions of SeaMonkey                           - DO
 Test on Palemoon                                                            - DONE
 Confirm log level pref is set to 0
 
-Post-submission
-Update listing page
- - Review summary and longer description
-German listing page localisation
-Update Russian listing page
+# Post-submission
+Update listing page (upon approval)                                         -
+ - Review summary and longer description                                    -
+German listing page localisation                                            -
+Update Russian listing page                                                 -
 Review documentation + screenshots                                          -
 
 # 1.1.0
+jslint validation
+Use Services.jsm in place of Components.classes.getService where possible
+ - https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/Services.jsm
+Replace env.jsm with Services.jsm.appinfo
 Multiple workers to speed up DNS resolution
 Warnings for ip6_disabled and ip4only_domain
  - ip4only_domain should show a badge next to affected domains

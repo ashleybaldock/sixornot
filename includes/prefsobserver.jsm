@@ -48,24 +48,24 @@ var PREF_OBSERVER = {
         }
 
         if (aData === "extensions.sixornot.showaddressicon") {
-            log("Sixornot - PREF_OBSERVER - addressicon has changed", 1);
+            log("Sixornot - PREF_OBSERVER - addressicon has changed", 2);
             runOnWindows(set_addressbar_icon_visibility);
         }
         if (aData === "extensions.sixornot.greyscaleicons") {
-            log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 1);
+            log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 2);
             runOnWindows(set_greyscale_icons);
         }
         if (aData === "extensions.sixornot.loglevel") {
-            log("Sixornot - PREF_OBSERVER - loglevel has changed", 1);
+            log("Sixornot - PREF_OBSERVER - loglevel has changed", 2);
         }
         if (aData === "extensions.sixornot.overridelocale") {
-            log("Sixornot - PREF_OBSERVER - overridelocale has changed", 1);
-            // TODO - check what this actually does
+            log("Sixornot - PREF_OBSERVER - overridelocale has changed", 2);
+            // TODO - methods to reload UI panel translations
             //reload();
         }
         if (aData === "extensions.sixornot.showallips") {
-            log("Sixornot - PREF_OBSERVER - showallips has changed", 1);
-            // TODO - refresh all UI instances
+            log("Sixornot - PREF_OBSERVER - showallips has changed", 2);
+            // TODO - update display of local address info in panels
         }
     },
 

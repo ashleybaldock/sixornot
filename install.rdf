@@ -6,7 +6,7 @@
 
         <em:id>sixornot@entropy.me.uk</em:id>
         <em:name>SixOrNot</em:name>
-        <em:version>1.0b4</em:version>
+        <em:version>1.0.0</em:version>
         <em:description>IPv6 status indicator</em:description>
         <em:type>2</em:type>
 
@@ -15,7 +15,6 @@
 				<em:locale>ru</em:locale>
 				<em:name>SixOrNot</em:name>
 				<em:description>Индикатор состояния IPv6</em:description>
-				<em:creator>Тимоти Белдок</em:creator>
 				<em:translator>ForstWoof</em:translator> <!-- Русский -->
 			</Description>
 		</em:localized>
