@@ -49,6 +49,7 @@ Optimise panel + other code
 Update documentation
 
 Test internationalised domain names handling by native resolvers
+ - e.g. www.söhne.com
 
 Collect nsIHttpChannelInternal.localAddress info for each request
  - Highlight addresses used to load pages?
