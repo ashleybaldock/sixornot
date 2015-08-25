@@ -35,6 +35,7 @@
         <em:homepageURL>http://timothy.baldock.me/sixornot/</em:homepageURL>
 
         <em:bootstrap>true</em:bootstrap>
+        <em:multiprocessCompatible>true</em:multiprocessCompatible>
 
         <!-- Firefox -->
         <em:targetApplication>
