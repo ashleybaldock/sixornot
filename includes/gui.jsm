@@ -316,27 +316,39 @@ var create_sixornot_widget = function (node, win) {
     var panel, current_tab_ids,
         update_icon_for_node,
         on_click, on_page_change, on_tab_select,
-        on_pageshow, on_dns_complete,
-        callback_manager;
+        on_pageshow, on_dns_complete;
 
-    //current_tab_ids = create_current_tab_ids(win);
-    callback_manager = tab_id_callback_manager(win);
+    // Called by content script of active tab
+    // Message contains data to update icon/UI
+    var on_update_ui_message = function (message) {
+        update_icon_for_node(message.data, node);
+    };
+
+    var currentBrowserMM;
+    var subscribe_to_current = function () {
+        if (currentBrowserMM) {
+            currentBrowserMM.removeMessageListener("sixornot@baldock.me:update-ui");
+        }
+        currentBrowserMM = win.gBrowser.mCurrentBrowser.messageManager;
+        currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
+    };
 
     // Change icon via class (icon set via stylesheet)
     update_icon_for_node = function (data, node) {
-        var hosts = requests.cache[data.inner_id];
+        var mainHost = data.mainHost;
 
-        /* Parse array searching for the main host (which matches the current location) */
-        if (!hosts || !hosts.some(function (item, index, items) {
-            if (item.host === data.hostname) {
-                update_node_icon_for_host(node, item);
-                return true;
-            }
-        })) {
+        if (mainHost) {
+            update_node_icon_for_host(node, mainHost);
+        } else {
             // No matching entry for main host (probably a local file)
             remove_sixornot_classes_from(node);
             add_class_to_node("sixornot_other", node);
         }
+    };
+
+    // Ask active content script to send us an update, e.g. when switching tabs
+    var request_update = function () {
+        currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
     };
 
     on_click = function () {
@@ -346,45 +358,15 @@ var create_sixornot_widget = function (node, win) {
 
     on_tab_select = function (evt) {
         log("Sixornot - widget:on_tab_select", 2);
-        callback_manager.enqueue(function (message) {
-            update_icon_for_node(message.data, node);
-        });
+        subscribe_to_current();
     };
 
     on_pageshow = function (evt) {
         log("Sixornot - widget:on_pageshow", 2);
-        callback_manager.enqueue(function (message) {
-            update_icon_for_node(message.data, node);
-        });
+        subscribe_to_current();
     };
 
-    /* Called whenever a Sixornot page change event is emitted */
-    on_page_change = function (evt) {
-        var inner_id = evt.detail.inner_id;
-        var outer_id = evt.detail.outer_id;
-        log("Sixornot - widget:on_page_change - evt.detail.outer_id: " + outer_id + ", evt.detail.inner_id: " + inner_id + " - enqueing for id check", 1);
-        callback_manager.enqueue(function (message) {
-            log("Sixornot - widget:on_page_change - evt.outer_id: " + outer_id + ", evt.inner_id: " + inner_id + ", current outer_id: " + message.data.outer_id + ", current inner_id: " + message.data.inner_id, 1);
-            if (outer_id === message.data.outer_id) {
-                update_icon_for_node(message.data, node);
-            }
-        });
-    };
-
-    /* Called whenever a Sixornot dns lookup event is heard */
-    on_dns_complete = function (evt) {
-        var inner_id = evt.detail.inner_id;
-        var outer_id = evt.detail.outer_id;
-        log("Sixornot - widget:on_dns_complete - evt.detail.outer_id: " + outer_id + ", evt.detail.inner_id: " + inner_id + " - enqueing for id check", 1);
-        callback_manager.enqueue(function (message) {
-            log("Sixornot - widget:on_dns_complete - evt.outer_id: " + outer_id + ", evt.inner_id: " + inner_id + ", current outer_id: " + message.data.outer_id + ", current inner_id: " + message.data.inner_id, 1);
-            if (outer_id === message.data.outer_id) {
-                update_icon_for_node(message.data, node);
-            }
-        });
-    };
-
-    /* Create a panel to show details when clicked */
+    /* Create a panel to show details when clicked */ // TODO - update panel from content script
     panel = create_panel(win, node.id + "-panel");
     node.appendChild(panel);
 
@@ -396,25 +378,18 @@ var create_sixornot_widget = function (node, win) {
     }
 
     // Ensure tab ID is set upon loading into window
-    callback_manager.enqueue(function (message) {
-        update_icon_for_node(message.data.inner_id, node);
-    });
+    subscribe_to_current();
+    request_update();
 
     /* Add event listeners */
     node.addEventListener("click", on_click, false);
-    win.addEventListener("sixornot-page-change-event", on_page_change, false);
-    win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
     win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
     win.gBrowser.addEventListener("pageshow", on_pageshow, false);
 
     unload(function () {
         log("Sixornot - widget unload function", 2);
         /* Clear event handlers */
-        // win.removeEventListener("offline", onChangedOnlineStatus, false); TODO
-        // win.removeEventListener("online", onChangedOnlineStatus, false); TODO
         node.removeEventListener("click", on_click, false);
-        win.removeEventListener("sixornot-page-change-event", on_page_change, false);
-        win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
         win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
         win.gBrowser.removeEventListener("pageshow", on_pageshow, false);
     }, win);

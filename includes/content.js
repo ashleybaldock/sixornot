@@ -29,10 +29,33 @@ addMessageListener("sixornot@baldock.me:update-id", function (message) {
 });
 
 
+var update_ui = function () {
+    sendAsyncMessage("sixornot@baldock.me:update-ui", {
+        // TODO data format for UI updates
+        mainHost: {
+            address_family: 6,
+            ipv6s: ["::1"],
+            ipv4s: []
+        }
+    });
+};
+
 addMessageListener("sixornot@baldock.me:http-load", function (message) {
     // TODO - update cache of information for current inner page based on these messages
 });
 
+addMessageListener("sixornot@baldock.me:update-ui", function (message) {
+    update_ui();
+});
+
+
+var on_page_change = function () {
+    // TODO - wire up this event to observer
+};
+
+var on_dns_complete = function () {
+    // TODO - wire up this event to observer
+};
 
 // Load this for every browser window
 
