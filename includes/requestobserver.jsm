@@ -96,7 +96,7 @@ var create_new_entry = function (host, address, address_family, inner, outer) {
                     entry.dns_status = "complete";
                 }
                 // Also trigger page change event here to refresh display of IP tooltip
-                send_event("sixornot-dns-lookup-event", evt_origin, entry);
+                send_event("sixornot-dns-lookup-event", evt_origin, entry); // TODO send message rather than event
             };
             if (entry.dns_cancel) {
                 entry.dns_cancel.cancel();
@@ -143,16 +143,19 @@ var on_examine_response = function(subject, topic) {
         return;
     }
 
+    var topFrameMM;
+
     try {
 
         var loadContext = nC.getInterface(Components.interfaces.nsILoadContext);
         var topFrameElement = loadContext.topFrameElement;  // TODO - will this always be the browser element, e.g. for iframes?
+        topFrameMM = topFrameElement.messageManager;
 
         domWindowOuter = topFrameElement.outerWindowID;
         log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: DOM request, outer_id: " + domWindowOuter, 2);
 
     } catch (e2) {
-        log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 2);
+        log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 1);
         return;
     }
 
@@ -184,6 +187,14 @@ var on_examine_response = function(subject, topic) {
     // TODO - need to determine if this is a load from an embedded frame/iframe
     if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
     /*jslint bitwise: false */
+
+        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", {
+            host: http_channel.URI.host,
+            address: remoteAddress,
+            address_family: remoteAddressFamily
+        });
+        return;
+
 
         if (!requests.waitinglist[domWindowOuter]) {
             requests.waitinglist[domWindowOuter] = [];
@@ -218,12 +229,12 @@ var on_examine_response = function(subject, topic) {
         if (!requests.cache[domWindowInner].some(function (item, index, items) {
             if (item.host === http_channel.URI.host) {
                 item.count += 1;
-                send_event("sixornot-count-change-event", domWindow, item);
+                send_event("sixornot-count-change-event", domWindow, item); // TODO send message rather than event
 
                 if (item.address !== remoteAddress && remoteAddress !== "") {
                     item.address = remoteAddress;
                     item.address_family = remoteAddressFamily;
-                    send_event("sixornot-address-change-event", domWindow, item);
+                    send_event("sixornot-address-change-event", domWindow, item); // TODO send message rather than event
                 }
                 return true;
             }
@@ -233,7 +244,7 @@ var on_examine_response = function(subject, topic) {
             requests.cache[domWindowInner].push(new_entry);
             new_entry.show_detail = false;
             new_entry.lookup_ips(domWindow);
-            send_event("sixornot-new-host-event", domWindow, new_entry);
+            send_event("sixornot-new-host-event", domWindow, new_entry); // TODO send message rather than event
         }
     }
 };

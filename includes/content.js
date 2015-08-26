@@ -2,11 +2,13 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 
-Components.classes["@mozilla.org/consoleservice;1"]
+var log = function (message) {
+    Components.classes["@mozilla.org/consoleservice;1"]
     .getService(Components.interfaces.nsIConsoleService)
-    .logStringMessage("imported");
+    .logStringMessage(message);
+};
 
-
+log("imported");
 
 addMessageListener("sixornot@baldock.me:update-id", function (message) {
     var windowUtils = content.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
@@ -16,9 +18,7 @@ addMessageListener("sixornot@baldock.me:update-id", function (message) {
     var outer_id = windowUtils.outerWindowID;
     var hostname = content.document.location.hostname;
 
-    Components.classes["@mozilla.org/consoleservice;1"]
-        .getService(Components.interfaces.nsIConsoleService)
-        .logStringMessage("called, inner: " + inner_id + ", outer: " + outer_id + ", location: " + content.document.location);
+        log("called, inner: " + inner_id + ", outer: " + outer_id + ", location: " + content.document.location);
 
     sendAsyncMessage("sixornot@baldock.me:update-id", {
         callback_id: message.data.callback_id,
@@ -28,12 +28,14 @@ addMessageListener("sixornot@baldock.me:update-id", function (message) {
     });
 });
 
+var address_family = 6;
 
 var update_ui = function () {
+    log("updating_ui: address_family: " + address_family);
     sendAsyncMessage("sixornot@baldock.me:update-ui", {
         // TODO data format for UI updates
         mainHost: {
-            address_family: 6,
+            address_family: address_family,
             ipv6s: ["::1"],
             ipv4s: []
         }
@@ -42,6 +44,9 @@ var update_ui = function () {
 
 addMessageListener("sixornot@baldock.me:http-load", function (message) {
     // TODO - update cache of information for current inner page based on these messages
+    log("got http-load, address_family: " + message.data.address_family);
+    address_family = message.data.address_family;
+    update_ui();
 });
 
 addMessageListener("sixornot@baldock.me:update-ui", function (message) {

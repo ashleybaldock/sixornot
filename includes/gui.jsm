@@ -327,7 +327,7 @@ var create_sixornot_widget = function (node, win) {
     var currentBrowserMM;
     var subscribe_to_current = function () {
         if (currentBrowserMM) {
-            currentBrowserMM.removeMessageListener("sixornot@baldock.me:update-ui");
+            currentBrowserMM.removeMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
         }
         currentBrowserMM = win.gBrowser.mCurrentBrowser.messageManager;
         currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
@@ -359,11 +359,13 @@ var create_sixornot_widget = function (node, win) {
     on_tab_select = function (evt) {
         log("Sixornot - widget:on_tab_select", 2);
         subscribe_to_current();
+        request_update();
     };
 
     on_pageshow = function (evt) {
         log("Sixornot - widget:on_pageshow", 2);
         subscribe_to_current();
+        request_update();
     };
 
     /* Create a panel to show details when clicked */ // TODO - update panel from content script
