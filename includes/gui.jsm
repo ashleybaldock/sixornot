@@ -1,7 +1,7 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: BSD License
  * 
- * Copyright (c) 2014 Timothy Baldock. All Rights Reserved.
+ * Copyright (c) 2014-2015 Timothy Baldock. All Rights Reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * 
@@ -44,7 +44,9 @@ Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
 /*jslint es5: false */
 
 // Module globals
-var EXPORTED_SYMBOLS = ["insert_code", "create_button", "set_addressbar_icon_visibility",
+var EXPORTED_SYMBOLS = ["insert_code",
+                        "create_button",
+                        "set_addressbar_icon_visibility",
                         "set_greyscale_icons"];
 
 // ID constants
@@ -253,63 +255,6 @@ var remove_greyscale_class_from_node = function (node) {
     node.classList.remove("sixornot_grey");
 };
 
-// Consumers of sixornot events need to know the inner and outer window IDs of the
-// window/tab which is currently active and that they are associated with
-var create_current_tab_ids = function (win) {
-    return {
-        inner: 0,
-        outer: 0,
-        set: function () {
-            var domWindow, domWindowUtils;
-            domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
-            domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                .getInterface(Components.interfaces.nsIDOMWindowUtils);
-
-            this.inner = domWindowUtils.currentInnerWindowID;
-            this.outer = domWindowUtils.outerWindowID;
-        }
-    };
-};
-
-/* Manages callbacks that require current tab ID information */
-var tab_id_callback_manager = function (win) {
-    var timeout = 1000; // Remove callbacks if they don't succeed
-    var last_id = 0;
-    var callbacks = {};
-    
-    var mm = win.messageManager;
-
-    var manager = {
-        enqueue: function (callback) {
-            var id = ++last_id;
-            callbacks[id] = callback;
-            var currentBrowser = win.gBrowser.mCurrentBrowser;
-            log("currentBrowser, currentURI: " + currentBrowser.currentURI.path + ", outerWindowID: " + currentBrowser.outerWindowID + ", sixornot: " + currentBrowser.SixOrNot, 0);
-            currentBrowser.messageManager.sendAsyncMessage("sixornot@baldock.me:update-id", {
-                callback_id: id
-            });
-            /*win.messageManager.broadcastAsyncMessage("sixornot@baldock.me:update-id", {
-                callback_id: id
-            });*/
-        },
-    };
-
-    mm.addMessageListener("sixornot@baldock.me:update-id", function (message) {
-        if (callbacks.hasOwnProperty(message.data.callback_id)) {
-            callbacks[message.data.callback_id](message);
-            delete callbacks[message.data.callback_id];
-        }
-    });
-
-    mm.loadFrameScript("resource://sixornot/includes/content.js", true);
-
-    // Remove binding to current window message manager
-    unload(function () {
-        // TODO
-    }, win);
-
-    return manager;
-};
 
 // Create widget which handles shared logic between button/addresbar icon
 var create_sixornot_widget = function (node, win) {
@@ -1087,6 +1032,24 @@ var panel_ui = {
         urlhbox.style.marginTop = "3px";
         parent_element.appendChild(urlhbox);
     }
+};
+
+// Consumers of sixornot events need to know the inner and outer window IDs of the
+// window/tab which is currently active and that they are associated with
+var create_current_tab_ids = function (win) {
+    return {
+        inner: 0,
+        outer: 0,
+        set: function () {
+            var domWindow, domWindowUtils;
+            domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
+            domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                                .getInterface(Components.interfaces.nsIDOMWindowUtils);
+
+            this.inner = domWindowUtils.currentInnerWindowID;
+            this.outer = domWindowUtils.outerWindowID;
+        }
+    };
 };
 
 /* Creates and sets up a panel to display information which can then be bound to an icon */
