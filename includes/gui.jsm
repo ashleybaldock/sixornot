@@ -271,22 +271,64 @@ var create_current_tab_ids = function (win) {
     };
 };
 
+/* Manages callbacks that require current tab ID information */
+var tab_id_callback_manager = function (win) {
+    var timeout = 1000; // Remove callbacks if they don't succeed
+    var last_id = 0;
+    var callbacks = {};
+    
+    var mm = win.messageManager;
+
+    var manager = {
+        enqueue: function (callback) {
+            var id = ++last_id;
+            callbacks[id] = callback;
+            var currentBrowser = win.gBrowser.mCurrentBrowser;
+            log("currentBrowser, currentURI: " + currentBrowser.currentURI.path + ", outerWindowID: " + currentBrowser.outerWindowID + ", sixornot: " + currentBrowser.SixOrNot, 0);
+            currentBrowser.messageManager.sendAsyncMessage("sixornot@baldock.me:update-id", {
+                callback_id: id
+            });
+            /*win.messageManager.broadcastAsyncMessage("sixornot@baldock.me:update-id", {
+                callback_id: id
+            });*/
+        },
+    };
+
+    mm.addMessageListener("sixornot@baldock.me:update-id", function (message) {
+        if (callbacks.hasOwnProperty(message.data.callback_id)) {
+            callbacks[message.data.callback_id](message);
+            delete callbacks[message.data.callback_id];
+        }
+    });
+
+    mm.loadFrameScript("resource://sixornot/includes/content.js", true);
+
+    // Remove binding to current window message manager
+    unload(function () {
+        // TODO
+    }, win);
+
+    return manager;
+};
+
 // Create widget which handles shared logic between button/addresbar icon
 var create_sixornot_widget = function (node, win) {
     var panel, current_tab_ids,
         update_icon_for_node,
         on_click, on_page_change, on_tab_select,
-        on_pageshow, on_dns_complete;
+        on_pageshow, on_dns_complete,
+        callback_manager;
 
-    current_tab_ids = create_current_tab_ids(win);
+    //current_tab_ids = create_current_tab_ids(win);
+    callback_manager = tab_id_callback_manager(win);
 
     // Change icon via class (icon set via stylesheet)
-    update_icon_for_node = function (node) {
-        var hosts = requests.cache[current_tab_ids.inner];
+    update_icon_for_node = function (data, node) {
+        var hosts = requests.cache[data.inner_id];
 
         /* Parse array searching for the main host (which matches the current location) */
         if (!hosts || !hosts.some(function (item, index, items) {
-            if (item.host === win.content.document.location.hostname) {
+            if (item.host === data.hostname) {
                 update_node_icon_for_host(node, item);
                 return true;
             }
@@ -304,40 +346,47 @@ var create_sixornot_widget = function (node, win) {
 
     on_tab_select = function (evt) {
         log("Sixornot - widget:on_tab_select", 2);
-        current_tab_ids.set();
-        update_icon_for_node(node);
+        callback_manager.enqueue(function (message) {
+            update_icon_for_node(message.data, node);
+        });
     };
 
     on_pageshow = function (evt) {
         log("Sixornot - widget:on_pageshow", 2);
-        current_tab_ids.set();
-        update_icon_for_node(node);
+        callback_manager.enqueue(function (message) {
+            update_icon_for_node(message.data, node);
+        });
     };
 
     /* Called whenever a Sixornot page change event is emitted */
     on_page_change = function (evt) {
-        log("Sixornot - widget:on_page_change - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 1);
-        current_tab_ids.set();
-        if (evt.detail.outer_id === current_tab_ids.outer) {
-            update_icon_for_node(node);
-        }
+        var inner_id = evt.detail.inner_id;
+        var outer_id = evt.detail.outer_id;
+        log("Sixornot - widget:on_page_change - evt.detail.outer_id: " + outer_id + ", evt.detail.inner_id: " + inner_id + " - enqueing for id check", 1);
+        callback_manager.enqueue(function (message) {
+            log("Sixornot - widget:on_page_change - evt.outer_id: " + outer_id + ", evt.inner_id: " + inner_id + ", current outer_id: " + message.data.outer_id + ", current inner_id: " + message.data.inner_id, 1);
+            if (outer_id === message.data.outer_id) {
+                update_icon_for_node(message.data, node);
+            }
+        });
     };
 
     /* Called whenever a Sixornot dns lookup event is heard */
     on_dns_complete = function (evt) {
-        log("Sixornot - widget:on_dns_complete - evt.detail.outer_id: " + evt.detail.outer_id + ", evt.detail.inner_id: " + evt.detail.inner_id + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 1);
-        current_tab_ids.set();
-        if (evt.detail.outer_id === current_tab_ids.outer) {
-            update_icon_for_node(node);
-        }
+        var inner_id = evt.detail.inner_id;
+        var outer_id = evt.detail.outer_id;
+        log("Sixornot - widget:on_dns_complete - evt.detail.outer_id: " + outer_id + ", evt.detail.inner_id: " + inner_id + " - enqueing for id check", 1);
+        callback_manager.enqueue(function (message) {
+            log("Sixornot - widget:on_dns_complete - evt.outer_id: " + outer_id + ", evt.inner_id: " + inner_id + ", current outer_id: " + message.data.outer_id + ", current inner_id: " + message.data.inner_id, 1);
+            if (outer_id === message.data.outer_id) {
+                update_icon_for_node(message.data, node);
+            }
+        });
     };
 
     /* Create a panel to show details when clicked */
     panel = create_panel(win, node.id + "-panel");
     node.appendChild(panel);
-
-    // Ensure tab ID is set upon loading into window
-    current_tab_ids.set();
 
     // Update greyscale property + icon
     if (prefs.get_bool("greyscaleicons")) {
@@ -345,7 +394,11 @@ var create_sixornot_widget = function (node, win) {
     } else {
         remove_greyscale_class_from_node(node);
     }
-    update_icon_for_node(node);
+
+    // Ensure tab ID is set upon loading into window
+    callback_manager.enqueue(function (message) {
+        update_icon_for_node(message.data.inner_id, node);
+    });
 
     /* Add event listeners */
     node.addEventListener("click", on_click, false);

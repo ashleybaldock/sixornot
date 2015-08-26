@@ -144,24 +144,21 @@ var on_examine_response = function(subject, topic) {
     }
 
     try {
-        // This is the top level window
-        domWindow = nC.getInterface(Components.interfaces.nsIDOMWindow).top;
-        domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
-        domWindowInner = domWindowUtils.currentInnerWindowID;
-        domWindowOuter = domWindowUtils.outerWindowID;
 
-        // This is the window which initiated the request (maybe a frame/iframe within the page)
-        original_window = nC.getInterface(Components.interfaces.nsIDOMWindow);
+        var loadContext = nC.getInterface(Components.interfaces.nsILoadContext);
+        var topFrameElement = loadContext.topFrameElement;  // TODO - will this always be the browser element, e.g. for iframes?
+
+        domWindowOuter = topFrameElement.outerWindowID;
+        log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: DOM request, outer_id: " + domWindowOuter, 2);
+
     } catch (e2) {
         log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 2);
         return;
     }
 
     // Check for browser windows loading things like favicons and filter out
-    // TODO - check this - is it actually needed/used/working??
-    if (check_inner_id(domWindowInner)) {
-        log("Sixornot - HTTP_REQUEST_OBSERVER: domWindowInner: " + domWindowInner + " matches a chrome window (probably a favicon load), skipping.", 1);
+    if (!loadContext.isContent) {
+        log("Sixornot - HTTP_REQUEST_OBSERVER: loadContext is not content - skipping", 1);
         return;
     }
 
@@ -183,29 +180,15 @@ var on_examine_response = function(subject, topic) {
 
     log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
-    // Detect new page loads by checking if flag LOAD_INITIAL_DOCUMENT_URI is set
-    // Only consider this to be a navigation to a new page iff the top level window was the one
-    // which initiated the navigation request (so we don't change for frame/iframe requests)
-    // (New page loads may come from sub-windows, which we want to consider as lumped in with
-    //  requests for the top level one)
     /*jslint bitwise: true */
-    if (original_window === original_window.top
-     && http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
+    // TODO - need to determine if this is a load from an embedded frame/iframe
+    if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
     /*jslint bitwise: false */
 
-        // After the initial http-on-examine-response event, but before the first
-        // content-document-global-created one the new page won't have an inner ID. In this case
-        // temporarily cache the object in a waiting list (keyed by outer ID) until the first
-        // content-document-global-created event (at which point add this as the first element
-        // of the new window's cached list, keyed by the new inner ID).
-
-        /* PRIMARY PAGE LOAD */
-        // New page, since inner window ID hasn't been set yet we need to store any
-        // new connections until such a time as it is, these get stored in the requests waiting list
-        // which is keyed by the outer window ID
         if (!requests.waitinglist[domWindowOuter]) {
             requests.waitinglist[domWindowOuter] = [];
         }
+
         if (!requests.waitinglist[domWindowOuter].some(function (item, index, items) {
             // If element present in list update fields if required
             if (item.host === http_channel.URI.host) {
@@ -218,12 +201,15 @@ var on_examine_response = function(subject, topic) {
             }
         })) {
             // Create new entry + add to waiting list
-            log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry, host: " + http_channel.URI.host + ", remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
-            requests.waitinglist[domWindowOuter].push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, null, domWindowOuter));
+            log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry, host: " + http_channel.URI.host + ", remoteAddress: " + remoteAddress + ", outer_id: " + domWindowOuter, 1);
+            requests.waitinglist[domWindowOuter]
+                    .push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, null, domWindowOuter));
         }
     } else {
         /* SECONDARY PAGE LOAD */
         // Not new, inner window ID will be correct by now so add entries to request cache
+        var browserMM = topFrameElement.messageManager;
+
         if (!requests.cache[domWindowInner]) {
             log("SN: requests.cache[" + domWindowInner + "] set to: []", 1);
             requests.cache[domWindowInner] = [];
@@ -252,94 +238,6 @@ var on_examine_response = function(subject, topic) {
     }
 };
 
-var on_content_document_global_created = function(subject, topic) {
-    var subjectUtils, subjectInner, subjectOuter,
-        topWindow, topWindowUtils, topWindowInner, topWindowOuter;
-    // This signals that the document has been created, initial load completed
-    // This is where entries on the requests waiting list get moved to the request cache
-    subjectUtils = subject.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                        .getInterface(Components.interfaces.nsIDOMWindowUtils);
-    subjectInner = subjectUtils.currentInnerWindowID;
-    subjectOuter = subjectUtils.outerWindowID;
-    topWindow = subject.top;
-    topWindowUtils = topWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                        .getInterface(Components.interfaces.nsIDOMWindowUtils);
-    topWindowInner = topWindowUtils.currentInnerWindowID;
-    topWindowOuter = topWindowUtils.outerWindowID;
-
-    log("Sixornot - on_content_document_global_created: subjectInner: " + subjectInner + ", subjectOuter: " + subjectOuter + ", subject Location: " + subject.location + ", topWindowInner: " + topWindowInner + ", topWindowOuter: " + topWindowOuter + ", top window Location: " + topWindow.location, 1);
-
-    // The waiting list contains http-on-examine-response messages which aren't
-    // yet associated with an inner window ID, these are stored associated with
-    // their top outer window ID
-
-    // This is a create event for the top window (new page)
-    if (subjectOuter === topWindowOuter) {
-        log("Sixornot - on_content_document_global_created: subjectOuter === topWindowOuter", 1);
-
-        // TODO - does this need to throw an exception?
-        if (requests.cache[topWindowInner]) {
-            throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: requests.cache already contains content entries.";
-        }
-
-        if (!requests.waitinglist[topWindowOuter]
-         || requests.waitinglist[topWindowOuter].length === 0) {
-            requests.waitinglist[topWindowOuter] = [];
-            if (subject.location.protocol === "file:") {
-                // Add item to cache to represent this file
-                requests.waitinglist[topWindowOuter].push(
-                    create_new_entry("Local File", "", 1, subjectInner, topWindowOuter));
-            } else {
-                // Some other protocol used to load file, or something went wrong
-                requests.waitinglist[topWindowOuter].push(
-                    create_new_entry(subject.location, "", 0, subjectInner, topWindowOuter));
-            }
-        }
-
-        // Move item(s) from waiting list to cache
-        // Replace spliced item with empty array, to keep waitinglist array indexes correct!
-        requests.cache[topWindowInner] = requests.waitinglist.splice(topWindowOuter, 1, [])[0];
-
-        // For each member of the new cache set inner ID and trigger a dns lookup
-        requests.cache[topWindowInner].forEach(function (item, index, items) {
-            item.inner_id = topWindowInner;
-            item.lookup_ips(subject);
-            send_event("sixornot-page-change-event", subject, item);
-        });
-    } else {
-        log("Sixornot - on_content_document_global_created: subjectOuter !== topWindowOuter", 1);
-    }
-};
-
-var on_inner_window_destroyed = function(subject) {
-    var domWindowInner = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
-
-    // Remove elements for this window and ensure DNS lookups are all cancelled
-    if (requests.cache[domWindowInner]) {
-        requests.cache[domWindowInner].forEach(function (item, index, items) {
-            if (item.dns_cancel) {
-                item.dns_cancel.cancel();
-            }
-        });
-
-        delete requests.cache[domWindowInner];
-    }
-};
-
-var on_outer_window_destroyed = function(subject) {
-    var domWindowOuter = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
-
-    // Remove elements for this window and ensure DNS lookups are all cancelled
-    if (requests.waitinglist[domWindowOuter]) {
-        requests.waitinglist[domWindowOuter].forEach(function (item, index, items) {
-            if (item.dns_cancel) {
-                item.dns_cancel.cancel();
-            }
-        });
-
-        delete requests.waitinglist[domWindowOuter];
-    }
-};
 
 /*
  * HTTP Request observer
@@ -351,12 +249,6 @@ var HTTP_REQUEST_OBSERVER = {
         if (topic === "http-on-examine-response"
          || topic === "http-on-examine-cached-response") {
             on_examine_response(subject, topic);
-        } else if (topic === "content-document-global-created") {
-            on_content_document_global_created(subject, topic);
-        } else if (topic === "inner-window-destroyed") {
-            on_inner_window_destroyed(subject);
-        } else if (topic === "outer-window-destroyed") {
-            on_outer_window_destroyed(subject);
         }
     },
 
@@ -366,16 +258,10 @@ var HTTP_REQUEST_OBSERVER = {
     register: function () {
         this.observer_service.addObserver(this, "http-on-examine-response", false);
         this.observer_service.addObserver(this, "http-on-examine-cached-response", false);
-        this.observer_service.addObserver(this, "content-document-global-created", false);
-        this.observer_service.addObserver(this, "inner-window-destroyed", false);
-        this.observer_service.addObserver(this, "outer-window-destroyed", false);
     },
 
     unregister: function () {
         this.observer_service.removeObserver(this, "http-on-examine-response");
         this.observer_service.removeObserver(this, "http-on-examine-cached-response");
-        this.observer_service.removeObserver(this, "content-document-global-created");
-        this.observer_service.removeObserver(this, "inner-window-destroyed");
-        this.observer_service.removeObserver(this, "outer-window-destroyed");
     }
 };

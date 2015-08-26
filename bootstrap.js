@@ -114,6 +114,11 @@ startup = function (aData, aReason) {
             dns_handler.test_is_ip6();
         }
 
+        // Inject content script into all existing and subsequently created windows
+        var globalMM = Components.classes["@mozilla.org/globalmessagemanager;1"]
+                        .getService(Components.interfaces.nsIMessageListenerManager);
+        globalMM.loadFrameScript("resource://sixornot/includes/content.js", true); // TODO remove on shutdown
+
         // Load into existing windows and set callback to load into any new ones too
         watchWindows(insert_code);
 
