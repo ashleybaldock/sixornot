@@ -41,6 +41,7 @@ Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 var requests = get_request_cache();
 
 log("content script loaded", 1);
+sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: content_script_id});
 
 
 var currentInnerId = 0;
@@ -62,7 +63,7 @@ var update_ui = function (data) {
 //send_event("sixornot-new-host-event", domWindow, new_entry);
 
 addMessageListener("sixornot@baldock.me:http-initial-load", function (message) {
-    log("got http-initial-load, host: " + message.data.host + ", address: " + message.data.address + ", address_family: " + message.data.addressFamily);
+    log("got http-initial-load, host: '" + message.data.host + "', address: '" + message.data.address + "', address_family: " + message.data.addressFamily);
 
     // Items placed onto waiting list will be moved by DOMWindowCreated handler
     requests.addOrUpdateToWaitingList(message.data);
