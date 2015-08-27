@@ -120,6 +120,7 @@ var on_dns_complete = function (data) {
 
 // TODO test this with sub-windows
 addEventListener("DOMWindowCreated", function (event) {
+    var newEntry;
     var utils = event.originalTarget.defaultView.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                      .getInterface(Components.interfaces.nsIDOMWindowUtils);
     var inner = utils.currentInnerWindowID;
@@ -127,22 +128,27 @@ addEventListener("DOMWindowCreated", function (event) {
 
     var protocol = event.originalTarget.defaultView.location.protocol;
     var hostname = event.originalTarget.defaultView.location.hostname;
+    var loc = event.originalTarget.defaultView.location.href;
 
-    log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + ", hostname: " + hostname + ", protocol: " + protocol, 1);
+    log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + ", hostname: " + hostname + ", protocol: " + protocol + ", location: " + event.originalTarget.defaultView.location, 1);
 
     if (requests.get(inner)) { return; } // Ignore duplicate events
 
     if (protocol === "file:") {
-        requests.addOrUpdateToWaitingList({host: "Local File", address: "", addressFamily: 1});
+        newEntry = {host: "Local File", address: "", addressFamily: 1}
+    } else if (protocol === "about:") {
+        newEntry = {host: loc, address: "", addressFamily: 1};
     } else {
-        requests.addOrUpdateToWaitingList({host: hostname, address: "", addressFamily: 0});
+        newEntry = {host: hostname, address: "", addressFamily: 0};
     }
 
     // TODO All subsequent http-load events for this browser should now be
     // associated with this inner ID
     currentInnerId = inner;
 
-    requests.createCacheEntry(hostname, inner);
+    requests.addOrUpdateToWaitingList(newEntry);
+
+    requests.createCacheEntry(newEntry.host, inner);
 
     // For each member of the new cache set inner ID and trigger a dns lookup
     requests.get(inner).entries.forEach(function (item, index, items) {
