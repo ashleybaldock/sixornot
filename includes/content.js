@@ -87,6 +87,15 @@ var on_dns_complete = function (data) {
     update_ui(data);
 };
 
+var content_script_id = Math.floor((Math.random() * 100000) + 1); 
+
+addEventListener("DOMWindowCreated", function (event) {
+    var utils = event.originalTarget.defaultView.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                     .getInterface(Components.interfaces.nsIDOMWindowUtils);
+    var inner = utils.currentInnerWindowID;
+    var outer = utils.outerWindowID;
+    log("Sixornot - DOMWindowCreated: id: " + content_script_id + ", event.target: " + JSON.stringify(event.originalTarget) + ", inner: " + inner + ", outer: " + outer, 1);
+});
 
 var on_content_document_global_created = function(subject, topic) {
     var subjectUtils, subjectInner, subjectOuter,
@@ -103,10 +112,10 @@ var on_content_document_global_created = function(subject, topic) {
     topWindowInner = topWindowUtils.currentInnerWindowID;
     topWindowOuter = topWindowUtils.outerWindowID;
 
+
+    log("Sixornot - on_content_document_global_created: id: " + content_script_id + ", subjectInner: " + subjectInner + ", subjectOuter: " + subjectOuter + ", subject Location: " + JSON.stringify(subject.location) + ", topWindowInner: " + topWindowInner + ", topWindowOuter: " + topWindowOuter + ", top window Location: " + JSON.stringify(topWindow.location), 1);
+
     if (requests.cache[topWindowInner]) { return; } // Ignore duplicate events
-
-    log("Sixornot - on_content_document_global_created: subjectInner: " + subjectInner + ", subjectOuter: " + subjectOuter + ", subject Location: " + JSON.stringify(subject.location) + ", topWindowInner: " + topWindowInner + ", topWindowOuter: " + topWindowOuter + ", top window Location: " + JSON.stringify(topWindow.location), 1);
-
     // The waiting list contains http-on-examine-response messages which aren't
     // yet associated with an inner window ID, these are stored associated with
     // their top outer window ID
