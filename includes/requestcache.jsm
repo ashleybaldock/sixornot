@@ -93,15 +93,16 @@ var create_new_entry = function (host, address, address_family, inner) {
 var get_request_cache = function () {
     return {
         cache: {},
-        createCacheEntry: function (mainhost) {
+        createCacheEntry: function (mainhost, id) {
             return {
                 main: mainhost,
-                entries: []
+                entries: [],
+                innerId: id
             };
         },
         createOrExtendCacheEntry: function (mainhost, id, dns_complete_callback) {
             if (!this.cache.hasOwnProperty(id)) {
-                this.cache[id] = this.createCacheEntry(mainhost);
+                this.cache[id] = this.createCacheEntry(mainhost, id);
             }
 
             // Move anything currently on waiting list into new cache entry

@@ -40,7 +40,7 @@ var create_ips = function (doc, addto, host) {
     /* Create DOM UI elements */
     address_box = doc.createElement("vbox");
 
-    update = function () {
+    update = function (host) {
         var conipaddr;
         // Remove all existing addresses
         while (address_box.firstChild) {
@@ -101,10 +101,9 @@ var create_ips = function (doc, addto, host) {
                 }
             });
         }
-
     };
     /* Update element on create */
-    update();
+    update(host);
     address_box.sixornot_host = host.host;
     addto.appendChild(address_box);
     /* Return object for interacting with DOM element */
@@ -127,7 +126,7 @@ var create_showhide = function (doc, addto, host) {
     showhide.sixornot_showhide = true;
     showhide.classList.add("sixornot-link");
 
-    update = function () {
+    update = function (host) {
         var count = 0;
         host.ipv6s.forEach(function (address, index, addresses) {
             if (address !== host.address) {
@@ -155,7 +154,7 @@ var create_showhide = function (doc, addto, host) {
         }
     };
     /* Update elements on create */
-    update();
+    update(host);
     addto.appendChild(showhide);
     /* Return object for interacting with DOM elements */
     return {
@@ -172,11 +171,11 @@ var create_icon = function (doc, addto, host) {
     icon = doc.createElement("image");
     icon.setAttribute("width", "16");
     icon.setAttribute("height", "16");
-    update = function () {
+    update = function (host) {
         update_node_icon_for_host(icon, host);
     };
     /* Update element on create */
-    update();
+    update(host);
     addto.appendChild(icon);
     /* Return object for interacting with DOM element */
     return {
@@ -193,7 +192,7 @@ var create_count = function (doc, addto, host) {
     count = doc.createElement("label");
 
     count.setAttribute("tooltiptext", gt("tt_copycount"));
-    update = function () {
+    update = function (host) {
         if (host.count > 0) {
             count.setAttribute("value", "(" + host.count + ")");
         } else {
@@ -203,7 +202,7 @@ var create_count = function (doc, addto, host) {
         //count.sixornot_copytext = "count copy text";
     };
     /* Update element on create */
-    update();
+    update(host);
     addto.appendChild(count);
     /* Return object for interacting with DOM element */
     return {
@@ -226,7 +225,7 @@ var create_hostname = function (doc, addto, host, mainhost) {
     }
 
     hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
-    update = function () {
+    update = function (host) {
         var text = host.host;
         if (host.address !== "") {
             text = text + "," + host.address;
@@ -252,7 +251,7 @@ var create_hostname = function (doc, addto, host, mainhost) {
         hostname.classList.add("sixornot-link");
     };
     /* Update element on create */
-    update();
+    update(host);
     addto.appendChild(hostname);
     /* Return object for interacting with DOM element */
     return {
@@ -340,31 +339,32 @@ var create_remote_listing_row = function (doc, addafter, host, mainhost) {
                 row.parentNode.appendChild(element);
             }
         },
-        update_ips: function () {
+        update_ips: function (host) {
             // TODO optimisation - only update DNS IPs
-            this.ips.update();
-            this.showhide.update();
-            this.icon.update();
+            this.ips.update(host);
+            this.showhide.update(host);
+            this.icon.update(host);
         },
-        update_address: function () {
+        update_address: function (host) {
             // TODO optimisation - only update connection IP
-            this.ips.update();
-            this.icon.update();
+            this.ips.update(host);
+            this.icon.update(host);
         },
-        update_count: function () {
-            this.count.update();
+        update_count: function (host) {
+            this.count.update(host);
         }
     };
 };
 
 var create_remote_anchor = function (doc, parent_element) {
     // Add "Remote" title
+    var model = {innerId: 0};
+    var entries = [];
     var title_remote = doc.createElement("label");
     title_remote.setAttribute("value", gt("header_remote"));
     title_remote.classList.add("sixornot-title");
     parent_element.appendChild(title_remote);
     return {
-        entries: [],
         add_after: function (element) {
             if (title_remote.nextSibling) {
                 parent_element.insertBefore(element, title_remote.nextSibling);
@@ -374,94 +374,60 @@ var create_remote_anchor = function (doc, parent_element) {
         },
         remove_all_entries: function () {
             log("remote_anchor:remove_all_entries", 2);
-            this.entries.forEach(function (item, index, items) {
+            entries.forEach(function (item, index, items) {
                 try {
                     item.remove();
                 } catch (e) {
                     Components.utils.reportError(e);
                 }
             });
-            this.entries = [];
+            entries = [];
         },
-        generate_entries_for_hosts: function (hosts) {
-            log("remote_anchor:generate_entries_for_hosts: " + hosts, 2);
-            // In this case we're on a page which has no cached info
-            if (hosts === undefined) {
-                // TODO - Add logic here to display useful messages for other pages
-                // TODO - If we're on a page which we have no cached data for, but which has
-                //        a domain, do DNS lookups and add data to cache etc. (fallback behaviour)
-            } else {
-                hosts.entries.forEach(function (host) {
-                    this.generate_entry_for_host(host, hosts.main);
-                    /*if (this.entries.length > 0) {
-                        this.entries.push(create_remote_listing_row(doc, 
-                            this.entries[this.entries.length - 1], host));
-                    } else {
-                        this.entries.push(create_remote_listing_row(doc, this, host));
-                    }*/
-                }, this);
+        update_model: function (new_model) {
+            if (model.innerId !== new_model.innerId) {
+                // If model.innerId does not match, regenerate from scratch
+                this.remove_all_entries();
             }
+            model = new_model;
+            this.update();
+        },
+        update: function () {
+            // Go through model and compare with each entry
+            // Add new entries where needed, update where needed
+            model.entries.forEach(function (host) {
+                this.generate_entry_for_host(host, model.main);
+            }, this);
         },
         generate_entry_for_host: function (host, mainhost) {
             log("remote_anchor:generate_entry_for_host: " + host, 2);
             // TODO put this in the right position based on some ordering
-            if (this.entries.length > 0) {
-                if (!this.entries.some(function (item) {
+            if (entries.length > 0) {
+                if (!entries.some(function (item) {
                     // TODO - this shouldn't be able to happen!
                     // If item is already in the array, don't add a duplicate
                     // Just update the existing one instead
                     if (item.host.host === host.host) {
                         log("Adding duplicate!!", 1);
-                        item.update_address();
-                        item.update_ips();
-                        item.update_count();
+                        item.update_address(host);
+                        item.update_ips(host);
+                        item.update_count(host);
                         return true;
                     }
                 })) {
                     // Add new entry
-                    this.entries.push(create_remote_listing_row(doc, 
-                        this.entries[this.entries.length - 1], host, mainhost));
+                    entries.push(create_remote_listing_row(doc, 
+                        entries[entries.length - 1], host, mainhost));
                 }
             } else {
                 // Push first item onto grid
-                this.entries.push(create_remote_listing_row(doc, this, host, mainhost));
-            }
-        },
-        update_address_for_host: function (host_name) {
-            if (!this.entries.some(function (item, index, items) {
-                if (item.host.host === host_name) {
-                    item.update_address();
-                    return true;
-                }
-            })) {
-                log("remote_anchor:update_address_for_host - host matching '" + host_name + "' not found in entries", 1);
-            }
-        },
-        update_count_for_host: function (host_name) {
-            if (!this.entries.some(function (item, index, items) {
-                if (item.host.host === host_name) {
-                    item.update_count();
-                    return true;
-                }
-            })) {
-                log("remote_anchor:update_count_for_host - host matching '" + host_name + "' not found in entries", 1);
-            }
-        },
-        update_ips_for_host: function (host_name) {
-            if (!this.entries.some(function (item, index, items) {
-                if (item.host.host === host_name) {
-                    item.update_ips();
-                    return true;
-                }
-            })) {
-                log("remote_anchor:update_ips_for_host - host matching '" + host_name + "' not found in entries", 1);
+                entries.push(create_remote_listing_row(doc, this, host, mainhost));
             }
         },
         toggle_detail_for_host: function (host_name) {
-            if (!this.entries.some(function (item, index, items) {
+            if (!entries.some(function (item, index, items) {
                 if (item.host.host === host_name) {
                     item.host.show_detail = !item.host.show_detail;
-                    item.update_ips();
+                    item.update_ips();// TODO
                     return true;
                 }
             })) {

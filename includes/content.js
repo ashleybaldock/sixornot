@@ -140,6 +140,8 @@ addEventListener("DOMWindowCreated", function (event) {
     // associated with this inner ID
     currentInnerId = topInner;
 
+    // TODO only pick up waiting list entries if they match the domain
+    // of the DOMWindowCreated event (to avoid picking up things from old pages)
     requests.addOrUpdateToWaitingList(newEntry);
 
     requests.createOrExtendCacheEntry(newEntry.host, currentInnerId, on_dns_complete);

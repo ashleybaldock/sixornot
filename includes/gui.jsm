@@ -86,7 +86,7 @@ var create_sixornot_widget = function (node, win) {
     windowMM.addMessageListener("sixornot@baldock.me:content-script-loaded", on_content_script_loaded); // TODO unsubscribe on unload
 
     var subscribe_to_current = function () {
-        subscribe_to(win.gBrowser.mCurrentBrowser);
+        subscribe_to(win.gBrowser.mCurrentBrowser);// TODO use selectedBrowser?
     };
 
     // TODO unsubscribe on unload
@@ -341,8 +341,7 @@ var create_panel = function (win, panel_id) {
     // Called by content script of active tab
     // Message contains data to update icon/UI
     var on_update_ui_message = function (message) {
-        remote_anchor.remove_all_entries();
-        remote_anchor.generate_entries_for_hosts(JSON.parse(message.data));
+        remote_anchor.update_model(JSON.parse(message.data));
         force_scrollbars();
     };
 
@@ -362,20 +361,10 @@ var create_panel = function (win, panel_id) {
     };
 
     unregister_callbacks = function () {
-        /*win.removeEventListener("sixornot-page-change-event", on_page_change, false);
-        win.removeEventListener("sixornot-new-host-event", on_new_host, false);
-        win.removeEventListener("sixornot-address-change-event", on_address_change, false);
-        win.removeEventListener("sixornot-count-change-event", on_count_change, false);
-        win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);*/
         win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
         win.gBrowser.removeEventListener("pageshow", on_pageshow, false);
     };
     register_callbacks = function () {
-        /*win.addEventListener("sixornot-page-change-event", on_page_change, false);
-        win.addEventListener("sixornot-new-host-event", on_new_host, false);
-        win.addEventListener("sixornot-address-change-event", on_address_change, false);
-        win.addEventListener("sixornot-count-change-event", on_count_change, false);
-        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);*/
         win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
         win.gBrowser.addEventListener("pageshow", on_pageshow, false);
     };
@@ -426,27 +415,6 @@ var create_panel = function (win, panel_id) {
             open_hyperlink(evt.target.sixornot_hyperlink);
             evt.stopPropagation();
         }
-    };
-
-    on_address_change = function (evt) { // TODO
-        log("panel:on_address_change - evt.detail: " + JSON.stringify(evt.detail), 1);
-
-        remote_anchor.update_address_for_host(evt.detail.host)
-    };
-
-    on_count_change = function (evt) { // TODO
-        log("panel:on_count_change - evt.detail: " + JSON.stringify(evt.detail), 2);
-
-        remote_anchor.update_count_for_host(evt.detail.host)
-    };
-
-    on_dns_complete = function (evt) { // TODO
-        log("panel:on_dns_complete - evt.detail: " + JSON.stringify(evt.detail), 2);
-
-        remote_anchor.update_ips_for_host(evt.detail.host)
-        // TODO optimisation - this only needs to be called if the height is changed
-        // (e.g. if showing full detail for this host)
-        force_scrollbars();
     };
 
     on_tab_select = function (evt) {
