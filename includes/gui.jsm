@@ -35,6 +35,7 @@ try {
 }
 Components.utils.import("resource://sixornot/includes/env.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
+Components.utils.import("resource://sixornot/includes/utility.jsm");
 Components.utils.import("resource://sixornot/includes/locale.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
@@ -54,16 +55,6 @@ var ADDRESSBAR_ICON_ID = "sixornot-addressbaricon";
 var BUTTON_ID          = "sixornot-button";
 
 
-/* Proxy to getElementById */
-var gbi = function (node, child_id) {
-    "use strict";
-    if (node.getElementById) {
-        return node.getElementById(child_id);
-    } else {
-        return node.querySelector("#" + child_id);
-    }
-};
-
 // TODO - move this method into requests object
 var get_hosts_for_inner_window = function (inner_window) {
     return requests.cache[inner_window]; // May be undefined
@@ -80,93 +71,6 @@ var get_host_by_hostname_from_inner_window = function (inner_window, hostname) {
         }
     }
     return undefined;
-};
-
-// Utility functions (move into own module?)
-var open_preferences = function () {
-    var currentWindow, currentBrowser, e;
-    // Add tab to most recent window, regardless of where this function was called from
-    try {
-        currentWindow = Services.wm.getMostRecentWindow("navigator:browser");
-        currentWindow.focus();
-        if (currentWindow.toEM) {
-            currentWindow.toEM("addons://detail/sixornot@entropy.me.uk");
-        } else if (currentWindow.BrowserOpenAddonsMgr) {
-            currentWindow.BrowserOpenAddonsMgr("addons://detail/sixornot@entropy.me.uk");
-        } else {
-            currentBrowser = currentWindow.getBrowser();
-            currentBrowser.selectedTab = currentBrowser.addTab("about:addons");
-        }
-    } catch (e) {
-        Components.utils.reportError(e);
-    }
-};
-var open_hyperlink = function (link) {
-    var currentWindow, currentBrowser, e;
-    // Add tab to most recent window, regardless of where this function was called from
-    try {
-        currentWindow = Services.wm.getMostRecentWindow("navigator:browser");
-        currentWindow.focus();
-        currentBrowser = currentWindow.getBrowser();
-        currentBrowser.selectedTab = currentBrowser.addTab(link);
-    } catch (e) {
-        Components.utils.reportError(e);
-    }
-};
-var copy_to_clipboard = function (text) {
-    var e;
-    log("copy_to_clipboard: '" + text + "'", 2);
-    try {
-        Components.classes["@mozilla.org/widget/clipboardhelper;1"]
-            .getService(Components.interfaces.nsIClipboardHelper)
-            .copyString(text);
-    } catch (e) {
-        Components.utils.reportError(e);
-    }
-};
-
-var get_icon_class = function (record) {
-    if (record.address_family === 4) {
-        if (record.ipv6s.length !== 0) {
-            // Actual is v4, DNS is v4 + v6 -> Orange
-            return "sixornot_4pot6";
-        } else {
-            // Actual is v4, DNS is v4 -> Red
-            return "sixornot_4only";
-        }
-    } else if (record.address_family === 6) {
-        if (record.ipv4s.length === 0) {
-            // Actual is v6, DNS is v6 -> Blue
-            return "sixornot_6only";
-        } else {
-            // Actual is v6, DNS is v4 + v6 -> Green
-            return "sixornot_6and4";
-        }
-    } else if (record.address_family === 2) {
-        // address family 2 is cached responses
-        if (record.ipv6s.length === 0) {
-            if (record.ipv4s.length === 0) {
-                // No addresses, grey cache icon
-                return "sixornot_other_cache";
-            } else {
-                // Only v4 addresses from DNS, red cache icon
-                return "sixornot_4only_cache";
-            }
-        } else {
-            if (record.ipv4s.length === 0) {
-                // Only v6 addresses from DNS, blue cache icon
-                return "sixornot_6only_cache";
-            } else {
-                // Both kinds of addresses from DNS, yellow cache icon
-                return "sixornot_4pot6_cache";
-            }
-        }
-    } else if (record.address_family === 1) {
-        return "sixornot_other_cache";
-    } else if (record.address_family === 0) {
-        // This indicates that no addresses were available but request is not cached
-        return "sixornot_error";
-    }
 };
 
 var create_local_address_info = function () {
@@ -187,7 +91,7 @@ var create_local_address_info = function () {
     on_returned_ips = function (ips, callback) {
         var local_host_info = new_local_host_info();
         log("panel:local_address_info:on_returned_ips - ips: " + ips, 1);
-        local_dns_cancel = null;
+        dns_cancel = null;
         local_host_info.host = dns_handler.get_local_hostname();
         if (ips[0] === "FAIL") {
             local_host_info.dns_status = "failure";
@@ -226,35 +130,6 @@ var create_local_address_info = function () {
         }
     };
 };
-
-var sixornot_classes = ["sixornot_4only", "sixornot_4only_cache",
-                        "sixornot_4pot6", "sixornot_4pot6_cache",
-                        "sixornot_6and4", "sixornot_6and4_cache",
-                        "sixornot_6only", "sixornot_6only_cache",
-                        "sixornot_other", "sixornot_other_cache",
-                        "sixornot_proxy", "sixornot_error"];
-var remove_sixornot_classes_from = function (node) {
-    sixornot_classes.forEach(function (item, index, items) {
-        node.classList.remove(item);
-    });
-};
-var add_class_to_node = function (new_item_class, node) {
-    node.classList.add(new_item_class);
-};
-var update_node_icon_for_host = function (node, host_record) {
-    var new_icon_class = get_icon_class(host_record);
-    if (!node.classList.contains(new_icon_class)) {
-        remove_sixornot_classes_from(node);
-        add_class_to_node(new_icon_class, node);
-    }
-};
-var add_greyscale_class_to_node = function (node) {
-    node.classList.add("sixornot_grey");
-};
-var remove_greyscale_class_from_node = function (node) {
-    node.classList.remove("sixornot_grey");
-};
-
 
 // Create widget which handles shared logic between button/addresbar icon
 var create_sixornot_widget = function (node, win) {
