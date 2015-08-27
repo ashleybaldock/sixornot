@@ -38,6 +38,8 @@ dns_handler.init(); // TODO uninit on unload (or pass requests out to chrome pro
 
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 
+var requests = get_request_cache();
+
 log("imported", 1);
 
 addMessageListener("sixornot@baldock.me:update-id", function (message) {
@@ -58,42 +60,61 @@ addMessageListener("sixornot@baldock.me:update-id", function (message) {
     });
 });
 
+var currentInnerId = 0;
 var address_family = 6;
 
 var update_ui = function (data) {
-    log("updating_ui: address_family: " + data.address_family);
-    sendAsyncMessage("sixornot@baldock.me:update-ui", {
-        // TODO data format for UI updates
-        mainHost: data
-    });
+    log("updating_ui: data: " + JSON.stringify(data));
+    sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(data));
 };
+
+/* UI update type events (for panel)
+ * Event type one of:
+ *  sixornot-dns-lookup-event
+ *  sixornot-count-change-event
+ *  sixornot-address-change-event
+ *  sixornot-new-host-event
+ *  sixornot-page-change-event */
+//send_event("sixornot-count-change-event", domWindow, item);
+//send_event("sixornot-address-change-event", domWindow, item);
+//send_event("sixornot-new-host-event", domWindow, new_entry);
+
+// Items placed onto waiting list will be moved by DOMWindowCreated handler
+addMessageListener("sixornot@baldock.me:http-initial-load", function (message) {
+    // TODO - update cache of information for current inner page based on these messages
+    log("got http-initial-load, address_family: " + message.data.address_family);
+
+    requests.addOrUpdateToWaitingList(message.data);
+
+    update_ui(requests.get(currentInnerId));
+});
 
 addMessageListener("sixornot@baldock.me:http-load", function (message) {
     // TODO - update cache of information for current inner page based on these messages
     log("got http-load, address_family: " + message.data.address_family);
-    address_family = message.data.address_family;
-    update_ui();
+
+    requests.addOrUpdate(message.data, currentInnerId, on_dns_complete);
+
+    update_ui(requests.get(currentInnerId));
 });
 
 addMessageListener("sixornot@baldock.me:update-ui", function (message) {
-    update_ui({
-            address_family: address_family,
-            ipv6s: ["::1"],
-            ipv4s: []
-        });
+    update_ui(requests.get(currentInnerId));
 });
 
 
 var on_page_change = function (data) {
     // TODO - wire up this event to observer
     log("on_page_change: data: " + JSON.stringify(data), 1);
-    update_ui(data);
+    //update_ui(data);
+    update_ui(requests.get(currentInnerId));
 };
 
 var on_dns_complete = function (data) {
     // TODO - wire up this event to observer
     log("on_dns_complete: data: " + JSON.stringify(data), 1);
-    update_ui(data);
+    //update_ui(data);
+    update_ui(requests.get(currentInnerId));
 };
 
 
@@ -109,32 +130,26 @@ addEventListener("DOMWindowCreated", function (event) {
 
     log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + ", hostname: " + hostname + ", protocol: " + protocol, 1);
 
-    // TODO All subsequent http-load events for this browser should now be
-    // associated with this inner ID
+    if (requests.get(inner)) { return; } // Ignore duplicate events
 
-    if (requests.cache[inner]) { return; } // Ignore duplicate events
-
-    if (!requests.waitinglist[outer] || requests.waitinglist[outer].length === 0) {
-        requests.waitinglist[outer] = [];
-        if (protocol === "file:") {
-            requests.waitinglist[outer].push(
-                create_new_entry("Local File", "", 1, inner, outer));
-        } else {
-            requests.waitinglist[outer].push(
-                create_new_entry(hostname, "", 0, inner, outer));
-        }
+    if (protocol === "file:") {
+        requests.addOrUpdateToWaitingList({host: "Local File", address: "", addressFamily: 1});
+    } else {
+        requests.addOrUpdateToWaitingList({host: hostname, address: "", addressFamily: 0});
     }
 
-    // Move item(s) from waiting list to cache
-    // Replace spliced item with empty array, to keep waitinglist array indexes correct!
-    requests.cache[inner] = requests.waitinglist.splice(outer, 1, [])[0];
+    // TODO All subsequent http-load events for this browser should now be
+    // associated with this inner ID
+    currentInnerId = inner;
+
+    requests.createCacheEntry(hostname, inner);
 
     // For each member of the new cache set inner ID and trigger a dns lookup
-    requests.cache[inner].forEach(function (item, index, items) {
-        item.inner_id = inner;
+    requests.get(inner).entries.forEach(function (item, index, items) {
+        item.inner_id = inner;// TODO can this be removed?
         item.lookup_ips(on_dns_complete);
-        on_page_change(item.data);
     });
+    on_page_change(requests.get(inner));
 });
 
 var on_content_document_global_created = function(subject, topic) {
@@ -170,17 +185,17 @@ var on_content_document_global_created = function(subject, topic) {
 };
 
 var on_inner_window_destroyed = function(subject) {
-    var domWindowInner = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
+    var inner = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
 
     // Remove elements for this window and ensure DNS lookups are all cancelled
-    if (requests.cache[domWindowInner]) {
-        requests.cache[domWindowInner].forEach(function (item, index, items) {
+    if (requests.get(inner)) {
+        requests.get(inner).entries.forEach(function (item, index, items) {
             if (item.dns_cancel) {
                 item.dns_cancel.cancel();
             }
         });
 
-        delete requests.cache[domWindowInner];
+        requests.remove(inner);
     }
 };
 

@@ -20,6 +20,7 @@
 /*jslint white: true, maxerr: 100, indent: 4 */
 
 /*jslint es5: true */
+Components.utils.import("resource://sixornot/includes/logger.jsm");
 // Import dns module (adds global symbol: dns_handler)
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 /*jslint es5: false */
@@ -30,14 +31,18 @@ Components.utils.import("resource://sixornot/includes/dns.jsm");
 // Provided by Sixornot
 /*global parse_exception, prefs */
 
-var EXPORTED_SYMBOLS = ["requests", "create_new_entry"];
+var EXPORTED_SYMBOLS = [
+    "requests",
+    "get_request_cache",
+    "create_new_entry"
+];
 
 
 // Make methods in this object for updating its state
 // Adding/removing/lookup of entries (hide internal implementation)
 
 /* Prepare and return a new blank entry for the hosts listing */
-var create_new_entry = function (host, address, address_family, inner, outer) {
+var create_new_entry = function (host, address, address_family, inner) {
     return {
         data: {
             host: host,
@@ -51,8 +56,7 @@ var create_new_entry = function (host, address, address_family, inner, outer) {
             dns_status: "ready",
         },
         dns_cancel: null,
-        inner_id: inner,
-        outer_id: outer,
+        inner_id: inner, // TODO remove this?
         lookup_ips: function (callback) {
             var entry, on_returned_ips;
             // Don't do IP lookup for local file entries
@@ -80,6 +84,76 @@ var create_new_entry = function (host, address, address_family, inner, outer) {
                 entry.dns_cancel.cancel();
             }
             entry.dns_cancel = dns_handler.resolve_remote_async(entry.data.host, on_returned_ips);
+        }
+    };
+};
+
+var create_cache_entry = function (mainhost, initial_entries) {
+    return {
+        main: mainhost,
+        entries: initial_entries
+    };
+};
+
+var get_request_cache = function () {
+    return {
+        cache: {},
+        createCacheEntry: function (mainhost, id) {
+            // Move anything currently on waiting list into new cache entry
+            this.cache[id] = create_cache_entry(mainhost, this.waitinglist.splice(0, Number.MAX_VALUE));
+        },
+        addOrUpdate: function (data, id, dns_complete_callback) {
+            if (!this.cache.hasOwnProperty(id)) {
+                this.createCacheEntry(id);
+            }
+            if (!this.cache[id].entries.some(function (item, index, items) {
+                if (item.data.host === data.host) {
+                    item.data.count += 1;
+                    //send_event("sixornot-count-change-event", domWindow, item); // TODO
+
+                    if (item.data.address !== data.address && data.address !== "") {
+                        item.data.address = data.address;
+                        item.data.address_family = data.addressFamily;
+                        //send_event("sixornot-address-change-event", domWindow, item); // TODO
+                    }
+                    return true;
+                }
+            })) {
+                log("cache: adding new entry, host: " + data.host + ", remoteAddress: " + data.address, 1);
+                new_entry = create_new_entry(data.host, data.address, data.addressFamily, id);
+                new_entry.data.show_detail = false;
+                new_entry.lookup_ips(dns_complete_callback);
+                this.cache[id].entries.push(new_entry);
+                //send_event("sixornot-new-host-event", domWindow, new_entry); // TODO
+            }
+        },
+        get: function (id) {
+            // Retrieve cache entry for id
+            if (this.cache.hasOwnProperty(id)) {
+                return this.cache[id];
+            }
+            return null;
+        },
+        remove: function (id) {
+            // Remove cache entry for id
+        },
+
+        waitinglist: [],
+        addOrUpdateToWaitingList: function (data) {
+            if (!this.waitinglist.some(function (item, index, items) {
+                if (item.data.host === data.host) {
+                    item.data.count += 1;
+                    if (item.data.address !== data.address && data.address !== "") {
+                        item.data.address = data.address;
+                        item.data.address_family = data.addressFamily;
+                    }
+                    return true;
+                }
+            })) {
+                log("http-initial-load: New page load, adding new entry, host: " + data.host + ", remoteAddress: " + data.address, 1);
+                this.waitinglist.push(
+                    create_new_entry(data.host, data.address, data.addressFamily, null));
+            }
         }
     };
 };

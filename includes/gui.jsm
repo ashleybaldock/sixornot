@@ -266,7 +266,7 @@ var create_sixornot_widget = function (node, win) {
     // Called by content script of active tab
     // Message contains data to update icon/UI
     var on_update_ui_message = function (message) {
-        update_icon_for_node(message.data, node);
+        update_icon_for_node(JSON.parse(message.data), node);
     };
 
     var currentBrowserMM;
@@ -280,7 +280,11 @@ var create_sixornot_widget = function (node, win) {
 
     // Change icon via class (icon set via stylesheet)
     update_icon_for_node = function (data, node) {
-        var mainHost = data.mainHost;
+        log("Updating UI with data: " + JSON.stringify(data), 1);
+        var mainHost = data.entries.find(function (element, index, array) {
+            return element.data.host === data.main;
+        }).data;
+        log("mainHost: " + JSON.stringify(mainHost), 1);
 
         if (mainHost) {
             update_node_icon_for_host(node, mainHost);
