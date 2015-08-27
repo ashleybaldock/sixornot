@@ -136,7 +136,7 @@ startup = function (aData, aReason) {
         // The observers actually trigger events in the UI, nothing happens until they are registered
         PREF_OBSERVER.register();
         //PREF_OBSERVER_DNS.register();
-        //HTTP_REQUEST_OBSERVER.register();
+        HTTP_REQUEST_OBSERVER.register();
     });
 };
 

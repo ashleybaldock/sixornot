@@ -52,28 +52,12 @@ var send_event = function (type, target, entry) {
         outer_id: entry.outer_id
     });
 
-    //log("Sixornot - send_event of type: " + type + ", to target: " + target + " with payload: " + JSON.stringify(evt.detail), 2);
+    //log("send_event of type: " + type + ", to target: " + target + " with payload: " + JSON.stringify(evt.detail), 2);
 
     // Dispatch the event
     return target.top.dispatchEvent(evt);
 };
 
-
-/* Check an inner window ID against all browser windows, return true if it matches
-   Used to check for favicon loading by chrome window */
-var check_inner_id = function (inner_id) {
-    var enumerator, win, utils, win_inner;
-    enumerator = Services.wm.getEnumerator("navigator:browser");
-    while(enumerator.hasMoreElements()) {
-        win = enumerator.getNext();
-        utils = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
-        if (inner_id === utils.currentInnerWindowID) {
-            return true;
-        }
-    }
-    return false;
-};
 
 var on_examine_response = function(subject, topic) {
     var http_channel, http_channel_internal, nC,
@@ -92,7 +76,7 @@ var on_examine_response = function(subject, topic) {
     }
     if (!nC) {
         // Unable to determine which window intiated this http request
-        log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Unable to determine notificationCallbacks for this http_channel", 1);
+        log("HTTP_REQUEST_OBSERVER - http-on-examine-response: Unable to determine notificationCallbacks for this http_channel", 1);
         return;
     }
 
@@ -105,16 +89,16 @@ var on_examine_response = function(subject, topic) {
         topFrameMM = topFrameElement.messageManager;
 
         domWindowOuter = topFrameElement.outerWindowID;
-        log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: DOM request, outer_id: " + domWindowOuter, 2);
+        log("HTTP_REQUEST_OBSERVER - http-on-examine-response: DOM request, outer_id: " + domWindowOuter, 2);
 
     } catch (e2) {
-        log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 1);
+        log("HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 1);
         return;
     }
 
     // Check for browser windows loading things like favicons and filter out
     if (!loadContext.isContent) {
-        log("Sixornot - HTTP_REQUEST_OBSERVER: loadContext is not content - skipping", 1);
+        log("HTTP_REQUEST_OBSERVER: loadContext is not content - skipping", 1);
         return;
     }
 
@@ -124,17 +108,17 @@ var on_examine_response = function(subject, topic) {
             remoteAddress = http_channel_internal.remoteAddress;
             remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
         } catch (e1) {
-            log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
+            log("HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
             remoteAddress = "";
             remoteAddressFamily = 0;
         }
     } else {
-        log("Sixornot - HTTP_REQUEST_OBSERVER - NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
+        log("HTTP_REQUEST_OBSERVER - NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
         remoteAddress = "";
         remoteAddressFamily = 2;
     }
 
-    log("Sixornot - HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
+    log("HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
     /*jslint bitwise: true */
     // TODO - need to determine if this is a load from an embedded frame/iframe
@@ -165,7 +149,7 @@ var on_examine_response = function(subject, topic) {
             }
         })) {
             // Create new entry + add to waiting list
-            log("Sixornot - HTTP_REQUEST_OBSERVER - New page load, adding new entry, host: " + http_channel.URI.host + ", remoteAddress: " + remoteAddress + ", outer_id: " + domWindowOuter, 1);
+            log("HTTP_REQUEST_OBSERVER - New page load, adding new entry, host: " + http_channel.URI.host + ", remoteAddress: " + remoteAddress + ", outer_id: " + domWindowOuter, 1);
             requests.waitinglist[domWindowOuter]
                     .push(create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, null, domWindowOuter));
         }
@@ -192,7 +176,7 @@ var on_examine_response = function(subject, topic) {
                 return true;
             }
         })) {
-            log("Sixornot - HTTP_REQUEST_OBSERVER - Secondary load, adding new entry, host: " + http_channel.URI.host + ", remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
+            log("HTTP_REQUEST_OBSERVER - Secondary load, adding new entry, host: " + http_channel.URI.host + ", remoteAddress: " + remoteAddress + ", ID: " + domWindowInner, 1);
             new_entry = create_new_entry(http_channel.URI.host, remoteAddress, remoteAddressFamily, domWindowInner, domWindowOuter);
             requests.cache[domWindowInner].push(new_entry);
             new_entry.show_detail = false;

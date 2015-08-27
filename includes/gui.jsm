@@ -115,7 +115,7 @@ var open_hyperlink = function (link) {
 };
 var copy_to_clipboard = function (text) {
     var e;
-    log("Sixornot - copy_to_clipboard: '" + text + "'", 2);
+    log("copy_to_clipboard: '" + text + "'", 2);
     try {
         Components.classes["@mozilla.org/widget/clipboardhelper;1"]
             .getService(Components.interfaces.nsIClipboardHelper)
@@ -186,7 +186,7 @@ var create_local_address_info = function () {
     };
     on_returned_ips = function (ips, callback) {
         var local_host_info = new_local_host_info();
-        log("Sixornot - panel:local_address_info:on_returned_ips - ips: " + ips, 1);
+        log("panel:local_address_info:on_returned_ips - ips: " + ips, 1);
         local_dns_cancel = null;
         local_host_info.host = dns_handler.get_local_hostname();
         if (ips[0] === "FAIL") {
@@ -302,13 +302,13 @@ var create_sixornot_widget = function (node, win) {
     };
 
     on_tab_select = function (evt) {
-        log("Sixornot - widget:on_tab_select", 2);
+        log("widget:on_tab_select", 2);
         subscribe_to_current();
         request_update();
     };
 
     on_pageshow = function (evt) {
-        log("Sixornot - widget:on_pageshow", 2);
+        log("widget:on_pageshow", 2);
         subscribe_to_current();
         request_update();
     };
@@ -334,7 +334,7 @@ var create_sixornot_widget = function (node, win) {
     win.gBrowser.addEventListener("pageshow", on_pageshow, false);
 
     unload(function () {
-        log("Sixornot - widget unload function", 2);
+        log("widget unload function", 2);
         /* Clear event handlers */
         node.removeEventListener("click", on_click, false);
         win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
@@ -388,10 +388,10 @@ var create_legacy_button = function (win) {
     */
     customize_handler = function (evt) {
         var button_parent, button_nextitem, toolbar_id, nextitem_id;
-        log("Sixornot - insert_code:create_button:customize_handler", 2);
-        log("Sixornot ----- button customise, button parent id: " + button.parentNode.id, 1);
+        log("insert_code:create_button:customize_handler", 2);
+        log("----- button customise, button parent id: " + button.parentNode.id, 1);
         if (button) {
-            log("Sixornot ----- button customise, button exists", 1);
+            log("----- button customise, button exists", 1);
             button_parent = button.parentNode;
             button_nextitem = button.nextSibling;
             if (button_parent && button_parent.localName === "toolbar") {
@@ -411,7 +411,7 @@ var create_legacy_button = function (win) {
 
     /* Add a callback to unload to remove the button */
     unload(function () {
-        log("Sixornot - legacy button unload", 2);
+        log("legacy button unload", 2);
 
         /* Clear event handlers */
         win.removeEventListener("aftercustomization", customize_handler, false);
@@ -431,7 +431,7 @@ var create_button = function () {
         tooltiptext : gt("tt_button"),
         onCreated : function (node) {
             var win = node.ownerDocument.defaultView;
-            log("Sixornot - button UI created", 2);
+            log("button UI created", 2);
 
             // Create Sixornot widget for this node
             create_sixornot_widget(node, win);
@@ -473,7 +473,7 @@ var create_addressbaricon = function (win) {
 
     /* Add unload callback to remove the icon */
     unload(function () {
-        log("Sixornot - address bar icon unload", 2);
+        log("address bar icon unload", 2);
 
         /* Remove UI */
         addressbar_icon.parentNode.removeChild(addressbar_icon);
@@ -812,7 +812,7 @@ var panel_ui = {
                 }
             },
             remove_all_entries: function () {
-                log("Sixornot - remote_anchor:remove_all_entries", 2);
+                log("remote_anchor:remove_all_entries", 2);
                 this.entries.forEach(function (item, index, items) {
                     try {
                         item.remove();
@@ -823,7 +823,7 @@ var panel_ui = {
                 this.entries = [];
             },
             generate_entries_for_hosts: function (hosts) {
-                log("Sixornot - remote_anchor:generate_entries_for_hosts: " + hosts, 2);
+                log("remote_anchor:generate_entries_for_hosts: " + hosts, 2);
                 // In this case we're on a page which has no cached info
                 if (hosts === undefined) {
                     // TODO - Add logic here to display useful messages for other pages
@@ -842,7 +842,7 @@ var panel_ui = {
                 }
             },
             generate_entry_for_host: function (host) {
-                log("Sixornot - remote_anchor:generate_entry_for_host: " + host, 2);
+                log("remote_anchor:generate_entry_for_host: " + host, 2);
                 // TODO put this in the right position based on some ordering
                 if (this.entries.length > 0) {
                     if (!this.entries.some(function (item) {
@@ -873,7 +873,7 @@ var panel_ui = {
                         return true;
                     }
                 })) {
-                    log("Sixornot - remote_anchor:update_address_for_host - host matching '" + host_name + "' not found in entries", 1);
+                    log("remote_anchor:update_address_for_host - host matching '" + host_name + "' not found in entries", 1);
                 }
             },
             update_count_for_host: function (host_name) {
@@ -883,7 +883,7 @@ var panel_ui = {
                         return true;
                     }
                 })) {
-                    log("Sixornot - remote_anchor:update_count_for_host - host matching '" + host_name + "' not found in entries", 1);
+                    log("remote_anchor:update_count_for_host - host matching '" + host_name + "' not found in entries", 1);
                 }
             },
             update_ips_for_host: function (host_name) {
@@ -893,7 +893,7 @@ var panel_ui = {
                         return true;
                     }
                 })) {
-                    log("Sixornot - remote_anchor:update_ips_for_host - host matching '" + host_name + "' not found in entries", 1);
+                    log("remote_anchor:update_ips_for_host - host matching '" + host_name + "' not found in entries", 1);
                 }
             },
             toggle_detail_for_host: function (host_name) {
@@ -904,7 +904,7 @@ var panel_ui = {
                         return true;
                     }
                 })) {
-                    log("Sixornot - remote_anchor:toggle_detail_for_host - host matching '" + host_name + "' not found in entries", 1);
+                    log("remote_anchor:toggle_detail_for_host - host matching '" + host_name + "' not found in entries", 1);
                 }
             }
         };
@@ -959,14 +959,14 @@ var panel_ui = {
                 }
             },
             remove_all_entries: function () {
-                log("Sixornot - panel:local_anchor:remove_all_entries", 2);
+                log("panel:local_anchor:remove_all_entries", 2);
                 this.entries.forEach(function (item) {
                     item.remove();
                 });
                 this.entries = [];
             },
             generate_entry_for_host: function (host_info) {
-                log("Sixornot - panel:local_anchor:generate_entry_for_host", 2);
+                log("panel:local_anchor:generate_entry_for_host", 2);
                 this.entries.push(panel_ui.create_local_listing_row(doc, this, host_info));
             },
             toggle_local_address_display: function () {
@@ -1096,7 +1096,7 @@ var create_panel = function (win, panel_id) {
     };
 
     on_popupshowing = function (evt) {
-        log("Sixornot - panel:on_popupshowing", 2);
+        log("panel:on_popupshowing", 2);
         register_callbacks();
         current_tab_ids.set();
 
@@ -1108,42 +1108,42 @@ var create_panel = function (win, panel_id) {
     };
 
     on_popuphiding = function (evt) {
-        log("Sixornot - panel:on_popuphiding", 2);
+        log("panel:on_popuphiding", 2);
         unregister_callbacks();
     };
 
     /* Actions are defined by custom properties applied to the event target element
        One or more of these can be triggered */
     on_click = function (evt) {
-        log("Sixornot - panel:on_click", 1);
+        log("panel:on_click", 1);
         /* If element has sixornot_copytext, then copy it to clipboard */
         if (evt.target.sixornot_copytext) {
-            log("Sixornot - panel:on_click - sixornot_copytext", 2);
+            log("panel:on_click - sixornot_copytext", 2);
             copy_to_clipboard(evt.target.sixornot_copytext);
             evt.stopPropagation();
         }
         /* If element has show/hide behaviour, toggle and trigger refresh */
         if (evt.target.sixornot_showhide) {
-            log("Sixornot - panel:on_click - showhide", 2);
+            log("panel:on_click - showhide", 2);
             remote_anchor.toggle_detail_for_host(evt.target.sixornot_host);
             evt.stopPropagation();
         }
         /* Toggle local address display */
         if (evt.target.sixornot_showhide_local) {
-            log("Sixornot - panel:on_click - showhide_local", 2);
+            log("panel:on_click - showhide_local", 2);
             local_anchor.toggle_local_address_display();
             evt.stopPropagation();
         }
         /* Element should open preferences when clicked */
         if (evt.target.sixornot_openprefs) {
-            log("Sixornot - panel:on_click - openprefs", 2);
+            log("panel:on_click - openprefs", 2);
             panel.hidePopup();
             open_preferences();
             evt.stopPropagation();
         }
         /* Element should open hyperlink when clicked */
         if (evt.target.sixornot_hyperlink) {
-            log("Sixornot - panel:on_click - open hyperlink", 2);
+            log("panel:on_click - open hyperlink", 2);
             panel.hidePopup();
             open_hyperlink(evt.target.sixornot_hyperlink);
             evt.stopPropagation();
@@ -1151,15 +1151,15 @@ var create_panel = function (win, panel_id) {
     };
 
     on_page_change = function (evt) {
-        log("Sixornot - panel:on_page_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
+        log("panel:on_page_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
 
         if (evt.detail.outer_id !== current_tab_ids.outer) {
-            log("Sixornot - on_page_change - skipping (outer ID mismatch)", 2);
+            log("on_page_change - skipping (outer ID mismatch)", 2);
             return;
         }
         current_tab_ids.set();
         if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("Sixornot - on_page_change - skipping (inner ID mismatch)", 2);
+            log("on_page_change - skipping (inner ID mismatch)", 2);
             return;
         }
         remote_anchor.remove_all_entries();
@@ -1169,10 +1169,10 @@ var create_panel = function (win, panel_id) {
     };
 
     on_new_host = function (evt) {
-        log("Sixornot - panel:on_new_host - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
+        log("panel:on_new_host - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
 
         if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("Sixornot - on_new_host - skipping (inner ID mismatch)", 2);
+            log("on_new_host - skipping (inner ID mismatch)", 2);
             return;
         }
 
@@ -1184,30 +1184,30 @@ var create_panel = function (win, panel_id) {
     };
 
     on_address_change = function (evt) {
-        log("Sixornot - panel:on_address_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 1);
+        log("panel:on_address_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 1);
 
         if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("Sixornot - on_address_change - skipping (inner ID mismatch)", 2);
+            log("on_address_change - skipping (inner ID mismatch)", 2);
             return;
         }
         remote_anchor.update_address_for_host(evt.detail.host)
     };
 
     on_count_change = function (evt) {
-        log("Sixornot - panel:on_count_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
+        log("panel:on_count_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
 
         if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("Sixornot - on_count_change - skipping (inner ID mismatch)", 2);
+            log("on_count_change - skipping (inner ID mismatch)", 2);
             return;
         }
         remote_anchor.update_count_for_host(evt.detail.host)
     };
 
     on_dns_complete = function (evt) {
-        log("Sixornot - panel:on_dns_complete - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
+        log("panel:on_dns_complete - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
 
         if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("Sixornot - on_dns_complete - skipping (inner ID mismatch)", 2);
+            log("on_dns_complete - skipping (inner ID mismatch)", 2);
             return;
         }
         remote_anchor.update_ips_for_host(evt.detail.host)
@@ -1216,7 +1216,7 @@ var create_panel = function (win, panel_id) {
     };
 
     on_tab_select = function (evt) {
-        log("Sixornot - panel:on_tab_select", 1);
+        log("panel:on_tab_select", 1);
         current_tab_ids.set();
         remote_anchor.remove_all_entries();
         remote_anchor.generate_entries_for_hosts(
@@ -1225,7 +1225,7 @@ var create_panel = function (win, panel_id) {
     };
 
     on_pageshow = function (evt) {
-        log("Sixornot - panel:on_pageshow", 1);
+        log("panel:on_pageshow", 1);
         current_tab_ids.set();
         remote_anchor.remove_all_entries();
         remote_anchor.generate_entries_for_hosts(
@@ -1271,7 +1271,7 @@ var create_panel = function (win, panel_id) {
     panel.addEventListener("popuphiding", on_popuphiding, false);
 
     unload(function () {
-        log("Sixornot - Unload panel", 2);
+        log("Unload panel", 2);
         panel.removeEventListener("click", on_click, false);
         panel.removeEventListener("popupshowing", on_popupshowing, false);
         panel.removeEventListener("popuphiding", on_popuphiding, false);
@@ -1295,26 +1295,26 @@ var legacy_insert_code = function (win) {
     }
     var customize_sheet = stylesheet.get_customize_sheet_for_platform();
     var on_beforecustomization = function (evt) {
-        log("Sixornot - on_beforecustomization", 1);
+        log("on_beforecustomization", 1);
         /* On pre-Australis platforms the panel for customisation of the toolbars
          * is a different XUL document. We need to inject our CSS modifications
          * into this document each time it is loaded */
         var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
         if (iframe) {
-            log("Sixornot - found customizeToolbarSheetIFrame - adding load callback", 1);
+            log("found customizeToolbarSheetIFrame - adding load callback", 1);
             stylesheet.inject_into_window(iframe.contentWindow, customize_sheet);
         } else {
-            log("Sixornot - failed to find customizeToolbarSheetIFrame", 1);
+            log("failed to find customizeToolbarSheetIFrame", 1);
         }
     };
     var on_aftercustomization = function (evt) {
-        log("Sixornot - on_aftercustomization", 1);
+        log("on_aftercustomization", 1);
         var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
         if (iframe) {
-            log("Sixornot - on_aftercustomization - found customizeToolbarSheetIFrame", 1);
+            log("on_aftercustomization - found customizeToolbarSheetIFrame", 1);
             stylesheet.remove_from_window(iframe.contentWindow, customize_sheet);
         } else {
-            log("Sixornot - on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
+            log("on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
         }
     };
 
@@ -1322,12 +1322,12 @@ var legacy_insert_code = function (win) {
     win.addEventListener("aftercustomization", on_aftercustomization, false);
 
     unload(function () {
-        log("Sixornot - legacy toolbar unload function", 2);
+        log("legacy toolbar unload function", 2);
         win.removeEventListener("beforecustomization", on_beforecustomization, false);
         win.removeEventListener("aftercustomization", on_aftercustomization, false);
     }, win);
 
-    log("Sixornot - insert_code: add legacy button", 1);
+    log("insert_code: add legacy button", 1);
     // Create legacy button (only for non-Australis browsers)
     create_legacy_button(win);
 };
@@ -1337,7 +1337,7 @@ var insert_code = function (win) {
     "use strict";
     // Don't insert into windows that already have UI
     if (win.document.getElementById(ADDRESSBAR_ICON_ID)) {
-        log("Sixornot - insert_code: skipping window - UI already exists", 1);
+        log("insert_code: skipping window - UI already exists", 1);
         return;
     }
 
@@ -1345,7 +1345,7 @@ var insert_code = function (win) {
     stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.base);
 
     // Create address bar icon
-    log("Sixornot - insert_code: add addressicon", 1);
+    log("insert_code: add addressicon", 1);
     create_addressbaricon(win);
 
     // UI only required for pre-Australis browsers

@@ -20,8 +20,17 @@
 /* content script
     This is loaded for every browser window */
 
+var content_script_id = Math.floor((Math.random() * 100000) + 1); 
+
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
+
+var _log = log;
+
+log = function (message, severity) {
+    _log("SCS: " + content_script_id + ": " + message, severity);
+};
+
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 
 // Init dns_handler
@@ -77,24 +86,55 @@ addMessageListener("sixornot@baldock.me:update-ui", function (message) {
 
 var on_page_change = function (data) {
     // TODO - wire up this event to observer
-    log("Sixornot - on_page_change: data: " + JSON.stringify(data), 1);
+    log("on_page_change: data: " + JSON.stringify(data), 1);
     update_ui(data);
 };
 
 var on_dns_complete = function (data) {
     // TODO - wire up this event to observer
-    log("Sixornot - on_dns_complete: data: " + JSON.stringify(data), 1);
+    log("on_dns_complete: data: " + JSON.stringify(data), 1);
     update_ui(data);
 };
 
-var content_script_id = Math.floor((Math.random() * 100000) + 1); 
 
+// TODO test this with sub-windows
 addEventListener("DOMWindowCreated", function (event) {
     var utils = event.originalTarget.defaultView.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                      .getInterface(Components.interfaces.nsIDOMWindowUtils);
     var inner = utils.currentInnerWindowID;
     var outer = utils.outerWindowID;
-    log("Sixornot - DOMWindowCreated: id: " + content_script_id + ", event.target: " + JSON.stringify(event.originalTarget) + ", inner: " + inner + ", outer: " + outer, 1);
+
+    var protocol = event.originalTarget.defaultView.location.protocol;
+    var hostname = event.originalTarget.defaultView.location.hostname;
+
+    log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + ", hostname: " + hostname + ", protocol: " + protocol, 1);
+
+    // TODO All subsequent http-load events for this browser should now be
+    // associated with this inner ID
+
+    if (requests.cache[inner]) { return; } // Ignore duplicate events
+
+    if (!requests.waitinglist[outer] || requests.waitinglist[outer].length === 0) {
+        requests.waitinglist[outer] = [];
+        if (protocol === "file:") {
+            requests.waitinglist[outer].push(
+                create_new_entry("Local File", "", 1, inner, outer));
+        } else {
+            requests.waitinglist[outer].push(
+                create_new_entry(hostname, "", 0, inner, outer));
+        }
+    }
+
+    // Move item(s) from waiting list to cache
+    // Replace spliced item with empty array, to keep waitinglist array indexes correct!
+    requests.cache[inner] = requests.waitinglist.splice(outer, 1, [])[0];
+
+    // For each member of the new cache set inner ID and trigger a dns lookup
+    requests.cache[inner].forEach(function (item, index, items) {
+        item.inner_id = inner;
+        item.lookup_ips(on_dns_complete);
+        on_page_change(item.data);
+    });
 });
 
 var on_content_document_global_created = function(subject, topic) {
@@ -113,7 +153,7 @@ var on_content_document_global_created = function(subject, topic) {
     topWindowOuter = topWindowUtils.outerWindowID;
 
 
-    log("Sixornot - on_content_document_global_created: id: " + content_script_id + ", subjectInner: " + subjectInner + ", subjectOuter: " + subjectOuter + ", subject Location: " + JSON.stringify(subject.location) + ", topWindowInner: " + topWindowInner + ", topWindowOuter: " + topWindowOuter + ", top window Location: " + JSON.stringify(topWindow.location), 1);
+    log("on_content_document_global_created: id: " + content_script_id + ", subjectInner: " + subjectInner + ", subjectOuter: " + subjectOuter + ", subject Location: " + JSON.stringify(subject.location) + ", topWindowInner: " + topWindowInner + ", topWindowOuter: " + topWindowOuter + ", top window Location: " + JSON.stringify(topWindow.location), 1);
 
     if (requests.cache[topWindowInner]) { return; } // Ignore duplicate events
     // The waiting list contains http-on-examine-response messages which aren't
@@ -122,33 +162,10 @@ var on_content_document_global_created = function(subject, topic) {
 
     // This is a create event for the top window (new page)
     if (subjectOuter === topWindowOuter) {
-        log("Sixornot - on_content_document_global_created: subjectOuter === topWindowOuter", 1);
+        log("on_content_document_global_created: subjectOuter === topWindowOuter", 1);
 
-        if (!requests.waitinglist[topWindowOuter] || requests.waitinglist[topWindowOuter].length === 0) {
-            requests.waitinglist[topWindowOuter] = [];
-            if (subject.location.protocol === "file:") {
-                // Add item to cache to represent this file
-                requests.waitinglist[topWindowOuter].push(
-                    create_new_entry("Local File", "", 1, subjectInner, topWindowOuter));
-            } else {
-                // Some other protocol used to load file, or something went wrong
-                requests.waitinglist[topWindowOuter].push(
-                    create_new_entry(subject.location.hostname, "", 0, subjectInner, topWindowOuter));
-            }
-        }
-
-        // Move item(s) from waiting list to cache
-        // Replace spliced item with empty array, to keep waitinglist array indexes correct!
-        requests.cache[topWindowInner] = requests.waitinglist.splice(topWindowOuter, 1, [])[0];
-
-        // For each member of the new cache set inner ID and trigger a dns lookup
-        requests.cache[topWindowInner].forEach(function (item, index, items) {
-            item.inner_id = topWindowInner;
-            item.lookup_ips(on_dns_complete);
-            on_page_change(item.data);
-        });
     } else {
-        log("Sixornot - on_content_document_global_created: subjectOuter !== topWindowOuter", 1);
+        log("on_content_document_global_created: subjectOuter !== topWindowOuter", 1);
     }
 };
 
@@ -167,6 +184,8 @@ var on_inner_window_destroyed = function(subject) {
     }
 };
 
+// TODO instead of this we should store the cache per content script
+// And do away with the index-ed waiting list entirely
 var on_outer_window_destroyed = function(subject) {
     var domWindowOuter = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
 
@@ -197,13 +216,13 @@ var WINDOW_OBSERVER = {
                          .getService(Components.interfaces.nsIObserverService),
 
     register: function () {
-        this.observer_service.addObserver(this, "content-document-global-created", false);
+        //this.observer_service.addObserver(this, "content-document-global-created", false);
         this.observer_service.addObserver(this, "inner-window-destroyed", false);
         this.observer_service.addObserver(this, "outer-window-destroyed", false);
     },
 
     unregister: function () {
-        this.observer_service.removeObserver(this, "content-document-global-created");
+        //this.observer_service.removeObserver(this, "content-document-global-created");
         this.observer_service.removeObserver(this, "inner-window-destroyed");
         this.observer_service.removeObserver(this, "outer-window-destroyed");
     }

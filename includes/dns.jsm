@@ -47,7 +47,7 @@ var callbacks = {
     // Index this.callback_ids and return required callback
     find_by_id : function (callback_id) {
         "use strict";
-        log("Sixornot - callbacks.find_by_id - callback_id: " + callback_id, 3);
+        log("callbacks.find_by_id - callback_id: " + callback_id, 3);
         // Returns -1 if ID not found
         return this.callback_ids.map(function (a) {
             return a[0];
@@ -59,12 +59,12 @@ var callbacks = {
         var i;
         i = this.find_by_id(callback_id);
         if (i !== -1) {
-            log("Sixornot - callbacks.remove - found and removed callback_id: " + callback_id, 3);
+            log("callbacks.remove - found and removed callback_id: " + callback_id, 3);
             // Return the callback function
             return this.callback_ids.splice(i, 1)[0][1];
         }
         // If ID not found, return false
-        log("Sixornot - callbacks.remove - could not find callback_id: " + callback_id, 3);
+        log("callbacks.remove - could not find callback_id: " + callback_id, 3);
         return false;
     },
 
@@ -73,16 +73,16 @@ var callbacks = {
         // Use next available callback ID, return that ID
         this.next_id = this.next_id + 1;
         this.callback_ids.push([this.next_id, callback]);
-        log("Sixornot - callbacks.add - added new callback with id: " + this.next_id, 3);
+        log("callbacks.add - added new callback with id: " + this.next_id, 3);
         return this.next_id;
     },
 
     make_cancel_obj : function (callback_id) {
         "use strict";
-        log("Sixornot - dns_handler:make_cancel_obj - callback_id: " + callback_id, 3);
+        log("dns_handler:make_cancel_obj - callback_id: " + callback_id, 3);
         return {
             cancel : function () {
-                log("Sixornot - cancel_obj - cancelling callback_id: " + callback_id, 3);
+                log("cancel_obj - cancelling callback_id: " + callback_id, 3);
                 // Remove ID from callback_ids if it exists there
                 callbacks.remove(callback_id);
             }
@@ -123,23 +123,23 @@ var dns_handler = {
 
         switch(Services.appinfo.OS.toLowerCase()) {
             case "darwin":
-                log("Sixornot - dns_handler - init darwin ctypes resolver", 1);
+                log("dns_handler - init darwin ctypes resolver", 1);
                 this.worker = new ChromeWorker("resource://sixornot/includes/ctypes/darwin.js");
                 break;
 
             case "linux":
-                log("Sixornot - dns_handler - init linux ctypes resolver", 1);
+                log("dns_handler - init linux ctypes resolver", 1);
                 this.worker = new ChromeWorker("resource://sixornot/includes/ctypes/linux.js");
                 break;
 
             case "winnt":
-                log("Sixornot - dns_handler - init winnt ctypes resolver", 1);
+                log("dns_handler - init winnt ctypes resolver", 1);
                 this.worker = new ChromeWorker("resource://sixornot/includes/ctypes/winnt.js");
                 break;
 
             default:
                 // Fallback to using Firefox DNS resolver
-                log("Sixornot - dns_handler - init firefox resolver", 1);
+                log("dns_handler - init firefox resolver", 1);
                 this.can_resolve_remote_using_ctypes = false;
                 this.can_resolve_local_using_ctypes = false;
                 return;
@@ -152,7 +152,7 @@ var dns_handler = {
         this.worker.onmessage = function (evt) {  
             var data, callback;
             data = JSON.parse(evt.data);
-            log("Sixornot - dns_handler:onworkermessage - message: " + evt.data, 3);
+            log("dns_handler:onworkermessage - message: " + evt.data, 3);
 
             if (data.reqid === that.reqids.log) {
                 // Log message from dns_worker
@@ -182,7 +182,7 @@ var dns_handler = {
     /* Shuts down the native dns resolver (if running) */
     shutdown : function () {
         "use strict";
-        log("Sixornot - dns_handler:shutdown", 1);
+        log("dns_handler:shutdown", 1);
 
         this.worker.postMessage(JSON.stringify({"reqid": this.reqids.shutdown,
             "content": null}));
@@ -201,7 +201,7 @@ var dns_handler = {
     /* Resolve local IP address(es) */
     resolve_local_async : function (callback) {
         "use strict";
-        log("Sixornot - dns_handler:resolve_local_async", 2);
+        log("dns_handler:resolve_local_async", 2);
         if (this.can_resolve_local_using_ctypes) {
             return this.resolve_local_using_ctypes_async(callback);
         } else {
@@ -213,7 +213,7 @@ var dns_handler = {
     resolve_local_using_ctypes_async : function (callback) {
         "use strict";
         var new_callback_id;
-        log("Sixornot - dns_handler:resolve_local_using_ctypes_async", 2);
+        log("dns_handler:resolve_local_using_ctypes_async", 2);
         new_callback_id = callbacks.add(callback);
 
         this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.locallookup, "content": null}));
@@ -224,7 +224,7 @@ var dns_handler = {
     /* Proxy to resolve_remote_using_firefox_async since it does much the same thing */
     resolve_local_using_firefox_async : function (callback) {
         "use strict";
-        log("Sixornot - dns_handler:resolve_local_using_firefox_async", 2);
+        log("dns_handler:resolve_local_using_firefox_async", 2);
         return this.resolve_remote_using_firefox_async(this.get_local_hostname(), callback);
     },
 
@@ -242,7 +242,7 @@ var dns_handler = {
     resolve_remote_using_ctypes_async : function (host, callback) {
         "use strict";
         var new_callback_id;
-        log("Sixornot - dns_handler:resolve_remote_using_ctypes_async - host: " + host + ", callback: " + callback, 2);
+        log("dns_handler:resolve_remote_using_ctypes_async - host: " + host + ", callback: " + callback, 2);
         new_callback_id = callbacks.add(callback);
 
         this.worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": this.reqids.remotelookup, "content": host}));
@@ -253,7 +253,7 @@ var dns_handler = {
     resolve_remote_using_firefox_async : function (host, callback) {
         "use strict";
         var my_callback;
-        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - host: " + host + ", callback: " + callback, 2);
+        log("dns_handler:resolve_remote_using_firefox_async - host: " + host + ", callback: " + callback, 2);
 
         my_callback = {
             onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
@@ -265,10 +265,10 @@ var dns_handler = {
                 // Request has failed for some reason
                 if (nsstatus !== 0 || !dnsresponse || !dnsresponse.hasMore()) {
                     if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST) {
-                        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolve host failed, unknown host", 1);
+                        log("dns_handler:resolve_remote_using_firefox_async - resolve host failed, unknown host", 1);
                         callback(["FAIL"]);
                     } else {
-                        log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolve host failed, status: " + nsstatus, 1);
+                        log("dns_handler:resolve_remote_using_firefox_async - resolve host failed, status: " + nsstatus, 1);
                         callback(["FAIL"]);
                     }
                     // Address was not found in DNS for some reason
@@ -280,7 +280,7 @@ var dns_handler = {
                     ip_addresses.push(dnsresponse.getNextAddrAsString());
                 }
                 // Call callback for this request with ip_addresses array as argument
-                log("Sixornot - dns_handler:resolve_remote_using_firefox_async - resolved addresses: " + ip_addresses, 2);
+                log("dns_handler:resolve_remote_using_firefox_async - resolved addresses: " + ip_addresses, 2);
                 callback(ip_addresses);
             }
         };
@@ -299,7 +299,7 @@ var dns_handler = {
     */
     validate_ip4 : function (ip_address) {
         "use strict";
-        log("Sixornot - dns_handler:validate_ip4: " + ip_address, 3);
+        log("dns_handler:validate_ip4: " + ip_address, 3);
         // TODO - Write this function if needed, extensive validation of IPv4 address
         return false;
     },
@@ -307,7 +307,7 @@ var dns_handler = {
     // Quick check for address family, not a validator (see validate_ip4)
     is_ip4 : function (ip_address) {
         "use strict";
-        log("Sixornot - dns_handler:is_ip4 " + ip_address, 3);
+        log("dns_handler:is_ip4 " + ip_address, 3);
         return ip_address && (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
     },
 
@@ -409,7 +409,7 @@ var dns_handler = {
     typeof_ip4 : function (ip_address) {
         "use strict";
         var split_address;
-        log("Sixornot - dns_handler:typeof_ip4 " + ip_address, 3);
+        log("dns_handler:typeof_ip4 " + ip_address, 3);
         // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
         if (!dns_handler.is_ip4(ip_address)) {
             return false;
@@ -464,9 +464,9 @@ var dns_handler = {
         for (i = 0; i < tests.length; i += 1) {
             result = this.is_ip6(tests[i][0]);
             if (result === tests[i][1]) {
-                log("Sixornot - test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+                log("test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
             } else {
-                log("Sixornot - test_is_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
+                log("test_is_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
                 overall = false;
             }
         }
@@ -475,7 +475,7 @@ var dns_handler = {
 
     validate_ip6 : function (ip_address) {
         "use strict";
-        log("Sixornot - dns_handler:validate_ip6: " + ip_address, 3);
+        log("dns_handler:validate_ip6: " + ip_address, 3);
         // TODO - Write this function if needed, extensive validation of IPv6 address
         return false;
     },
@@ -483,7 +483,7 @@ var dns_handler = {
     // Quick check for address family, not a validator (see validate_ip6)
     is_ip6 : function (ip_address) {
         "use strict";
-        log("Sixornot - dns_handler:is_ip6: " + ip_address, 3);
+        log("dns_handler:is_ip6: " + ip_address, 3);
         return ip_address && (ip_address.indexOf(":") !== -1);
     },
 
@@ -505,9 +505,9 @@ var dns_handler = {
         for (i = 0; i < tests.length; i += 1) {
             result = this.normalise_ip6(tests[i][0]);
             if (result === tests[i][1]) {
-                log("Sixornot - test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result, 1);
+                log("test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result, 1);
             } else {
-                log("Sixornot - test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result, 1);
+                log("test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result, 1);
                 overall = false;
             }
         }
@@ -518,7 +518,7 @@ var dns_handler = {
     normalise_ip6 : function (ip6_address) {
         "use strict";
         var sides, left_parts, right_parts, middle, outarray, pad_left;
-        log("Sixornot - dns_handler:normalise_ip6: " + ip6_address, 3);
+        log("dns_handler:normalise_ip6: " + ip6_address, 3);
         // Split by instances of ::
         sides = ip6_address.split("::");
         // Split remaining sections by instances of :
@@ -559,9 +559,9 @@ var dns_handler = {
         for (i = 0; i < tests.length; i += 1) {
             result = this.typeof_ip6(tests[i][0]);
             if (result === tests[i][1]) {
-                log("Sixornot - test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+                log("test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
             } else {
-                log("Sixornot - test_typeof_ip6, failed test value: " + tests[i][0] + ", expected result: " + i[1] + ", actual result: " + result);
+                log("test_typeof_ip6, failed test value: " + tests[i][0] + ", expected result: " + i[1] + ", actual result: " + result);
                 overall = false;
             }
         }
@@ -635,7 +635,7 @@ var dns_handler = {
     typeof_ip6 : function (ip_address) {
         "use strict";
         var norm_address;
-        log("Sixornot - dns_handler:typeof_ip6: " + ip_address, 3);
+        log("dns_handler:typeof_ip6: " + ip_address, 3);
         // 1. Check IP version, return false if v4
         if (!dns_handler.is_ip6(ip_address)) {
             return false;
@@ -710,7 +710,7 @@ var dns_handler = {
     // Cancels an active ctypes DNS lookup request currently being actioned by Worker
     cancel_request : function (request) {
         "use strict";
-        log("Sixornot - dns_handler:cancel_request - request: " + request, 3);
+        log("dns_handler:cancel_request - request: " + request, 3);
         try {
             // This function can be called with request as a null or undefined value
             if (request) {

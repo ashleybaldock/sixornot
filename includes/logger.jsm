@@ -57,7 +57,7 @@ var log = (function () {
         if (level <= get_loglevel()) {
             Components.classes["@mozilla.org/consoleservice;1"]
                 .getService(Components.interfaces.nsIConsoleService)
-                .logStringMessage(message);
+                .logStringMessage("SON: " + message);
         }
     };
 }());
