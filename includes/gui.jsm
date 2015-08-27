@@ -62,10 +62,13 @@ var create_sixornot_widget = function (node, win) {
         on_click, on_page_change, on_tab_select, on_tab_open,
         on_content_script_loaded, on_pageshow, on_dns_complete;
 
+
+    // TODO - split all the MM stuff out into its own object
+
     // Called by content script of active tab
     // Message contains data to update icon/UI
     var on_update_ui_message = function (message) {
-        log("gui on_update_ui_message: data: " + message.data, 1);
+        log("gui on_update_ui_message: data: " + message.data, 2);
         update_icon_for_node(JSON.parse(message.data), node);
     };
 
@@ -77,6 +80,9 @@ var create_sixornot_widget = function (node, win) {
     var currentBrowserMM;
     var windowMM = win.messageManager;
 
+    /* TabOpen event gets fired with a blank <browser>, and the page gets loaded into
+     * a different one. Detect initialisation of content script loaded into <browser>s
+     * and ensure we are pointed at the correct one to update the UI */
     windowMM.addMessageListener("sixornot@baldock.me:content-script-loaded", on_content_script_loaded); // TODO unsubscribe on unload
 
     var subscribe_to_current = function () {
@@ -84,10 +90,13 @@ var create_sixornot_widget = function (node, win) {
     };
 
     // TODO unsubscribe on unload
-    var subscribe_to = function (browser) {
+    var unsubscribe = function () {
         if (currentBrowserMM) {
             currentBrowserMM.removeMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
         }
+    };
+    var subscribe_to = function (browser) {
+        unsubscribe();
         currentBrowserMM = browser.messageManager;
         currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
     };
@@ -97,9 +106,9 @@ var create_sixornot_widget = function (node, win) {
         currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
     };
 
+
     // Change icon via class (icon set via stylesheet)
     update_icon_for_node = function (data, node) {
-        log("Updating UI with data: " + JSON.stringify(data), 1);
         if (data.main === "") {
             // No matching entry for main host (probably a local file)
             remove_sixornot_classes_from(node);
@@ -108,7 +117,7 @@ var create_sixornot_widget = function (node, win) {
             var mainHost = data.entries.find(function (element, index, array) {
                 return element.host === data.main;
             });
-            log("mainHost: " + JSON.stringify(mainHost), 1);
+            //log("mainHost: " + JSON.stringify(mainHost), 1);
             update_node_icon_for_host(node, mainHost);
         }
     };
@@ -159,6 +168,9 @@ var create_sixornot_widget = function (node, win) {
 
     unload(function () {
         log("widget unload function", 2);
+        /* Clear messageManager subscriptions */
+        windowMM.removeMessageListener("sixornot@baldock.me:content-script-loaded", on_content_script_loaded);
+        unsubscribe();
         /* Clear event handlers */
         node.removeEventListener("click", on_click, false);
         win.gBrowser.tabContainer.removeEventListener("TabOpen", on_tab_open, false);

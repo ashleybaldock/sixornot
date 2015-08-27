@@ -59,7 +59,7 @@ var on_examine_response = function(subject, topic) {
         // log("HTTP_REQUEST_OBSERVER - http-on-examine-response: DOM request, outer_id: " + domWindowOuter, 2);
 
     } catch (e2) {
-        log("HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 1);
+        log("HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 2);
         return;
     }
 
@@ -80,7 +80,7 @@ var on_examine_response = function(subject, topic) {
             remoteAddressFamily = 0;
         }
     } else {
-        log("HTTP_REQUEST_OBSERVER - NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
+        log("HTTP_REQUEST_OBSERVER - (probably cache hit) NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 2);
         remoteAddress = "";
         remoteAddressFamily = 2;
     }

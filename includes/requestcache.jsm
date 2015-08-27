@@ -84,12 +84,6 @@ var create_new_entry = function (host, address, address_family, inner) {
     };
 };
 
-var create_cache_entry = function (mainhost, initial_entries) {
-    return {
-        main: mainhost,
-        entries: initial_entries
-    };
-};
 
 /*
  * Contains two lists:
@@ -99,9 +93,22 @@ var create_cache_entry = function (mainhost, initial_entries) {
 var get_request_cache = function () {
     return {
         cache: {},
-        createCacheEntry: function (mainhost, id) {
+        createCacheEntry: function (mainhost) {
+            return {
+                main: mainhost,
+                entries: []
+            };
+        },
+        createOrExtendCacheEntry: function (mainhost, id, dns_complete_callback) {
+            if (!this.cache.hasOwnProperty(id)) {
+                this.cache[id] = this.createCacheEntry(mainhost);
+            }
+
             // Move anything currently on waiting list into new cache entry
-            this.cache[id] = create_cache_entry(mainhost, this.waitinglist.splice(0, Number.MAX_VALUE));
+            var waitinglist = this.waitinglist.splice(0, Number.MAX_VALUE);
+            waitinglist.forEach(function (item, index, array) {
+                this.addOrUpdate({host: item.host, address: item.address, addressFamily: item.address_family}, id, dns_complete_callback);
+            }, this);
         },
         addOrUpdate: function (data, id, dns_complete_callback) {
             if (!this.cache.hasOwnProperty(id)) {
@@ -120,7 +127,7 @@ var get_request_cache = function () {
                     return true;
                 }
             })) {
-                log("cache: adding new entry, host: " + data.host + ", remoteAddress: " + data.address, 1);
+                log("addOrUpdate, host: " + data.host + ", remoteAddress: " + data.address, 1);
                 new_entry = create_new_entry(data.host, data.address, data.addressFamily, id);
                 new_entry.show_detail = false;
                 new_entry.lookup_ips(dns_complete_callback);
@@ -151,7 +158,7 @@ var get_request_cache = function () {
                     return true;
                 }
             })) {
-                log("http-initial-load: New page load, adding new entry, host: " + data.host + ", remoteAddress: " + data.address, 1);
+                log("addOrUpdateToWaitingList, host: " + data.host + ", remoteAddress: " + data.address, 1);
                 this.waitinglist.push(
                     create_new_entry(data.host, data.address, data.addressFamily, null));
             }

@@ -58,15 +58,16 @@ var update_ui = function (data) {
  *  sixornot-address-change-event
  *  sixornot-new-host-event
  *  sixornot-page-change-event */
-//send_event("sixornot-count-change-event", domWindow, item);
-//send_event("sixornot-address-change-event", domWindow, item);
-//send_event("sixornot-new-host-event", domWindow, new_entry);
 
 addMessageListener("sixornot@baldock.me:http-initial-load", function (message) {
     log("got http-initial-load, host: '" + message.data.host + "', address: '" + message.data.address + "', address_family: " + message.data.addressFamily);
 
     // Items placed onto waiting list will be moved by DOMWindowCreated handler
     requests.addOrUpdateToWaitingList(message.data);
+
+    log("http-initial-load - caches: ", 1);
+    log(requests.print_waitinglist(), 1);
+    log(requests.print_cache(), 1);
 
     update_ui(requests.get(currentInnerId));
 });
@@ -75,6 +76,10 @@ addMessageListener("sixornot@baldock.me:http-load", function (message) {
     log("got http-load, host: " + message.data.host + ", address: " + message.data.address + ", address_family: " + message.data.addressFamily);
 
     requests.addOrUpdate(message.data, currentInnerId, on_dns_complete);
+
+    log("http-load - caches: ", 1);
+    log(requests.print_waitinglist(), 1);
+    log(requests.print_cache(), 1);
 
     update_ui(requests.get(currentInnerId));
 });
@@ -102,16 +107,24 @@ var on_dns_complete = function (data) {
 // TODO test this with sub-windows
 addEventListener("DOMWindowCreated", function (event) {
     var newEntry;
-    var utils = event.originalTarget.defaultView.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                     .getInterface(Components.interfaces.nsIDOMWindowUtils);
+    var win = event.originalTarget.defaultView;
+    var topWin = win.top;
+    var utils = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                   .getInterface(Components.interfaces.nsIDOMWindowUtils);
+    var topUtils = topWin.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                         .getInterface(Components.interfaces.nsIDOMWindowUtils);
+
     var inner = utils.currentInnerWindowID;
     var outer = utils.outerWindowID;
+
+    var topInner = topUtils.currentInnerWindowID;
+    var topOuter = topUtils.outerWindowID;
 
     var protocol = event.originalTarget.defaultView.location.protocol;
     var hostname = event.originalTarget.defaultView.location.hostname;
     var loc = event.originalTarget.defaultView.location.href;
 
-    log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + ", hostname: " + hostname + ", protocol: " + protocol + ", location: " + event.originalTarget.defaultView.location, 1);
+    log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + " topInner: " + topInner + ", topOuter: " + topOuter + ", hostname: " + hostname + ", protocol: " + protocol + ", location: " + event.originalTarget.defaultView.location, 1);
 
     if (requests.get(inner)) { return; } // Ignore duplicate events
 
@@ -125,20 +138,17 @@ addEventListener("DOMWindowCreated", function (event) {
 
     // TODO All subsequent http-load events for this browser should now be
     // associated with this inner ID
-    currentInnerId = inner;
+    currentInnerId = topInner;
 
     requests.addOrUpdateToWaitingList(newEntry);
 
-    requests.createCacheEntry(newEntry.host, inner);
+    requests.createOrExtendCacheEntry(newEntry.host, currentInnerId, on_dns_complete);
 
+    log("DOMWindowCreated - caches: ", 1);
     log(requests.print_waitinglist(), 1);
     log(requests.print_cache(), 1);
 
-    // For each member of the new cache set inner ID and trigger a dns lookup
-    requests.get(inner).entries.forEach(function (item, index, items) {
-        item.lookup_ips(on_dns_complete);
-    });
-    on_page_change(requests.get(inner));
+    on_page_change(requests.get(currentInnerId));
 });
 
 /*var on_content_document_global_created = function(subject, topic) {
