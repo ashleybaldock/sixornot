@@ -19,17 +19,70 @@
 
 /*jslint white: true, maxerr: 100, indent: 4 */
 
+/*jslint es5: true */
+// Import dns module (adds global symbol: dns_handler)
+Components.utils.import("resource://sixornot/includes/dns.jsm");
+/*jslint es5: false */
+
 // Provided by Firefox:
 /*global Components */
 
 // Provided by Sixornot
 /*global parse_exception, prefs */
 
-var EXPORTED_SYMBOLS = ["requests"];
+var EXPORTED_SYMBOLS = ["requests", "create_new_entry"];
 
 
 // Make methods in this object for updating its state
 // Adding/removing/lookup of entries (hide internal implementation)
+
+/* Prepare and return a new blank entry for the hosts listing */
+var create_new_entry = function (host, address, address_family, inner, outer) {
+    return {
+        data: {
+            host: host,
+            address: address,
+            address_family: address_family,
+            remote: true,
+            show_detail: true,
+            count: 1,
+            ipv6s: [],
+            ipv4s: [],
+            dns_status: "ready",
+        },
+        dns_cancel: null,
+        inner_id: inner,
+        outer_id: outer,
+        lookup_ips: function (callback) {
+            var entry, on_returned_ips;
+            // Don't do IP lookup for local file entries
+            if (this.data.address_family === 1) {
+                this.dns_status = "complete";
+                return;
+            }
+            /* Create closure containing reference to element and trigger async lookup with callback */
+            entry = this;
+            on_returned_ips = function (ips) {
+                entry.dns_cancel = null;
+                if (ips[0] === "FAIL") {
+                    entry.data.ipv6s = [];
+                    entry.data.ipv4s = [];
+                    entry.data.dns_status = "failure";
+                } else {
+                    entry.data.ipv6s = ips.filter(dns_handler.is_ip6);
+                    entry.data.ipv4s = ips.filter(dns_handler.is_ip4);
+                    entry.data.dns_status = "complete";
+                }
+                // Also trigger page change event here to refresh display of IP tooltip
+                callback(entry.data);
+            };
+            if (entry.dns_cancel) {
+                entry.dns_cancel.cancel();
+            }
+            entry.dns_cancel = dns_handler.resolve_remote_async(entry.data.host, on_returned_ips);
+        }
+    };
+};
 
 /*
  * Contains two lists:

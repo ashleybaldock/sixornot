@@ -26,8 +26,6 @@
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
-// Import dns module (adds global symbol: dns_handler)
-Components.utils.import("resource://sixornot/includes/dns.jsm");
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["HTTP_REQUEST_OBSERVER"];
@@ -60,51 +58,6 @@ var send_event = function (type, target, entry) {
     return target.top.dispatchEvent(evt);
 };
 
-/* Prepare and return a new blank entry for the hosts listing */
-var create_new_entry = function (host, address, address_family, inner, outer) {
-    return {
-        host: host,
-        address: address,
-        address_family: address_family,
-        remote: true,
-        show_detail: true,
-        count: 1,
-        ipv6s: [],
-        ipv4s: [],
-        dns_status: "ready",
-        dns_cancel: null,
-        inner_id: inner,
-        outer_id: outer,
-        lookup_ips: function (evt_origin) {
-            var entry, on_returned_ips;
-            // Don't do IP lookup for local file entries
-            if (this.address_family === 1) {
-                this.dns_status = "complete";
-                return;
-            }
-            /* Create closure containing reference to element and trigger async lookup with callback */
-            entry = this;
-            on_returned_ips = function (ips) {
-                entry.dns_cancel = null;
-                if (ips[0] === "FAIL") {
-                    entry.ipv6s = [];
-                    entry.ipv4s = [];
-                    entry.dns_status = "failure";
-                } else {
-                    entry.ipv6s = ips.filter(dns_handler.is_ip6);
-                    entry.ipv4s = ips.filter(dns_handler.is_ip4);
-                    entry.dns_status = "complete";
-                }
-                // Also trigger page change event here to refresh display of IP tooltip
-                send_event("sixornot-dns-lookup-event", evt_origin, entry); // TODO send message rather than event
-            };
-            if (entry.dns_cancel) {
-                entry.dns_cancel.cancel();
-            }
-            entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, on_returned_ips);
-        }
-    };
-};
 
 /* Check an inner window ID against all browser windows, return true if it matches
    Used to check for favicon loading by chrome window */

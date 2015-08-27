@@ -21,14 +21,15 @@
     This is loaded for every browser window */
 
 Components.utils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource://sixornot/includes/logger.jsm");
+Components.utils.import("resource://sixornot/includes/dns.jsm");
 
-var log = function (message) {
-    Components.classes["@mozilla.org/consoleservice;1"]
-    .getService(Components.interfaces.nsIConsoleService)
-    .logStringMessage(message);
-};
+// Init dns_handler
+dns_handler.init(); // TODO uninit on unload (or pass requests out to chrome process)
 
-log("imported");
+Components.utils.import("resource://sixornot/includes/requestcache.jsm");
+
+log("imported", 1);
 
 addMessageListener("sixornot@baldock.me:update-id", function (message) {
     var windowUtils = content.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
@@ -38,7 +39,7 @@ addMessageListener("sixornot@baldock.me:update-id", function (message) {
     var outer_id = windowUtils.outerWindowID;
     var hostname = content.document.location.hostname;
 
-        log("called, inner: " + inner_id + ", outer: " + outer_id + ", location: " + content.document.location);
+        log("called, inner: " + inner_id + ", outer: " + outer_id + ", location: " + content.document.location, 1);
 
     sendAsyncMessage("sixornot@baldock.me:update-id", {
         callback_id: message.data.callback_id,
@@ -50,15 +51,11 @@ addMessageListener("sixornot@baldock.me:update-id", function (message) {
 
 var address_family = 6;
 
-var update_ui = function () {
-    log("updating_ui: address_family: " + address_family);
+var update_ui = function (data) {
+    log("updating_ui: address_family: " + data.address_family);
     sendAsyncMessage("sixornot@baldock.me:update-ui", {
         // TODO data format for UI updates
-        mainHost: {
-            address_family: address_family,
-            ipv6s: ["::1"],
-            ipv4s: []
-        }
+        mainHost: data
     });
 };
 
@@ -70,19 +67,26 @@ addMessageListener("sixornot@baldock.me:http-load", function (message) {
 });
 
 addMessageListener("sixornot@baldock.me:update-ui", function (message) {
-    update_ui();
+    update_ui({
+            address_family: address_family,
+            ipv6s: ["::1"],
+            ipv4s: []
+        });
 });
 
 
-var on_page_change = function () {
+var on_page_change = function (data) {
     // TODO - wire up this event to observer
+    log("Sixornot - on_page_change: data: " + JSON.stringify(data), 1);
+    update_ui(data);
 };
 
-var on_dns_complete = function () {
+var on_dns_complete = function (data) {
     // TODO - wire up this event to observer
+    log("Sixornot - on_dns_complete: data: " + JSON.stringify(data), 1);
+    update_ui(data);
 };
 
-// Needs to subscribe to content-related events
 
 var on_content_document_global_created = function(subject, topic) {
     var subjectUtils, subjectInner, subjectOuter,
@@ -99,7 +103,9 @@ var on_content_document_global_created = function(subject, topic) {
     topWindowInner = topWindowUtils.currentInnerWindowID;
     topWindowOuter = topWindowUtils.outerWindowID;
 
-    log("Sixornot - on_content_document_global_created: subjectInner: " + subjectInner + ", subjectOuter: " + subjectOuter + ", subject Location: " + subject.location + ", topWindowInner: " + topWindowInner + ", topWindowOuter: " + topWindowOuter + ", top window Location: " + topWindow.location, 1);
+    if (requests.cache[topWindowInner]) { return; } // Ignore duplicate events
+
+    log("Sixornot - on_content_document_global_created: subjectInner: " + subjectInner + ", subjectOuter: " + subjectOuter + ", subject Location: " + JSON.stringify(subject.location) + ", topWindowInner: " + topWindowInner + ", topWindowOuter: " + topWindowOuter + ", top window Location: " + JSON.stringify(topWindow.location), 1);
 
     // The waiting list contains http-on-examine-response messages which aren't
     // yet associated with an inner window ID, these are stored associated with
@@ -109,13 +115,7 @@ var on_content_document_global_created = function(subject, topic) {
     if (subjectOuter === topWindowOuter) {
         log("Sixornot - on_content_document_global_created: subjectOuter === topWindowOuter", 1);
 
-        // TODO - does this need to throw an exception?
-        if (requests.cache[topWindowInner]) {
-            throw "Sixornot = HTTP_REQUEST_OBSERVER - content-document-global-created: requests.cache already contains content entries.";
-        }
-
-        if (!requests.waitinglist[topWindowOuter]
-         || requests.waitinglist[topWindowOuter].length === 0) {
+        if (!requests.waitinglist[topWindowOuter] || requests.waitinglist[topWindowOuter].length === 0) {
             requests.waitinglist[topWindowOuter] = [];
             if (subject.location.protocol === "file:") {
                 // Add item to cache to represent this file
@@ -124,7 +124,7 @@ var on_content_document_global_created = function(subject, topic) {
             } else {
                 // Some other protocol used to load file, or something went wrong
                 requests.waitinglist[topWindowOuter].push(
-                    create_new_entry(subject.location, "", 0, subjectInner, topWindowOuter));
+                    create_new_entry(subject.location.hostname, "", 0, subjectInner, topWindowOuter));
             }
         }
 
@@ -135,8 +135,8 @@ var on_content_document_global_created = function(subject, topic) {
         // For each member of the new cache set inner ID and trigger a dns lookup
         requests.cache[topWindowInner].forEach(function (item, index, items) {
             item.inner_id = topWindowInner;
-            item.lookup_ips(subject);
-            send_event("sixornot-page-change-event", subject, item); // TODO send message rather than event
+            item.lookup_ips(on_dns_complete);
+            on_page_change(item.data);
         });
     } else {
         log("Sixornot - on_content_document_global_created: subjectOuter !== topWindowOuter", 1);
@@ -199,5 +199,7 @@ var WINDOW_OBSERVER = {
         this.observer_service.removeObserver(this, "outer-window-destroyed");
     }
 };
+
+WINDOW_OBSERVER.register();
 
 // TODO - unregister everything on unload
