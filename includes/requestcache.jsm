@@ -1,7 +1,7 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: BSD License
  * 
- * Copyright (c) 2008-2012 Timothy Baldock. All Rights Reserved.
+ * Copyright (c) 2008-2015 Timothy Baldock. All Rights Reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * 
@@ -32,7 +32,6 @@ Components.utils.import("resource://sixornot/includes/dns.jsm");
 /*global parse_exception, prefs */
 
 var EXPORTED_SYMBOLS = [
-    "requests",
     "get_request_cache",
     "create_new_entry"
 ];
@@ -95,6 +94,11 @@ var create_cache_entry = function (mainhost, initial_entries) {
     };
 };
 
+/*
+ * Contains two lists:
+ * cache - All requests which have been made for webpages which are still in history
+ * waitinglist - Requests which have yet to have an innerWindow ID assigned
+ */
 var get_request_cache = function () {
     return {
         cache: {},
@@ -154,51 +158,37 @@ var get_request_cache = function () {
                 this.waitinglist.push(
                     create_new_entry(data.host, data.address, data.addressFamily, null));
             }
+        },
+        print_cache: function () {
+            var out = "cache is:\n";
+            for (var property in this.cache) {
+                if (this.cache.hasOwnProperty(property)) {
+                    out += "[" + property + ": [";
+                    out += "mainHost: '" + this.cache[property].main + "', ";
+                    out += "entries: [";
+                    this.cache[property].entries.forEach(function (item, index, items) {
+                        out += "['";
+                        out += item.data.host;
+                        out += "'] ";
+                    });
+                    out += "]]],\n";
+                }
+            }
+            return out;
+        },
+        print_waitinglist: function () {
+            var out = "waitinglist is:\n";
+            this.waitinglist.forEach(function (item, index, items) {
+                out += "[";
+                out += item.host;
+                out += ",";
+                out += item.inner_id;
+                out += ",";
+                out += item.outer_id;
+                out += "],";
+            });
+            return out;
         }
     };
-};
-
-/*
- * Contains two lists:
- * cache - All requests which have been made for webpages which are still in history
- * waitinglist - Requests which have yet to have an innerWindow ID assigned
- */
-var requests = {
-    cache: [],
-    waitinglist: [],
-    print_cache: function () {
-        var out = "cache is:\n";
-        this.cache.forEach(function (item, index, items) {
-            out += "[" + index + ": ";
-            item.forEach(function (item, index, items) {
-                out += "[";
-                out += item.host;
-                out += ",";
-                out += item.inner_id;
-                out += ",";
-                out += item.outer_id;
-                out += "],";
-            });
-            out += "],\n";
-        });
-        return out;
-    },
-    print_waitinglist: function () {
-        var out = "waitinglist is:\n";
-        this.waitinglist.forEach(function (item, index, items) {
-            out += "[" + index + ": ";
-            item.forEach(function (item, index, items) {
-                out += "[";
-                out += item.host;
-                out += ",";
-                out += item.inner_id;
-                out += ",";
-                out += item.outer_id;
-                out += "],";
-            });
-            out += "],\n";
-        });
-        return out;
-    }
 };
 

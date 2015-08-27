@@ -25,14 +25,13 @@
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["HTTP_REQUEST_OBSERVER"];
 
 var on_examine_response = function(subject, topic) {
     var http_channel, http_channel_internal, notificationCallbacks,
-        domWindow, domWindowUtils, domWindowInner, domWindowOuter,
+        domWindow, domWindowUtils,
         original_window, new_page, new_entry, loadContext,
         e1, e2, remoteAddress, remoteAddressFamily, topFrameMM;
 
@@ -51,12 +50,13 @@ var on_examine_response = function(subject, topic) {
     }
 
     try {
+        // TODO - work out what exceptions from these lines actually mean
         loadContext = notificationCallbacks.getInterface(Components.interfaces.nsILoadContext);
         var topFrameElement = loadContext.topFrameElement;  // TODO - will this always be the browser element, e.g. for iframes?
         topFrameMM = topFrameElement.messageManager;
 
-        domWindowOuter = topFrameElement.outerWindowID;
-        log("HTTP_REQUEST_OBSERVER - http-on-examine-response: DOM request, outer_id: " + domWindowOuter, 2);
+        // var domWindowOuter = topFrameElement.outerWindowID;
+        // log("HTTP_REQUEST_OBSERVER - http-on-examine-response: DOM request, outer_id: " + domWindowOuter, 2);
 
     } catch (e2) {
         log("HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 1);
@@ -64,7 +64,7 @@ var on_examine_response = function(subject, topic) {
     }
 
     // Check for browser windows loading things like favicons and filter out
-    if (!loadContext.isContent) {
+    if (!loadContext.isContent) {   // TODO does this work?
         log("HTTP_REQUEST_OBSERVER: loadContext is not content - skipping", 1);
         return;
     }

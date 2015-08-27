@@ -280,11 +280,11 @@ var create_sixornot_widget = function (node, win) {
 
     // Change icon via class (icon set via stylesheet)
     update_icon_for_node = function (data, node) {
-        log("Updating UI with data: " + JSON.stringify(data), 1);
+        //log("Updating UI with data: " + JSON.stringify(data), 1);
         var mainHost = data.entries.find(function (element, index, array) {
             return element.data.host === data.main;
         }).data;
-        log("mainHost: " + JSON.stringify(mainHost), 1);
+        //log("mainHost: " + JSON.stringify(mainHost), 1);
 
         if (mainHost) {
             update_node_icon_for_host(node, mainHost);
