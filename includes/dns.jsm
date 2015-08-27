@@ -32,7 +32,10 @@ Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 /*jslint es5: false */
 
-var EXPORTED_SYMBOLS = ["dns_handler"];
+var EXPORTED_SYMBOLS = [
+    "dns_handler",
+    "create_local_address_info"
+];
 
 var callbacks = {
     // Set up request map, which will map async requests to their callbacks
@@ -721,3 +724,62 @@ var dns_handler = {
         }
     }
 };
+
+var create_local_address_info = function () {
+    var on_returned_ips, dns_cancel, new_local_host_info;
+    dns_cancel = null;
+    new_local_host_info = function () {
+        return {
+            ipv4s          : [],
+            ipv6s          : [],
+            host           : "",
+            address        : "",
+            remote         : false,
+            address_family : 0,
+            show_detail    : true,
+            dns_status     : "pending"
+        };
+    };
+    on_returned_ips = function (ips, callback) {
+        var local_host_info = new_local_host_info();
+        log("panel:local_address_info:on_returned_ips - ips: " + ips, 1);
+        dns_cancel = null;
+        local_host_info.host = dns_handler.get_local_hostname();
+        if (ips[0] === "FAIL") {
+            local_host_info.dns_status = "failure";
+        } else {
+            if (prefs.get_bool("showallips")) {
+                local_host_info.ipv6s = ips.filter(dns_handler.is_ip6);
+                local_host_info.ipv4s = ips.filter(dns_handler.is_ip4);
+            } else {
+                local_host_info.ipv6s = ips.filter(function (addr) {
+                    return (dns_handler.is_ip6(addr)
+                        && ["6to4", "teredo", "global"]
+                            .indexOf(dns_handler.typeof_ip6(addr)) != -1);
+                });
+                local_host_info.ipv4s = ips.filter(function (addr) {
+                    return (dns_handler.is_ip4(addr)
+                        && ["rfc1918", "6to4relay", "global"]
+                            .indexOf(dns_handler.typeof_ip4(addr)) != -1);
+                });
+            }
+            local_host_info.dns_status = "complete";
+        }
+
+        callback(local_host_info);
+    };
+    return {
+        get_local_host_info: function (callback) {
+            this.cancel();
+            dns_cancel = dns_handler.resolve_local_async(function (ips) {
+                on_returned_ips(ips, callback);
+            });
+        },
+        cancel: function () {
+            if (dns_cancel) {
+                dns_cancel.cancel();
+            }
+        }
+    };
+};
+

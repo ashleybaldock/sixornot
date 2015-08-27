@@ -23,6 +23,7 @@
 /*global Components, Services */
 
 Components.utils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource://sixornot/includes/logger.jsm");
 
 var EXPORTED_SYMBOLS = [
     "gbi",
@@ -136,11 +137,12 @@ var get_icon_class = function (record) {
             }
         }
     } else if (record.address_family === 1) {
-        return "sixornot_other_cache";
+        return "sixornot_other";
     } else if (record.address_family === 0) {
         // This indicates that no addresses were available but request is not cached
         return "sixornot_error";
     }
+    return "sixornot_other";
 };
 
 var remove_sixornot_classes_from = function (node) {

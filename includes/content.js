@@ -135,7 +135,6 @@ addEventListener("DOMWindowCreated", function (event) {
 
     // For each member of the new cache set inner ID and trigger a dns lookup
     requests.get(inner).entries.forEach(function (item, index, items) {
-        item.inner_id = inner;// TODO can this be removed?
         item.lookup_ips(on_dns_complete);
     });
     on_page_change(requests.get(inner));

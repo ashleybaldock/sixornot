@@ -55,82 +55,6 @@ var ADDRESSBAR_ICON_ID = "sixornot-addressbaricon";
 var BUTTON_ID          = "sixornot-button";
 
 
-// TODO - move this method into requests object
-var get_hosts_for_inner_window = function (inner_window) {
-    return requests.cache[inner_window]; // May be undefined
-};
-// TODO - move this method into requests object
-var get_host_by_hostname_from_inner_window = function (inner_window, hostname) {
-    var matching_hosts, hosts = requests.cache[inner_window];
-    if (hosts) {
-        matching_hosts = hosts.filter(function (item) {
-            return item.host === hostname;
-        });
-        if (matching_hosts.length > 0) {
-            return matching_hosts[0];
-        }
-    }
-    return undefined;
-};
-
-var create_local_address_info = function () {
-    var on_returned_ips, dns_cancel, new_local_host_info;
-    dns_cancel = null;
-    new_local_host_info = function () {
-        return {
-            ipv4s          : [],
-            ipv6s          : [],
-            host           : "",
-            address        : "",
-            remote         : false,
-            address_family : 0,
-            show_detail    : true,
-            dns_status     : "pending"
-        };
-    };
-    on_returned_ips = function (ips, callback) {
-        var local_host_info = new_local_host_info();
-        log("panel:local_address_info:on_returned_ips - ips: " + ips, 1);
-        dns_cancel = null;
-        local_host_info.host = dns_handler.get_local_hostname();
-        if (ips[0] === "FAIL") {
-            local_host_info.dns_status = "failure";
-        } else {
-            if (prefs.get_bool("showallips")) {
-                local_host_info.ipv6s = ips.filter(dns_handler.is_ip6);
-                local_host_info.ipv4s = ips.filter(dns_handler.is_ip4);
-            } else {
-                local_host_info.ipv6s = ips.filter(function (addr) {
-                    return (dns_handler.is_ip6(addr)
-                        && ["6to4", "teredo", "global"]
-                            .indexOf(dns_handler.typeof_ip6(addr)) != -1);
-                });
-                local_host_info.ipv4s = ips.filter(function (addr) {
-                    return (dns_handler.is_ip4(addr)
-                        && ["rfc1918", "6to4relay", "global"]
-                            .indexOf(dns_handler.typeof_ip4(addr)) != -1);
-                });
-            }
-            local_host_info.dns_status = "complete";
-        }
-
-        callback(local_host_info);
-    };
-    return {
-        get_local_host_info: function (callback) {
-            this.cancel();
-            dns_cancel = dns_handler.resolve_local_async(function (ips) {
-                on_returned_ips(ips, callback);
-            });
-        },
-        cancel: function () {
-            if (dns_cancel) {
-                dns_cancel.cancel();
-            }
-        }
-    };
-};
-
 // Create widget which handles shared logic between button/addresbar icon
 var create_sixornot_widget = function (node, win) {
     var panel, current_tab_ids,
@@ -153,26 +77,25 @@ var create_sixornot_widget = function (node, win) {
         currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
     };
 
-    // Change icon via class (icon set via stylesheet)
-    update_icon_for_node = function (data, node) {
-        //log("Updating UI with data: " + JSON.stringify(data), 1);
-        var mainHost = data.entries.find(function (element, index, array) {
-            return element.data.host === data.main;
-        }).data;
-        //log("mainHost: " + JSON.stringify(mainHost), 1);
-
-        if (mainHost) {
-            update_node_icon_for_host(node, mainHost);
-        } else {
-            // No matching entry for main host (probably a local file)
-            remove_sixornot_classes_from(node);
-            add_class_to_node("sixornot_other", node);
-        }
-    };
-
     // Ask active content script to send us an update, e.g. when switching tabs
     var request_update = function () {
         currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
+    };
+
+    // Change icon via class (icon set via stylesheet)
+    update_icon_for_node = function (data, node) {
+        log("Updating UI with data: " + JSON.stringify(data), 1);
+        if (data.main === "") {
+            // No matching entry for main host (probably a local file)
+            remove_sixornot_classes_from(node);
+            add_class_to_node("sixornot_other", node);
+        } else {
+            var mainHost = data.entries.find(function (element, index, array) {
+                return element.host === data.main;
+            });
+            log("mainHost: " + JSON.stringify(mainHost), 1);
+            update_node_icon_for_host(node, mainHost);
+        }
     };
 
     on_click = function () {
@@ -535,12 +458,12 @@ var panel_ui = {
             }
         };
     },
-    create_hostname: function (doc, addto, host) {
+    create_hostname: function (doc, addto, host, mainhost) {
         var hostname, update;
         /* Create DOM UI elements */
         hostname = doc.createElement("label");
         hostname.setAttribute("value", host.host);
-        if (host.host === doc.defaultView.content.document.location.hostname) {
+        if (host.host === mainhost) {
             hostname.classList.add("sixornot-bold");
         } else {
             hostname.classList.remove("sixornot-bold");
@@ -626,7 +549,7 @@ var panel_ui = {
        and links to that member to reflect its state
        Also takes a reference to the element to add this element after
        e.g. header or the preceeding list item */
-    create_remote_listing_row: function (doc, addafter, host) {
+    create_remote_listing_row: function (doc, addafter, host, mainhost) {
         var row = doc.createElement("row");
         row.setAttribute("align", "start");
         /* Add this element after the last one */
@@ -637,7 +560,7 @@ var panel_ui = {
             host: host,
             icon: panel_ui.create_icon(doc, row, host),
             count: panel_ui.create_count(doc, row, host),
-            hostname: panel_ui.create_hostname(doc, row, host),
+            hostname: panel_ui.create_hostname(doc, row, host, mainhost),
             ips: panel_ui.create_ips(doc, row, host),
             showhide: panel_ui.create_showhide(doc, row, host),
             /* Remove this element and all children */
@@ -709,8 +632,8 @@ var panel_ui = {
                     // TODO - If we're on a page which we have no cached data for, but which has
                     //        a domain, do DNS lookups and add data to cache etc. (fallback behaviour)
                 } else {
-                    hosts.forEach(function (host) {
-                        this.generate_entry_for_host(host);
+                    hosts.entries.forEach(function (host) {
+                        this.generate_entry_for_host(host, hosts.main);
                         /*if (this.entries.length > 0) {
                             this.entries.push(panel_ui.create_remote_listing_row(doc, 
                                 this.entries[this.entries.length - 1], host));
@@ -720,7 +643,7 @@ var panel_ui = {
                     }, this);
                 }
             },
-            generate_entry_for_host: function (host) {
+            generate_entry_for_host: function (host, mainhost) {
                 log("remote_anchor:generate_entry_for_host: " + host, 2);
                 // TODO put this in the right position based on some ordering
                 if (this.entries.length > 0) {
@@ -738,11 +661,11 @@ var panel_ui = {
                     })) {
                         // Add new entry
                         this.entries.push(panel_ui.create_remote_listing_row(doc, 
-                            this.entries[this.entries.length - 1], host));
+                            this.entries[this.entries.length - 1], host, mainhost));
                     }
                 } else {
                     // Push first item onto grid
-                    this.entries.push(panel_ui.create_remote_listing_row(doc, this, host));
+                    this.entries.push(panel_ui.create_remote_listing_row(doc, this, host, mainhost));
                 }
             },
             update_address_for_host: function (host_name) {
@@ -913,36 +836,18 @@ var panel_ui = {
     }
 };
 
-// Consumers of sixornot events need to know the inner and outer window IDs of the
-// window/tab which is currently active and that they are associated with
-var create_current_tab_ids = function (win) {
-    return {
-        inner: 0,
-        outer: 0,
-        set: function () {
-            var domWindow, domWindowUtils;
-            domWindow  = win.gBrowser.mCurrentBrowser.contentWindow;
-            domWindowUtils = domWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                                .getInterface(Components.interfaces.nsIDOMWindowUtils);
-
-            this.inner = domWindowUtils.currentInnerWindowID;
-            this.outer = domWindowUtils.outerWindowID;
-        }
-    };
-};
 
 /* Creates and sets up a panel to display information which can then be bound to an icon */
 var create_panel = function (win, panel_id) {
     var doc, panel, register_callbacks, unregister_callbacks,
     panel_vbox, grid, grid_rows, grid_cols,
     remote_anchor, local_anchor,
-    force_scrollbars, current_tab_ids,
+    force_scrollbars,
     on_click, on_popupshowing, on_popuphiding, on_page_change,
     on_new_host, on_address_change, on_pageshow,
     on_count_change, on_dns_complete, on_tab_select;
 
     doc = win.document;
-    current_tab_ids = create_current_tab_ids(win);
 
     /* Ensure panel contents visible with scrollbars */
     force_scrollbars = function () {
@@ -953,23 +858,44 @@ var create_panel = function (win, panel_id) {
         }
     };
 
+    // Called by content script of active tab
+    // Message contains data to update icon/UI
+    var on_update_ui_message = function (message) {
+        remote_anchor.remove_all_entries();
+        remote_anchor.generate_entries_for_hosts(JSON.parse(message.data));
+        force_scrollbars();
+    };
+
     /* Event handlers */
+    var currentBrowserMM;
+    var subscribe_to_current = function () {
+        if (currentBrowserMM) {
+            currentBrowserMM.removeMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
+        }
+        currentBrowserMM = win.gBrowser.mCurrentBrowser.messageManager;
+        currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
+    };
+
+    // Ask active content script to send us an update, e.g. when switching tabs
+    var request_update = function () {
+        currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
+    };
 
     unregister_callbacks = function () {
-        win.removeEventListener("sixornot-page-change-event", on_page_change, false);
+        /*win.removeEventListener("sixornot-page-change-event", on_page_change, false);
         win.removeEventListener("sixornot-new-host-event", on_new_host, false);
         win.removeEventListener("sixornot-address-change-event", on_address_change, false);
         win.removeEventListener("sixornot-count-change-event", on_count_change, false);
-        win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+        win.removeEventListener("sixornot-dns-lookup-event", on_dns_complete, false);*/
         win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
         win.gBrowser.removeEventListener("pageshow", on_pageshow, false);
     };
     register_callbacks = function () {
-        win.addEventListener("sixornot-page-change-event", on_page_change, false);
+        /*win.addEventListener("sixornot-page-change-event", on_page_change, false);
         win.addEventListener("sixornot-new-host-event", on_new_host, false);
         win.addEventListener("sixornot-address-change-event", on_address_change, false);
         win.addEventListener("sixornot-count-change-event", on_count_change, false);
-        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);
+        win.addEventListener("sixornot-dns-lookup-event", on_dns_complete, false);*/
         win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
         win.gBrowser.addEventListener("pageshow", on_pageshow, false);
     };
@@ -977,11 +903,8 @@ var create_panel = function (win, panel_id) {
     on_popupshowing = function (evt) {
         log("panel:on_popupshowing", 2);
         register_callbacks();
-        current_tab_ids.set();
-
-        remote_anchor.remove_all_entries();
-        remote_anchor.generate_entries_for_hosts(
-            get_hosts_for_inner_window(current_tab_ids.inner));
+        subscribe_to_current();
+        request_update();
 
         local_anchor.update_local_address_display();
     };
@@ -989,6 +912,7 @@ var create_panel = function (win, panel_id) {
     on_popuphiding = function (evt) {
         log("panel:on_popuphiding", 2);
         unregister_callbacks();
+        // TODO unsubscribe from current
     };
 
     /* Actions are defined by custom properties applied to the event target element
@@ -1029,87 +953,37 @@ var create_panel = function (win, panel_id) {
         }
     };
 
-    on_page_change = function (evt) {
-        log("panel:on_page_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
+    on_address_change = function (evt) { // TODO
+        log("panel:on_address_change - evt.detail: " + JSON.stringify(evt.detail), 1);
 
-        if (evt.detail.outer_id !== current_tab_ids.outer) {
-            log("on_page_change - skipping (outer ID mismatch)", 2);
-            return;
-        }
-        current_tab_ids.set();
-        if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("on_page_change - skipping (inner ID mismatch)", 2);
-            return;
-        }
-        remote_anchor.remove_all_entries();
-        remote_anchor.generate_entries_for_hosts(
-            get_hosts_for_inner_window(current_tab_ids.inner));
-        force_scrollbars();
-    };
-
-    on_new_host = function (evt) {
-        log("panel:on_new_host - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
-
-        if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("on_new_host - skipping (inner ID mismatch)", 2);
-            return;
-        }
-
-        var host = get_host_by_hostname_from_inner_window(current_tab_ids.inner, evt.detail.host);
-        if (host) {
-            remote_anchor.generate_entry_for_host(host);
-            force_scrollbars();
-        }
-    };
-
-    on_address_change = function (evt) {
-        log("panel:on_address_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 1);
-
-        if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("on_address_change - skipping (inner ID mismatch)", 2);
-            return;
-        }
         remote_anchor.update_address_for_host(evt.detail.host)
     };
 
-    on_count_change = function (evt) {
-        log("panel:on_count_change - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
+    on_count_change = function (evt) { // TODO
+        log("panel:on_count_change - evt.detail: " + JSON.stringify(evt.detail), 2);
 
-        if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("on_count_change - skipping (inner ID mismatch)", 2);
-            return;
-        }
         remote_anchor.update_count_for_host(evt.detail.host)
     };
 
-    on_dns_complete = function (evt) {
-        log("panel:on_dns_complete - evt.detail: " + JSON.stringify(evt.detail) + ", current_tab_ids.outer: " + current_tab_ids.outer + ", current_tab_ids.inner: " + current_tab_ids.inner, 2);
+    on_dns_complete = function (evt) { // TODO
+        log("panel:on_dns_complete - evt.detail: " + JSON.stringify(evt.detail), 2);
 
-        if (evt.detail.inner_id !== current_tab_ids.inner) {
-            log("on_dns_complete - skipping (inner ID mismatch)", 2);
-            return;
-        }
         remote_anchor.update_ips_for_host(evt.detail.host)
-        // TODO optimisation - this only needs to be called if the height is changed (e.g. if showing full detail for this host)
+        // TODO optimisation - this only needs to be called if the height is changed
+        // (e.g. if showing full detail for this host)
         force_scrollbars();
     };
 
     on_tab_select = function (evt) {
         log("panel:on_tab_select", 1);
-        current_tab_ids.set();
-        remote_anchor.remove_all_entries();
-        remote_anchor.generate_entries_for_hosts(
-            get_hosts_for_inner_window(current_tab_ids.inner));
-        force_scrollbars();
+        subscribe_to_current();
+        request_update();
     };
 
     on_pageshow = function (evt) {
         log("panel:on_pageshow", 1);
-        current_tab_ids.set();
-        remote_anchor.remove_all_entries();
-        remote_anchor.generate_entries_for_hosts(
-            get_hosts_for_inner_window(current_tab_ids.inner));
-        force_scrollbars();
+        subscribe_to_current();
+        request_update();
     };
 
     // Panel setup

@@ -43,23 +43,20 @@ var EXPORTED_SYMBOLS = [
 /* Prepare and return a new blank entry for the hosts listing */
 var create_new_entry = function (host, address, address_family, inner) {
     return {
-        data: {
-            host: host,
-            address: address,
-            address_family: address_family,
-            remote: true,
-            show_detail: true,
-            count: 1,
-            ipv6s: [],
-            ipv4s: [],
-            dns_status: "ready",
-        },
+        host: host,
+        address: address,
+        address_family: address_family,
+        remote: true,
+        show_detail: true,
+        count: 1,
+        ipv6s: [],
+        ipv4s: [],
+        dns_status: "ready",
         dns_cancel: null,
-        inner_id: inner, // TODO remove this?
         lookup_ips: function (callback) {
             var entry, on_returned_ips;
             // Don't do IP lookup for local file entries
-            if (this.data.address_family === 1) {
+            if (this.address_family === 1) {
                 this.dns_status = "complete";
                 return;
             }
@@ -68,21 +65,21 @@ var create_new_entry = function (host, address, address_family, inner) {
             on_returned_ips = function (ips) {
                 entry.dns_cancel = null;
                 if (ips[0] === "FAIL") {
-                    entry.data.ipv6s = [];
-                    entry.data.ipv4s = [];
-                    entry.data.dns_status = "failure";
+                    entry.ipv6s = [];
+                    entry.ipv4s = [];
+                    entry.dns_status = "failure";
                 } else {
-                    entry.data.ipv6s = ips.filter(dns_handler.is_ip6);
-                    entry.data.ipv4s = ips.filter(dns_handler.is_ip4);
-                    entry.data.dns_status = "complete";
+                    entry.ipv6s = ips.filter(dns_handler.is_ip6);
+                    entry.ipv4s = ips.filter(dns_handler.is_ip4);
+                    entry.dns_status = "complete";
                 }
                 // Also trigger page change event here to refresh display of IP tooltip
-                callback(entry.data);
+                callback(entry);
             };
             if (entry.dns_cancel) {
                 entry.dns_cancel.cancel();
             }
-            entry.dns_cancel = dns_handler.resolve_remote_async(entry.data.host, on_returned_ips);
+            entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, on_returned_ips);
         }
     };
 };
@@ -111,13 +108,13 @@ var get_request_cache = function () {
                 this.createCacheEntry(id);
             }
             if (!this.cache[id].entries.some(function (item, index, items) {
-                if (item.data.host === data.host) {
-                    item.data.count += 1;
+                if (item.host === data.host) {
+                    item.count += 1;
                     //send_event("sixornot-count-change-event", domWindow, item); // TODO
 
-                    if (item.data.address !== data.address && data.address !== "") {
-                        item.data.address = data.address;
-                        item.data.address_family = data.addressFamily;
+                    if (item.address !== data.address && data.address !== "") {
+                        item.address = data.address;
+                        item.address_family = data.addressFamily;
                         //send_event("sixornot-address-change-event", domWindow, item); // TODO
                     }
                     return true;
@@ -125,7 +122,7 @@ var get_request_cache = function () {
             })) {
                 log("cache: adding new entry, host: " + data.host + ", remoteAddress: " + data.address, 1);
                 new_entry = create_new_entry(data.host, data.address, data.addressFamily, id);
-                new_entry.data.show_detail = false;
+                new_entry.show_detail = false;
                 new_entry.lookup_ips(dns_complete_callback);
                 this.cache[id].entries.push(new_entry);
                 //send_event("sixornot-new-host-event", domWindow, new_entry); // TODO
@@ -145,11 +142,11 @@ var get_request_cache = function () {
         waitinglist: [],
         addOrUpdateToWaitingList: function (data) {
             if (!this.waitinglist.some(function (item, index, items) {
-                if (item.data.host === data.host) {
-                    item.data.count += 1;
-                    if (item.data.address !== data.address && data.address !== "") {
-                        item.data.address = data.address;
-                        item.data.address_family = data.addressFamily;
+                if (item.host === data.host) {
+                    item.count += 1;
+                    if (item.address !== data.address && data.address !== "") {
+                        item.address = data.address;
+                        item.address_family = data.addressFamily;
                     }
                     return true;
                 }
@@ -168,7 +165,7 @@ var get_request_cache = function () {
                     out += "entries: [";
                     this.cache[property].entries.forEach(function (item, index, items) {
                         out += "['";
-                        out += item.data.host;
+                        out += item.host;
                         out += "'] ";
                     });
                     out += "]]],\n";
@@ -181,10 +178,6 @@ var get_request_cache = function () {
             this.waitinglist.forEach(function (item, index, items) {
                 out += "[";
                 out += item.host;
-                out += ",";
-                out += item.inner_id;
-                out += ",";
-                out += item.outer_id;
                 out += "],";
             });
             return out;
