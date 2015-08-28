@@ -393,11 +393,6 @@ var create_panel = function (win, panel_id) {
             copy_to_clipboard(evt.target.sixornot_copytext);
             evt.stopPropagation();
         }
-        if (evt.target.sixornot_showhide) {
-            log("panel:on_click - showhide", 2);
-            remote_anchor.toggle_detail_for_host(evt.target.sixornot_host);
-            evt.stopPropagation();
-        }
         if (evt.target.sixornot_showhide_local) {
             log("panel:on_click - showhide_local", 2);
             local_anchor.toggle_local_address_display();
