@@ -35,13 +35,15 @@ var EXPORTED_SYMBOLS = [
     "create_panel_links",
 ];
 
-var create_ips = function (doc, addto, host) {
+var create_ips = function (doc, addto) {
     var update, address_box;
     /* Create DOM UI elements */
     address_box = doc.createElement("vbox");
 
-    update = function (host) {
+    update = function (host, show) {
         var conipaddr;
+        address_box.sixornot_host = host.host;
+
         // Remove all existing addresses
         while (address_box.firstChild) {
             address_box.removeChild(address_box.firstChild);
@@ -70,7 +72,7 @@ var create_ips = function (doc, addto, host) {
             address_box.appendChild(conipaddr);
         }
 
-        if (host.show_detail) {
+        if (show) {
             // Add the other addresses (if any)
             host.ipv6s.sort(function (a, b) {
                 return dns_handler.sort_ip6.call(dns_handler, a, b);
@@ -102,9 +104,6 @@ var create_ips = function (doc, addto, host) {
             });
         }
     };
-    /* Update element on create */
-    update(host);
-    address_box.sixornot_host = host.host;
     addto.appendChild(address_box);
     /* Return object for interacting with DOM element */
     return {
@@ -115,19 +114,20 @@ var create_ips = function (doc, addto, host) {
     };
 };
 
-var create_showhide = function (doc, addto, host) {
+var create_showhide = function (doc, addto) {
     var showhide, update;
 
     /* Create DOM UI elements */
     showhide = doc.createElement("label");
     showhide.setAttribute("value", "");
 
-    showhide.sixornot_host = host.host;
-    showhide.sixornot_showhide = true;
     showhide.classList.add("sixornot-link");
 
-    update = function (host) {
+    update = function (host, show) {
         var count = 0;
+        showhide.sixornot_host = host.host;
+        showhide.sixornot_showhide = true;
+
         host.ipv6s.forEach(function (address, index, addresses) {
             if (address !== host.address) {
                 count += 1;
@@ -139,7 +139,7 @@ var create_showhide = function (doc, addto, host) {
             }
         });
         if (count > 0) {
-            if (host.show_detail) {
+            if (show) {
                 showhide.setAttribute("value", "[-]");
                 showhide.setAttribute("hidden", false);
                 showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));
@@ -153,8 +153,6 @@ var create_showhide = function (doc, addto, host) {
             showhide.setAttribute("hidden", true);
         }
     };
-    /* Update elements on create */
-    update(host);
     addto.appendChild(showhide);
     /* Return object for interacting with DOM elements */
     return {
@@ -165,17 +163,17 @@ var create_showhide = function (doc, addto, host) {
     };
 };
 
-var create_icon = function (doc, addto, host) {
+var create_icon = function (doc, addto) {
     var icon, update;
     /* Create DOM UI elements */
     icon = doc.createElement("image");
     icon.setAttribute("width", "16");
     icon.setAttribute("height", "16");
+
     update = function (host) {
         update_node_icon_for_host(icon, host);
     };
-    /* Update element on create */
-    update(host);
+
     addto.appendChild(icon);
     /* Return object for interacting with DOM element */
     return {
@@ -186,12 +184,13 @@ var create_icon = function (doc, addto, host) {
     };
 };
 
-var create_count = function (doc, addto, host) {
+var create_count = function (doc, addto) {
     var count, update;
     /* Create DOM UI elements */
     count = doc.createElement("label");
 
     count.setAttribute("tooltiptext", gt("tt_copycount"));
+
     update = function (host) {
         if (host.count > 0) {
             count.setAttribute("value", "(" + host.count + ")");
@@ -201,8 +200,7 @@ var create_count = function (doc, addto, host) {
         // TODO Add real copy text here
         //count.sixornot_copytext = "count copy text";
     };
-    /* Update element on create */
-    update(host);
+
     addto.appendChild(count);
     /* Return object for interacting with DOM element */
     return {
@@ -213,20 +211,22 @@ var create_count = function (doc, addto, host) {
     };
 };
 
-var create_hostname = function (doc, addto, host, mainhost) {
+var create_hostname = function (doc, addto) {
     var hostname, update;
     /* Create DOM UI elements */
     hostname = doc.createElement("label");
-    hostname.setAttribute("value", host.host);
-    if (host.host === mainhost) {
-        hostname.classList.add("sixornot-bold");
-    } else {
-        hostname.classList.remove("sixornot-bold");
-    }
-
-    hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
     update = function (host, mainhost) {
         var text = host.host;
+
+        hostname.setAttribute("value", host.host);
+        if (host.host === mainhost) {
+            hostname.classList.add("sixornot-bold");
+        } else {
+            hostname.classList.remove("sixornot-bold");
+        }
+
+        hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
+
         if (host.address !== "") {
             text = text + "," + host.address;
         }
@@ -250,8 +250,7 @@ var create_hostname = function (doc, addto, host, mainhost) {
         hostname.sixornot_copytext = text;
         hostname.classList.add("sixornot-link");
     };
-    /* Update element on create */
-    update(host, mainhost);
+
     addto.appendChild(hostname);
     /* Return object for interacting with DOM element */
     return {
@@ -309,25 +308,38 @@ var create_local_listing_row = function (doc, addafter, host_info) {
 var create_remote_listing_row = function (doc, addafter, host, mainhost) {
     var row = doc.createElement("row");
     row.setAttribute("align", "start");
+
+    var show = host.host === mainhost;
+    var icon = create_icon(doc, row, host);
+    var count = create_count(doc, row, host);
+    var hostname = create_hostname(doc, row, host, mainhost);
+    var ips = create_ips(doc, row, host);
+    var showhide = create_showhide(doc, row, host);
+
+    var update = function (host, mainhost) {
+        ips.update(host, show);
+        showhide.update(host, show);
+        icon.update(host);
+        count.update(host);
+        hostname.update(host, mainhost);
+    };
+
+    /* Update element on create */
+    update(host, mainhost);
     /* Add this element after the last one */
     addafter.add_after(row);
 
     /* Object representing row of entry */
     return {
-        host: host,
-        icon: create_icon(doc, row, host),
-        count: create_count(doc, row, host),
-        hostname: create_hostname(doc, row, host, mainhost),
-        ips: create_ips(doc, row, host),
-        showhide: create_showhide(doc, row, host),
+        host: host.host,
         /* Remove this element and all children */
         remove: function () {
             // Remove children
-            this.icon.remove();
-            this.count.remove();
-            this.hostname.remove();
-            this.ips.remove();
-            this.showhide.remove();
+            icon.remove();
+            count.remove();
+            hostname.remove();
+            ips.remove();
+            showhide.remove();
             // Remove self
             row.parentNode.removeChild(row);
         },
@@ -339,22 +351,9 @@ var create_remote_listing_row = function (doc, addafter, host, mainhost) {
                 row.parentNode.appendChild(element);
             }
         },
-        update_ips: function (host) {
-            // TODO optimisation - only update DNS IPs
-            this.ips.update(host);
-            this.showhide.update(host);
-            this.icon.update(host);
-        },
-        update_address: function (host) {
-            // TODO optimisation - only update connection IP
-            this.ips.update(host);
-            this.icon.update(host);
-        },
-        update_count: function (host) {
-            this.count.update(host);
-        },
-        update_mainhost: function (host, mainhost) {
-            this.hostname.update(host, mainhost);
+        update: update,
+        toggleShow: function () {
+            show = !show;
         }
     };
 };
@@ -401,11 +400,8 @@ var create_remote_anchor = function (doc, parent_element) {
             var entriesIndex = 0;
             model.entries.forEach(function(item, index, array) {
                 var entry = entries[entriesIndex];
-                if (entry && entry.host.host === item.host) {
-                    entry.update_mainhost(item, model.main);
-                    entry.update_address(item);
-                    entry.update_ips(item);
-                    entry.update_count(item);
+                if (entry && entry.host === item.host) {
+                    entry.update(item, model.main);
                 } else {
                     var prevEntry = entries[entriesIndex - 1];
                     entries.splice(entriesIndex, 0,
@@ -417,7 +413,7 @@ var create_remote_anchor = function (doc, parent_element) {
         },
         toggle_detail_for_host: function (host_name) {
             if (!entries.some(function (item, index, items) {
-                if (item.host.host === host_name) {
+                if (item.host === host_name) {
                     item.host.show_detail = !item.host.show_detail;
                     item.update_ips();// TODO
                     return true;
