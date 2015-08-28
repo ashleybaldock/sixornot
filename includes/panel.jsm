@@ -392,36 +392,24 @@ var create_remote_anchor = function (doc, parent_element) {
             this.update();
         },
         update: function () {
-            // Go through model and compare with each entry
-            // Add new entries where needed, update where needed
-            model.entries.forEach(function (host) {
-                this.generate_entry_for_host(host, model.main);
-            }, this);
-        },
-        generate_entry_for_host: function (host, mainhost) {
-            log("remote_anchor:generate_entry_for_host: " + host, 2);
-            // TODO put this in the right position based on some ordering
-            if (entries.length > 0) {
-                if (!entries.some(function (item) {
-                    // TODO - this shouldn't be able to happen!
-                    // If item is already in the array, don't add a duplicate
-                    // Just update the existing one instead
-                    if (item.host.host === host.host) {
-                        log("Adding duplicate!!", 1);
-                        item.update_address(host);
-                        item.update_ips(host);
-                        item.update_count(host);
-                        return true;
-                    }
-                })) {
-                    // Add new entry
-                    entries.push(create_remote_listing_row(doc, 
-                        entries[entries.length - 1], host, mainhost));
+            // Ordering of entries never changes
+            // New entries may be inserted anywhere (supports alphabetical ordering)
+            // model may have more items than entries
+            var entriesIndex = 0;
+            model.entries.forEach(function(item, index, array) {
+                var entry = entries[entriesIndex];
+                if (entry && entry.host.host === item.host) {
+                    entry.update_address(item);
+                    entry.update_ips(item);
+                    entry.update_count(item);
+                } else {
+                    var prevEntry = entries[entriesIndex - 1];
+                    entries.splice(entriesIndex, 0,
+                        create_remote_listing_row(
+                        doc, prevEntry ? prevEntry : this, item, model.mainhost));
                 }
-            } else {
-                // Push first item onto grid
-                entries.push(create_remote_listing_row(doc, this, host, mainhost));
-            }
+                entriesIndex++;
+            }, this);
         },
         toggle_detail_for_host: function (host_name) {
             if (!entries.some(function (item, index, items) {
