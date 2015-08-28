@@ -225,7 +225,7 @@ var create_hostname = function (doc, addto, host, mainhost) {
     }
 
     hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
-    update = function (host) {
+    update = function (host, mainhost) {
         var text = host.host;
         if (host.address !== "") {
             text = text + "," + host.address;
@@ -251,7 +251,7 @@ var create_hostname = function (doc, addto, host, mainhost) {
         hostname.classList.add("sixornot-link");
     };
     /* Update element on create */
-    update(host);
+    update(host, mainhost);
     addto.appendChild(hostname);
     /* Return object for interacting with DOM element */
     return {
@@ -352,6 +352,9 @@ var create_remote_listing_row = function (doc, addafter, host, mainhost) {
         },
         update_count: function (host) {
             this.count.update(host);
+        },
+        update_mainhost: function (host, mainhost) {
+            this.hostname.update(host, mainhost);
         }
     };
 };
@@ -399,6 +402,7 @@ var create_remote_anchor = function (doc, parent_element) {
             model.entries.forEach(function(item, index, array) {
                 var entry = entries[entriesIndex];
                 if (entry && entry.host.host === item.host) {
+                    entry.update_mainhost(item, model.main);
                     entry.update_address(item);
                     entry.update_ips(item);
                     entry.update_count(item);
@@ -406,7 +410,7 @@ var create_remote_anchor = function (doc, parent_element) {
                     var prevEntry = entries[entriesIndex - 1];
                     entries.splice(entriesIndex, 0,
                         create_remote_listing_row(
-                        doc, prevEntry ? prevEntry : this, item, model.mainhost));
+                        doc, prevEntry ? prevEntry : this, item, model.main));
                 }
                 entriesIndex++;
             }, this);
