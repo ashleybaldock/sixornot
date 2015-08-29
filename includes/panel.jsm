@@ -32,7 +32,6 @@ Components.utils.import("resource://sixornot/includes/dns.jsm");
 var EXPORTED_SYMBOLS = [
     "create_local_anchor",
     "create_remote_anchor",
-    "create_panel_links",
 ];
 
 var countDnsAddresses = function (host) {
@@ -412,6 +411,9 @@ var create_remote_anchor = function (doc, parent_element) {
                 parent_element.appendChild(element);
             }
         },
+        remove: function () {
+            this.remove_all_entries();
+        },
         remove_all_entries: function () {
             log("remote_anchor:remove_all_entries", 2);
             entries.forEach(function (item, index, items) {
@@ -501,6 +503,9 @@ var create_local_anchor = function (doc, parent_element) {
                 parent_element.appendChild(element);
             }
         },
+        remove: function () {
+            this.remove_all_entries();
+        },
         remove_all_entries: function () {
             log("panel:local_anchor:remove_all_entries", 2);
             this.entries.forEach(function (item) {
@@ -538,41 +543,3 @@ var create_local_anchor = function (doc, parent_element) {
     };
 };
 
-var create_panel_links = function (doc, parent_element) {
-    var settingslabel, urllabel, spacer, urlhbox,
-        make_spacer;
-    // Settings link
-    settingslabel = doc.createElement("label");
-    settingslabel.setAttribute("value", gt("header_settings"));
-    settingslabel.setAttribute("tooltiptext", gt("tt_open_settings"));
-    settingslabel.classList.add("sixornot-link");
-    settingslabel.classList.add("sixornot-title");
-    settingslabel.sixornot_openprefs = true;
-
-    urllabel = doc.createElement("label");
-    urllabel.setAttribute("value", gt("sixornot_documentation"));
-    urllabel.classList.add("sixornot-link");
-    urllabel.classList.add("sixornot-title");
-    urllabel.sixornot_hyperlink = gt("sixornot_weblink");
-    urllabel.setAttribute("tooltiptext", gt("tt_gotowebsite"));
-
-    spacer = doc.createElement("label");
-    spacer.setAttribute("value", " - ");
-    spacer.classList.add("sixornot-title");
-
-    make_spacer = function () {
-        var spacer = doc.createElement("spacer");
-        spacer.setAttribute("flex", "1");
-        return spacer;
-    };
-
-    urlhbox = doc.createElement("hbox");
-    urlhbox.appendChild(make_spacer());
-    urlhbox.appendChild(settingslabel);
-    urlhbox.appendChild(spacer);
-    urlhbox.appendChild(urllabel);
-    urlhbox.appendChild(make_spacer());
-    urlhbox.setAttribute("align", "center");
-    urlhbox.style.marginTop = "3px";
-    parent_element.appendChild(urlhbox);
-};
