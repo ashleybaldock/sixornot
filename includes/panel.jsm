@@ -35,84 +35,69 @@ var EXPORTED_SYMBOLS = [
     "create_panel_links",
 ];
 
-var create_ips = function (doc, addto) {
-    var address_box = doc.createElement("vbox");
-    addto.appendChild(address_box);
+var countDnsAddresses = function (host) {
+    var count = 0;
+    host.ipv6s.forEach(function (address, index, addresses) {
+        if (address !== host.address) {
+            count += 1;
+        }
+    });
+    host.ipv4s.forEach(function (address, index, addresses) {
+        if (address !== host.address) {
+            count += 1;
+        }
+    });
+    return count;
+};
 
-    /* Return object for interacting with DOM element */
+var create_ip_entry = function (doc, addto) {
+    var conipaddr = doc.createElement("label");
+    addto.appendChild(conipaddr);
+
+    var copyText = "";
+    var copyToClipboard = function (evt) {
+        copy_to_clipboard(copyToClipboard);
+        evt.stopPropagation();
+    };
+    conipaddr.addEventListener("click", copyToClipboard, false);
+
     return {
-        update: function (host, show) {
-            var conipaddr;
-            address_box.sixornot_host = host.host;
-
-            // Remove all existing addresses
-            while (address_box.firstChild) {
-                address_box.removeChild(address_box.firstChild);
+        show: function () {
+            conipaddr.setAttribute("hidden", false);
+            return this;
+        },
+        hide: function () {
+            conipaddr.setAttribute("hidden", true);
+            return this;
+        },
+        update: function (address, address_family) {
+            if (address_family === 6 || address_family === 4) {
+                conipaddr.setAttribute("value", address);
+                copyToClipboard = address;
+                conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
+                conipaddr.classList.add("sixornot-link");
+            } else if (address_family === 2) {
+                conipaddr.setAttribute("value", gt("addr_cached"));
+                copyToClipboard = "";
+            } else {
+                conipaddr.setAttribute("value", gt("addr_unavailable"));
+                copyToClipboard = "";
             }
-            // Add the first entry (connection IP)
-            if (host.remote) {
-                conipaddr = doc.createElement("label");
-                conipaddr.sixornot_host = host.host;
-                if (host.address_family === 6) {
-                    conipaddr.setAttribute("value", host.address);
-                    conipaddr.sixornot_copytext = host.address;
-                    conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                    conipaddr.classList.add("sixornot-link");
-                } else if (host.address_family === 4) {
-                    conipaddr.setAttribute("value", host.address);
-                    conipaddr.sixornot_copytext = host.address;
-                    conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                    conipaddr.classList.add("sixornot-link");
-                } else if (host.address_family === 2) {
-                    conipaddr.setAttribute("value", gt("addr_cached"));
-                    conipaddr.sixornot_copytext = "";
-                } else {
-                    conipaddr.setAttribute("value", gt("addr_unavailable"));
-                    conipaddr.sixornot_copytext = "";
-                }
-                address_box.appendChild(conipaddr);
-            }
-
-            if (show) {
-                // Add the other addresses (if any)
-                host.ipv6s.sort(function (a, b) {
-                    return dns_handler.sort_ip6.call(dns_handler, a, b);
-                });
-                host.ipv4s.sort(function (a, b) {
-                    return dns_handler.sort_ip4.call(dns_handler, a, b);
-                });
-                host.ipv6s.forEach(function (address, index, addresses) {
-                    if (address !== host.address) {
-                        var detailaddr = doc.createElement("label");
-                        detailaddr.setAttribute("value", address);
-                        detailaddr.sixornot_copytext = address;
-                        detailaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                        detailaddr.classList.add("sixornot-link");
-                        detailaddr.sixornot_host = host.host;
-                        address_box.appendChild(detailaddr);
-                    }
-                });
-                host.ipv4s.forEach(function (address, index, addresses) {
-                    if (address !== host.address) {
-                        var detailaddr = doc.createElement("label");
-                        detailaddr.setAttribute("value", address);
-                        detailaddr.sixornot_copytext = address;
-                        detailaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                        detailaddr.classList.add("sixornot-link");
-                        detailaddr.sixornot_host = host.host;
-                        address_box.appendChild(detailaddr);
-                    }
-                });
-            }
+            return this;
         },
         remove: function () {
-            addto.removeChild(address_box);
+            conipaddr.removeEventListener("click", copyToClipboard, false);
+            addto.removeChild(conipaddr);
         }
     };
 };
 
-var create_showhide = function (doc, addto, ips) {
-    var showhide, host_cache, showing, toggleDetail, showhideObj;
+// TODO if entry becomes main host later, update to show details
+var create_ips = function (doc, addto) {
+    var address_box = doc.createElement("vbox");
+    addto.appendChild(address_box);
+
+    var showhide, host_cache, showing, toggleDetail, obj;
 
     showhide = doc.createElement("label");
     showhide.setAttribute("value", "");
@@ -122,29 +107,21 @@ var create_showhide = function (doc, addto, ips) {
     toggleDetail = function (evt) {
         evt.stopPropagation();
         showing = !showing;
-        showhideObj.update(host_cache, showing);
-        ips.update(host_cache, showing);
+        obj.update(host_cache);
     };
 
-    /* Return object for interacting with DOM elements */
-    showhideObj = {
-        update: function (host, show) {
-            var count = 0;
-            host_cache = host;
-            showing = show;
+    var entries = [];
 
-            host.ipv6s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    count += 1;
-                }
-            });
-            host.ipv4s.forEach(function (address, index, addresses) {
-                if (address !== host.address) {
-                    count += 1;
-                }
-            });
+    obj = {
+        init: function (host, initialShow) {
+            showing = initialShow;
+            this.update(host);
+        },
+        update: function (host) {
+            var count = countDnsAddresses(host);
+
             if (count > 0) {
-                if (show) {
+                if (showing) {
                     showhide.setAttribute("value", "[ - ]");
                     showhide.setAttribute("hidden", false);
                     showhide.setAttribute("tooltiptext", gt("tt_hide_detail"));
@@ -157,16 +134,81 @@ var create_showhide = function (doc, addto, ips) {
                 showhide.setAttribute("value", "");
                 showhide.setAttribute("hidden", true);
             }
+
+            var conipaddr;
+            address_box.sixornot_host = host.host;
+
+
+            if (entries.length <= 0) {
+                entries.push(
+                    create_ip_entry(doc, address_box).update(host.address, host.address_family));
+            }
+            if (entries[0].address !== host.address ||
+                host_cache.dns_status !== host.dns_status) {
+                entries[0].update(host.address, host.address_family);
+                // Regenerate additional address entries
+                var entriesIndex = 1;
+                if (showing) {
+                    host.ipv6s.sort(function (a, b) {
+                        return dns_handler.sort_ip6.call(dns_handler, a, b);
+                    });
+                    host.ipv6s.forEach(function (address, index, addresses) {
+                        if (address !== host.address) {
+                            if (entries.length < entriesIndex + 1) {
+                                entries.push(
+                                    create_ip_entry(doc, address_box)
+                                        .update(address, 6));
+                            } else {
+                                // Update existing
+                                entries[entriesIndex].update(address, 6).show();
+                            }
+                        }
+                        entriesIndex++;
+                    });
+                    host.ipv4s.sort(function (a, b) {
+                        return dns_handler.sort_ip4.call(dns_handler, a, b);
+                    });
+                    host.ipv4s.forEach(function (address, index, addresses) {
+                        if (address !== host.address) {
+                            if (entries.length < entriesIndex + 1) {
+                                entries.push(
+                                    create_ip_entry(doc, address_box)
+                                        .update(address, 4));
+                            } else {
+                                // Update existing
+                                entries[entriesIndex].update(address, 4).show();
+                            }
+                        }
+                        entriesIndex++;
+                    });
+                }
+                // Hide additional entries
+                entries.forEach(function (item, index, items) {
+                    if (index < entriesIndex) return;
+                    item.hide();
+                });
+            } 
+
+            host_cache = host;
         },
         remove: function () {
+            entries.forEach(function (item, index, items) {
+                try {
+                    item.remove();
+                } catch (e) {
+                    Components.utils.reportError(e);
+                }
+            });
+            entries = [];
             showhide.removeEventListener("click", toggleDetail, false);
             addto.removeChild(showhide);
+            addto.removeChild(address_box);
         }
     };
 
     showhide.addEventListener("click", toggleDetail, false);
 
-    return showhideObj;
+    return obj;
 };
 
 var create_icon = function (doc, addto) {
@@ -177,7 +219,6 @@ var create_icon = function (doc, addto) {
     icon.setAttribute("height", "16");
     addto.appendChild(icon);
 
-    /* Return object for interacting with DOM element */
     return {
         update: function (host) {
             update_node_icon_for_host(icon, host);
@@ -193,7 +234,6 @@ var create_count = function (doc, addto) {
     count.setAttribute("tooltiptext", gt("tt_copycount"));
     addto.appendChild(count);
 
-    /* Return object for interacting with DOM element */
     return {
         update: function (host) {
             if (host.count > 0) {
@@ -201,8 +241,6 @@ var create_count = function (doc, addto) {
             } else {
                 count.setAttribute("value", "");
             }
-            // TODO Add real copy text here
-            //count.sixornot_copytext = "count copy text";
         },
         remove: function () {
             addto.removeChild(count);
@@ -214,7 +252,6 @@ var create_hostname = function (doc, addto) {
     var hostname = doc.createElement("label");
     addto.appendChild(hostname);
 
-    /* Return object for interacting with DOM element */
     return {
         update: function (host, mainhost) {
             var text = host.host;
@@ -310,18 +347,13 @@ var create_remote_listing_row = function (doc, addafter, host, mainhost) {
     count = create_count(doc, row);
     hostname = create_hostname(doc, row);
     ips = create_ips(doc, row);
-    showhide = create_showhide(doc, row, ips);
 
-    update = function (host, mainhost) {
-        ips.update(host, host.host === mainhost);
-        showhide.update(host, host.host === mainhost);
-        icon.update(host);
-        count.update(host);
-        hostname.update(host, mainhost);
-    };
 
-    /* Update element on create */
-    update(host, mainhost);
+    /* Update elements on create */
+    icon.update(host);
+    hostname.update(host, mainhost);
+    count.update(host);
+    ips.init(host, host.host === mainhost);
 
     /* Add this element after the last one */
     addafter.add_after(row);
@@ -331,10 +363,9 @@ var create_remote_listing_row = function (doc, addafter, host, mainhost) {
         host: host.host,
         remove: function () {
             icon.remove();
-            count.remove();
             hostname.remove();
+            count.remove();
             ips.remove();
-            showhide.remove();
             row.parentNode.removeChild(row);
         },
         add_after: function (element) {
@@ -345,7 +376,12 @@ var create_remote_listing_row = function (doc, addafter, host, mainhost) {
                 row.parentNode.appendChild(element);
             }
         },
-        update: update
+        update: function (host, mainhost) {
+            icon.update(host);
+            hostname.update(host, mainhost);
+            count.update(host);
+            ips.update(host, host.host === mainhost);
+        }
     };
 };
 
