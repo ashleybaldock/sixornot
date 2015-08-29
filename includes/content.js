@@ -124,7 +124,7 @@ addEventListener("DOMWindowCreated", function (event) {
     var hostname = event.originalTarget.defaultView.location.hostname;
     var loc = event.originalTarget.defaultView.location.href;
 
-    log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + " topInner: " + topInner + ", topOuter: " + topOuter + ", hostname: " + hostname + ", protocol: " + protocol + ", location: " + event.originalTarget.defaultView.location, 1);
+    log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + " topInner: " + topInner + ", topOuter: " + topOuter + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + event.originalTarget.defaultView.location + "'", 0);
 
     if (requests.get(inner)) { return; } // Ignore duplicate events
 
@@ -132,7 +132,7 @@ addEventListener("DOMWindowCreated", function (event) {
         newEntry = {host: "Local File", address: "", addressFamily: 1}
     } else if (protocol === "about:") {
         newEntry = {host: loc, address: "", addressFamily: 1};
-    } else {
+    } else if (hostname) { // Ignore empty windows
         newEntry = {host: hostname, address: "", addressFamily: 0};
     }
 
@@ -140,9 +140,11 @@ addEventListener("DOMWindowCreated", function (event) {
     // associated with this inner ID
     currentInnerId = topInner;
 
-    // TODO only pick up waiting list entries if they match the domain
-    // of the DOMWindowCreated event (to avoid picking up things from old pages)
-    requests.addOrUpdateToWaitingList(newEntry);
+    if (newEntry) { // Ignore empty windows
+        // TODO only pick up waiting list entries if they match the domain
+        // of the DOMWindowCreated event (to avoid picking up things from old pages)
+        requests.addOrUpdateToWaitingList(newEntry);
+    }
 
     requests.createOrExtendCacheEntry(newEntry.host, currentInnerId, on_dns_complete);
 

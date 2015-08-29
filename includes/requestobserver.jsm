@@ -88,7 +88,6 @@ var on_examine_response = function(subject, topic) {
     log("HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
     /*jslint bitwise: true */
-    // TODO - need to determine if this is a load from an embedded frame/iframe
     if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
     /*jslint bitwise: false */
         topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", {
