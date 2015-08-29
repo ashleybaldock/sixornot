@@ -47,7 +47,6 @@ var create_new_entry = function (host, address, address_family, inner) {
         address: address,
         address_family: address_family,
         remote: true,
-        show_detail: true,
         count: 1,
         ipv6s: [],
         ipv4s: [],
@@ -130,7 +129,6 @@ var get_request_cache = function () {
             })) {
                 log("addOrUpdate, host: " + data.host + ", remoteAddress: " + data.address, 1);
                 new_entry = create_new_entry(data.host, data.address, data.addressFamily, id);
-                new_entry.show_detail = false;
                 new_entry.lookup_ips(dns_complete_callback);
                 this.cache[id].entries.push(new_entry);
                 //send_event("sixornot-new-host-event", domWindow, new_entry); // TODO
