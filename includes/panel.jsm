@@ -56,7 +56,7 @@ var create_ip_entry = function (doc, addto) {
 
     var copyText = "";
     var copyToClipboard = function (evt) {
-        copy_to_clipboard(copyToClipboard);
+        copy_to_clipboard(copyText);
         evt.stopPropagation();
     };
     conipaddr.addEventListener("click", copyToClipboard, false);
@@ -73,15 +73,15 @@ var create_ip_entry = function (doc, addto) {
         update: function (address, address_family) {
             if (address_family === 6 || address_family === 4) {
                 conipaddr.setAttribute("value", address);
-                copyToClipboard = address;
+                copyText = address;
                 conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
                 conipaddr.classList.add("sixornot-link");
             } else if (address_family === 2) {
                 conipaddr.setAttribute("value", gt("addr_cached"));
-                copyToClipboard = "";
+                copyText = "";
             } else {
                 conipaddr.setAttribute("value", gt("addr_unavailable"));
-                copyToClipboard = "";
+                copyText = "";
             }
             return this;
         },
@@ -252,6 +252,13 @@ var create_hostname = function (doc, addto) {
     var hostname = doc.createElement("label");
     addto.appendChild(hostname);
 
+    var copyText = "";
+    var copyToClipboard = function (evt) {
+        copy_to_clipboard(copyText);
+        evt.stopPropagation();
+    };
+    hostname.addEventListener("click", copyToClipboard, false);
+
     return {
         update: function (host, mainhost) {
             var text = host.host;
@@ -285,10 +292,11 @@ var create_hostname = function (doc, addto) {
                     text = text + "," + address;
                 }
             });
-            hostname.sixornot_copytext = text;
+            copyText = text;
             hostname.classList.add("sixornot-link");
         },
         remove: function () {
+            hostname.removeEventListener("click", copyToClipboard, false);
             addto.removeChild(hostname);
         }
     };

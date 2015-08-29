@@ -388,11 +388,6 @@ var create_panel = function (win, panel_id) {
        One or more of these can be triggered */
     on_click = function (evt) {
         log("panel:on_click", 1);
-        if (evt.target.sixornot_copytext) {
-            log("panel:on_click - sixornot_copytext", 2);
-            copy_to_clipboard(evt.target.sixornot_copytext);
-            evt.stopPropagation();
-        }
         if (evt.target.sixornot_showhide_local) {
             log("panel:on_click - showhide_local", 2);
             local_anchor.toggle_local_address_display();
