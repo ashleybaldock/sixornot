@@ -345,23 +345,27 @@ var create_panel = function (win, panel_id) {
         force_scrollbars();
     };
 
-    /* Event handlers */
+    /* Content script messaging */
     var currentBrowserMM;
-    var subscribe_to_current = function () {
+    var unsubscribe = function () {
         if (currentBrowserMM) {
             currentBrowserMM.removeMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
         }
+    };
+    var subscribe_to_current = function () {
+        unsubscribe();
         currentBrowserMM = win.gBrowser.mCurrentBrowser.messageManager;
         currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
     };
 
-    // Ask active content script to send us an update, e.g. when switching tabs
     var request_update = function () {
         currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
     };
 
+    /* Event handlers */
     unregister_callbacks = function () {
         win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
+        // TODO do we still need pageshow?
         win.gBrowser.removeEventListener("pageshow", on_pageshow, false);
     };
     register_callbacks = function () {
@@ -495,16 +499,15 @@ var create_panel = function (win, panel_id) {
 
     unload(function () {
         log("Unload panel", 2);
+        unsubscribe();
+        unregister_callbacks();
+        panel.removeEventListener("popupshowing", on_popupshowing, false);
+        panel.removeEventListener("popuphiding", on_popuphiding, false);
         remote_anchor.remove(); // Removes child event listeners
         local_anchor.remove(); // Removes child event listeners
         settingsLink.removeEventListener("click", onClickSettingsLink, false);
         docLink.removeEventListener("click", onClickDocLink, false);
         panel.removeEventListener("click", on_click, false);
-        panel.removeEventListener("popupshowing", on_popupshowing, false);
-        panel.removeEventListener("popuphiding", on_popuphiding, false);
-
-        // If panel is open at time of unload unregister callbacks
-        unregister_callbacks();
 
         // Remove UI
         if (panel.parentNode) {

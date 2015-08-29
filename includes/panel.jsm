@@ -134,10 +134,6 @@ var create_ips = function (doc, addto) {
                 showhide.setAttribute("hidden", true);
             }
 
-            var conipaddr;
-            address_box.sixornot_host = host.host;
-
-
             if (entries.length <= 0) {
                 entries.push(
                     create_ip_entry(doc, address_box).update(host.address, host.address_family));
