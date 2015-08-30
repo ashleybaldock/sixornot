@@ -232,10 +232,24 @@ var createSSLInfo = function (doc, addto) {
     sslinfo.setAttribute("height", "16");
     addto.appendChild(sslinfo);
 
-    sslinfo.classList.add("sixornot_ssl");
-
     return {
         update: function (host) {
+            if (host.security.isExtendedValidation) {
+                if (!sslinfo.classList.contains("sixornot_ssl_ev")) {
+                    remove_ssl_classes_from_node(sslinfo);
+                    sslinfo.classList.add("sixornot_ssl_ev");
+                }
+            } else if (host.security.cipherName) {
+                if (!sslinfo.classList.contains("sixornot_ssl")) {
+                    remove_ssl_classes_from_node(sslinfo);
+                    sslinfo.classList.add("sixornot_ssl");
+                }
+            } else {
+                if (!sslinfo.classList.contains("sixornot_ssl_off")) {
+                    remove_ssl_classes_from_node(sslinfo);
+                    sslinfo.classList.add("sixornot_ssl_off");
+                }
+            }
         },
         remove: function () {
             addto.removeChild(sslinfo);
@@ -337,6 +351,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     icon.update(host);
     hostname.update(host, mainhost);
     count.update(host);
+    sslinfo.update(host);
     ips.init(host, host.host === mainhost);
 
     /* Add this element after the last one */
@@ -349,6 +364,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             icon.remove();
             hostname.remove();
             count.remove();
+            sslinfo.remove();
             ips.remove();
             row.parentNode.removeChild(row);
         },
@@ -364,6 +380,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             icon.update(host);
             hostname.update(host, mainhost);
             count.update(host);
+            sslinfo.update(host);
             ips.update(host, host.host === mainhost);
         }
     };

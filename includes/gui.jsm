@@ -452,6 +452,7 @@ var createPanel = function (win, panel_id) {
     grid_cols.appendChild(doc.createElement("column"));
     grid_cols.appendChild(doc.createElement("column"));
     grid_cols.appendChild(doc.createElement("column"));
+    grid_cols.appendChild(doc.createElement("column"));
     grid.appendChild(grid_cols);
     grid.appendChild(grid_rows);
     panel_vbox.appendChild(grid);
