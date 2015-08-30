@@ -33,7 +33,6 @@ try {
 } catch (e) {
     CustomizableUIAvailable = false;
 }
-Components.utils.import("resource://sixornot/includes/env.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/utility.jsm");
 Components.utils.import("resource://sixornot/includes/locale.jsm");
@@ -114,7 +113,6 @@ var create_sixornot_widget = function (node, win) {
 
     // Change icon via class (icon set via stylesheet)
     update_icon_for_node = function (data, node) {
-        if (!data) return;
         if (data.main === "") {
             // No matching entry for main host (probably a local file)
             remove_sixornot_classes_from(node);

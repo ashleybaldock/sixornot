@@ -1,7 +1,7 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: BSD License
  * 
- * Copyright (c) 2008-2012 Timothy Baldock. All Rights Reserved.
+ * Copyright (c) 2008-2015 Timothy Baldock. All Rights Reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * 
@@ -55,9 +55,7 @@ var log = (function () {
         }
         // If preference unset, default to 1 (normal) level
         if (level <= get_loglevel()) {
-            Components.classes["@mozilla.org/consoleservice;1"]
-                .getService(Components.interfaces.nsIConsoleService)
-                .logStringMessage("SON: " + message);
+            Services.console.logStringMessage("SON: " + message);
         }
     };
 }());

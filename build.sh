@@ -19,7 +19,6 @@ cp icon64.png ../dist/$version/src/
 mkdir ../dist/$version/src/includes
 cp includes/content.js ../dist/$version/src/includes/
 cp includes/dns.jsm ../dist/$version/src/includes/
-cp includes/env.jsm ../dist/$version/src/includes/
 cp includes/gui.jsm ../dist/$version/src/includes/
 cp includes/locale.jsm ../dist/$version/src/includes/
 cp includes/logger.jsm ../dist/$version/src/includes/

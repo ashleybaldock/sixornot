@@ -45,7 +45,7 @@ var on_examine_response = function(subject, topic) {
         }
     }
     if (!notificationCallbacks) {
-        log("httpRequestObserver - http-on-examine-response: Unable to determine notificationCallbacks for this http_channel", 1);
+        log("httpRequestObserver: Unable to determine notificationCallbacks for this http_channel", 1);
         return;
     }
 
@@ -55,7 +55,7 @@ var on_examine_response = function(subject, topic) {
         var topFrameElement = loadContext.topFrameElement;  // TODO - will this always be the browser element, e.g. for iframes?
         topFrameMM = topFrameElement.messageManager;
     } catch (e2) {
-        log("httpRequestObserver - http-on-examine-response: non-DOM request", 2);
+        log("httpRequestObserver: non-DOM request", 2);
         return;
     }
 
@@ -81,7 +81,20 @@ var on_examine_response = function(subject, topic) {
         remoteAddressFamily = 2;
     }
 
-    log("httpRequestObserver - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
+    log("httpRequestObserver: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
+
+    // Extract security information
+    if (http_channel.securityInfo) {
+        var sslStatusProvider = http_channel.securityInfo.QueryInterface(Components.interfaces.nsISSLStatusProvider);
+        if (sslStatusProvider && sslStatusProvider.SSLStatus) {
+            var sslStatus = sslStatusProvider.SSLStatus.QueryInterface(Components.interfaces.nsISSLStatus);
+            log("httpRequestObserver: sslStatus - cipherName: " + sslStatus.cipherName + ", keyLength: " + sslStatus.keyLength, 1);
+        }
+        var nsITransportSecurityInfo = http_channel.securityInfo.QueryInterface(Components.interfaces.nsITransportSecurityInfo);
+        if (nsITransportSecurityInfo) {
+            log("httpRequestObserver: nsITransportSecurityInfo - shortSecurityDescription: " + nsITransportSecurityInfo.shortSecurityDescription, 1);
+        }
+    }
 
     /*jslint bitwise: true */
     if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
@@ -114,16 +127,14 @@ var httpRequestObserver = {
         }
     },
 
-    observer_service: Components.classes["@mozilla.org/observer-service;1"]
-                         .getService(Components.interfaces.nsIObserverService),
-
     register: function () {
-        this.observer_service.addObserver(this, "http-on-examine-response", false);
-        this.observer_service.addObserver(this, "http-on-examine-cached-response", false);
+        // TODO http-on-examine-merged-response
+        Services.obs.addObserver(this, "http-on-examine-response", false);
+        Services.obs.addObserver(this, "http-on-examine-cached-response", false);
     },
 
     unregister: function () {
-        this.observer_service.removeObserver(this, "http-on-examine-response");
-        this.observer_service.removeObserver(this, "http-on-examine-cached-response");
+        Services.obs.removeObserver(this, "http-on-examine-response");
+        Services.obs.removeObserver(this, "http-on-examine-cached-response");
     }
 };

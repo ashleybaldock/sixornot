@@ -1,7 +1,7 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: BSD License
  * 
- * Copyright (c) 2014 Timothy Baldock. All Rights Reserved.
+ * Copyright (c) 2014-2015 Timothy Baldock. All Rights Reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * 
@@ -28,10 +28,11 @@
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
-Components.utils.import("resource://sixornot/includes/env.jsm");
 
 // Module globals
 var EXPORTED_SYMBOLS = ["stylesheet"];
+
+const FIREFOX_ID = "{ec8030f7-c20a-464f-9b0e-13a3a9e97384}";
 
 var stylesheet = {
     sheets: {
@@ -41,14 +42,15 @@ var stylesheet = {
         customize_ffp29: Services.io.newURI("resource://sixornot/css/customize_pre29.css", null, null),
         customize_ffp29_linux: Services.io.newURI("resource://sixornot/css/customize_pre29_linux.css", null, null)
     },
+    // These are only used for legacy platforms without customizableUI
     get_customize_sheet_for_platform: function () {
-        if (env.application() === "firefox") {
-            if (env.os() === "Linux") {
+        if (Services.appinfo.ID === FIREFOX_ID) {
+            if (Services.appinfo.OS === "Linux") {
                 return stylesheet.sheets.customize_ffp29_linux;
             }
             return stylesheet.sheets.customize_ffp29;
         }
-        return stylesheet.sheets.customize;
+        return stylesheet.sheets.customize; // SeaMonkey etc.
     },
     inject_into_window: function (win, sheet) {
         log("Sixornot - injecting stylesheet: '" + sheet.prePath + sheet.path + "' into window: '" + win.name + "'", 2);

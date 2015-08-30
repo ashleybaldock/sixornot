@@ -94,7 +94,7 @@ var callbacks = {
 };
 
 var dns_service = Components.classes["@mozilla.org/network/dns-service;1"]
-                    .getService(Components.interfaces.nsIDNSService);
+                            .getService(Components.interfaces.nsIDNSService);
 
 // The DNS Handler which does most of the work of the extension
 var dns_handler = {
@@ -197,8 +197,7 @@ var dns_handler = {
     },
 
     get_local_hostname : function () {
-        return Components.classes["@mozilla.org/network/dns-service;1"]
-                .getService(Components.interfaces.nsIDNSService).myHostName;
+        return dns_service.myHostName;
     },
 
     /* Resolve local IP address(es) */
