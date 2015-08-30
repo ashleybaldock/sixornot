@@ -1,7 +1,7 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: BSD License
  * 
- * Copyright (c) 2008-2012 Timothy Baldock. All Rights Reserved.
+ * Copyright (c) 2008-2015 Timothy Baldock. All Rights Reserved.
  * 
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
  * 
@@ -49,6 +49,27 @@ var prefs = {
 
     PREF_BRANCH_SIXORNOT: Services.prefs.getBranch(PREF_SIXORNOT),
     PREF_BRANCH_DNS:      Services.prefs.getBranch(PREF_DNS),
+
+    createObserver: function (prefToObserve, callback) {
+        return {
+            observe: function (aSubject, aTopic, aData) {
+                if (aTopic.valueOf() !== "nsPref:changed") {
+                    return;
+                }
+                if (aData === prefToObserve) {
+                    callback();
+                }
+            },
+            register: function () {
+                Services.prefs.addObserver(prefToObserve, this, false);
+                return this;
+            },
+            unregister: function () {
+                Services.prefs.removeObserver(prefToObserve, this);
+                return this;
+            }
+        }
+    },
 
     get_int: function (name) {
         "use strict";

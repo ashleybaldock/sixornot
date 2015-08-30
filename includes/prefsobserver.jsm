@@ -47,14 +47,6 @@ var PREF_OBSERVER = {
             return;
         }
 
-        if (aData === "extensions.sixornot.showaddressicon") {
-            log("Sixornot - PREF_OBSERVER - addressicon has changed", 2);
-            runOnWindows(set_addressbar_icon_visibility);
-        }
-        if (aData === "extensions.sixornot.greyscaleicons") {
-            log("Sixornot - PREF_OBSERVER - greyscaleicons has changed", 2);
-            runOnWindows(set_greyscale_icons);
-        }
         if (aData === "extensions.sixornot.loglevel") {
             log("Sixornot - PREF_OBSERVER - loglevel has changed", 2);
         }

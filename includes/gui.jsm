@@ -45,23 +45,30 @@ Components.utils.import("resource://sixornot/includes/panel.jsm");
 /*jslint es5: false */
 
 // Module globals
-var EXPORTED_SYMBOLS = ["insert_code",
-                        "create_button",
-                        "set_addressbar_icon_visibility",
-                        "set_greyscale_icons"];
+var EXPORTED_SYMBOLS = [
+    "insert_code",
+    "create_button"
+];
 
 // ID constants
 var ADDRESSBAR_ICON_ID = "sixornot-addressbaricon";
 var BUTTON_ID          = "sixornot-button";
 
 
-// Create widget which handles shared logic between button/addresbar icon
+// Create widget which handles shared logic between button/addressbar icon
 var create_sixornot_widget = function (node, win) {
     var panel, current_tab_ids,
         update_icon_for_node,
         on_click, on_page_change, onTabSelect, on_tab_open,
         on_content_script_loaded, onPageshow, on_dns_complete;
 
+    var updateGreyscale = function () {
+        if (prefs.get_bool("greyscaleicons")) {
+            add_greyscale_class_to_node(node);
+        } else {
+            remove_greyscale_class_from_node(node);
+        }
+    };
 
     // TODO - split all the MM stuff out into its own object
 
@@ -149,11 +156,7 @@ var create_sixornot_widget = function (node, win) {
     node.appendChild(panel);
 
     // Update greyscale property + icon
-    if (prefs.get_bool("greyscaleicons")) {
-        add_greyscale_class_to_node(node);
-    } else {
-        remove_greyscale_class_from_node(node);
-    }
+    updateGreyscale();
 
     // Ensure tab ID is set upon loading into window
     subscribe_to_current();
@@ -165,9 +168,12 @@ var create_sixornot_widget = function (node, win) {
     win.gBrowser.tabContainer.addEventListener("TabSelect", onTabSelect, false);
     win.gBrowser.addEventListener("pageshow", onPageshow, false);
     win.gBrowser.addEventListener("pageshow", onPageshow, false);
+    var greyscaleObserver = prefs.createObserver("extensions.sixornot.greyscaleicons",
+                                                  updateGreyscale).register();
 
     unload(function () {
         log("widget unload function", 2);
+        greyscaleObserver.unregister();
         /* Clear messageManager subscriptions */
         windowMM.removeMessageListener("sixornot@baldock.me:content-script-loaded", on_content_script_loaded);
         unsubscribe();
@@ -280,6 +286,14 @@ var create_button = function () {
 var create_addressbaricon = function (win) {
     var addressbar_icon, urlbaricons, starbutton, doc;
 
+    var updateVisibility = function () {
+        if (prefs.get_bool("showaddressicon")) {
+            addressbar_icon.setAttribute("hidden", false);
+        } else {
+            addressbar_icon.setAttribute("hidden", true);
+        }
+    };
+
     /* Create address bar icon */
     doc = win.document;
     addressbar_icon = doc.createElement("box");
@@ -289,11 +303,10 @@ var create_addressbaricon = function (win) {
     addressbar_icon.setAttribute("align", "center");
     addressbar_icon.setAttribute("pack", "center");
     addressbar_icon.setAttribute("tooltiptext", gt("tt_button"));
-    if (!prefs.get_bool("showaddressicon")) {
-        addressbar_icon.setAttribute("hidden", true);
-    }
     /* Box must contain at least one child or it doesn't display */
     addressbar_icon.appendChild(doc.createElement("image"));
+
+    updateVisibility();
 
     /* Position the icon */
     urlbaricons = gbi(doc, "urlbar-icons");
@@ -308,9 +321,14 @@ var create_addressbaricon = function (win) {
     // Create Sixornot widget for this node
     create_sixornot_widget(addressbar_icon, win);
 
+    var visibilityObserver = prefs.createObserver("extensions.sixornot.showaddressicon",
+                                                  updateVisibility).register();
+
+
     /* Add unload callback to remove the icon */
     unload(function () {
         log("address bar icon unload", 2);
+        visibilityObserver.unregister();
 
         /* Remove UI */
         addressbar_icon.parentNode.removeChild(addressbar_icon);
@@ -574,27 +592,6 @@ var insert_code = function (win) {
         stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.customize);
     } else {
         legacy_insert_code(win);
-    }
-};
-
-var set_addressbar_icon_visibility = function (win) {
-    var addressbar_icon = win.document.getElementById(ADDRESSBAR_ICON_ID);
-    if (prefs.get_bool("showaddressicon")) {
-        addressbar_icon.setAttribute("hidden", false);
-    } else {
-        addressbar_icon.setAttribute("hidden", true);
-    }
-};
-
-var set_greyscale_icons = function (win) {
-    var addressbar_icon = win.document.getElementById(ADDRESSBAR_ICON_ID);
-    var button = win.document.getElementById(BUTTON_ID);
-    if (prefs.get_bool("greyscaleicons")) {
-        add_greyscale_class_to_node(addressbar_icon);
-        add_greyscale_class_to_node(button);
-    } else {
-        remove_greyscale_class_from_node(addressbar_icon);
-        remove_greyscale_class_from_node(button);
     }
 };
 

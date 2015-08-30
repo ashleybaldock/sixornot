@@ -497,27 +497,6 @@ var create_local_listing_row = function (doc, addafter) {
     };
 };
 
-var createPrefsObserver = function (prefToObserve, callback) {
-    return {
-        observe: function (aSubject, aTopic, aData) {
-            if (aTopic.valueOf() !== "nsPref:changed") {
-                return;
-            }
-            if (aData === prefToObserve) {
-                callback();
-            }
-        },
-        register: function () {
-            Services.prefs.addObserver(prefs.sixornot_prefs, this, false);
-            return this;
-        },
-        unregister: function () {
-            Services.prefs.removeObserver(prefs.sixornot_prefs, this);
-            return this;
-        }
-    }
-};
-
 var create_local_anchor = function (doc, parent_element) {
     var title = doc.createElement("label");
     title.setAttribute("value", gt("header_local"));
@@ -579,8 +558,8 @@ var create_local_anchor = function (doc, parent_element) {
 
     showhide.addEventListener("click", toggleShowingLocal, false);
     // TODO also observe showallips and update display
-    var showLocalObserver = createPrefsObserver("extensions.sixornot.showlocal", updateShowingLocal)
-                                .register();
+    var showLocalObserver = prefs.createObserver("extensions.sixornot.showlocal", updateShowingLocal)
+                                 .register();
 
     return {
         remove: function () {
