@@ -59,8 +59,8 @@ var BUTTON_ID          = "sixornot-button";
 var create_sixornot_widget = function (node, win) {
     var panel, current_tab_ids,
         update_icon_for_node,
-        on_click, on_page_change, on_tab_select, on_tab_open,
-        on_content_script_loaded, on_pageshow, on_dns_complete;
+        on_click, on_page_change, onTabSelect, on_tab_open,
+        on_content_script_loaded, onPageshow, on_dns_complete;
 
 
     // TODO - split all the MM stuff out into its own object
@@ -127,8 +127,8 @@ var create_sixornot_widget = function (node, win) {
         panel.openPopup(node, panel.getAttribute("position"), 0, 0, false, false);
     };
 
-    on_tab_select = function (evt) {
-        log("widget:on_tab_select", 1);
+    onTabSelect = function (evt) {
+        log("widget:onTabSelect", 1);
         subscribe_to(win.gBrowser.getBrowserForTab(evt.target));
         request_update();
     };
@@ -138,8 +138,8 @@ var create_sixornot_widget = function (node, win) {
         request_update();
     };
 
-    on_pageshow = function (evt) {
-        log("widget:on_pageshow", 1);
+    onPageshow = function (evt) {
+        log("widget:onPageshow", 1);
         subscribe_to_current();
         request_update();
     };
@@ -162,9 +162,9 @@ var create_sixornot_widget = function (node, win) {
     /* Add event listeners */
     node.addEventListener("click", on_click, false);
     win.gBrowser.tabContainer.addEventListener("TabOpen", on_tab_open, false);
-    win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
-    win.gBrowser.addEventListener("pageshow", on_pageshow, false);
-    win.gBrowser.addEventListener("pageshow", on_pageshow, false);
+    win.gBrowser.tabContainer.addEventListener("TabSelect", onTabSelect, false);
+    win.gBrowser.addEventListener("pageshow", onPageshow, false);
+    win.gBrowser.addEventListener("pageshow", onPageshow, false);
 
     unload(function () {
         log("widget unload function", 2);
@@ -174,8 +174,8 @@ var create_sixornot_widget = function (node, win) {
         /* Clear event handlers */
         node.removeEventListener("click", on_click, false);
         win.gBrowser.tabContainer.removeEventListener("TabOpen", on_tab_open, false);
-        win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
-        win.gBrowser.removeEventListener("pageshow", on_pageshow, false);
+        win.gBrowser.tabContainer.removeEventListener("TabSelect", onTabSelect, false);
+        win.gBrowser.removeEventListener("pageshow", onPageshow, false);
     }, win);
 };
 
@@ -323,9 +323,9 @@ var create_panel = function (win, panel_id) {
     panel_vbox, grid, grid_rows, grid_cols,
     remote_anchor, local_anchor,
     force_scrollbars,
-    on_click, on_popupshowing, on_popuphiding, on_page_change,
-    on_new_host, on_address_change, on_pageshow,
-    on_count_change, on_dns_complete, on_tab_select;
+    on_click, onPopupShowing, onPopupHiding, on_page_change,
+    on_new_host, on_address_change, onPageshow,
+    on_count_change, on_dns_complete, onTabSelect;
 
     doc = win.document;
 
@@ -364,50 +364,52 @@ var create_panel = function (win, panel_id) {
 
     /* Event handlers */
     unregister_callbacks = function () {
-        win.gBrowser.tabContainer.removeEventListener("TabSelect", on_tab_select, false);
+        win.gBrowser.tabContainer.removeEventListener("TabSelect", onTabSelect, false);
         // TODO do we still need pageshow?
-        win.gBrowser.removeEventListener("pageshow", on_pageshow, false);
+        win.gBrowser.removeEventListener("pageshow", onPageshow, false);
     };
     register_callbacks = function () {
-        win.gBrowser.tabContainer.addEventListener("TabSelect", on_tab_select, false);
-        win.gBrowser.addEventListener("pageshow", on_pageshow, false);
+        win.gBrowser.tabContainer.addEventListener("TabSelect", onTabSelect, false);
+        win.gBrowser.addEventListener("pageshow", onPageshow, false);
     };
 
-    on_popupshowing = function (evt) {
-        log("panel:on_popupshowing", 2);
+    onPopupShowing = function (evt) {
+        log("panel:onPopupShowing", 2);
         register_callbacks();
         subscribe_to_current();
         request_update();
-        local_anchor.update_local_address_display();
+        local_anchor.panelShowing();
     };
 
-    on_popuphiding = function (evt) {
-        log("panel:on_popuphiding", 2);
+    onPopupHiding = function (evt) {
+        log("panel:onPopupHiding", 2);
         unregister_callbacks();
         // TODO unsubscribe from current
+        local_anchor.panelHiding();
     };
 
-    on_tab_select = function (evt) {
-        log("panel:on_tab_select", 1);
+    onTabSelect = function (evt) {
+        log("panel:onTabSelect", 1);
         subscribe_to_current();
         request_update();
     };
 
-    on_pageshow = function (evt) {
-        log("panel:on_pageshow", 1);
+    onPageshow = function (evt) {
+        log("panel:onPageshow", 1);
         subscribe_to_current();
         request_update();
     };
 
-    /* Actions are defined by custom properties applied to the event target element
-       One or more of these can be triggered */
-    on_click = function (evt) {
-        log("panel:on_click", 1);
-        if (evt.target.sixornot_showhide_local) {
-            log("panel:on_click - showhide_local", 2);
-            local_anchor.toggle_local_address_display();
-            evt.stopPropagation();
-        }
+    var onClickSettingsLink = function (evt) {
+        panel.hidePopup();
+        open_preferences();
+        evt.stopPropagation();
+    };
+
+    var onClickDocLink = function (evt) {
+        panel.hidePopup();
+        open_hyperlink(gt("sixornot_weblink"));
+        evt.stopPropagation();
     };
 
     /* Panel UI */
@@ -445,69 +447,59 @@ var create_panel = function (win, panel_id) {
 
     /* Links at bottom of panel */
     var settingsLink, docLink, spacer, urlhbox,
-        make_spacer;
+        makeSpacer;
 
     /* Settings */
-    var onClickSettingsLink = function (evt) {
-        panel.hidePopup();
-        open_preferences();
-        evt.stopPropagation();
-    };
     settingsLink = doc.createElement("label");
     settingsLink.setAttribute("value", gt("header_settings"));
     settingsLink.setAttribute("tooltiptext", gt("tt_open_settings"));
     settingsLink.classList.add("sixornot-link");
     settingsLink.classList.add("sixornot-title");
-    settingsLink.addEventListener("click", onClickSettingsLink, false);
 
     /* Documentation link */
-    var onClickDocLink = function (evt) {
-        panel.hidePopup();
-        open_hyperlink(gt("sixornot_weblink"));
-        evt.stopPropagation();
-    };
     docLink = doc.createElement("label");
     docLink.setAttribute("value", gt("sixornot_documentation"));
     docLink.classList.add("sixornot-link");
     docLink.classList.add("sixornot-title");
     docLink.setAttribute("tooltiptext", gt("tt_gotowebsite"));
-    docLink.addEventListener("click", onClickDocLink, false);
 
     spacer = doc.createElement("label");
     spacer.setAttribute("value", " - ");
     spacer.classList.add("sixornot-title");
 
-    make_spacer = function () {
+    makeSpacer = function () {
         var spacer = doc.createElement("spacer");
         spacer.setAttribute("flex", "1");
         return spacer;
     };
 
+    /* Add everything to parent node */
     urlhbox = doc.createElement("hbox");
-    urlhbox.appendChild(make_spacer());
+    urlhbox.appendChild(makeSpacer());
     urlhbox.appendChild(settingsLink);
     urlhbox.appendChild(spacer);
     urlhbox.appendChild(docLink);
-    urlhbox.appendChild(make_spacer());
+    urlhbox.appendChild(makeSpacer());
     urlhbox.setAttribute("align", "center");
     urlhbox.style.marginTop = "3px";
     grid_rows.appendChild(urlhbox);
 
-    panel.addEventListener("click", on_click, false);
-    panel.addEventListener("popupshowing", on_popupshowing, false);
-    panel.addEventListener("popuphiding", on_popuphiding, false);
+    /* Subscribe to events */
+    settingsLink.addEventListener("click", onClickSettingsLink, false);
+    docLink.addEventListener("click", onClickDocLink, false);
+    panel.addEventListener("popupshowing", onPopupShowing, false);
+    panel.addEventListener("popuphiding", onPopupHiding, false);
 
     unload(function () {
         log("Unload panel", 2);
         unsubscribe();
         unregister_callbacks();
-        panel.removeEventListener("popupshowing", on_popupshowing, false);
-        panel.removeEventListener("popuphiding", on_popuphiding, false);
+        panel.removeEventListener("popupshowing", onPopupShowing, false);
+        panel.removeEventListener("popuphiding", onPopupHiding, false);
         remote_anchor.remove(); // Removes child event listeners
         local_anchor.remove(); // Removes child event listeners
         settingsLink.removeEventListener("click", onClickSettingsLink, false);
         docLink.removeEventListener("click", onClickDocLink, false);
-        panel.removeEventListener("click", on_click, false);
 
         // Remove UI
         if (panel.parentNode) {

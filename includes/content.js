@@ -132,18 +132,10 @@ addEventListener("DOMWindowCreated", function (event) {
 
 var windowObserver = {
     observe: function (subject, topic, data) {
-        // TODO test this still cleans up properly
-        var inner = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
-        log("inner-window-destroyed, id: " + inner, 0);
+        var innerId = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
+        log("inner-window-destroyed, id: " + innerId, 2);
 
-        // Remove elements for this window and ensure DNS lookups are all cancelled
-        if (requests.get(inner)) {
-            printCaches("innerWindowDestroyed before");
-
-            requests.remove(inner);
-
-            printCaches("innerWindowDestroyed after");
-        }
+        requests.remove(innerId);
     },
 
     observerService: Components.classes["@mozilla.org/observer-service;1"]

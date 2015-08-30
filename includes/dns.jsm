@@ -740,7 +740,7 @@ var create_local_address_info = function () {
             dns_status     : "pending"
         };
     };
-    on_returned_ips = function (ips, callback) {
+    on_returned_ips = function (ips, callback, thisArg) {
         var local_host_info = new_local_host_info();
         log("panel:local_address_info:on_returned_ips - ips: " + ips, 1);
         dns_cancel = null;
@@ -766,13 +766,13 @@ var create_local_address_info = function () {
             local_host_info.dns_status = "complete";
         }
 
-        callback(local_host_info);
+        callback.call(thisArg, local_host_info);
     };
     return {
-        get_local_host_info: function (callback) {
+        get_local_host_info: function (callback, thisArg) {
             this.cancel();
             dns_cancel = dns_handler.resolve_local_async(function (ips) {
-                on_returned_ips(ips, callback);
+                on_returned_ips(ips, callback, thisArg);
             });
         },
         cancel: function () {

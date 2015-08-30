@@ -297,45 +297,6 @@ var create_hostname = function (doc, addto) {
     };
 };
 
-var create_local_listing_row = function (doc, addafter, host_info) {
-    var row = doc.createElement("row");
-    row.setAttribute("align", "start");
-    var update_row_visibility = function () {
-        if (prefs.get_bool("showlocal")) {
-            row.classList.remove("sixornot-invisible");
-        } else {
-            row.classList.add("sixornot-invisible");
-        }
-    };
-    update_row_visibility();
-    /* Add this element after the last one */
-    addafter.add_after(row);
-    row.appendChild(doc.createElement("label"));
-    row.appendChild(doc.createElement("label"));
-
-    return {
-        host_info: host_info,
-        hostname: create_hostname(doc, row, host_info),
-        ips: create_ips(doc, row, host_info),
-        remove: function () {
-            this.hostname.remove();
-            this.ips.remove();
-            row.parentNode.removeChild(row);
-        },
-        /* Adds the contents of this object after the specified element */
-        add_after: function (element) {
-            if (this.row.nextSibling) {
-                this.row.parentNode.insertBefore(element, this.row.nextSibling);
-            } else {
-                this.row.parentNode.appendChild(element);
-            }
-        },
-        update_visibility: function () {
-            update_row_visibility();
-        }
-    };
-};
-
 /* Object representing one host entry in the panel
    Takes a reference to a member of the request cache as argument
    and links to that member to reflect its state
@@ -450,48 +411,192 @@ var create_remote_anchor = function (doc, parent_element) {
     };
 };
 
+var create_local_listing_row = function (doc, addafter) {
+    var row = doc.createElement("row");
+    row.setAttribute("align", "start");
+    var update_row_visibility = function () {
+        if (prefs.get_bool("showlocal")) {
+            row.classList.remove("sixornot-invisible");
+        } else {
+            row.classList.add("sixornot-invisible");
+        }
+    };
+    update_row_visibility();
+
+    /* Add this element after the last one */
+    addafter.add_after(row);
+
+    // Two spacers since local rows have neither icon nor count
+    row.appendChild(doc.createElement("label"));
+    row.appendChild(doc.createElement("label"));
+
+    var hostname = create_hostname(doc, row);
+
+    var address_box = doc.createElement("vbox");
+    row.appendChild(address_box);
+
+    var entries = [];
+
+    return {
+        remove: function () {
+            hostname.remove();
+            entries.forEach(function (item) {
+                item.remove();
+            });
+            entries = [];
+            row.parentNode.removeChild(row);
+        },
+        update: function (host) {
+            var entriesIndex = 0;
+            hostname.update(host);
+            if (prefs.get_bool("showlocal")) {
+                host.ipv6s.sort(function (a, b) {
+                    return dns_handler.sort_ip6.call(dns_handler, a, b);
+                });
+                host.ipv6s.forEach(function (address, index, addresses) {
+                    if (entries.length < entriesIndex + 1) {
+                        entries.push(
+                            create_ip_entry(doc, address_box)
+                                .update(address, 6));
+                    } else {
+                        entries[entriesIndex].update(address, 6).show();
+                    }
+                    entriesIndex++;
+                });
+                host.ipv4s.sort(function (a, b) {
+                    return dns_handler.sort_ip4.call(dns_handler, a, b);
+                });
+                host.ipv4s.forEach(function (address, index, addresses) {
+                    if (entries.length < entriesIndex + 1) {
+                        entries.push(
+                            create_ip_entry(doc, address_box)
+                                .update(address, 4));
+                    } else {
+                        entries[entriesIndex].update(address, 4).show();
+                    }
+                    entriesIndex++;
+                });
+            }
+            // Hide additional entries
+            entries.forEach(function (item, index, items) {
+                if (index < entriesIndex) return;
+                item.hide();
+            });
+        },
+        /* Adds the contents of this object after the specified element */
+        add_after: function (element) {
+            if (this.row.nextSibling) {
+                this.row.parentNode.insertBefore(element, this.row.nextSibling);
+            } else {
+                this.row.parentNode.appendChild(element);
+            }
+        },
+        update_visibility: function () {
+            update_row_visibility();
+        }
+    };
+};
+
+var createPrefsObserver = function (prefToObserve, callback) {
+    return {
+        observe: function (aSubject, aTopic, aData) {
+            if (aTopic.valueOf() !== "nsPref:changed") {
+                return;
+            }
+            if (aData === prefToObserve) {
+                callback();
+            }
+        },
+        register: function () {
+            Services.prefs.addObserver(prefs.sixornot_prefs, this, false);
+            return this;
+        },
+        unregister: function () {
+            Services.prefs.removeObserver(prefs.sixornot_prefs, this);
+            return this;
+        }
+    }
+};
+
 var create_local_anchor = function (doc, parent_element) {
-    // Add "Local" title (TODO - replace with element with "hide" method)
-    var title_local = doc.createElement("label");
-    title_local.setAttribute("value", gt("header_local"));
-    title_local.classList.add("sixornot-title");
-    var make_spacer = function () {
+    var title = doc.createElement("label");
+    title.setAttribute("value", gt("header_local"));
+    title.classList.add("sixornot-title");
+
+    var updateShowingLocal = function () {
+        setShowhideText();
+        entries.forEach(function (item) {
+            item.update_visibility();
+        });
+    };
+
+    var toggleShowingLocal = function (evt) {
+        prefs.set_bool("showlocal", !prefs.get_bool("showlocal"));
+        evt.stopPropagation();
+    };
+
+    var makeSpacer = function () {
         var spacer = doc.createElement("spacer");
         spacer.setAttribute("flex", "1");
         return spacer;
     };
-    var showhide_local = doc.createElement("label");
-    showhide_local.classList.add("sixornot-title");
-    showhide_local.classList.add("sixornot-link");
-    showhide_local.sixornot_showhide_local = true;
-    var showhide_spacer = doc.createElement("label");
-    showhide_spacer.classList.add("sixornot-title");
-    showhide_spacer.classList.add("sixornot-hidden");
-    var set_showhide_text = function () {
+
+    var showhide = doc.createElement("label");
+    showhide.classList.add("sixornot-title");
+    showhide.classList.add("sixornot-link");
+
+    var showhideSpacer = doc.createElement("label");
+    showhideSpacer.classList.add("sixornot-title");
+    showhideSpacer.classList.add("sixornot-hidden");
+
+    var setShowhideText = function () {
         if (prefs.get_bool("showlocal")) {
-            showhide_local.setAttribute("value", "[" + gt("hide_text") + "]");
-            showhide_local.setAttribute("tooltiptext", gt("tt_hide_local"));
-            showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
+            showhide.setAttribute("value", "[" + gt("hide_text") + "]");
+            showhide.setAttribute("tooltiptext", gt("tt_hide_local"));
+            showhideSpacer.setAttribute("value", "[" + gt("hide_text") + "]");
         } else {
-            showhide_local.setAttribute("value", "[" + gt("show_text") + "]");
-            showhide_local.setAttribute("tooltiptext", gt("tt_show_local"));
-            showhide_spacer.setAttribute("value", "[" + gt("hide_text") + "]");
+            showhide.setAttribute("value", "[" + gt("show_text") + "]");
+            showhide.setAttribute("tooltiptext", gt("tt_show_local"));
+            showhideSpacer.setAttribute("value", "[" + gt("hide_text") + "]");
         }
     };
-    set_showhide_text();
+
+    setShowhideText();
+
     var hbox = doc.createElement("hbox");
-    hbox.appendChild(showhide_spacer);
-    hbox.appendChild(make_spacer());
-    hbox.appendChild(title_local);
-    hbox.appendChild(make_spacer());
-    hbox.appendChild(showhide_local);
+    hbox.appendChild(showhideSpacer);
+    hbox.appendChild(makeSpacer());
+    hbox.appendChild(title);
+    hbox.appendChild(makeSpacer());
+    hbox.appendChild(showhide);
     hbox.setAttribute("align", "center");
     hbox.style.marginTop = "3px";
     parent_element.appendChild(hbox);
 
-    var local_address_info = create_local_address_info();
+    var localAddressInfo = create_local_address_info();
+
+    var entries = [];
+
+    showhide.addEventListener("click", toggleShowingLocal, false);
+    // TODO also observe showallips and update display
+    var showLocalObserver = createPrefsObserver("extensions.sixornot.showlocal", updateShowingLocal)
+                                .register();
+
     return {
-        entries: [],
+        remove: function () {
+            this.remove_all_entries();
+            showLocalObserver.unregister();
+            showhide.removeEventListener("click", toggleShowingLocal, false);
+        },
+        update: function (host) {
+            if (entries.length <= 0) {
+                // For now entries only ever contains one thing
+                entries.push(create_local_listing_row(doc, this));
+            }
+            entries.forEach(function (item) {
+                item.update(host);
+            });
+        },
         add_after: function (element) {
             if (hbox.nextSibling) {
                 parent_element.insertBefore(element, hbox.nextSibling);
@@ -499,42 +604,17 @@ var create_local_anchor = function (doc, parent_element) {
                 parent_element.appendChild(element);
             }
         },
-        remove: function () {
-            this.remove_all_entries();
-        },
         remove_all_entries: function () {
-            log("panel:local_anchor:remove_all_entries", 2);
-            this.entries.forEach(function (item) {
+            entries.forEach(function (item) {
                 item.remove();
             });
-            this.entries = [];
+            entries = [];
         },
-        generate_entry_for_host: function (host_info) {
-            log("panel:local_anchor:generate_entry_for_host", 2);
-            this.entries.push(create_local_listing_row(doc, this, host_info));
+        panelHiding : function () {
+            localAddressInfo.cancel();
         },
-        toggle_local_address_display: function () {
-            // Toggle preference setting
-            prefs.set_bool("showlocal", !prefs.get_bool("showlocal"));
-            this.update_local_address_display();
-        },
-        update_local_address_display: function () {
-            // Update display to match preference setting
-            set_showhide_text();
-            this.entries.forEach(function (item) {
-                item.update_visibility();
-            });
-            var that = this;
-            if (prefs.get_bool("showlocal")) {
-                local_address_info.get_local_host_info(function (host_info) {
-                    that.remove_all_entries();
-                    that.generate_entry_for_host(host_info);
-                });
-            }
-        },
-        on_panel_hiding : function () {
-            // Cancel local address lookup
-            local_address_info.cancel();
+        panelShowing : function () {
+            localAddressInfo.get_local_host_info(this.update, this);
         }
     };
 };
