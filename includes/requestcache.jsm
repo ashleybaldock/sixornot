@@ -37,9 +37,6 @@ var EXPORTED_SYMBOLS = [
 ];
 
 
-// Make methods in this object for updating its state
-// Adding/removing/lookup of entries (hide internal implementation)
-
 /* Prepare and return a new blank entry for the hosts listing */
 var create_new_entry = function (host, address, address_family, inner) {
     return {
@@ -59,7 +56,6 @@ var create_new_entry = function (host, address, address_family, inner) {
                 this.dns_status = "complete";
                 return;
             }
-            /* Create closure containing reference to element and trigger async lookup with callback */
             entry = this;
             on_returned_ips = function (ips) {
                 entry.dns_cancel = null;
@@ -72,8 +68,7 @@ var create_new_entry = function (host, address, address_family, inner) {
                     entry.ipv4s = ips.filter(dns_handler.is_ip4);
                     entry.dns_status = "complete";
                 }
-                // Also trigger page change event here to refresh display of IP tooltip
-                callback(entry);
+                callback();
             };
             if (entry.dns_cancel) {
                 entry.dns_cancel.cancel();
@@ -143,6 +138,14 @@ var get_request_cache = function () {
         },
         remove: function (id) {
             // Remove cache entry for id
+            if (this.cache.hasOwnProperty(id)) {
+                this.get(id).entries.forEach(function (item, index, items) {
+                    if (item.dns_cancel) {
+                        item.dns_cancel.cancel();
+                    }
+                });
+                delete this.cache[id];
+            }
         },
 
         waitinglist: [],

@@ -24,109 +24,85 @@ var content_script_id = Math.floor((Math.random() * 100000) + 1);
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-
 var _log = log;
-
 log = function (message, severity) {
     _log("SCS: " + content_script_id + ": " + message, severity);
 };
+var printCaches = function (text) {
+    log(text + " - caches: ", 0);
+    log("--" + requests.print_waitinglist(), 0);
+    log("--" + requests.print_cache(), 0);
+};
 
 Components.utils.import("resource://sixornot/includes/dns.jsm");
-
-// Init dns_handler
 dns_handler.init(); // TODO uninit on unload (or pass requests out to chrome process)
 
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 
+/* State */
 var requests = get_request_cache();
+var currentWindowId = 0;
 
 log("content script loaded", 1);
 sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: content_script_id});
 
-
-var currentInnerId = 0;
-
-var update_ui = function (data) {
-    //log("updating_ui: data: " + JSON.stringify(data));
-    sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(data));
-};
-
-/* UI update type events (for panel)
- * Event type one of:
- *  sixornot-dns-lookup-event
- *  sixornot-count-change-event
- *  sixornot-address-change-event
- *  sixornot-new-host-event
- *  sixornot-page-change-event */
-
+/* Message listeners */
 addMessageListener("sixornot@baldock.me:http-initial-load", function (message) {
     log("got http-initial-load, host: '" + message.data.host + "', address: '" + message.data.address + "', address_family: " + message.data.addressFamily);
 
     // Items placed onto waiting list will be moved by DOMWindowCreated handler
+    printCaches("http-initial-load before");
     requests.addOrUpdateToWaitingList(message.data);
+    printCaches("http-initial-load after");
 
-    log("http-initial-load - caches: ", 1);
-    log(requests.print_waitinglist(), 1);
-    log(requests.print_cache(), 1);
-
-    update_ui(requests.get(currentInnerId));
+    updateUI(requests.get(currentWindowId));
 });
 
 addMessageListener("sixornot@baldock.me:http-load", function (message) {
     log("got http-load, host: " + message.data.host + ", address: " + message.data.address + ", address_family: " + message.data.addressFamily);
 
-    requests.addOrUpdate(message.data, currentInnerId, on_dns_complete);
+    printCaches("http-load before");
+    requests.addOrUpdate(message.data, currentWindowId, dnsComplete);
+    printCaches("http-load after");
 
-    log("http-load - caches: ", 1);
-    log(requests.print_waitinglist(), 1);
-    log(requests.print_cache(), 1);
-
-    update_ui(requests.get(currentInnerId));
+    updateUI(requests.get(currentWindowId));
 });
 
 addMessageListener("sixornot@baldock.me:update-ui", function (message) {
-    update_ui(requests.get(currentInnerId));
+    updateUI(requests.get(currentWindowId));
 });
 
-
-var on_page_change = function (data) {
-    // TODO - wire up this event to observer
-    log("on_page_change: data: " + JSON.stringify(data), 1);
-    //update_ui(data);
-    update_ui(requests.get(currentInnerId));
+/* Message senders */
+var updateUI = function (data) {
+    //log("updating_ui: data: " + JSON.stringify(data));
+    sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(data));
 };
 
-var on_dns_complete = function (data) {
-    // TODO - wire up this event to observer
-    log("on_dns_complete: data: " + JSON.stringify(data), 1);
-    //update_ui(data);
-    update_ui(requests.get(currentInnerId));
+var pageChange = function () {
+    updateUI(requests.get(currentWindowId));
 };
 
+var dnsComplete = function () {
+    updateUI(requests.get(currentWindowId));
+};
 
-// TODO test this with sub-windows
+/* Event listeners and observers */
 addEventListener("DOMWindowCreated", function (event) {
     var newEntry;
     var win = event.originalTarget.defaultView;
-    var topWin = win.top;
     var utils = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
+    var inner = utils.currentInnerWindowID;
+    var topWin = win.top;
     var topUtils = topWin.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                          .getInterface(Components.interfaces.nsIDOMWindowUtils);
-
-    var inner = utils.currentInnerWindowID;
-    var outer = utils.outerWindowID;
-
     var topInner = topUtils.currentInnerWindowID;
-    var topOuter = topUtils.outerWindowID;
 
     var protocol = event.originalTarget.defaultView.location.protocol;
     var hostname = event.originalTarget.defaultView.location.hostname;
     var loc = event.originalTarget.defaultView.location.href;
 
-    log("DOMWindowCreated, inner: " + inner + ", outer: " + outer + " topInner: " + topInner + ", topOuter: " + topOuter + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + event.originalTarget.defaultView.location + "'", 0);
-
-    if (requests.get(inner)) { return; } // Ignore duplicate events
+    log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + event.originalTarget.defaultView.location + "'", 0);
 
     if (protocol === "file:") {
         newEntry = {host: "Local File", address: "", addressFamily: 1}
@@ -136,9 +112,10 @@ addEventListener("DOMWindowCreated", function (event) {
         newEntry = {host: hostname, address: "", addressFamily: 0};
     }
 
-    // TODO All subsequent http-load events for this browser should now be
-    // associated with this inner ID
-    currentInnerId = topInner;
+    printCaches("DOMWindowCreated before");
+
+    // All http-load events for this browser should now be associated with this inner ID
+    currentWindowId = topInner;
 
     if (newEntry) { // Ignore empty windows
         // TODO only pick up waiting list entries if they match the domain
@@ -146,84 +123,41 @@ addEventListener("DOMWindowCreated", function (event) {
         requests.addOrUpdateToWaitingList(newEntry);
     }
 
-    requests.createOrExtendCacheEntry(newEntry.host, currentInnerId, on_dns_complete);
+    requests.createOrExtendCacheEntry(newEntry ? newEntry.host : "", currentWindowId, dnsComplete);
 
-    log("DOMWindowCreated - caches: ", 1);
-    log(requests.print_waitinglist(), 1);
-    log(requests.print_cache(), 1);
+    printCaches("DOMWindowCreated after");
 
-    on_page_change(requests.get(currentInnerId));
+    pageChange();
 });
 
-/*var on_content_document_global_created = function(subject, topic) {
-    var subjectUtils, subjectInner, subjectOuter,
-        topWindow, topWindowUtils, topWindowInner, topWindowOuter;
-    // This signals that the document has been created, initial load completed
-    // This is where entries on the requests waiting list get moved to the request cache
-    subjectUtils = subject.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                        .getInterface(Components.interfaces.nsIDOMWindowUtils);
-    subjectInner = subjectUtils.currentInnerWindowID;
-    subjectOuter = subjectUtils.outerWindowID;
-    topWindow = subject.top;
-    topWindowUtils = topWindow.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                        .getInterface(Components.interfaces.nsIDOMWindowUtils);
-    topWindowInner = topWindowUtils.currentInnerWindowID;
-    topWindowOuter = topWindowUtils.outerWindowID;
-
-    if (requests.cache[topWindowInner]) { return; } // Ignore duplicate events
-    // The waiting list contains http-on-examine-response messages which aren't
-    // yet associated with an inner window ID, these are stored associated with
-    // their top outer window ID
-
-    // This is a create event for the top window (new page)
-    if (subjectOuter === topWindowOuter) {
-        log("on_content_document_global_created: subjectOuter === topWindowOuter", 1);
-
-    } else {
-        log("on_content_document_global_created: subjectOuter !== topWindowOuter", 1);
-    }
-};*/
-
-// TODO test this still cleans up properly
-var on_inner_window_destroyed = function(subject) {
-    var inner = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
-
-    // Remove elements for this window and ensure DNS lookups are all cancelled
-    if (requests.get(inner)) {
-        requests.get(inner).entries.forEach(function (item, index, items) {
-            if (item.dns_cancel) {
-                item.dns_cancel.cancel();
-            }
-        });
-
-        requests.remove(inner);
-    }
-};
-
-var WINDOW_OBSERVER = {
+var windowObserver = {
     observe: function (subject, topic, data) {
-        /*if (topic === "content-document-global-created") {
-            on_content_document_global_created(subject, topic);
-        } else*/
-        if (topic === "inner-window-destroyed") {
-            on_inner_window_destroyed(subject);
+        // TODO test this still cleans up properly
+        var inner = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
+        log("inner-window-destroyed, id: " + inner, 0);
+
+        // Remove elements for this window and ensure DNS lookups are all cancelled
+        if (requests.get(inner)) {
+            printCaches("innerWindowDestroyed before");
+
+            requests.remove(inner);
+
+            printCaches("innerWindowDestroyed after");
         }
     },
 
-    observer_service: Components.classes["@mozilla.org/observer-service;1"]
+    observerService: Components.classes["@mozilla.org/observer-service;1"]
                          .getService(Components.interfaces.nsIObserverService),
 
     register: function () {
-        //this.observer_service.addObserver(this, "content-document-global-created", false);
-        this.observer_service.addObserver(this, "inner-window-destroyed", false);
+        this.observerService.addObserver(this, "inner-window-destroyed", false);
     },
 
     unregister: function () {
-        //this.observer_service.removeObserver(this, "content-document-global-created");
-        this.observer_service.removeObserver(this, "inner-window-destroyed");
+        this.observerService.removeObserver(this, "inner-window-destroyed");
     }
 };
 
-WINDOW_OBSERVER.register();
+windowObserver.register();
 
 // TODO - unregister everything on unload
