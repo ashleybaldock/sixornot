@@ -85,14 +85,15 @@ var on_examine_response = function(subject, topic) {
 
     // Extract security information
     if (http_channel.securityInfo) {
+        // https://dxr.mozilla.org/comm-central/source/mozilla/security/manager/ssl/nsISSLStatus.idl
         var sslStatusProvider = http_channel.securityInfo.QueryInterface(Components.interfaces.nsISSLStatusProvider);
         if (sslStatusProvider && sslStatusProvider.SSLStatus) {
             var sslStatus = sslStatusProvider.SSLStatus.QueryInterface(Components.interfaces.nsISSLStatus);
-            log("httpRequestObserver: sslStatus - cipherName: " + sslStatus.cipherName + ", keyLength: " + sslStatus.keyLength, 1);
+            log("httpRequestObserver: sslStatus - cipherName: " + sslStatus.cipherName + ", keyLength: " + sslStatus.keyLength + ", isExtendedValidation: " + sslStatus.isExtendedValidation, 1);
         }
         var nsITransportSecurityInfo = http_channel.securityInfo.QueryInterface(Components.interfaces.nsITransportSecurityInfo);
         if (nsITransportSecurityInfo) {
-            log("httpRequestObserver: nsITransportSecurityInfo - shortSecurityDescription: " + nsITransportSecurityInfo.shortSecurityDescription, 1);
+            log("httpRequestObserver: nsITransportSecurityInfo - shortSecurityDescription: '" + nsITransportSecurityInfo.shortSecurityDescription + "', errorMessage: '" + nsITransportSecurityInfo.errorMessage + "', securityState: " + nsITransportSecurityInfo.securityState, 1);
         }
     }
 

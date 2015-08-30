@@ -224,6 +224,25 @@ var createIcon = function (doc, addto) {
     };
 };
 
+var createSSLInfo = function (doc, addto) {
+    var sslinfo, update;
+
+    sslinfo = doc.createElement("image");
+    sslinfo.setAttribute("width", "16");
+    sslinfo.setAttribute("height", "16");
+    addto.appendChild(sslinfo);
+
+    sslinfo.classList.add("sixornot_ssl");
+
+    return {
+        update: function (host) {
+        },
+        remove: function () {
+            addto.removeChild(sslinfo);
+        }
+    };
+};
+
 var createCount = function (doc, addto) {
     var count = doc.createElement("label");
     count.setAttribute("tooltiptext", gt("tt_copycount"));
@@ -303,12 +322,13 @@ var createHostname = function (doc, addto) {
    Also takes a reference to the element to add this element after
    e.g. header or the preceeding list item */
 var createRemoteListingRow = function (doc, addafter, host, mainhost) {
-    var row, icon, count, hostname, ips, showhide, update;
+    var row, icon, sslinfo, count, hostname, ips, showhide, update;
 
     row = doc.createElement("row");
     row.setAttribute("align", "start");
     icon = createIcon(doc, row);
     count = createCount(doc, row);
+    sslinfo = createSSLInfo(doc, row);
     hostname = createHostname(doc, row);
     ips = createIPs(doc, row);
 
@@ -426,7 +446,8 @@ var createLocalListingRow = function (doc, addafter) {
     /* Add this element after the last one */
     addafter.add_after(row);
 
-    // Two spacers since local rows have neither icon nor count
+    // Three spacers since local rows don't have icon, sslinfo or count
+    row.appendChild(doc.createElement("label"));
     row.appendChild(doc.createElement("label"));
     row.appendChild(doc.createElement("label"));
 

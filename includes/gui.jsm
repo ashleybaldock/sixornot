@@ -149,7 +149,7 @@ var create_sixornot_widget = function (node, win) {
     };
 
     /* Create a panel to show details when clicked */
-    panel = create_panel(win, node.id + "-panel");
+    panel = createPanel(win, node.id + "-panel");
     node.appendChild(panel);
 
     // Update greyscale property + icon
@@ -333,7 +333,7 @@ var create_addressbaricon = function (win) {
 };
 
 /* Creates and sets up a panel to display information which can then be bound to an icon */
-var create_panel = function (win, panel_id) {
+var createPanel = function (win, panel_id) {
     var doc, panel, register_callbacks, unregister_callbacks,
     panel_vbox, grid, grid_rows, grid_cols,
     remote_anchor, local_anchor,
@@ -446,7 +446,7 @@ var create_panel = function (win, panel_id) {
     grid = doc.createElement("grid");
     grid_rows = doc.createElement("rows");
     grid_cols = doc.createElement("columns");
-    // 5 columns wide - icon, count, host, address, show/hide
+    // 6 columns wide - icon, sslinfo, count, host, address, show/hide
     grid_cols.appendChild(doc.createElement("column"));
     grid_cols.appendChild(doc.createElement("column"));
     grid_cols.appendChild(doc.createElement("column"));
