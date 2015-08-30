@@ -228,7 +228,6 @@ var createSSLInfo = function (doc, addto) {
     var sslinfo, update;
 
     sslinfo = doc.createElement("image");
-    sslinfo.setAttribute("width", "16");
     sslinfo.setAttribute("height", "16");
     addto.appendChild(sslinfo);
 
@@ -238,16 +237,19 @@ var createSSLInfo = function (doc, addto) {
                 if (!sslinfo.classList.contains("sixornot_ssl_ev")) {
                     remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl_ev");
+                    sslinfo.setAttribute("width", "16");
                 }
             } else if (host.security.cipherName) {
                 if (!sslinfo.classList.contains("sixornot_ssl")) {
                     remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl");
+                    sslinfo.setAttribute("width", "16");
                 }
             } else {
                 if (!sslinfo.classList.contains("sixornot_ssl_off")) {
                     remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl_off");
+                    sslinfo.setAttribute("width", "0");
                 }
             }
         },
@@ -466,7 +468,10 @@ var createLocalListingRow = function (doc, addafter) {
     // Three spacers since local rows don't have icon, sslinfo or count
     row.appendChild(doc.createElement("label"));
     row.appendChild(doc.createElement("label"));
-    row.appendChild(doc.createElement("label"));
+    var spacer = doc.createElement("image");
+    spacer.setAttribute("width", "0");
+    spacer.classList.add("sixornot_ssl_off");
+    row.appendChild(spacer);
 
     var hostname = createHostname(doc, row);
 
