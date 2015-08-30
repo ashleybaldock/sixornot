@@ -31,6 +31,8 @@ var EXPORTED_SYMBOLS = ["prefs"];
 
 var PREF_SIXORNOT = "extensions.sixornot.";
 var PREF_DNS= "network.dns.";
+// disableIPv6, ipv4OnlyDomains
+// network.http.fast-fallback-to-IPv4
 
 var prefs = {
     defaults: {

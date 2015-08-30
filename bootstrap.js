@@ -100,7 +100,6 @@ startup = function (aData, aReason) {
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
     Components.utils.import("resource://sixornot/includes/requestcache.jsm");
     Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
-    Components.utils.import("resource://sixornot/includes/prefsobserver.jsm");
     Components.utils.import("resource://sixornot/includes/gui.jsm");
     Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
     /*jslint es5: false */
@@ -134,8 +133,6 @@ startup = function (aData, aReason) {
         }
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
-        PREF_OBSERVER.register();
-        //PREF_OBSERVER_DNS.register();
         HTTP_REQUEST_OBSERVER.register();
     });
 };
@@ -159,7 +156,6 @@ shutdown = function (aData, aReason) {
         Components.utils.unload("resource://sixornot/includes/env.jsm");
         Components.utils.unload("resource://sixornot/includes/stylesheet.jsm");
         Components.utils.unload("resource://sixornot/includes/gui.jsm");
-        Components.utils.unload("resource://sixornot/includes/prefsobserver.jsm");
         Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");
         Components.utils.unload("resource://sixornot/includes/requestcache.jsm");
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");

@@ -90,13 +90,12 @@ var create_sixornot_widget = function (node, win) {
     /* TabOpen event gets fired with a blank <browser>, and the page gets loaded into
      * a different one. Detect initialisation of content script loaded into <browser>s
      * and ensure we are pointed at the correct one to update the UI */
-    windowMM.addMessageListener("sixornot@baldock.me:content-script-loaded", on_content_script_loaded); // TODO unsubscribe on unload
+    windowMM.addMessageListener("sixornot@baldock.me:content-script-loaded", on_content_script_loaded);
 
     var subscribe_to_current = function () {
         subscribe_to(win.gBrowser.mCurrentBrowser);// TODO use selectedBrowser?
     };
 
-    // TODO unsubscribe on unload
     var unsubscribe = function () {
         if (currentBrowserMM) {
             currentBrowserMM.removeMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
