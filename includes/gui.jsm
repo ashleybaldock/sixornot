@@ -75,7 +75,7 @@ var create_sixornot_widget = function (node, win) {
     // Called by content script of active tab
     // Message contains data to update icon/UI
     var on_update_ui_message = function (message) {
-        log("gui on_update_ui_message: data: " + message.data, 2);
+        log("gui on_update_ui_message: data: " + message.data, 0);
         update_icon_for_node(JSON.parse(message.data), node);
     };
 

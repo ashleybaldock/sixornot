@@ -24,7 +24,7 @@
  * Contributor(s):
  *   Erik Vold <erikvvold@gmail.com> (Original Author)
  *   Finnbarr P. Murphy <fpm@hotmail.com>
- *   Timothy Baldock <tb@entropy.me.uk>
+ *   Timothy Baldock <timothy@baldock.me>
  *
  * ***** END LICENSE BLOCK ***** */
 
