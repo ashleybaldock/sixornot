@@ -27,7 +27,7 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 /*jslint es5: false */
 
-var EXPORTED_SYMBOLS = ["HTTP_REQUEST_OBSERVER"];
+var EXPORTED_SYMBOLS = ["httpRequestObserver"];
 
 var on_examine_response = function(subject, topic) {
     var http_channel, http_channel_internal, notificationCallbacks,
@@ -45,7 +45,7 @@ var on_examine_response = function(subject, topic) {
         }
     }
     if (!notificationCallbacks) {
-        log("HTTP_REQUEST_OBSERVER - http-on-examine-response: Unable to determine notificationCallbacks for this http_channel", 1);
+        log("httpRequestObserver - http-on-examine-response: Unable to determine notificationCallbacks for this http_channel", 1);
         return;
     }
 
@@ -54,18 +54,14 @@ var on_examine_response = function(subject, topic) {
         loadContext = notificationCallbacks.getInterface(Components.interfaces.nsILoadContext);
         var topFrameElement = loadContext.topFrameElement;  // TODO - will this always be the browser element, e.g. for iframes?
         topFrameMM = topFrameElement.messageManager;
-
-        // var domWindowOuter = topFrameElement.outerWindowID;
-        // log("HTTP_REQUEST_OBSERVER - http-on-examine-response: DOM request, outer_id: " + domWindowOuter, 2);
-
     } catch (e2) {
-        log("HTTP_REQUEST_OBSERVER - http-on-examine-response: non-DOM request", 2);
+        log("httpRequestObserver - http-on-examine-response: non-DOM request", 2);
         return;
     }
 
     // Check for browser windows loading things like favicons and filter out
     if (!loadContext.isContent) {   // TODO does this work?
-        log("HTTP_REQUEST_OBSERVER: loadContext is not content - skipping", 1);
+        log("httpRequestObserver: loadContext is not content - skipping", 1);
         return;
     }
 
@@ -75,17 +71,17 @@ var on_examine_response = function(subject, topic) {
             remoteAddress = http_channel_internal.remoteAddress;
             remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
         } catch (e1) {
-            log("HTTP_REQUEST_OBSERVER - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
+            log("httpRequestObserver - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
             remoteAddress = "";
             remoteAddressFamily = 0;
         }
     } else {
-        log("HTTP_REQUEST_OBSERVER - (probably cache hit) NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 2);
+        log("httpRequestObserver - (probably cache hit) NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 2);
         remoteAddress = "";
         remoteAddressFamily = 2;
     }
 
-    log("HTTP_REQUEST_OBSERVER - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
+    log("httpRequestObserver - http-on-examine-response: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
     /*jslint bitwise: true */
     if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
@@ -110,7 +106,7 @@ var on_examine_response = function(subject, topic) {
  * Observes all HTTP requests to determine the details of connections
  * Ignores connections which aren't related to browser windows
  */
-var HTTP_REQUEST_OBSERVER = {
+var httpRequestObserver = {
     observe: function (subject, topic, data) {
         if (topic === "http-on-examine-response"
          || topic === "http-on-examine-cached-response") {

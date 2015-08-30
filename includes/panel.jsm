@@ -30,8 +30,8 @@ Components.utils.import("resource://sixornot/includes/prefs.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 
 var EXPORTED_SYMBOLS = [
-    "create_local_anchor",
-    "create_remote_anchor",
+    "createLocalAnchor",
+    "createRemoteAnchor",
 ];
 
 var countDnsAddresses = function (host) {
@@ -49,7 +49,7 @@ var countDnsAddresses = function (host) {
     return count;
 };
 
-var create_ip_entry = function (doc, addto) {
+var createIPEntry = function (doc, addto) {
     var conipaddr = doc.createElement("label");
     addto.appendChild(conipaddr);
 
@@ -92,7 +92,7 @@ var create_ip_entry = function (doc, addto) {
 };
 
 // TODO if entry becomes main host later, update to show details
-var create_ips = function (doc, addto) {
+var createIPs = function (doc, addto) {
     var address_box = doc.createElement("vbox");
     addto.appendChild(address_box);
 
@@ -136,7 +136,7 @@ var create_ips = function (doc, addto) {
 
             if (entries.length <= 0) {
                 entries.push(
-                    create_ip_entry(doc, address_box).update(host.address, host.address_family));
+                    createIPEntry(doc, address_box).update(host.address, host.address_family));
             }
             if (entries[0].address !== host.address ||
                 host_cache.dns_status !== host.dns_status) {
@@ -151,7 +151,7 @@ var create_ips = function (doc, addto) {
                         if (address !== host.address) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(
-                                    create_ip_entry(doc, address_box)
+                                    createIPEntry(doc, address_box)
                                         .update(address, 6));
                             } else {
                                 // Update existing
@@ -167,7 +167,7 @@ var create_ips = function (doc, addto) {
                         if (address !== host.address) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(
-                                    create_ip_entry(doc, address_box)
+                                    createIPEntry(doc, address_box)
                                         .update(address, 4));
                             } else {
                                 // Update existing
@@ -206,7 +206,7 @@ var create_ips = function (doc, addto) {
     return obj;
 };
 
-var create_icon = function (doc, addto) {
+var createIcon = function (doc, addto) {
     var icon, update;
 
     icon = doc.createElement("image");
@@ -224,7 +224,7 @@ var create_icon = function (doc, addto) {
     };
 };
 
-var create_count = function (doc, addto) {
+var createCount = function (doc, addto) {
     var count = doc.createElement("label");
     count.setAttribute("tooltiptext", gt("tt_copycount"));
     addto.appendChild(count);
@@ -243,7 +243,7 @@ var create_count = function (doc, addto) {
     };
 };
 
-var create_hostname = function (doc, addto) {
+var createHostname = function (doc, addto) {
     var hostname = doc.createElement("label");
     addto.appendChild(hostname);
 
@@ -302,15 +302,15 @@ var create_hostname = function (doc, addto) {
    and links to that member to reflect its state
    Also takes a reference to the element to add this element after
    e.g. header or the preceeding list item */
-var create_remote_listing_row = function (doc, addafter, host, mainhost) {
+var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     var row, icon, count, hostname, ips, showhide, update;
 
     row = doc.createElement("row");
     row.setAttribute("align", "start");
-    icon = create_icon(doc, row);
-    count = create_count(doc, row);
-    hostname = create_hostname(doc, row);
-    ips = create_ips(doc, row);
+    icon = createIcon(doc, row);
+    count = createCount(doc, row);
+    hostname = createHostname(doc, row);
+    ips = createIPs(doc, row);
 
 
     /* Update elements on create */
@@ -349,7 +349,7 @@ var create_remote_listing_row = function (doc, addafter, host, mainhost) {
     };
 };
 
-var create_remote_anchor = function (doc, parent_element) {
+var createRemoteAnchor = function (doc, parent_element) {
     var model, entries, title_remote;
 
     model = { innerId: 0 };
@@ -402,7 +402,7 @@ var create_remote_anchor = function (doc, parent_element) {
                 } else {
                     var prevEntry = entries[entriesIndex - 1];
                     entries.splice(entriesIndex, 0,
-                        create_remote_listing_row(
+                        createRemoteListingRow(
                         doc, prevEntry ? prevEntry : this, item, model.main));
                 }
                 entriesIndex++;
@@ -411,7 +411,7 @@ var create_remote_anchor = function (doc, parent_element) {
     };
 };
 
-var create_local_listing_row = function (doc, addafter) {
+var createLocalListingRow = function (doc, addafter) {
     var row = doc.createElement("row");
     row.setAttribute("align", "start");
     var update_row_visibility = function () {
@@ -430,7 +430,7 @@ var create_local_listing_row = function (doc, addafter) {
     row.appendChild(doc.createElement("label"));
     row.appendChild(doc.createElement("label"));
 
-    var hostname = create_hostname(doc, row);
+    var hostname = createHostname(doc, row);
 
     var address_box = doc.createElement("vbox");
     row.appendChild(address_box);
@@ -456,7 +456,7 @@ var create_local_listing_row = function (doc, addafter) {
                 host.ipv6s.forEach(function (address, index, addresses) {
                     if (entries.length < entriesIndex + 1) {
                         entries.push(
-                            create_ip_entry(doc, address_box)
+                            createIPEntry(doc, address_box)
                                 .update(address, 6));
                     } else {
                         entries[entriesIndex].update(address, 6).show();
@@ -469,7 +469,7 @@ var create_local_listing_row = function (doc, addafter) {
                 host.ipv4s.forEach(function (address, index, addresses) {
                     if (entries.length < entriesIndex + 1) {
                         entries.push(
-                            create_ip_entry(doc, address_box)
+                            createIPEntry(doc, address_box)
                                 .update(address, 4));
                     } else {
                         entries[entriesIndex].update(address, 4).show();
@@ -497,7 +497,7 @@ var create_local_listing_row = function (doc, addafter) {
     };
 };
 
-var create_local_anchor = function (doc, parent_element) {
+var createLocalAnchor = function (doc, parent_element) {
     var title = doc.createElement("label");
     title.setAttribute("value", gt("header_local"));
     title.classList.add("sixornot-title");
@@ -570,7 +570,7 @@ var create_local_anchor = function (doc, parent_element) {
         update: function (host) {
             if (entries.length <= 0) {
                 // For now entries only ever contains one thing
-                entries.push(create_local_listing_row(doc, this));
+                entries.push(createLocalListingRow(doc, this));
             }
             entries.forEach(function (item) {
                 item.update(host);

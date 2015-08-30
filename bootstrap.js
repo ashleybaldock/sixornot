@@ -91,6 +91,7 @@ startup = function (aData, aReason) {
     /*jslint es5: false */
 
     // Init dns_handler
+    // This one is now only used for local address resolution
     dns_handler.init();
 
     // Create default preferences (if they are missing)
@@ -98,7 +99,6 @@ startup = function (aData, aReason) {
 
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
-    Components.utils.import("resource://sixornot/includes/requestcache.jsm");
     Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
     Components.utils.import("resource://sixornot/includes/gui.jsm");
     Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
@@ -133,7 +133,7 @@ startup = function (aData, aReason) {
         }
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
-        HTTP_REQUEST_OBSERVER.register();
+        httpRequestObserver.register();
     });
 };
 
@@ -148,7 +148,7 @@ shutdown = function (aData, aReason) {
             CustomizableUI.destroyWidget("sixornot-button");
         }
 
-        HTTP_REQUEST_OBSERVER.unregister();
+        httpRequestObserver.unregister();
         //PREF_OBSERVER_DNS.unregister();
         PREF_OBSERVER.unregister();
 
@@ -157,7 +157,6 @@ shutdown = function (aData, aReason) {
         Components.utils.unload("resource://sixornot/includes/stylesheet.jsm");
         Components.utils.unload("resource://sixornot/includes/gui.jsm");
         Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");
-        Components.utils.unload("resource://sixornot/includes/requestcache.jsm");
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
         Components.utils.unload("resource://sixornot/includes/locale.jsm");
         // Shutdown dns_handler

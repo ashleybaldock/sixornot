@@ -23,7 +23,7 @@
 /*global Components, Services, ChromeWorker */
 
 // Provided by Sixornot
-/*global gt, log, parse_exception, prefs, windowWatcher, unload, requests, stylesheet */
+/*global gt, log, parse_exception, prefs, windowWatcher, unload, stylesheet */
 
 var CustomizableUIAvailable = true, e;
 /*jslint es5: true */
@@ -38,7 +38,6 @@ Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/utility.jsm");
 Components.utils.import("resource://sixornot/includes/locale.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
-Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
 Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
 Components.utils.import("resource://sixornot/includes/panel.jsm");
@@ -60,7 +59,7 @@ var create_sixornot_widget = function (node, win) {
     var panel, current_tab_ids,
         update_icon_for_node,
         on_click, on_page_change, onTabSelect, on_tab_open,
-        on_content_script_loaded, onPageshow, on_dns_complete;
+        on_content_script_loaded, onPageshow;
 
     var updateGreyscale = function () {
         if (prefs.get_bool("greyscaleicons")) {
@@ -108,7 +107,7 @@ var create_sixornot_widget = function (node, win) {
     };
 
     // Ask active content script to send us an update, e.g. when switching tabs
-    var request_update = function () {
+    var requestUpdate = function () {
         currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
     };
 
@@ -136,18 +135,18 @@ var create_sixornot_widget = function (node, win) {
     onTabSelect = function (evt) {
         log("widget:onTabSelect", 1);
         subscribe_to(win.gBrowser.getBrowserForTab(evt.target));
-        request_update();
+        requestUpdate();
     };
     on_tab_open = function (evt) {
         log("widget:on_tab_open", 1);
         subscribe_to(win.gBrowser.getBrowserForTab(evt.target));
-        request_update();
+        requestUpdate();
     };
 
     onPageshow = function (evt) {
         log("widget:onPageshow", 1);
         subscribe_to_current();
-        request_update();
+        requestUpdate();
     };
 
     /* Create a panel to show details when clicked */
@@ -159,7 +158,7 @@ var create_sixornot_widget = function (node, win) {
 
     // Ensure tab ID is set upon loading into window
     subscribe_to_current();
-    request_update();
+    requestUpdate();
 
     /* Add event listeners */
     node.addEventListener("click", on_click, false);
@@ -342,7 +341,7 @@ var create_panel = function (win, panel_id) {
     force_scrollbars,
     on_click, onPopupShowing, onPopupHiding, on_page_change,
     on_new_host, on_address_change, onPageshow,
-    on_count_change, on_dns_complete, onTabSelect;
+    on_count_change, onTabSelect;
 
     doc = win.document;
 
@@ -375,7 +374,7 @@ var create_panel = function (win, panel_id) {
         currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
     };
 
-    var request_update = function () {
+    var requestUpdate = function () {
         currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
     };
 
@@ -394,7 +393,7 @@ var create_panel = function (win, panel_id) {
         log("panel:onPopupShowing", 2);
         register_callbacks();
         subscribe_to_current();
-        request_update();
+        requestUpdate();
         local_anchor.panelShowing();
     };
 
@@ -408,13 +407,13 @@ var create_panel = function (win, panel_id) {
     onTabSelect = function (evt) {
         log("panel:onTabSelect", 1);
         subscribe_to_current();
-        request_update();
+        requestUpdate();
     };
 
     onPageshow = function (evt) {
         log("panel:onPageshow", 1);
         subscribe_to_current();
-        request_update();
+        requestUpdate();
     };
 
     var onClickSettingsLink = function (evt) {
@@ -459,8 +458,8 @@ var create_panel = function (win, panel_id) {
     panel_vbox.appendChild(grid);
 
     /* Anchors are locations to insert entries into grid */
-    remote_anchor = create_remote_anchor(doc, grid_rows);
-    local_anchor = create_local_anchor(doc, grid_rows);
+    remote_anchor = createRemoteAnchor(doc, grid_rows);
+    local_anchor = createLocalAnchor(doc, grid_rows);
 
     /* Links at bottom of panel */
     var settingsLink, docLink, spacer, urlhbox, makeSpacer;
