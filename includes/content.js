@@ -35,7 +35,7 @@ var printCaches = function (text) {
 };
 
 Components.utils.import("resource://sixornot/includes/dns.jsm");
-dns_handler.init(); // TODO uninit on unload (or pass requests out to chrome process)
+dns_handler.init(); // TODO uninit on unload
 
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 
@@ -138,15 +138,12 @@ var windowObserver = {
         requests.remove(innerId);
     },
 
-    observerService: Components.classes["@mozilla.org/observer-service;1"]
-                         .getService(Components.interfaces.nsIObserverService),
-
     register: function () {
-        this.observerService.addObserver(this, "inner-window-destroyed", false);
+        Services.obs.addObserver(this, "inner-window-destroyed", false);
     },
 
     unregister: function () {
-        this.observerService.removeObserver(this, "inner-window-destroyed");
+        Services.obs.removeObserver(this, "inner-window-destroyed");
     }
 };
 

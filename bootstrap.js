@@ -24,7 +24,7 @@
 /*global APP_STARTUP, APP_SHUTDOWN, ADDON_ENABLE, ADDON_DISABLE, ADDON_INSTALL, ADDON_UNINSTALL, ADDON_UPGRADE, ADDON_DOWNGRADE */
 
 // Provided in included modules:
-/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button, set_addressbar_icon_visibility, set_greyscale_icons */
+/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button */
 
 var CustomizableUIAvailable = true, e;
 /*jslint es5: true */
