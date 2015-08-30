@@ -446,8 +446,7 @@ var create_panel = function (win, panel_id) {
     local_anchor = create_local_anchor(doc, grid_rows);
 
     /* Links at bottom of panel */
-    var settingsLink, docLink, spacer, urlhbox,
-        makeSpacer;
+    var settingsLink, docLink, spacer, urlhbox, makeSpacer;
 
     /* Settings */
     settingsLink = doc.createElement("label");

@@ -30,8 +30,8 @@ log = function (message, severity) {
 };
 var printCaches = function (text) {
     log(text + " - caches: ", 0);
-    log("--" + requests.print_waitinglist(), 0);
-    log("--" + requests.print_cache(), 0);
+    log("--" + requests.printWaitingList(), 0);
+    log("--" + requests.printCache(), 0);
 };
 
 Components.utils.import("resource://sixornot/includes/dns.jsm");
@@ -40,7 +40,7 @@ dns_handler.init(); // TODO uninit on unload (or pass requests out to chrome pro
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 
 /* State */
-var requests = get_request_cache();
+var requests = createRequestCache();
 var currentWindowId = 0;
 
 log("content script loaded", 1);

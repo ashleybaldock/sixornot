@@ -21,7 +21,6 @@
 
 /*jslint es5: true */
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-// Import dns module (adds global symbol: dns_handler)
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 /*jslint es5: false */
 
@@ -31,60 +30,55 @@ Components.utils.import("resource://sixornot/includes/dns.jsm");
 // Provided by Sixornot
 /*global parse_exception, prefs */
 
-var EXPORTED_SYMBOLS = [
-    "get_request_cache",
-    "create_new_entry"
-];
-
-
-/* Prepare and return a new blank entry for the hosts listing */
-var create_new_entry = function (host, address, address_family, inner) {
-    return {
-        host: host,
-        address: address,
-        address_family: address_family,
-        remote: true,
-        count: 1,
-        ipv6s: [],
-        ipv4s: [],
-        dns_status: "ready",
-        dns_cancel: null,
-        lookup_ips: function (callback) {
-            var entry, on_returned_ips;
-            // Don't do IP lookup for local file entries
-            if (this.address_family === 1) {
-                this.dns_status = "complete";
-                return;
-            }
-            entry = this;
-            on_returned_ips = function (ips) {
-                entry.dns_cancel = null;
-                if (ips[0] === "FAIL") {
-                    entry.ipv6s = [];
-                    entry.ipv4s = [];
-                    entry.dns_status = "failure";
-                } else {
-                    entry.ipv6s = ips.filter(dns_handler.is_ip6);
-                    entry.ipv4s = ips.filter(dns_handler.is_ip4);
-                    entry.dns_status = "complete";
-                }
-                callback();
-            };
-            if (entry.dns_cancel) {
-                entry.dns_cancel.cancel();
-            }
-            entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, on_returned_ips);
-        }
-    };
-};
-
+var EXPORTED_SYMBOLS = [ "createRequestCache" ];
 
 /*
  * Contains two lists:
  * cache - All requests which have been made for webpages which are still in history
  * waitinglist - Requests which have yet to have an innerWindow ID assigned
  */
-var get_request_cache = function () {
+var createRequestCache = function () {
+    /* Prepare and return a new blank entry for the hosts listing */
+    var createHost = function (host, address, address_family, inner) {
+        return {
+            host: host,
+            address: address,
+            address_family: address_family,
+            remote: true,
+            count: 1,
+            ipv6s: [],
+            ipv4s: [],
+            dns_status: "ready",
+            dns_cancel: null,
+            lookup_ips: function (callback) {
+                var entry, on_returned_ips;
+                // Don't do IP lookup for local file entries
+                if (this.address_family === 1) {
+                    this.dns_status = "complete";
+                    return;
+                }
+                entry = this;
+                on_returned_ips = function (ips) {
+                    entry.dns_cancel = null;
+                    if (ips[0] === "FAIL") {
+                        entry.ipv6s = [];
+                        entry.ipv4s = [];
+                        entry.dns_status = "failure";
+                    } else {
+                        entry.ipv6s = ips.filter(dns_handler.is_ip6);
+                        entry.ipv4s = ips.filter(dns_handler.is_ip4);
+                        entry.dns_status = "complete";
+                    }
+                    callback();
+                };
+                if (entry.dns_cancel) {
+                    entry.dns_cancel.cancel();
+                }
+                entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, on_returned_ips);
+            }
+        };
+    };
+
     return {
         cache: {},
         createCacheEntry: function (mainhost, id) {
@@ -112,32 +106,27 @@ var get_request_cache = function () {
             if (!this.cache[id].entries.some(function (item, index, items) {
                 if (item.host === data.host) {
                     item.count += 1;
-                    //send_event("sixornot-count-change-event", domWindow, item); // TODO
 
                     if (item.address !== data.address && data.address !== "") {
                         item.address = data.address;
                         item.address_family = data.addressFamily;
-                        //send_event("sixornot-address-change-event", domWindow, item); // TODO
                     }
                     return true;
                 }
             })) {
                 log("addOrUpdate, host: " + data.host + ", remoteAddress: " + data.address, 1);
-                new_entry = create_new_entry(data.host, data.address, data.addressFamily, id);
+                new_entry = createHost(data.host, data.address, data.addressFamily, id);
                 new_entry.lookup_ips(dns_complete_callback);
                 this.cache[id].entries.push(new_entry);
-                //send_event("sixornot-new-host-event", domWindow, new_entry); // TODO
             }
         },
         get: function (id) {
-            // Retrieve cache entry for id
             if (this.cache.hasOwnProperty(id)) {
                 return this.cache[id];
             }
             return null;
         },
         remove: function (id) {
-            // Remove cache entry for id
             if (this.cache.hasOwnProperty(id)) {
                 this.get(id).entries.forEach(function (item, index, items) {
                     if (item.dns_cancel) {
@@ -162,10 +151,10 @@ var get_request_cache = function () {
             })) {
                 log("addOrUpdateToWaitingList, host: " + data.host + ", remoteAddress: " + data.address, 1);
                 this.waitinglist.push(
-                    create_new_entry(data.host, data.address, data.addressFamily, null));
+                    createHost(data.host, data.address, data.addressFamily, null));
             }
         },
-        print_cache: function () {
+        printCache: function () {
             var out = "cache is:\n";
             for (var property in this.cache) {
                 if (this.cache.hasOwnProperty(property)) {
@@ -182,7 +171,7 @@ var get_request_cache = function () {
             }
             return out;
         },
-        print_waitinglist: function () {
+        printWaitingList: function () {
             var out = "waitinglist is:\n";
             this.waitinglist.forEach(function (item, index, items) {
                 out += "[";
