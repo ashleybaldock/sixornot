@@ -224,6 +224,41 @@ var createIcon = function (doc, addto) {
     };
 };
 
+var createSSLInfo = function (doc, addto) {
+    var sslinfo, update;
+
+    sslinfo = doc.createElement("image");
+    sslinfo.setAttribute("height", "16");
+    addto.appendChild(sslinfo);
+
+    return {
+        update: function (host) {
+            if (host.security.isExtendedValidation) {
+                if (!sslinfo.classList.contains("sixornot_ssl_ev")) {
+                    remove_ssl_classes_from_node(sslinfo);
+                    sslinfo.classList.add("sixornot_ssl_ev");
+                    sslinfo.setAttribute("width", "16");
+                }
+            } else if (host.security.cipherName) {
+                if (!sslinfo.classList.contains("sixornot_ssl")) {
+                    remove_ssl_classes_from_node(sslinfo);
+                    sslinfo.classList.add("sixornot_ssl");
+                    sslinfo.setAttribute("width", "16");
+                }
+            } else {
+                if (!sslinfo.classList.contains("sixornot_ssl_off")) {
+                    remove_ssl_classes_from_node(sslinfo);
+                    sslinfo.classList.add("sixornot_ssl_off");
+                    sslinfo.setAttribute("width", "0");
+                }
+            }
+        },
+        remove: function () {
+            addto.removeChild(sslinfo);
+        }
+    };
+};
+
 var createCount = function (doc, addto) {
     var count = doc.createElement("label");
     count.setAttribute("tooltiptext", gt("tt_copycount"));
@@ -303,12 +338,13 @@ var createHostname = function (doc, addto) {
    Also takes a reference to the element to add this element after
    e.g. header or the preceeding list item */
 var createRemoteListingRow = function (doc, addafter, host, mainhost) {
-    var row, icon, count, hostname, ips, showhide, update;
+    var row, icon, sslinfo, count, hostname, ips, showhide, update;
 
     row = doc.createElement("row");
     row.setAttribute("align", "start");
     icon = createIcon(doc, row);
     count = createCount(doc, row);
+    sslinfo = createSSLInfo(doc, row);
     hostname = createHostname(doc, row);
     ips = createIPs(doc, row);
 
@@ -317,6 +353,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     icon.update(host);
     hostname.update(host, mainhost);
     count.update(host);
+    sslinfo.update(host);
     ips.init(host, host.host === mainhost);
 
     /* Add this element after the last one */
@@ -329,6 +366,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             icon.remove();
             hostname.remove();
             count.remove();
+            sslinfo.remove();
             ips.remove();
             row.parentNode.removeChild(row);
         },
@@ -344,6 +382,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             icon.update(host);
             hostname.update(host, mainhost);
             count.update(host);
+            sslinfo.update(host);
             ips.update(host, host.host === mainhost);
         }
     };
@@ -426,9 +465,13 @@ var createLocalListingRow = function (doc, addafter) {
     /* Add this element after the last one */
     addafter.add_after(row);
 
-    // Two spacers since local rows have neither icon nor count
+    // Three spacers since local rows don't have icon, sslinfo or count
     row.appendChild(doc.createElement("label"));
     row.appendChild(doc.createElement("label"));
+    var spacer = doc.createElement("image");
+    spacer.setAttribute("width", "0");
+    spacer.classList.add("sixornot_ssl_off");
+    row.appendChild(spacer);
 
     var hostname = createHostname(doc, row);
 

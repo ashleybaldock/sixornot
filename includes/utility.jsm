@@ -35,6 +35,7 @@ var EXPORTED_SYMBOLS = [
     "update_node_icon_for_host",
     "add_greyscale_class_to_node",
     "remove_greyscale_class_from_node",
+    "remove_ssl_classes_from_node",
 ];
 
 /* Proxy to getElementById */
@@ -93,12 +94,21 @@ var copy_to_clipboard = function (text) {
 
 // Sixornot display class related functions
 
-var sixornot_classes = ["sixornot_4only", "sixornot_4only_cache",
-                        "sixornot_4pot6", "sixornot_4pot6_cache",
-                        "sixornot_6and4", "sixornot_6and4_cache",
-                        "sixornot_6only", "sixornot_6only_cache",
-                        "sixornot_other", "sixornot_other_cache",
-                        "sixornot_proxy", "sixornot_error"];
+var sixornot_classes = [
+    "sixornot_4only", "sixornot_4only_cache",
+    "sixornot_4pot6", "sixornot_4pot6_cache",
+    "sixornot_6and4", "sixornot_6and4_cache",
+    "sixornot_6only", "sixornot_6only_cache",
+    "sixornot_other", "sixornot_other_cache",
+    "sixornot_proxy", "sixornot_error"
+];
+
+var sixornot_ssl_classes = [
+    "sixornot_ssl",
+    "sixornot_ssl_ev",
+    "sixornot_ssl_partial",
+    "sixornot_ssl_off"
+];
 
 var get_icon_class = function (record) {
     if (record.address_family === 4) {
@@ -170,3 +180,10 @@ var add_greyscale_class_to_node = function (node) {
 var remove_greyscale_class_from_node = function (node) {
     node.classList.remove("sixornot_grey");
 };
+
+var remove_ssl_classes_from_node = function (node) {
+    sixornot_ssl_classes.forEach(function (item, index, items) {
+        node.classList.remove(item);
+    });
+};
+

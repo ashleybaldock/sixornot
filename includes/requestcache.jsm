@@ -50,6 +50,7 @@ var createRequestCache = function () {
             ipv4s: [],
             dns_status: "ready",
             dns_cancel: null,
+            security: {},
             lookup_ips: function (callback) {
                 var entry, on_returned_ips;
                 // Don't do IP lookup for local file entries
@@ -96,7 +97,7 @@ var createRequestCache = function () {
             // Move anything currently on waiting list into new cache entry
             var waitinglist = this.waitinglist.splice(0, Number.MAX_VALUE);
             waitinglist.forEach(function (item, index, array) {
-                this.addOrUpdate({host: item.host, address: item.address, addressFamily: item.address_family}, id, dns_complete_callback);
+                this.addOrUpdate({host: item.host, address: item.address, addressFamily: item.address_family, security: item.security}, id, dns_complete_callback);
             }, this);
         },
         addOrUpdate: function (data, id, dns_complete_callback) {
@@ -111,6 +112,7 @@ var createRequestCache = function () {
                         item.address = data.address;
                         item.address_family = data.addressFamily;
                     }
+                    item.security = data.security;
                     return true;
                 }
             })) {
@@ -146,6 +148,7 @@ var createRequestCache = function () {
                         item.address = data.address;
                         item.address_family = data.addressFamily;
                     }
+                    item.security = data.security;
                     return true;
                 }
             })) {
