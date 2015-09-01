@@ -28,6 +28,7 @@ Components.utils.import("resource://sixornot/includes/utility.jsm");
 Components.utils.import("resource://sixornot/includes/locale.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
+Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
 
 var EXPORTED_SYMBOLS = [ "createPanel" ];
 

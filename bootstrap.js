@@ -153,12 +153,14 @@ shutdown = function (aData, aReason) {
             Components.utils.unload("resource://sixornot/includes/gui-legacy.jsm");
         }
         Components.utils.unload("resource://sixornot/includes/addressbaricon.jsm");
+        Components.utils.unload("resource://sixornot/includes/panel.jsm");
         Components.utils.unload("resource://sixornot/includes/widget.jsm");
         Components.utils.unload("resource://sixornot/includes/stylesheet.jsm");
-        Components.utils.unload("resource://sixornot/includes/gui.jsm");
         Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");
+        Components.utils.unload("resource://sixornot/includes/requestcache.jsm");
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
         Components.utils.unload("resource://sixornot/includes/locale.jsm");
+        Components.utils.unload("resource://sixornot/includes/utility.jsm");
         // Shutdown dns_handler
         dns_handler.shutdown();
         Components.utils.unload("resource://sixornot/includes/dns.jsm");
