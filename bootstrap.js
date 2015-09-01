@@ -100,8 +100,14 @@ startup = function (aData, aReason) {
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
     Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
-    Components.utils.import("resource://sixornot/includes/gui.jsm");
     Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
+    Components.utils.import("resource://sixornot/includes/addressbaricon.jsm");
+    Components.utils.import("resource://sixornot/includes/widget.jsm");
+    if (CustomizableUIAvailable) {
+        Components.utils.import("resource://sixornot/includes/gui.jsm");
+    } else {
+        Components.utils.import("resource://sixornot/includes/gui-legacy.jsm");
+    }
     /*jslint es5: false */
 
     // Load callback for when our addon finishes loading
@@ -119,18 +125,10 @@ startup = function (aData, aReason) {
         globalMM.loadFrameScript("resource://sixornot/includes/content.js", true); // TODO remove on shutdown
 
         // Load into existing windows and set callback to load into any new ones too
-        watchWindows(insert_code);
+        watchWindows(ui.insert);
 
-        // Create button UI using Australis method
-        if (CustomizableUIAvailable) {
-            log("Sixornot - CustomizableUI available, loading button", 1);
-            CustomizableUI.createWidget(create_button());
-        } else {
-            log("Sixornot - CustomizableUI unavailable", 1);
-            stylesheet.inject_into_new_windows_with_path(
-                stylesheet.get_customize_sheet_for_platform(),
-                "chrome://global/content/customizeToolbar.xul");
-        }
+        // Perform once-only UI setup
+        ui.setup();
 
         // The observers actually trigger events in the UI, nothing happens until they are registered
         httpRequestObserver.register();
@@ -144,16 +142,18 @@ shutdown = function (aData, aReason) {
         // Unload all UI via init-time unload() callbacks
         unload();
 
-        if (CustomizableUIAvailable) {
-            CustomizableUI.destroyWidget("sixornot-button");
-        }
+        ui.teardown();
 
         httpRequestObserver.unregister();
-        //PREF_OBSERVER_DNS.unregister();
-        PREF_OBSERVER.unregister();
 
         // Unload our own code modules
-        Components.utils.unload("resource://sixornot/includes/env.jsm");
+        if (CustomizableUIAvailable) {
+            Components.utils.unload("resource://sixornot/includes/gui.jsm");
+        } else {
+            Components.utils.unload("resource://sixornot/includes/gui-legacy.jsm");
+        }
+        Components.utils.unload("resource://sixornot/includes/addressbaricon.jsm");
+        Components.utils.unload("resource://sixornot/includes/widget.jsm");
         Components.utils.unload("resource://sixornot/includes/stylesheet.jsm");
         Components.utils.unload("resource://sixornot/includes/gui.jsm");
         Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");
