@@ -54,8 +54,8 @@ var ui = {
         }
 
         // Add stylesheets
-        stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.base);
-        stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.customize);
+        stylesheet.injectIntoWindowWithUnload(win, stylesheet.sheets.base);
+        stylesheet.injectIntoWindowWithUnload(win, stylesheet.sheets.customize);
 
         // Create address bar icon
         createAddressBarIcon(win, ADDRESSBAR_ICON_ID);

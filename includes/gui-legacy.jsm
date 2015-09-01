@@ -18,11 +18,52 @@ const FIREFOX_ID = "{ec8030f7-c20a-464f-9b0e-13a3a9e97384}";
 const ADDRESSBAR_ICON_ID = "sixornot-addressbaricon";
 const BUTTON_ID          = "sixornot-button";
 
+
+/* Stylesheet utility functions for legacy platforms */
+var legacyStylesheets = {
+    large: Services.io.newURI("resource://sixornot/css/large.css", null, null),
+    customize_ffp29: Services.io.newURI("resource://sixornot/css/customize_pre29.css", null, null),
+    customize_ffp29_linux: Services.io.newURI("resource://sixornot/css/customize_pre29_linux.css", null, null)
+};
+
+var get_customize_sheet_for_platform = function () {
+    if (Services.appinfo.ID === FIREFOX_ID) {
+        if (Services.appinfo.OS === "Linux") {
+            return legacyStylesheets.customize_ffp29_linux;
+        }
+        return legacyStylesheets.customize_ffp29;
+    }
+    return legacyStylesheets.customize; // SeaMonkey etc.
+};
+
+var inject_into_new_windows_with_path = function (sheet, path) {
+    function on_new_window (win, topic) {
+        if (topic === "domwindowopened") {
+            win.addEventListener("load", function load_once () {
+                win.removeEventListener("load", load_once, false);
+                if (win.document.documentURI === path) {
+                    stylesheet.injectIntoWindow(win, sheet);
+                }
+            });
+        }
+    };
+
+    // Could also use chrome-document-global-created events for this
+    Services.ww.registerNotification(on_new_window);
+
+    // Make sure to stop watching for windows if we're unloading
+    unload(function () {
+        Services.ww.unregisterNotification(on_new_window);
+    });
+};
+
+
+/* UI for pre-Australis platforms */
 var ui = {
     /* Call once at addon startup */
     setup: function () {
-        stylesheet.inject_into_new_windows_with_path(
-            stylesheet.get_customize_sheet_for_platform(),
+        inject_into_new_windows_with_path(
+            get_customize_sheet_for_platform(),
             "chrome://global/content/customizeToolbar.xul");
     },
     /* Call once for each window of the browser */
@@ -34,7 +75,7 @@ var ui = {
         }
 
         // Add stylesheet
-        stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.base);
+        stylesheet.injectIntoWindowWithUnload(win, stylesheet.sheets.base);
 
         // Create address bar icon
         log("ui.insert (legacy): add addressicon", 1);
@@ -42,9 +83,9 @@ var ui = {
 
         // SeaMonkey and Linux FF need large icon sets
         if (Services.appinfo.ID !== FIREFOX_ID || Services.appinfo.OS === "Linux") {
-            stylesheet.inject_into_window_with_unload(win, stylesheet.sheets.large);
+            stylesheet.injectIntoWindowWithUnload(win, legacyStylesheets.large);
         }
-        var customize_sheet = stylesheet.get_customize_sheet_for_platform();
+        var customize_sheet = get_customize_sheet_for_platform();
         var on_beforecustomization = function (evt) {
             log("on_beforecustomization", 1);
             /* On pre-Australis platforms the panel for customisation of the toolbars
@@ -53,7 +94,7 @@ var ui = {
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
                 log("found customizeToolbarSheetIFrame - adding load callback", 1);
-                stylesheet.inject_into_window(iframe.contentWindow, customize_sheet);
+                stylesheet.injectIntoWindow(iframe.contentWindow, customize_sheet);
             } else {
                 log("failed to find customizeToolbarSheetIFrame", 1);
             }
@@ -63,7 +104,7 @@ var ui = {
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
                 log("on_aftercustomization - found customizeToolbarSheetIFrame", 1);
-                stylesheet.remove_from_window(iframe.contentWindow, customize_sheet);
+                stylesheet.removeFromWindow(iframe.contentWindow, customize_sheet);
             } else {
                 log("on_aftercustomization - failed to find customizeToolbarSheetIFrame", 1);
             }
@@ -83,6 +124,7 @@ var ui = {
         createButton(win);
     },
     teardown: function () {
+        log("ui.teardown", 1);
     }
 };
 
