@@ -37,6 +37,11 @@ var on_examine_response = function(subject, topic) {
 
     http_channel = subject.QueryInterface(Components.interfaces.nsIHttpChannel);
     http_channel_internal = subject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
+    var proxy_channel = subject.QueryInterface(Components.interfaces.nsIProxiedChannel);
+
+    if (proxy_channel) {
+        var proxyInfo = proxy_channel.proxyInfo;
+    }
 
     notificationCallbacks = http_channel.notificationCallbacks;
     if (!notificationCallbacks) {

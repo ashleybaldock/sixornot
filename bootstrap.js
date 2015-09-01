@@ -46,7 +46,7 @@ var startup,
 /*
  * Resource alias management (for resource:// URLs)
  */
-var setup_resource = function (aData) {
+var setupResource = function (aData) {
     "use strict";
     var resource, alias;
     // Set up resource URI alias
@@ -61,18 +61,16 @@ var setup_resource = function (aData) {
 
     // This triggers a warning on AMO validation
     // The resource substitution is cleaned up by the addon's shutdown/uninstall methods
-    // Search for cleanup_resource()
+    // Search for cleanupResource()
     resource.setSubstitution("sixornot", alias);
 };
 
-var cleanup_resource = function () {
+var cleanupResource = function () {
     "use strict";
     var resource = Services.io.getProtocolHandler("resource")
                 .QueryInterface(Components.interfaces.nsIResProtocolHandler);
     resource.setSubstitution("sixornot", null);
 };
-
-
 
 /*
  * bootstrap.js API
@@ -81,7 +79,7 @@ var cleanup_resource = function () {
 startup = function (aData, aReason) {
     "use strict";
     // Set up sixornot resource alias
-    setup_resource(aData);
+    setupResource(aData);
 
     // Import logging module (adds global symbols: log, parse_exception)
     /*jslint es5: true */
@@ -168,7 +166,7 @@ shutdown = function (aData, aReason) {
         Components.utils.unload("resource://sixornot/includes/logger.jsm");
 
         // Remove resource alias
-        cleanup_resource();
+        cleanupResource();
     }
 };
 
@@ -187,5 +185,6 @@ uninstall = function (aData, aReason) {
     }
 
     // Remove resource alias
-    cleanup_resource();
+    cleanupResource();
 };
+

@@ -20,6 +20,9 @@ Optimise panel + other code                                                 - DO
  - Avoid lengthy IP type/ordering calls
  - Avoid adding entries to panel until they are displayed                   - DONE
 
+ - Refactor UI to split out legacy components & freeze                      - DONE
+    - Test legacy UI
+ - Refactor locale handling code to use built-in functionality
 look into http-on-examine-merged-response
 unload for content script
 jslint validation
@@ -39,6 +42,13 @@ Overview mode for icon
 Warnings for ip6_disabled and ip4only_domain
  - ip4only_domain should show a badge next to affected domains
  - ip6_disabled should show a warning on the panel
+
+Proxy detection + info
+Add better proxy detection (per-connection) and icon display
+ Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
+ Same way that DNS lookups are done, with a callback
+Disable native DNS resolution for proxied connections
+investigate channelIsForDownload on nsIHttpChannelInternal
 
 
 # Rejected ideas:
@@ -68,13 +78,6 @@ Retrieve netmask information for each address and display (e.g. 1999::1/64)
  - Also collect tunnel interface IPs on Vista+
 
 German translation for addon description
-
-Proxy detection + info
-Add better proxy detection (per-connection) and icon display
- Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
- Same way that DNS lookups are done, with a callback
-Disable native DNS resolution for proxied connections
-investigate channelIsForDownload on nsIHttpChannelInternal
 
 Handling for edge-cases and special pages (text)
 Record total size of objects downloaded from each site + display (in KB? etc.)
