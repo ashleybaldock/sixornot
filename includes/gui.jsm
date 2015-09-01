@@ -74,7 +74,10 @@ var create_sixornot_widget = function (node, win) {
     // Message contains data to update icon/UI
     var on_update_ui_message = function (message) {
         log("gui on_update_ui_message: data: " + message.data, 0);
-        update_icon_for_node(JSON.parse(message.data), node);
+        var data = JSON.parse(message.data);
+        if (data) {
+            update_icon_for_node(data, node);
+        }
     };
 
     on_content_script_loaded = function (message) {
@@ -431,6 +434,7 @@ var create_panel = function (win, panel_id) {
     panel = doc.createElement("panel");
     panel.setAttribute("type", "arrow");
     panel.setAttribute("id", panel_id);
+    panel.setAttribute("flip", "slide");
     panel.setAttribute("hidden", true);
     panel.setAttribute("position", "bottomcenter topright");
     panel.classList.add("sixornot-panel");

@@ -27,17 +27,11 @@ Update documentation
 test on non-E10S (determine min version)
 test on SeaMonkey etc.
 integrate documentation into addon instead of online
-show http/https/mixed info
-
 
 NAT64 prefixes
  - Detection + conversion of embedded IPv4 addresses
  - Configurable prefix
 
-SSL information for connections
-Detail view pane for info about each connection
-Copy everything (report) to clipboard
-Add ability to copy a list of all files fetched to clipboard (per-domain)
 Overview mode for icon 
  - show green icon only if all connections made using v6
  - show blue icon only if all hosts have only AAAA records
@@ -45,6 +39,15 @@ Overview mode for icon
 Warnings for ip6_disabled and ip4only_domain
  - ip4only_domain should show a badge next to affected domains
  - ip6_disabled should show a warning on the panel
+
+
+# Rejected ideas:
+
+show http/https/mixed info
+SSL information for connections
+Detail view pane for info about each connection
+Copy everything (report) to clipboard
+Add ability to copy a list of all files fetched to clipboard (per-domain)
 
 
 # Ideas
