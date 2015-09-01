@@ -52,6 +52,7 @@ var gt = (function () {
         }
     } else {
         log("init locale - using system locale", 0);
+        // This has to be a chrome:// URI or it doesn't work
         stringBundle = Services.strings.createBundle("chrome://sixornot/locale/sixornot.properties");
     }
 

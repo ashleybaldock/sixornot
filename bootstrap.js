@@ -150,6 +150,9 @@ shutdown = function (aData, aReason) {
 
         // Remove resource alias
         cleanupResource();
+
+        // Flush bundles (see bug 719376)
+        Services.strings.flushBundles();
     }
 };
 
