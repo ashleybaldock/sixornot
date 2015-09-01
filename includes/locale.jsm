@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2015 Timothy Baldock. All Rights Reserved.
+ */
+
 /*jslint white: true, maxerr: 100, indent: 4 */
 
 // Provided by Firefox:
