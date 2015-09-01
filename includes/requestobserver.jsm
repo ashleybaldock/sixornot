@@ -83,18 +83,44 @@ var on_examine_response = function(subject, topic) {
 
     log("httpRequestObserver: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
+    var security = {
+        cipherName: "",
+        keyLength: 0,
+        secretKeyLength: 0,
+        isExtendedValidation: false,
+        isDomainMismatch: false,
+        isNotValidAtThisTime: false,
+        isUntrusted: false,
+        shortSecurityDescription: "",
+        errorMessage: "",
+        securityState: 0    // TODO make this into flags
+    };
+
     // Extract security information
     if (http_channel.securityInfo) {
+        // https://dxr.mozilla.org/comm-central/source/mozilla/security/manager/ssl/nsISSLStatus.idl
         var sslStatusProvider = http_channel.securityInfo.QueryInterface(Components.interfaces.nsISSLStatusProvider);
         if (sslStatusProvider && sslStatusProvider.SSLStatus) {
             var sslStatus = sslStatusProvider.SSLStatus.QueryInterface(Components.interfaces.nsISSLStatus);
-            log("httpRequestObserver: sslStatus - cipherName: " + sslStatus.cipherName + ", keyLength: " + sslStatus.keyLength, 1);
+            if (sslStatus) {
+                security.cipherName = sslStatus.cipherName;
+                security.keyLength = sslStatus.keyLength;
+                security.secretKeyLength = sslStatus.secretKeyLength;
+                security.isExtendedValidation = sslStatus.isExtendedValidation;
+                security.isDomainMismatch = sslStatus.isDomainMismatch;
+                security.isNotValidAtThisTime = sslStatus.isNotValidAtThisTime;
+                security.isUntrusted = sslStatus.isUntrusted;
+            }
         }
         var nsITransportSecurityInfo = http_channel.securityInfo.QueryInterface(Components.interfaces.nsITransportSecurityInfo);
         if (nsITransportSecurityInfo) {
-            log("httpRequestObserver: nsITransportSecurityInfo - shortSecurityDescription: " + nsITransportSecurityInfo.shortSecurityDescription, 1);
+            security.shortSecurityDescription = nsITransportSecurityInfo.shortSecurityDescription;
+            security.errorMessage = nsITransportSecurityInfo.errorMessage;
+            security.securityState = nsITransportSecurityInfo.securityState;
         }
     }
+
+    log("httpRequestObserver: security: " + JSON.stringify(security), 1);
 
     /*jslint bitwise: true */
     if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
@@ -102,13 +128,15 @@ var on_examine_response = function(subject, topic) {
         topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", {
             host: http_channel.URI.host,
             address: remoteAddress,
-            addressFamily: remoteAddressFamily
+            addressFamily: remoteAddressFamily,
+            security: security
         });
     } else {
         topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", {
             host: http_channel.URI.host,
             address: remoteAddress,
-            addressFamily: remoteAddressFamily
+            addressFamily: remoteAddressFamily,
+            security: security
         });
     }
 };
