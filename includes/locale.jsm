@@ -34,7 +34,7 @@ var gt = (function () {
     if (locale !== "") {
         stringBundle = Services.strings.createBundle("resource://sixornot/locale/" + locale + "/sixornot.properties");
         if (isValidBundle(stringBundle)) {
-            log("init locale - overriding locale as: " + locale, 0);
+            log("init locale - overriding locale as: " + locale, 1);
         } else {
             var localeBase = locale.match(/(\w+)-\w+/);
             if (localeBase) {
@@ -47,11 +47,11 @@ var gt = (function () {
                 log("SixOrNot warning: override locale setting invalid, falling back to system locale", 0);
                 stringBundle = Services.strings.createBundle("chrome://sixornot/locale/sixornot.properties");
             } else {
-                log("init locale - overriding locale as: " + locale, 0);
+                log("init locale - overriding locale as: " + locale, 1);
             }
         }
     } else {
-        log("init locale - using system locale", 0);
+        log("init locale - using system locale", 1);
         // This has to be a chrome:// URI or it doesn't work
         stringBundle = Services.strings.createBundle("chrome://sixornot/locale/sixornot.properties");
     }
