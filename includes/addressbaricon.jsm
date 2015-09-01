@@ -1,3 +1,6 @@
+/*
+ * Copyright 2015 Timothy Baldock. All Rights Reserved.
+ */
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");

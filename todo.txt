@@ -22,7 +22,7 @@ Optimise panel + other code                                                 - DO
 
  - Refactor UI to split out legacy components & freeze                      - DONE
     - Test legacy UI
- - Refactor locale handling code to use built-in functionality
+ - Refactor locale handling code to use built-in functionality              - DONE
 look into http-on-examine-merged-response
 unload for content script
 jslint validation
