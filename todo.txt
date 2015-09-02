@@ -32,7 +32,6 @@ test on legacy platforms
  - FF ESR
 integrate documentation into addon instead of online
 observe showallips preference and update panel
-switch over to nsIWebProgressListener
  - look into http-on-examine-merged-response
 
 NAT64 prefixes
@@ -73,6 +72,7 @@ Copy everything (report) to clipboard
 Add ability to copy a list of all files fetched to clipboard (per-domain)
 Record total size of objects downloaded from each site + display (in KB? etc.)
 Icon display in status bar on SeaMonkey/Firefox alternatives
+switch over to nsIWebProgressListener - doesn't expose IP addresses!
 
 
 # Ideas
