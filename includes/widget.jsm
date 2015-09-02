@@ -31,7 +31,7 @@ var createWidget = function (node, win) {
     // Called by content script of active tab
     // Message contains data to update icon/UI
     var onUpdateUIMessage = function (message) {
-        log("gui onUpdateUIMessage: data: " + message.data, 0);
+        log("gui onUpdateUIMessage: data: " + message.data, 1);
         var data = JSON.parse(message.data);
         if (data) {
             updateIconForNode(data, node);

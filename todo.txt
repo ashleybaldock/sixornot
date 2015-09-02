@@ -32,14 +32,17 @@ test on legacy platforms
  - FF ESR
 integrate documentation into addon instead of online
 observe showallips preference and update panel
- - look into http-on-examine-merged-response
+look into http-on-examine-merged-response
+investigate channelIsForDownload on nsIHttpChannelInternal
 
 NAT64 prefixes
  - Detection + conversion of embedded IPv4 addresses
  - Configurable prefix
+ - Autodetect prefixes (+ manual config too)
 
 Warnings for ip6_disabled and ip4only_domain
  - ip4only_domain should show a badge next to affected domains
+    - permit toggling whether a domain is on the ip4 only list or not
  - ip6_disabled should show a warning on the panel
     - maybe tint the entire panel red?
 
@@ -48,7 +51,6 @@ Add better proxy detection (per-connection) and icon display
  Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
  Same way that DNS lookups are done, with a callback
 Disable native DNS resolution for proxied connections
-investigate channelIsForDownload on nsIHttpChannelInternal
 
 Overview mode for icon 
  - show green icon only if all connections made using v6
@@ -59,6 +61,7 @@ Better greyscale icons (especially for cache entries)
 Local info:
 Retrieve interface information along with addresses
  - Display local addresses per interface
+
 Retrieve netmask information for each address and display (e.g. 1999::1/64)
  - Also collect tunnel interface IPs on Vista+
 

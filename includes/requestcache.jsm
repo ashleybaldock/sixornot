@@ -22,7 +22,7 @@ var EXPORTED_SYMBOLS = [ "createRequestCache" ];
  */
 var createRequestCache = function () {
     /* Prepare and return a new blank entry for the hosts listing */
-    var createHost = function (host, address, address_family, inner) {
+    var createHost = function (host, address, address_family, security) {
         return {
             host: host,
             address: address,
@@ -33,7 +33,7 @@ var createRequestCache = function () {
             ipv4s: [],
             dns_status: "ready",
             dns_cancel: null,
-            security: {},
+            security: security,
             lookup_ips: function (callback) {
                 var entry, on_returned_ips;
                 // Don't do IP lookup for local file entries
@@ -100,7 +100,7 @@ var createRequestCache = function () {
                 }
             })) {
                 log("addOrUpdate, host: " + data.host + ", remoteAddress: " + data.address, 1);
-                new_entry = createHost(data.host, data.address, data.addressFamily, id);
+                new_entry = createHost(data.host, data.address, data.addressFamily, data.security);
                 new_entry.lookup_ips(dns_complete_callback);
                 this.cache[id].entries.push(new_entry);
             }
@@ -131,13 +131,16 @@ var createRequestCache = function () {
                         item.address = data.address;
                         item.address_family = data.addressFamily;
                     }
-                    item.security = data.security;
+                    if (data.security) {
+                        item.security = data.security; // TODO we need to handle updating/merging this a lot better
+                    }
                     return true;
                 }
             })) {
                 log("addOrUpdateToWaitingList, host: " + data.host + ", remoteAddress: " + data.address, 1);
+                if (!data.security) data.security = {}; // TODO handle this better
                 this.waitinglist.push(
-                    createHost(data.host, data.address, data.addressFamily, null));
+                    createHost(data.host, data.address, data.addressFamily, data.security));
             }
         },
         printCache: function () {

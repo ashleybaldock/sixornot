@@ -39,6 +39,7 @@ var createPanel = function (win, panel_id) {
     // Called by content script of active tab
     // Message contains data to update icon/UI
     var on_update_ui_message = function (message) {
+        log("panel onUpdateUIMessage: data: " + message.data, 0);
         remote_anchor.update_model(JSON.parse(message.data));
         force_scrollbars();
     };

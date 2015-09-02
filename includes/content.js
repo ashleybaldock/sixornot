@@ -14,9 +14,9 @@ log = function (message, severity) {
     _log("SCS: " + content_script_id + ": " + message, severity);
 };
 var printCaches = function (text) {
-    log(text + " - caches: ", 0);
-    log("--" + requests.printWaitingList(), 0);
-    log("--" + requests.printCache(), 0);
+    log(text + " - caches: ", 1);
+    log("--" + requests.printWaitingList(), 1);
+    log("--" + requests.printCache(), 1);
 };
 
 Components.utils.import("resource://sixornot/includes/dns.jsm");

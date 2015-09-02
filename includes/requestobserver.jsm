@@ -108,24 +108,21 @@ var on_examine_response = function(subject, topic) {
         }
     }
 
-    log("httpRequestObserver: security: " + JSON.stringify(security), 1);
+    var requestRecord = {
+        host: http_channel.URI.host,
+        address: remoteAddress,
+        addressFamily: remoteAddressFamily,
+        security: security
+    };
+
+    log("httpRequestObserver: sending: " + JSON.stringify(requestRecord), 0);
 
     /*jslint bitwise: true */
     if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
     /*jslint bitwise: false */
-        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", {
-            host: http_channel.URI.host,
-            address: remoteAddress,
-            addressFamily: remoteAddressFamily,
-            security: security
-        });
+        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", requestRecord);
     } else {
-        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", {
-            host: http_channel.URI.host,
-            address: remoteAddress,
-            addressFamily: remoteAddressFamily,
-            security: security
-        });
+        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", requestRecord);
     }
 };
 
@@ -154,3 +151,4 @@ var httpRequestObserver = {
         Services.obs.removeObserver(this, "http-on-examine-cached-response");
     }
 };
+
