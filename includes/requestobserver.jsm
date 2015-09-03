@@ -5,45 +5,54 @@
 // Provided by Firefox:
 /*global Components, Services */
 
-/*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-/*jslint es5: false */
 
 var EXPORTED_SYMBOLS = ["httpRequestObserver"];
 
-var on_examine_response = function(subject, topic) {
-    var http_channel, http_channel_internal, notificationCallbacks,
-        domWindow, domWindowUtils,
-        original_window, new_page, new_entry, loadContext,
-        e1, e2, remoteAddress, remoteAddressFamily, topFrameMM;
+// https://developer.mozilla.org/en-US/Add-ons/Code_snippets/Tabbed_browser#Getting_the_browser_that_fires_the_http-on-modify-request_notification
+var legacyGetBrowser = function (contentWindow) {
+    var aDOMWindow = contentWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIWebNavigation)
+                                      .QueryInterface(Components.interfaces.nsIDocShellTreeItem).rootTreeItem
+                                      .QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindow);
+    return aDOMWindow.gBrowser._getTabForContentWindow(contentWindow.top).linkedBrowser;
+};
 
-    http_channel = subject.QueryInterface(Components.interfaces.nsIHttpChannel);
-    http_channel_internal = subject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
-    var proxy_channel = subject.QueryInterface(Components.interfaces.nsIProxiedChannel);
+var onExamineResponse = function(subject, topic) {
+    var httpChannel, httpChannelInternal, proxyChannel,
+	notificationCallbacks, loadContext, e1, e2,
+	remoteAddress, remoteAddressFamily, topFrameMM;
 
-    if (proxy_channel) {
-        var proxyInfo = proxy_channel.proxyInfo;
+    httpChannel = subject.QueryInterface(Components.interfaces.nsIHttpChannel);
+    httpChannelInternal = subject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
+    proxyChannel = subject.QueryInterface(Components.interfaces.nsIProxiedChannel);
+
+    if (proxyChannel) {
+        var proxyInfo = proxyChannel.proxyInfo;
     }
 
-    notificationCallbacks = http_channel.notificationCallbacks;
+    notificationCallbacks = httpChannel.notificationCallbacks;
     if (!notificationCallbacks) {
-        if (http_channel.loadGroup) {
-            notificationCallbacks = http_channel.loadGroup.notificationCallbacks;
+        if (httpChannel.loadGroup) {
+            notificationCallbacks = httpChannel.loadGroup.notificationCallbacks;
         }
     }
     if (!notificationCallbacks) {
-        log("httpRequestObserver: Unable to determine notificationCallbacks for this http_channel", 1);
+        log("httpRequestObserver: Unable to determine notificationCallbacks for this httpChannel", 1);
         return;
     }
 
+    /* Try and locate a messageManager for the browser initiating this request */
     try {
         // TODO - work out what exceptions from these lines actually mean
         loadContext = notificationCallbacks.getInterface(Components.interfaces.nsILoadContext);
         var topFrameElement = loadContext.topFrameElement;  // TODO - will this always be the browser element, e.g. for iframes?
+        if (!topFrameElement) { // Compatibility with FF38 and below with E10S disabled
+            topFrameElement = legacyGetBrowser(loadContext.associatedWindow);
+        }
         topFrameMM = topFrameElement.messageManager;
     } catch (e2) {
-        log("httpRequestObserver: non-DOM request", 2);
+        log("httpRequestObserver: could not find messageManager for request browser - exception: " + parse_exception(e2), 0);
         return;
     }
 
@@ -56,20 +65,20 @@ var on_examine_response = function(subject, topic) {
     // Extract address information
     if (topic === "http-on-examine-response") {
         try {
-            remoteAddress = http_channel_internal.remoteAddress;
+            remoteAddress = httpChannelInternal.remoteAddress;
             remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
         } catch (e1) {
-            log("httpRequestObserver - http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 1);
+            log("httpRequestObserver - http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 1);
             remoteAddress = "";
             remoteAddressFamily = 0;
         }
     } else {
-        log("httpRequestObserver - (probably cache hit) NOT http-on-examine-response: remoteAddress was not accessible for: " + http_channel.URI.spec, 2);
+        log("httpRequestObserver - (probably cache hit) NOT http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 2);
         remoteAddress = "";
         remoteAddressFamily = 2;
     }
 
-    log("httpRequestObserver: Processing " + http_channel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
+    log("httpRequestObserver: Processing " + httpChannel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
     var security = {
         cipherName: "",
@@ -85,9 +94,9 @@ var on_examine_response = function(subject, topic) {
     };
 
     // Extract security information
-    if (http_channel.securityInfo) {
+    if (httpChannel.securityInfo) {
         // https://dxr.mozilla.org/comm-central/source/mozilla/security/manager/ssl/nsISSLStatus.idl
-        var sslStatusProvider = http_channel.securityInfo.QueryInterface(Components.interfaces.nsISSLStatusProvider);
+        var sslStatusProvider = httpChannel.securityInfo.QueryInterface(Components.interfaces.nsISSLStatusProvider);
         if (sslStatusProvider && sslStatusProvider.SSLStatus) {
             var sslStatus = sslStatusProvider.SSLStatus.QueryInterface(Components.interfaces.nsISSLStatus);
             if (sslStatus) {
@@ -100,7 +109,7 @@ var on_examine_response = function(subject, topic) {
                 security.isUntrusted = sslStatus.isUntrusted;
             }
         }
-        var nsITransportSecurityInfo = http_channel.securityInfo.QueryInterface(Components.interfaces.nsITransportSecurityInfo);
+        var nsITransportSecurityInfo = httpChannel.securityInfo.QueryInterface(Components.interfaces.nsITransportSecurityInfo);
         if (nsITransportSecurityInfo) {
             security.shortSecurityDescription = nsITransportSecurityInfo.shortSecurityDescription;
             security.errorMessage = nsITransportSecurityInfo.errorMessage;
@@ -109,7 +118,7 @@ var on_examine_response = function(subject, topic) {
     }
 
     var requestRecord = {
-        host: http_channel.URI.host,
+        host: httpChannel.URI.host,
         address: remoteAddress,
         addressFamily: remoteAddressFamily,
         security: security
@@ -118,14 +127,13 @@ var on_examine_response = function(subject, topic) {
     log("httpRequestObserver: sending: " + JSON.stringify(requestRecord), 0);
 
     /*jslint bitwise: true */
-    if (http_channel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
+    if (httpChannel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
     /*jslint bitwise: false */
         topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", requestRecord);
     } else {
         topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", requestRecord);
     }
 };
-
 
 /*
  * HTTP Request observer
@@ -136,7 +144,7 @@ var httpRequestObserver = {
     observe: function (subject, topic, data) {
         if (topic === "http-on-examine-response"
          || topic === "http-on-examine-cached-response") {
-            on_examine_response(subject, topic);
+            onExamineResponse(subject, topic);
         }
     },
 

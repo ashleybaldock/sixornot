@@ -33,7 +33,7 @@ var get_customize_sheet_for_platform = function () {
         }
         return legacyStylesheets.customize_ffp29;
     }
-    return legacyStylesheets.customize; // SeaMonkey etc.
+    return stylesheet.sheets.customize; // SeaMonkey etc.
 };
 
 var inject_into_new_windows_with_path = function (sheet, path) {
@@ -57,6 +57,7 @@ var inject_into_new_windows_with_path = function (sheet, path) {
     });
 };
 
+var customize_sheet = get_customize_sheet_for_platform();
 
 /* UI for pre-Australis platforms */
 var ui = {
@@ -85,7 +86,6 @@ var ui = {
         if (Services.appinfo.ID !== FIREFOX_ID || Services.appinfo.OS === "Linux") {
             stylesheet.injectIntoWindowWithUnload(win, legacyStylesheets.large);
         }
-        var customize_sheet = get_customize_sheet_for_platform();
         var on_beforecustomization = function (evt) {
             log("on_beforecustomization", 1);
             /* On pre-Australis platforms the panel for customisation of the toolbars

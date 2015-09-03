@@ -28,14 +28,14 @@ SSL information for connections
  - Show padlock icon for each host                                          - DONE
  - Certificate info on hover over icon (+ copy to clipboard on click)
 
-split MM from widget/panel into object for code reuse
+split MM from widget/panel into object for code reuse                       - DONE
  - maybe update panel via widget?
 unload for content script
 jslint validation
 Update documentation
 test on non-E10S (determine min version)
 test on legacy platforms
- - SeaMonkey
+ - SeaMonkey                                            - Seems working
  - FF ESR
 integrate documentation into addon instead of online
 observe showallips preference and update panel
