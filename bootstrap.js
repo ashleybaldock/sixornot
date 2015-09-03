@@ -84,6 +84,7 @@ startup = function (aData, aReason) {
     Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
     Components.utils.import("resource://sixornot/includes/addressbaricon.jsm");
     Components.utils.import("resource://sixornot/includes/widget.jsm");
+    Components.utils.import("resource://sixornot/includes/messanger.jsm");
     if (CustomizableUIAvailable) {
         Components.utils.import("resource://sixornot/includes/gui.jsm");
     } else {
@@ -136,6 +137,7 @@ shutdown = function (aData, aReason) {
         Components.utils.unload("resource://sixornot/includes/addressbaricon.jsm");
         Components.utils.unload("resource://sixornot/includes/panel.jsm");
         Components.utils.unload("resource://sixornot/includes/widget.jsm");
+        Components.utils.unload("resource://sixornot/includes/messanger.jsm");
         Components.utils.unload("resource://sixornot/includes/stylesheet.jsm");
         Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");
         Components.utils.unload("resource://sixornot/includes/requestcache.jsm");

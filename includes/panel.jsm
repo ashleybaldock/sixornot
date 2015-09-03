@@ -12,23 +12,30 @@ Components.utils.import("resource://sixornot/includes/locale.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
+Components.utils.import("resource://sixornot/includes/messanger.jsm");
 
 var EXPORTED_SYMBOLS = [ "createPanel" ];
 
 /* Creates and sets up a panel to display information which can then be bound to an icon */
 var createPanel = function (win, panel_id) {
-    var doc, panel, register_callbacks, unregister_callbacks,
-    panel_vbox, grid, grid_rows, grid_cols,
-    remote_anchor, local_anchor,
-    force_scrollbars,
+    var doc, panel, panel_vbox, grid, grid_rows, grid_cols,
+    remote_anchor, local_anchor, forceScrollbars,
     on_click, onPopupShowing, onPopupHiding, on_page_change,
-    on_new_host, on_address_change, onPageshow,
-    on_count_change, onTabSelect;
+    on_new_host, on_address_change, on_count_change;
 
     doc = win.document;
 
+    // Called by content script of active tab
+    // Message contains data to update icon/UI
+    var updateUI = function (data) {
+        remote_anchor.update_model(data);
+        forceScrollbars();
+    };
+
+    var messanger = getMessanger(win, updateUI);
+
     /* Ensure panel contents visible with scrollbars */
-    force_scrollbars = function () {
+    forceScrollbars = function () {
         if (panel_vbox.clientHeight > panel.clientHeight) {
             panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
             // TODO if panel width changes after this is applied horizontal fit breaks
@@ -36,67 +43,17 @@ var createPanel = function (win, panel_id) {
         }
     };
 
-    // Called by content script of active tab
-    // Message contains data to update icon/UI
-    var on_update_ui_message = function (message) {
-        log("panel onUpdateUIMessage: data: " + message.data, 0);
-        remote_anchor.update_model(JSON.parse(message.data));
-        force_scrollbars();
-    };
-
-    /* Content script messaging */
-    var currentBrowserMM;
-    var unsubscribe = function () {
-        if (currentBrowserMM) {
-            currentBrowserMM.removeMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
-        }
-    };
-    var subscribe_to_current = function () {
-        unsubscribe();
-        currentBrowserMM = win.gBrowser.mCurrentBrowser.messageManager;
-        currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", on_update_ui_message);
-    };
-
-    var requestUpdate = function () {
-        currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
-    };
-
-    /* Event handlers */
-    unregister_callbacks = function () {
-        win.gBrowser.tabContainer.removeEventListener("TabSelect", onTabSelect, false);
-        // TODO do we still need pageshow?
-        win.gBrowser.removeEventListener("pageshow", onPageshow, false);
-    };
-    register_callbacks = function () {
-        win.gBrowser.tabContainer.addEventListener("TabSelect", onTabSelect, false);
-        win.gBrowser.addEventListener("pageshow", onPageshow, false);
-    };
-
     onPopupShowing = function (evt) {
         log("panel:onPopupShowing", 2);
-        register_callbacks();
-        subscribe_to_current();
-        requestUpdate();
+        messanger.subscribeToCurrentBrowser();
+        messanger.requestUpdate();
         local_anchor.panelShowing();
     };
 
     onPopupHiding = function (evt) {
         log("panel:onPopupHiding", 2);
-        unregister_callbacks();
-        // TODO unsubscribe from current
+        messanger.unsubscribe();
         local_anchor.panelHiding();
-    };
-
-    onTabSelect = function (evt) {
-        log("panel:onTabSelect", 1);
-        subscribe_to_current();
-        requestUpdate();
-    };
-
-    onPageshow = function (evt) {
-        log("panel:onPageshow", 1);
-        subscribe_to_current();
-        requestUpdate();
     };
 
     var onClickSettingsLink = function (evt) {
@@ -192,8 +149,7 @@ var createPanel = function (win, panel_id) {
 
     unload(function () {
         log("Unload panel", 2);
-        unsubscribe();
-        unregister_callbacks();
+        messanger.shutdown();
         panel.removeEventListener("popupshowing", onPopupShowing, false);
         panel.removeEventListener("popuphiding", onPopupHiding, false);
         remote_anchor.remove(); // Removes child event listeners
