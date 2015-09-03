@@ -13,6 +13,7 @@ Use Services.jsm in place of Components.classes.getService where possible   - DO
 Replace env.jsm with Services.jsm.appinfo                                   - DONE
 Refactor requestcache/requestobserver
  - Unify host listing object with local host listing object
+ - Better end-to-end management of host entries including creation
  - Accessor methods for cache/waitinglist                                   - DONE
  - Move methods to destroy entries into requests object                     - DONE
  - Abstract implementation of cache - maybe change from an array            - DONE
@@ -23,6 +24,12 @@ Optimise panel + other code                                                 - DO
     - Test legacy UI
  - Refactor locale handling code to use built-in functionality              - DONE
 
+SSL information for connections
+ - Show padlock icon for each host                                          - DONE
+ - Certificate info on hover over icon (+ copy to clipboard on click)
+
+split MM from widget/panel into object for code reuse
+ - maybe update panel via widget?
 unload for content script
 jslint validation
 Update documentation
@@ -35,10 +42,13 @@ observe showallips preference and update panel
 look into http-on-examine-merged-response
 investigate channelIsForDownload on nsIHttpChannelInternal
 
+
+#2.1
 NAT64 prefixes
  - Detection + conversion of embedded IPv4 addresses
  - Configurable prefix
  - Autodetect prefixes (+ manual config too)
+ - Translation strings for config
 
 Warnings for ip6_disabled and ip4only_domain
  - ip4only_domain should show a badge next to affected domains
@@ -52,11 +62,14 @@ Add better proxy detection (per-connection) and icon display
  Same way that DNS lookups are done, with a callback
 Disable native DNS resolution for proxied connections
 
+SSL information for connections
+ (- Show yellow icon for mixed-mode connections)
+
+
+# 2.2
 Overview mode for icon 
  - show green icon only if all connections made using v6
  - show blue icon only if all hosts have only AAAA records
-
-Better greyscale icons (especially for cache entries)
 
 Local info:
 Retrieve interface information along with addresses
@@ -65,11 +78,12 @@ Retrieve interface information along with addresses
 Retrieve netmask information for each address and display (e.g. 1999::1/64)
  - Also collect tunnel interface IPs on Vista+
 
+Better greyscale icons (especially for cache entries)
+
 
 # Rejected ideas:
 
 show http/https/mixed info
-SSL information for connections
 Detail view pane for info about each connection
 Copy everything (report) to clipboard
 Add ability to copy a list of all files fetched to clipboard (per-domain)

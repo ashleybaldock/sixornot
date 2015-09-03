@@ -413,18 +413,21 @@ var createSSLInfo = function (doc, addto) {
                 if (!sslinfo.classList.contains("sixornot_ssl_ev")) {
                     remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl_ev");
+                    sslinfo.setAttribute("tooltiptext", host.security.cipherName);
                     sslinfo.setAttribute("width", "16");
                 }
             } else if (host.security.cipherName) {
                 if (!sslinfo.classList.contains("sixornot_ssl")) {
                     remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl");
+                    sslinfo.setAttribute("tooltiptext", host.security.cipherName);
                     sslinfo.setAttribute("width", "16");
                 }
             } else {
                 if (!sslinfo.classList.contains("sixornot_ssl_off")) {
                     remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl_off");
+                    sslinfo.setAttribute("tooltiptext", "");
                     sslinfo.setAttribute("width", "0");
                 }
             }
