@@ -44,6 +44,7 @@ var onExamineResponse = function(subject, topic) {
         loadContext = notificationCallbacks.getInterface(Components.interfaces.nsILoadContext);
         var topFrameElement = loadContext.topFrameElement;  // TODO - will this always be the browser element, e.g. for iframes?
         if (!topFrameElement) { // Compatibility with FF38 and below with E10S disabled
+            // TODO - only call this if we are on a pre-FF38 browser!
             topFrameElement = legacyGetBrowser(loadContext.associatedWindow);
         }
         topFrameMM = topFrameElement.messageManager;
@@ -162,7 +163,6 @@ var httpRequestObserver = {
     },
 
     register: function () {
-        // TODO http-on-examine-merged-response
         Services.obs.addObserver(this, "http-on-examine-response", false);
         Services.obs.addObserver(this, "http-on-examine-cached-response", false);
         Services.obs.addObserver(this, "http-on-examine-merged-response", false);

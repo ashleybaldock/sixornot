@@ -59,7 +59,6 @@ addMessageListener("sixornot@baldock.me:update-ui", function (message) {
 
 /* Message senders */
 var updateUI = function (data) {
-    //log("updating_ui: data: " + JSON.stringify(data));
     sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(data));
 };
 
