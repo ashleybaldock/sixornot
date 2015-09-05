@@ -43,7 +43,7 @@ var createRequestCache = function () {
                     return;
                 }
                 // Don't do IP lookup for proxied connections
-                if (this.proxy.type === "http" || this.proxy.proxyResolvesHost) {
+                if (this.proxy.type === "http" || this.proxy.type === "https" || this.proxy.proxyResolvesHost) {
                     this.dns_status = "proxy";
                     return;
                 }

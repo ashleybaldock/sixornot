@@ -2,8 +2,6 @@
 
 
 # Known bugs:
-On Australis, changing the greyscale setting while the button is not displayed
-results in the button not conforming to the setting
 
 
 # 2.0.0
@@ -23,6 +21,7 @@ Optimise panel + other code                                                 - DO
  - Refactor UI to split out legacy components & freeze                      - DONE
     - Test legacy UI
  - Refactor locale handling code to use built-in functionality              - DONE
+Add observer for http-on-examine-merged-response                            - DONE
 
 SSL information for connections
  - Show padlock icon for each host                                          - DONE
@@ -32,25 +31,28 @@ split MM from widget/panel into object for code reuse                       - DO
  - maybe update panel via widget?
 unload for content script
 jslint validation
-Update documentation
 test on non-E10S (determine min version)
 test on legacy platforms
  - SeaMonkey                                            - Seems working
  - FF ESR
-integrate documentation into addon instead of online
 observe showallips preference and update panel
-look into http-on-examine-merged-response
+ - fix local address display on expand
 investigate channelIsForDownload on nsIHttpChannelInternal
+Update documentation
+ - document proxy support
+ - document SSL support
+ - integrate documentation into addon instead of online
 
 Proxy detection + info
-Add better proxy detection (per-connection) and icon display
+Add better proxy detection (per-connection) and icon display                - DONE
 Disable native DNS resolution for proxied connections
- - if it's an http/https proxy
-    - show proxy icon in toolbar/host info for http/https proxy hosts
-    - show address as "Proxied" for http/https proxied connections - needs translation
- - if it's a socks proxy and has resolve via DNS set
-Show icon in panel against proxied hosts
- - Proxy information on mouseover
+ - if it's an http/https proxy                                              - DONE
+    - show proxy icon in toolbar/host info for http/https proxy hosts       - DONE
+    - show address in brackets for http/https proxied connections           - DONE
+ - if it's a socks proxy and has resolve via DNS set                        - DONE
+Show icon in panel against proxied hosts                                    - DONE
+ - Proxy information on mouseover                                           - DONE
+Show coloured proxy icon if DNS lookups disabled
 
 
 #2.1
@@ -84,11 +86,11 @@ Retrieve netmask information for each address and display (e.g. 1999::1/64)
  - Also collect tunnel interface IPs on Vista+
 
 Better greyscale icons (especially for cache entries)
+ - new monochrome icon set (match new FF icons?)
 
 
 # Rejected ideas:
 
-show http/https/mixed info
 Detail view pane for info about each connection
 Copy everything (report) to clipboard
 Add ability to copy a list of all files fetched to clipboard (per-domain)
