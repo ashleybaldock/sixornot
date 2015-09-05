@@ -42,6 +42,16 @@ observe showallips preference and update panel
 look into http-on-examine-merged-response
 investigate channelIsForDownload on nsIHttpChannelInternal
 
+Proxy detection + info
+Add better proxy detection (per-connection) and icon display
+Disable native DNS resolution for proxied connections
+ - if it's an http/https proxy
+    - show proxy icon in toolbar/host info for http/https proxy hosts
+    - show address as "Proxied" for http/https proxied connections - needs translation
+ - if it's a socks proxy and has resolve via DNS set
+Show icon in panel against proxied hosts
+ - Proxy information on mouseover
+
 
 #2.1
 NAT64 prefixes
@@ -56,11 +66,6 @@ Warnings for ip6_disabled and ip4only_domain
  - ip6_disabled should show a warning on the panel
     - maybe tint the entire panel red?
 
-Proxy detection + info
-Add better proxy detection (per-connection) and icon display
- Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
- Same way that DNS lookups are done, with a callback
-Disable native DNS resolution for proxied connections
 
 SSL information for connections
  (- Show yellow icon for mixed-mode connections)

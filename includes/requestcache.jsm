@@ -22,7 +22,7 @@ var EXPORTED_SYMBOLS = [ "createRequestCache" ];
  */
 var createRequestCache = function () {
     /* Prepare and return a new blank entry for the hosts listing */
-    var createHost = function (host, address, address_family, security) {
+    var createHost = function (host, address, address_family, security, proxy) {
         return {
             host: host,
             address: address,
@@ -34,11 +34,17 @@ var createRequestCache = function () {
             dns_status: "ready",
             dns_cancel: null,
             security: security,
+            proxy: proxy,
             lookup_ips: function (callback) {
                 var entry, on_returned_ips;
                 // Don't do IP lookup for local file entries
                 if (this.address_family === 1) {
                     this.dns_status = "complete";
+                    return;
+                }
+                // Don't do IP lookup for proxied connections
+                if (this.proxy.type === "http" || this.proxy.proxyResolvesHost) {
+                    this.dns_status = "proxy";
                     return;
                 }
                 entry = this;
@@ -80,7 +86,7 @@ var createRequestCache = function () {
             // Move anything currently on waiting list into new cache entry
             var waitinglist = this.waitinglist.splice(0, Number.MAX_VALUE);
             waitinglist.forEach(function (item, index, array) {
-                this.addOrUpdate({host: item.host, address: item.address, addressFamily: item.address_family, security: item.security}, id, dns_complete_callback);
+                this.addOrUpdate({host: item.host, address: item.address, addressFamily: item.address_family, security: item.security, proxy: item.proxy}, id, dns_complete_callback);
             }, this);
         },
         addOrUpdate: function (data, id, dns_complete_callback) {
@@ -96,11 +102,12 @@ var createRequestCache = function () {
                         item.address_family = data.addressFamily;
                     }
                     item.security = data.security;
+                    item.proxy = data.proxy;
                     return true;
                 }
             })) {
                 log("addOrUpdate, host: " + data.host + ", remoteAddress: " + data.address, 1);
-                new_entry = createHost(data.host, data.address, data.addressFamily, data.security);
+                new_entry = createHost(data.host, data.address, data.addressFamily, data.security, data.proxy);
                 new_entry.lookup_ips(dns_complete_callback);
                 this.cache[id].entries.push(new_entry);
             }
@@ -134,13 +141,17 @@ var createRequestCache = function () {
                     if (data.security) {
                         item.security = data.security; // TODO we need to handle updating/merging this a lot better
                     }
+                    if (data.proxy) {
+                        item.proxy = data.proxy; // TODO we need to handle updating/merging this a lot better
+                    }
                     return true;
                 }
             })) {
                 log("addOrUpdateToWaitingList, host: " + data.host + ", remoteAddress: " + data.address, 1);
                 if (!data.security) data.security = {}; // TODO handle this better
+                if (!data.proxy) data.proxy = {}; // TODO handle this better
                 this.waitinglist.push(
-                    createHost(data.host, data.address, data.addressFamily, data.security));
+                    createHost(data.host, data.address, data.addressFamily, data.security, data.proxy));
             }
         },
         printCache: function () {

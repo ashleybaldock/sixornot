@@ -94,6 +94,9 @@ var sixornot_ssl_classes = [
 ];
 
 var get_icon_class = function (record) {
+    if (record.proxy.type === "http" || record.proxy.type === "https") {
+        return "sixornot_proxy";
+    }
     if (record.address_family === 4) {
         if (record.ipv6s.length !== 0) {
             // Actual is v4, DNS is v4 + v6 -> Orange

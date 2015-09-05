@@ -27,10 +27,6 @@ var onExamineResponse = function(subject, topic) {
     httpChannelInternal = subject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
     proxyChannel = subject.QueryInterface(Components.interfaces.nsIProxiedChannel);
 
-    if (proxyChannel) {
-        var proxyInfo = proxyChannel.proxyInfo;
-    }
-
     notificationCallbacks = httpChannel.notificationCallbacks;
     if (!notificationCallbacks) {
         if (httpChannel.loadGroup) {
@@ -62,8 +58,8 @@ var onExamineResponse = function(subject, topic) {
         return;
     }
 
-    // Extract address information
-    if (topic === "http-on-examine-response") {
+    /* Extract address information */
+    if (topic === "http-on-examine-response" || topic === "http-on-examine-merged-response") {
         try {
             remoteAddress = httpChannelInternal.remoteAddress;
             remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
@@ -80,6 +76,22 @@ var onExamineResponse = function(subject, topic) {
 
     log("httpRequestObserver: Processing " + httpChannel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
 
+    /* Extract proxy information */
+    var proxyInfo = {
+        host: null,
+        port: null,
+        type: "direct",
+        proxyResolvesHost: false
+    };
+
+    if (proxyChannel && proxyChannel.proxyInfo) {
+        proxyInfo.host = proxyChannel.proxyInfo.host;
+        proxyInfo.port = proxyChannel.proxyInfo.port;
+        proxyInfo.type = proxyChannel.proxyInfo.type;
+        proxyInfo.proxyResolvesHost = proxyChannel.proxyInfo.flags === 1;
+    }
+
+    /* Extract security information */
     var security = {
         cipherName: "",
         keyLength: 0,
@@ -93,7 +105,6 @@ var onExamineResponse = function(subject, topic) {
         securityState: 0    // TODO make this into flags
     };
 
-    // Extract security information
     if (httpChannel.securityInfo) {
         // https://dxr.mozilla.org/comm-central/source/mozilla/security/manager/ssl/nsISSLStatus.idl
         var sslStatusProvider = httpChannel.securityInfo.QueryInterface(Components.interfaces.nsISSLStatusProvider);
@@ -121,7 +132,8 @@ var onExamineResponse = function(subject, topic) {
         host: httpChannel.URI.host,
         address: remoteAddress,
         addressFamily: remoteAddressFamily,
-        security: security
+        security: security,
+        proxy: proxyInfo
     };
 
     log("httpRequestObserver: sending: " + JSON.stringify(requestRecord), 0);
@@ -143,7 +155,8 @@ var onExamineResponse = function(subject, topic) {
 var httpRequestObserver = {
     observe: function (subject, topic, data) {
         if (topic === "http-on-examine-response"
-         || topic === "http-on-examine-cached-response") {
+         || topic === "http-on-examine-cached-response"
+         || topic === "http-on-examine-merged-response") {
             onExamineResponse(subject, topic);
         }
     },
@@ -152,11 +165,13 @@ var httpRequestObserver = {
         // TODO http-on-examine-merged-response
         Services.obs.addObserver(this, "http-on-examine-response", false);
         Services.obs.addObserver(this, "http-on-examine-cached-response", false);
+        Services.obs.addObserver(this, "http-on-examine-merged-response", false);
     },
 
     unregister: function () {
         Services.obs.removeObserver(this, "http-on-examine-response");
         Services.obs.removeObserver(this, "http-on-examine-cached-response");
+        Services.obs.removeObserver(this, "http-on-examine-merged-response");
     }
 };
 

@@ -88,7 +88,8 @@ var createPanel = function (win, panel_id) {
     grid = doc.createElement("grid");
     grid_rows = doc.createElement("rows");
     grid_cols = doc.createElement("columns");
-    // 6 columns wide - icon, sslinfo, count, host, address, show/hide
+    // 7 columns wide - icon, sslinfo, proxyinfo, count, host, address, show/hide
+    grid_cols.appendChild(doc.createElement("column"));
     grid_cols.appendChild(doc.createElement("column"));
     grid_cols.appendChild(doc.createElement("column"));
     grid_cols.appendChild(doc.createElement("column"));
@@ -201,9 +202,13 @@ var createIPEntry = function (doc, addto) {
             conipaddr.setAttribute("hidden", true);
             return this;
         },
-        update: function (address, address_family) {
+        update: function (address, address_family, showAsProxied) {
             if (address_family === 6 || address_family === 4) {
-                conipaddr.setAttribute("value", address);
+                if (showAsProxied) {
+                    conipaddr.setAttribute("value", "(" + address + ")");
+                } else {
+                    conipaddr.setAttribute("value", address);
+                }
                 copyText = address;
                 conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
                 conipaddr.classList.add("sixornot-link");
@@ -268,11 +273,12 @@ var createIPs = function (doc, addto) {
 
             if (entries.length <= 0) {
                 entries.push(
-                    createIPEntry(doc, address_box).update(host.address, host.address_family));
+                    createIPEntry(doc, address_box)
+                        .update(host.address, host.address_family, host.proxy.type === "http"));
             }
             if (entries[0].address !== host.address ||
                 host_cache.dns_status !== host.dns_status) {
-                entries[0].update(host.address, host.address_family);
+                entries[0].update(host.address, host.address_family, host.proxy.type === "http");
                 // Regenerate additional address entries
                 var entriesIndex = 1;
                 if (showing) {
@@ -284,10 +290,10 @@ var createIPs = function (doc, addto) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(
                                     createIPEntry(doc, address_box)
-                                        .update(address, 6));
+                                        .update(address, 6, false));
                             } else {
                                 // Update existing
-                                entries[entriesIndex].update(address, 6).show();
+                                entries[entriesIndex].update(address, 6, false).show();
                             }
                         }
                         entriesIndex++;
@@ -300,10 +306,10 @@ var createIPs = function (doc, addto) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(
                                     createIPEntry(doc, address_box)
-                                        .update(address, 4));
+                                        .update(address, 4, false));
                             } else {
                                 // Update existing
-                                entries[entriesIndex].update(address, 4).show();
+                                entries[entriesIndex].update(address, 4, false).show();
                             }
                         }
                         entriesIndex++;
@@ -394,6 +400,65 @@ var createSSLInfo = function (doc, addto) {
     };
 };
 
+var createProxyInfo = function (doc, addto) {
+    var proxyinfo, update;
+
+    proxyinfo = doc.createElement("image");
+    proxyinfo.setAttribute("height", "16");
+    addto.appendChild(proxyinfo);
+
+    return {
+        update: function (host) {
+            if (host.proxy.type === "http"
+                || host.proxy.type === "https"
+                || host.proxy.type === "socks4"
+                || host.proxy.type === "socks") {
+                if (!proxyinfo.classList.contains("sixornot_proxy_on")) {
+                    proxyinfo.classList.remove("sixornot_proxy_off");
+                    proxyinfo.classList.add("sixornot_proxy_on");
+                }
+                proxyinfo.setAttribute("width", "16");
+            } else {
+                if (!proxyinfo.classList.contains("sixornot_proxy_off")) {
+                    proxyinfo.classList.remove("sixornot_proxy_on");
+                    proxyinfo.classList.add("sixornot_proxy_off");
+                }
+                proxyinfo.setAttribute("width", "0");
+            }
+            if (host.proxy.type === "http") {
+                proxyinfo.setAttribute("tooltiptext",
+                    gt("proxy_base", [
+                        gt("proxy_http"), host.proxy.host,
+                        host.proxy.port, gt("proxy_lookups_disabled")
+                    ]));
+            } else if (host.proxy.type === "https") {
+                proxyinfo.setAttribute("tooltiptext",
+                    gt("proxy_base", [
+                        gt("proxy_https"), host.proxy.host,
+                        host.proxy.port, gt("proxy_lookups_disabled")
+                    ]));
+            } else if (host.proxy.type === "socks4") {
+                proxyinfo.setAttribute("tooltiptext",
+                    gt("proxy_base", [
+                        gt("proxy_socks4"), host.proxy.host, host.proxy.port,
+                        host.proxy.proxyResolvesHost ? gt("proxy_lookups_disabled") : ""
+                    ]));
+            } else if (host.proxy.type === "socks") {
+                proxyinfo.setAttribute("tooltiptext",
+                    gt("proxy_base", [
+                        gt("proxy_socks5"), host.proxy.host, host.proxy.port,
+                        host.proxy.proxyResolvesHost ? gt("proxy_lookups_disabled") : ""
+                    ]));
+            } else {
+                proxyinfo.setAttribute("tooltiptext", "");
+            }
+        },
+        remove: function () {
+            addto.removeChild(proxyinfo);
+        }
+    };
+};
+
 var createCount = function (doc, addto) {
     var count = doc.createElement("label");
     count.setAttribute("tooltiptext", gt("tt_copycount"));
@@ -473,13 +538,14 @@ var createHostname = function (doc, addto) {
    Also takes a reference to the element to add this element after
    e.g. header or the preceeding list item */
 var createRemoteListingRow = function (doc, addafter, host, mainhost) {
-    var row, icon, sslinfo, count, hostname, ips, showhide, update;
+    var row, icon, sslinfo, proxyinfo, count, hostname, ips, showhide, update;
 
     row = doc.createElement("row");
     row.setAttribute("align", "start");
     icon = createIcon(doc, row);
     count = createCount(doc, row);
     sslinfo = createSSLInfo(doc, row);
+    proxyinfo = createProxyInfo(doc, row);
     hostname = createHostname(doc, row);
     ips = createIPs(doc, row);
 
@@ -489,6 +555,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     hostname.update(host, mainhost);
     count.update(host);
     sslinfo.update(host);
+    proxyinfo.update(host);
     ips.init(host, host.host === mainhost);
 
     /* Add this element after the last one */
@@ -502,6 +569,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             hostname.remove();
             count.remove();
             sslinfo.remove();
+            proxyinfo.remove();
             ips.remove();
             row.parentNode.removeChild(row);
         },
@@ -518,6 +586,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             hostname.update(host, mainhost);
             count.update(host);
             sslinfo.update(host);
+            proxyinfo.update(host);
             ips.update(host, host.host === mainhost);
         }
     };
@@ -600,13 +669,17 @@ var createLocalListingRow = function (doc, addafter) {
     /* Add this element after the last one */
     addafter.add_after(row);
 
-    // Three spacers since local rows don't have icon, sslinfo or count
+    // Four spacers since local rows don't have icon, sslinfo, proxyinfo or count
     row.appendChild(doc.createElement("label"));
     row.appendChild(doc.createElement("label"));
-    var spacer = doc.createElement("image");
-    spacer.setAttribute("width", "0");
-    spacer.classList.add("sixornot_ssl_off");
-    row.appendChild(spacer);
+    var sslinfoSpacer = doc.createElement("image");
+    sslinfoSpacer.setAttribute("width", "0");
+    sslinfoSpacer.classList.add("sixornot_ssl_off");
+    row.appendChild(sslinfoSpacer);
+    var proxyinfoSpacer = doc.createElement("image");
+    proxyinfoSpacer.setAttribute("width", "0");
+    proxyinfoSpacer.classList.add("sixornot_proxy_off");
+    row.appendChild(proxyinfoSpacer);
 
     var hostname = createHostname(doc, row);
 
@@ -635,9 +708,9 @@ var createLocalListingRow = function (doc, addafter) {
                     if (entries.length < entriesIndex + 1) {
                         entries.push(
                             createIPEntry(doc, address_box)
-                                .update(address, 6));
+                                .update(address, 6, false));
                     } else {
-                        entries[entriesIndex].update(address, 6).show();
+                        entries[entriesIndex].update(address, 6, false).show();
                     }
                     entriesIndex++;
                 });
@@ -648,9 +721,9 @@ var createLocalListingRow = function (doc, addafter) {
                     if (entries.length < entriesIndex + 1) {
                         entries.push(
                             createIPEntry(doc, address_box)
-                                .update(address, 4));
+                                .update(address, 4, false));
                     } else {
-                        entries[entriesIndex].update(address, 4).show();
+                        entries[entriesIndex].update(address, 4, false).show();
                     }
                     entriesIndex++;
                 });
