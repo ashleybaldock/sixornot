@@ -17,17 +17,21 @@ cp icon.png ../dist/$version/src/
 cp icon64.png ../dist/$version/src/
 
 mkdir ../dist/$version/src/includes
+cp includes/addressbaricon ../dist/$version/src/includes/
 cp includes/content.js ../dist/$version/src/includes/
 cp includes/dns.jsm ../dist/$version/src/includes/
+cp includes/gui-legacy.jsm ../dist/$version/src/includes/
 cp includes/gui.jsm ../dist/$version/src/includes/
 cp includes/locale.jsm ../dist/$version/src/includes/
 cp includes/logger.jsm ../dist/$version/src/includes/
+cp includes/messanger ../dist/$version/src/includes/
 cp includes/panel.jsm ../dist/$version/src/includes/
 cp includes/prefs.jsm ../dist/$version/src/includes/
 cp includes/requestcache.jsm ../dist/$version/src/includes/
 cp includes/requestobserver.jsm ../dist/$version/src/includes/
 cp includes/stylesheet.jsm ../dist/$version/src/includes/
 cp includes/utility.jsm ../dist/$version/src/includes/
+cp includes/widget ../dist/$version/src/includes/
 cp includes/windowwatcher.jsm ../dist/$version/src/includes/
 
 mkdir ../dist/$version/src/includes/ctypes
