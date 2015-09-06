@@ -60,6 +60,10 @@ mkdir ../dist/$version/src/locale/de
 cp locale/de/sixornot.properties ../dist/$version/src/locale/de/
 cp locale/de/options.dtd ../dist/$version/src/locale/de/
 
+# Copy documentation
+mkdir ../dist/$version/src/doc
+cp doc/* ../dist/$version/src/doc/
+
 # Create .zip file from build directory (with .xpi file extension)
 cd ../dist/$version/src/
 zip -r ../sixornot.xpi *

@@ -168,6 +168,16 @@ li.i_error
     background-image: url("sixornot_error_cg_24.png");
 }
 
+li.i_ssl
+{
+    background-image: url("sixornot_tls.png");
+}
+
+li.i_proxy_on
+{
+    background-image: url("sixornot_proxy_on.png");
+}
+
 span.red
 {
     color: #F00;

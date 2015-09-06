@@ -42,6 +42,7 @@ Update documentation
  - document proxy support
  - document SSL support
  - integrate documentation into addon instead of online
+Handle resource:// URLs better (displays E at present)
 
 Proxy detection + info
 Add better proxy detection (per-connection) and icon display                - DONE

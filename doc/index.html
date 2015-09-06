@@ -7,15 +7,15 @@
 
 <link rel="stylesheet" type="text/css" href="style.css" />
 
-<title>SixOrNot Online Documentation</title>
+<title>SixOrNot Documentation</title>
 
 </head>
 	
 <body>
 
 <div class="header">
-<h1>SixOrNot Online Documentation</h1>
-<p class="version">Version 1.0.0</p>
+<h1>SixOrNot Documentation</h1>
+<p class="version">Version 2.0.0</p>
 </div>
 
 <h2 class="menu"><a name="Menu"></a>Contents</h2>
@@ -29,12 +29,12 @@
     <li><a href="#Interface_Settings">Configurable Settings</a></li>
     </ul>
 </li>
+<li><a href="#ProxyInfo">Proxy information</a>
 <li><a href="#OSSpecific">Operating System specific information</a>
     <ul>
     <li><a href="#OSSpecific_OSX">Mac OSX</a></li>
-    <li><a href="#OSSpecific_Windows7Vista">Windows 7/Windows Vista</a></li>
-    <li><a href="#OSSpecific_Windows2003">Windows XP x64/Windows Server 2003</a></li>
-    <li><a href="#OSSpecific_WindowsXPx86">Windows XP x86</a></li>
+    <li><a href="#OSSpecific_Windows7Vista">Windows 7/Windows Vista and above</a></li>
+    <li><a href="#OSSpecific_Windows2003">Windows XP/Windows Server 2003</a></li>
     <li><a href="#OSSpecific_Linux">Linux</a></li>
     <li><a href="#OSSpecific_Other">Other</a></li>
     </ul>
@@ -47,7 +47,7 @@
 
 <h2><a name="Introduction"></a>Introduction<a href="#Menu">Menu</a></h2>
 
-<p>SixOrNot is a Firefox extension which makes it easy for you to identify when the website you're connecting to supports the current generation Internet Protocol (version 6). It also allows you to see a list of all the servers contacted to load a page, along with the IP address your browser connected to to do so. DNS information about each server is also available so that you can see if a site could potentially be loaded via IPv6.</p>
+<p>SixOrNot is a Firefox extension which makes it easy for you to identify when the website you're connecting to supports the current generation Internet Protocol (version 6). It also allows you to see a list of all the servers contacted to load a page, along with the IP address your browser connected to to do so. DNS information about each server is also available so that you can see if a site could potentially be loaded via IPv6 if your local connection supported it (or to identify when connections were performed via IPv4 when they shouldn't have been). Also shown is whether the connection was made using TLS (along with the cipher used, and whether the certificate uses extended validation) and information about any proxy used for the connection.</p>
 
 <p>The SixOrNot icon can be displayed via an address bar icon or a button (which may be placed wherever you like in the Firefox UI). The icon indicates whether the main domain of the site you are viewing supports IPv6 and whether your browser used IPv6 to connect to it. SixOrNot looks at each connection Firefox makes and notes whether it was made using IPv4 or IPv6, the information is then displayed via a handy tooltip. SixOrNot also detects the IP address(es) of your local machine for informational display.</p>
 
@@ -55,15 +55,15 @@
 
 <p>Installation is via the usual Firefox method, simply download the .xpi format attachment and accept when prompted to install. SixOrNot is a "restartless" or "bootstrapped" extension - this means you don't need to restart Firefox when it is installed and you should see the button appear in the navigation bar immediately. If you want to enable the address bar icon display open the SixOrNot settings panel (either click on the button and select "Settings" from the panel, or open the addons page and select SixOrNot from the list), check the "Show addressbar icon" option and the address bar icon will display. You can move the button to a different position in the UI (or remove it entirely) using the standard Firefox customization system.</p>
 
-<p>Upgrades are handled automatically by the addon interface.</p>
+<p>Upgrades are handled automatically.</p>
 
 <h2><a name="Interface"></a>Interface<a href="#Menu">Menu</a></h2>
 
-<p>The SixOrNot interface consists of an icon displayed either in the address bar near the star icon or as a button. By default the address bar icon is disabled and the button is placed onto the navigation bar. You can move the button anywhere you like by entering the Firefox UI customisation mode and dragging it to the desired location. Whether accessed through the button or address bar icon the functionality is identical. Upon clicking the button/icon a tooltip panel is displayed which shows information about the site you are connecting to.</p>
+<p>The SixOrNot interface consists of an icon displayed either in the address bar or as a button. By default the address bar icon is disabled and the button is placed onto the navigation bar. You can move the button anywhere you like by entering the Firefox UI customisation mode and dragging it to the desired location. Whether accessed through the button or address bar icon the functionality is identical. Upon clicking the button/icon a tooltip panel is displayed which shows information about the site you are connecting to.</p>
 
-<p>The main icon permits you to see at-a-glance whether the current site supports IPv6 and whether you are connecting to it via IPv6. See <a href="#Interface_Icons"> below</a> for an explanation of each icon.</p>
+<p>The main icon permits you to see at-a-glance whether the current site supports IPv6 and whether you are connecting to it via IPv6. See <a href="#Interface_Icons">below</a> for an explanation of each icon.</p>
 
-<img src="sixornot_1.0.0_sc_ui_full.png" alt="Screenshot of the SixOrNot panel" class="pad" />
+<img src="sixornot_2.0.0_sc_ui_full.png" alt="Screenshot of the SixOrNot panel" class="pad" />
 
 <p>The panel has three sections:</p>
 
@@ -71,7 +71,14 @@
 <li><b>Remote</b>
 <p>For each domain contacted to load the current page a listing appears in this section. The main domain of the site is displayed in bold text. The first IP address listed for each entry is the address the browser used to connect, the remaining addresses are those retrieved from DNS records for the domain.</p>
 
-<p>Subsequent entries in the list are for domains which additional resources have been loaded from, e.g. images from content delivery networks. Again, the first address is the actual connection, the rest are from DNS. You can click on the [+XX] link to expand DNS information for the secondary connections, and then click on the [-] link to hide them again. The number to the left of the domain indicates the total number of connections made to that domain while loading this page.</p>
+<p>Subsequent entries in the list are for domains which additional resources have been loaded from, e.g. images from content delivery networks. Again, the first address is the actual connection, the rest are from DNS. You can click on the [+XX] link to expand DNS information for the secondary connections, and then click on the [ - ] link to hide them again. The number to the left of the domain indicates the total number of connections made to that domain while loading this page.</p>
+
+<p>Two additional icons may be displayed:</p>
+
+    <ul class="icon_list">
+    <li class="i_ssl">This icon provides information about the security of the most recently made connection to this host. If the icon appears TLS was used to connect. A green icon indicates the server used an extended validation SSL certificate. On mouseover the cipher used is displayed.</li>
+    <li class="i_proxy_on">This icon indicates that a proxy was used for the most recent connection to this host. On mouseover the tooltip gives information about the type of proxy used, as well as a warning if DNS lookups were disabled (see proxy section below).</li>
+    </ul>
 
 </li>
 <li><b>Local</b>
@@ -98,7 +105,7 @@
     <li class="i_6only_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Only AAAA (IPv6) records were found for this domain in DNS, indicating that the domain is probably available only via IPv6.</li>
     <li class="i_4pot6_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Both AAAA (IPv6) and A (IPv4) records were found for this domain in DNS, indicating that the domain is IPv6 capable.</li>
     <li class="i_4only_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Only A (IPv4) records were found for this domain in DNS, indicating that the domain is probably available only via IPv4.</li>
-    <!--<li class="i_proxy">This icon indicates that Firefox is currently configured to use a proxy. This prevents SixOrNot from detecting IP address information for the connection automatically and prevents DNS lookups.</li>-->
+    <li class="i_proxy">This icon indicates that an HTTP/HTTPS proxy was used for this connection. With these types of proxies no information is available about the connection made to the host (since Firefox connects to the proxy which then forwards the request). For these types of proxy DNS lookups are also disabled to avoid leaking information about sites visited.</li>
     <li class="i_error">This icon indicates an error occurred for the domain in question.</li>
     </ul>
 
@@ -135,11 +142,17 @@
 
     <p>This sets the SixOrNot logging output level - default is 0 (only errors), 1, 2 and 3 provide increasingly verbose logging output. Useful if you encounter a bug and need to send the log output to help me diagnose it.</p>
 
-    <pre>extensions.sixornot.overridelocale</pre>
-
-    <p>SixOrNot will, by default, try to load a translation for its UI that matches your system (falling back to English if it doesn't have a matching locale). You can override this behaviour and set a locale string manually using this setting. E.g. to set it to use English, specify "en". Note: This setting does not affect translation of the settings panel.</p>
-
     <p>The other extensions.sixornot settings should not generally be changed manually.</p>
+
+<h2><a name="ProxyInfo"></a>Proxy information<a href="#Menu">Menu</a></h2>
+
+<p>Firefox can be configured with several types of proxy and these affect SixOrNot's behaviour.</p>
+
+<ul>
+<li>HTTP/HTTPS proxy: DNS lookups disabled, purple proxy icon displayed, IP address of proxy shown as connection address (in brackets)</li>
+<li>SOCKS 4/5 proxy (with Remote DNS set): DNS lookups disabled, icon display indicates type of address for connection only, IP address reflects the host connected to.</li>
+<li>SOCKS 4/5 proxy: DNS lookups enabled, icon display as normal, IP address as normal.</li>
+</ul>
 
 <h2><a name="OSSpecific"></a>Operating System specific information<a href="#Menu">Menu</a></h2>
 
@@ -147,31 +160,15 @@
 
     <h3><a name="OSSpecific_OSX"></a>Mac OSX<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>SixOrNot is fully compatible with OSX 10.6 to 10.9. IPv6 is enabled by default in these versions of the operating system and no special configuration should be needed for full functionality. I have not tested SixOrNot with earlier versions of OSX so if you encounter problems please do let me know.</p>
+    <p>SixOrNot is fully compatible with OSX 10.6+ (although I have only tested version 2.0.0 on OSX 10.10). IPv6 is enabled by default in these versions of the operating system and no special configuration should be needed for full functionality. I have not tested SixOrNot with earlier versions of OSX so if you encounter problems please do let me know.</p>
 
-    <h3><a name="OSSpecific_Windows7Vista"></a>Windows 7/Windows Vista<a href="#OSSpecific">Operating System specific information</a></h3>
+    <h3><a name="OSSpecific_Windows7Vista"></a>Windows 7/Windows Vista and above<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>SixOrNot is fully compatible with Windows 8, 7 and Windows Vista SP2. These operating systems have IPv6 support enabled by default.</p>
+    <p>SixOrNot is fully compatible with Windows 10, 8, 7 and Windows Vista SP2. These operating systems have IPv6 support enabled by default.</p>
 
-    <h3><a name="OSSpecific_Windows2003"></a>Windows XP x64/Windows Server 2003<a href="#OSSpecific">Operating System specific information</a></h3>
+    <h3><a name="OSSpecific_Windows2003"></a>Windows XP/Windows Server 2003<a href="#OSSpecific">Operating System specific information</a></h3>
 
-    <p>On Windows XP x64 and Windows Server 2003 (x86 and x64) IPv6 must be manually installed. This can be done by using the command:</p>
-
-    <pre>netsh interface ipv6 install</pre>
-
-    <p>The interface will then autoconfigure an IPv6 address, or, if autoconfiguration can't work for some reason manual configuration will be needed. See this Microsoft article for more information on configuring IPv6 in Windows XP x64/Windows Server 2003: <a href="http://support.microsoft.com/kb/325449">How to install and configure IP version 6 in Windows Server 2003 Enterprise Server</a>.</p>
-
-    <p>Please note: If the Windows XP x64/Windows Server 2003 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation. Local address information may also be limited on pre-Vista operating systems.</p>
-
-    <h3><a name="OSSpecific_WindowsXPx86"></a>Windows XP x86<a href="#OSSpecific">Operating System specific information</a></h3>
-
-    <p>Windows XP x86 supports IPv6 from SP2, however SixOrNot only supports Windows XP x86 SP3. On Windows XP x86 SP3 IPv6 needs to be manually installed. This can be done by using the command:</p>
-
-    <pre>netsh interface ipv6 install</pre>
-
-    <p>The interface will then autoconfigure an IPv6 address, or, if autoconfiguration can't work for some reason manual configuration will be needed. See this Microsoft article for more information on configuring IPv6 in Windows XP x86: <a href="http://www.microsoft.com/resources/documentation/windows/xp/all/proddocs/en-us/sag_ip_v6_imp_config_meth.mspx?mfr=true">IPv6 configuration methods</a>.</p>
-
-    <p>Please note: If the Windows XP x86 IPv6 support has not been installed via the above command then SixOrNot will not be able to detect IPv6 addresses of remote websites. There is currently no way around this limitation. Local address information may also be limited on pre-Vista operating systems.</p>
+    <p>As of version 2.0.0 SixOrNot does not offer support for Windows XP/Server 2003</p>
 
     <h3><a name="OSSpecific_Linux"></a>Linux<a href="#OSSpecific">Operating System specific information</a></h3>
 
@@ -208,7 +205,7 @@
 
 <p>A reproduction of the SixOrNot Licence, for your convenience. This document is covered by the same licence.</p>
 
-<p class="monospace">Copyright &copy; 2008-2014 Timothy Baldock. All Rights Reserved.</p>
+<p class="monospace">Copyright &copy; 2008-2015 Timothy Baldock. All Rights Reserved.</p>
 
 <p class="monospace">Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
 
