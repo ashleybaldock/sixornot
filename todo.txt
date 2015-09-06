@@ -22,10 +22,13 @@ Optimise panel + other code                                                 - DO
     - Test legacy UI
  - Refactor locale handling code to use built-in functionality              - DONE
 Add observer for http-on-examine-merged-response                            - DONE
+Update documentation
+ - document proxy support                                                   - DONE
+ - document SSL support                                                     - DONE
+ - integrate documentation into addon instead of online                     - DONE
 
 SSL information for connections
  - Show padlock icon for each host                                          - DONE
- - Certificate info on hover over icon (+ copy to clipboard on click)
 
 split MM from widget/panel into object for code reuse                       - DONE
  - maybe update panel via widget?
@@ -38,15 +41,11 @@ test on legacy platforms
 observe showallips preference and update panel
  - fix local address display on expand
 investigate channelIsForDownload on nsIHttpChannelInternal
-Update documentation
- - document proxy support
- - document SSL support
- - integrate documentation into addon instead of online
 Handle resource:// URLs better (displays E at present)
 
 Proxy detection + info
 Add better proxy detection (per-connection) and icon display                - DONE
-Disable native DNS resolution for proxied connections
+Disable native DNS resolution for proxied connections                       - DONE
  - if it's an http/https proxy                                              - DONE
     - show proxy icon in toolbar/host info for http/https proxy hosts       - DONE
     - show address in brackets for http/https proxied connections           - DONE
@@ -72,6 +71,7 @@ Warnings for ip6_disabled and ip4only_domain
 
 SSL information for connections
  (- Show yellow icon for mixed-mode connections)
+ - Certificate info on hover over icon (+ copy to clipboard on click)
 
 
 # 2.2
