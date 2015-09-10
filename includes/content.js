@@ -37,9 +37,7 @@ var onHttpInitialLoadMessage = function (message) {
     log("got http-initial-load, host: '" + message.data.host + "', address: '" + message.data.address + "', address_family: " + message.data.addressFamily);
 
     // Items placed onto waiting list will be moved by DOMWindowCreated handler
-    printCaches("http-initial-load before");
     requests.addOrUpdateToWaitingList(message.data);
-    printCaches("http-initial-load after");
 
     sendUpdateUIMessage(requests.get(currentWindowId));
 };
@@ -47,9 +45,7 @@ var onHttpInitialLoadMessage = function (message) {
 var onHttpLoadMessage = function (message) {
     log("got http-load, host: " + message.data.host + ", address: " + message.data.address + ", address_family: " + message.data.addressFamily);
 
-    printCaches("http-load before");
     requests.addOrUpdate(message.data, currentWindowId, dnsComplete);
-    printCaches("http-load after");
 
     sendUpdateUIMessage(requests.get(currentWindowId));
 };
@@ -96,8 +92,6 @@ var onDOMWindowCreated = function (evt) {
         newEntry = {host: hostname, address: "", addressFamily: 0};
     }
 
-    printCaches("DOMWindowCreated before");
-
     // All http-load events for this browser should now be associated with this inner ID
     currentWindowId = topInner;
 
@@ -109,8 +103,6 @@ var onDOMWindowCreated = function (evt) {
 
     requests.createOrExtendCacheEntry(newEntry ? newEntry.host : "", currentWindowId, dnsComplete);
 
-    printCaches("DOMWindowCreated after");
-
     pageChange();
 };
 
@@ -119,19 +111,26 @@ var windowObserver = {
         var innerId = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
         requests.remove(innerId);
     },
-
     register: function () {
         Services.obs.addObserver(this, "inner-window-destroyed", false);
     },
-
     unregister: function () {
         Services.obs.removeObserver(this, "inner-window-destroyed");
     }
 };
 
+var onUnloadEvent = function (evt) {
+    if (evt.target === this) {
+        onUnload();
+    }
+};
+
 var onUnload = function () {
+    log("onUnload", 0);
     dns_handler.shutdown();
+    requests = null; // TODO requestscache clear all method?
     removeEventListener("DOMWindowCreated", onDOMWindowCreated);
+    removeEventListener("unload", onUnloadEvent);
     windowObserver.unregister();
     removeMessageListener("sixornot@baldock.me:unload", onUnload);
     removeMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMessage);
@@ -140,15 +139,10 @@ var onUnload = function () {
     unloaded = true;
 };
 
-addEventListener("unload", function (evt) {
-    if (evt.target === this) {
-        onUnload();
-    }
-});
-
 /* Listen and observe */
-addEventListener("DOMWindowCreated", onDOMWindowCreated);
 windowObserver.register();
+addEventListener("DOMWindowCreated", onDOMWindowCreated);
+addEventListener("unload", onUnloadEvent);
 addMessageListener("sixornot@baldock.me:unload", onUnload);
 addMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMessage);
 addMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
