@@ -54,6 +54,8 @@ Show icon in panel against proxied hosts                                    - DO
  - Proxy information on mouseover                                           - DONE
 Show coloured proxy icon if DNS lookups disabled
 
+Consider changing resource:// URLs to chrome:// ?
+ - http://stackoverflow.com/questions/23748077/firefox-extension-differences-of-the-chrome-and-resource-protocols
 
 #2.1
 NAT64 prefixes
