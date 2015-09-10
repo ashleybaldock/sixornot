@@ -117,8 +117,6 @@ var onDOMWindowCreated = function (evt) {
 var windowObserver = {
     observe: function (subject, topic, data) {
         var innerId = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
-        log("inner-window-destroyed, id: " + innerId, 2);
-
         requests.remove(innerId);
     },
 
