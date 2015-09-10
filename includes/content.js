@@ -86,7 +86,7 @@ var onDOMWindowCreated = function (evt) {
 
     if (protocol === "file:") {
         newEntry = {host: "Local File", address: "", addressFamily: 1}
-    } else if (protocol === "about:") {
+    } else if (protocol === "about:" || protocol === "resource:" || protocol === "chrome:") {
         newEntry = {host: loc, address: "", addressFamily: 1};
     } else if (hostname) { // Ignore empty windows
         newEntry = {host: hostname, address: "", addressFamily: 0};
