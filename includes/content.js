@@ -5,13 +5,13 @@
 /* content script
     This is loaded for every browser window */
 
-var content_script_id = Math.floor((Math.random() * 100000) + 1); 
+var contentScriptId = Math.floor((Math.random() * 100000) + 1); 
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 var _log = log;
 log = function (message, severity) {
-    _log("SCS: " + content_script_id + ": " + message, severity);
+    _log("SCS: " + contentScriptId + ": " + message, severity);
 };
 var printCaches = function (text) {
     log(text + " - caches: ", 1);
@@ -20,19 +20,20 @@ var printCaches = function (text) {
 };
 
 Components.utils.import("resource://sixornot/includes/dns.jsm");
-dns_handler.init(); // TODO uninit on unload
+dns_handler.init();
 
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 
 /* State */
 var requests = createRequestCache();
 var currentWindowId = 0;
+var unloaded = false;
 
 log("content script loaded", 1);
-sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: content_script_id});
+sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: contentScriptId});
 
-/* Message listeners */
-addMessageListener("sixornot@baldock.me:http-initial-load", function (message) {
+/* Message handlers */
+var onHttpInitialLoadMessage = function (message) {
     log("got http-initial-load, host: '" + message.data.host + "', address: '" + message.data.address + "', address_family: " + message.data.addressFamily);
 
     // Items placed onto waiting list will be moved by DOMWindowCreated handler
@@ -40,40 +41,39 @@ addMessageListener("sixornot@baldock.me:http-initial-load", function (message) {
     requests.addOrUpdateToWaitingList(message.data);
     printCaches("http-initial-load after");
 
-    updateUI(requests.get(currentWindowId));
-});
+    sendUpdateUIMessage(requests.get(currentWindowId));
+};
 
-addMessageListener("sixornot@baldock.me:http-load", function (message) {
+var onHttpLoadMessage = function (message) {
     log("got http-load, host: " + message.data.host + ", address: " + message.data.address + ", address_family: " + message.data.addressFamily);
 
     printCaches("http-load before");
     requests.addOrUpdate(message.data, currentWindowId, dnsComplete);
     printCaches("http-load after");
 
-    updateUI(requests.get(currentWindowId));
-});
+    sendUpdateUIMessage(requests.get(currentWindowId));
+};
 
-addMessageListener("sixornot@baldock.me:update-ui", function (message) {
-    updateUI(requests.get(currentWindowId));
-});
+var onUpdateUIMessage = function (message) {
+    sendUpdateUIMessage(requests.get(currentWindowId));
+};
 
 /* Message senders */
-var updateUI = function (data) {
+var sendUpdateUIMessage = function (data) {
     sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(data));
 };
 
 var pageChange = function () {
-    updateUI(requests.get(currentWindowId));
+    sendUpdateUIMessage(requests.get(currentWindowId));
 };
 
 var dnsComplete = function () {
-    updateUI(requests.get(currentWindowId));
+    sendUpdateUIMessage(requests.get(currentWindowId));
 };
 
-/* Event listeners and observers */
-addEventListener("DOMWindowCreated", function (event) {
+var onDOMWindowCreated = function (evt) {
     var newEntry;
-    var win = event.originalTarget.defaultView;
+    var win = evt.originalTarget.defaultView;
     var utils = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
     var inner = utils.currentInnerWindowID;
@@ -82,11 +82,11 @@ addEventListener("DOMWindowCreated", function (event) {
                          .getInterface(Components.interfaces.nsIDOMWindowUtils);
     var topInner = topUtils.currentInnerWindowID;
 
-    var protocol = event.originalTarget.defaultView.location.protocol;
-    var hostname = event.originalTarget.defaultView.location.hostname;
-    var loc = event.originalTarget.defaultView.location.href;
+    var protocol = evt.originalTarget.defaultView.location.protocol;
+    var hostname = evt.originalTarget.defaultView.location.hostname;
+    var loc = evt.originalTarget.defaultView.location.href;
 
-    log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + event.originalTarget.defaultView.location + "'", 0);
+    log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 0);
 
     if (protocol === "file:") {
         newEntry = {host: "Local File", address: "", addressFamily: 1}
@@ -112,7 +112,7 @@ addEventListener("DOMWindowCreated", function (event) {
     printCaches("DOMWindowCreated after");
 
     pageChange();
-});
+};
 
 var windowObserver = {
     observe: function (subject, topic, data) {
@@ -131,6 +131,28 @@ var windowObserver = {
     }
 };
 
-windowObserver.register();
+var onUnload = function () {
+    dns_handler.shutdown();
+    removeEventListener("DOMWindowCreated", onDOMWindowCreated);
+    windowObserver.unregister();
+    removeMessageListener("sixornot@baldock.me:unload", onUnload);
+    removeMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMessage);
+    removeMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
+    removeMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
+    unloaded = true;
+};
 
-// TODO - unregister everything on unload
+addEventListener("unload", function (evt) {
+    if (evt.target === this) {
+        onUnload();
+    }
+});
+
+/* Listen and observe */
+addEventListener("DOMWindowCreated", onDOMWindowCreated);
+windowObserver.register();
+addMessageListener("sixornot@baldock.me:unload", onUnload);
+addMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMessage);
+addMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
+addMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
+
