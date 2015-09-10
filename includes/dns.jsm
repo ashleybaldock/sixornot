@@ -6,13 +6,12 @@
 /*global Components, Services, ChromeWorker */
 
 // Provided by Sixornot
-/*global log, parse_exception, prefs */
+/*global log, parse_exception */
 
 // Module imports we need
 /*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-Components.utils.import("resource://sixornot/includes/prefs.jsm");
 /*jslint es5: false */
 
 var EXPORTED_SYMBOLS = [
@@ -665,29 +664,6 @@ var dns_handler = {
         return "global";
     },
 
-    /* Returns value of preference network.dns.disableIPv6 */
-    is_ip6_disabled : function () {
-        "use strict";
-        return Services.prefs.getBoolPref("network.dns.disableIPv6");
-    },
-
-
-    /* Returns true if the domain specified is in the list of IPv4-only domains */
-    is_ip4only_domain : function (domain) {
-        "use strict";
-        var ip4onlydomains, i;
-        ip4onlydomains = Services.prefs.getCharPref("network.dns.ipv4OnlyDomains").replace(/\s+/g, "").toLowerCase().split(",");
-        domain = domain.toLowerCase();
-        for (i = 0; i < ip4onlydomains.length; i += 1)
-        {
-            if (domain === ip4onlydomains[i])
-            {
-                return true;
-            }
-        }
-        return false;
-    },
-
     /*
         Misc.
     */
@@ -730,7 +706,9 @@ var create_local_address_info = function () {
         if (ips[0] === "FAIL") {
             local_host_info.dns_status = "failure";
         } else {
-            if (prefs.get_bool("showallips")) {
+            local_host_info.ipv6s = ips.filter(dns_handler.is_ip6);
+            local_host_info.ipv4s = ips.filter(dns_handler.is_ip4);
+            /*if (prefs.get_bool("showallips")) {
                 local_host_info.ipv6s = ips.filter(dns_handler.is_ip6);
                 local_host_info.ipv4s = ips.filter(dns_handler.is_ip4);
             } else {
@@ -744,7 +722,7 @@ var create_local_address_info = function () {
                         && ["rfc1918", "6to4relay", "global"]
                             .indexOf(dns_handler.typeof_ip4(addr)) != -1);
                 });
-            }
+            }*/
             local_host_info.dns_status = "complete";
         }
 
