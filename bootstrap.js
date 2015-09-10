@@ -20,7 +20,6 @@ try {
 }
 /*jslint es5: false */
 
-// Addon-Global functions
 var startup,
     shutdown,
     install,
@@ -32,7 +31,6 @@ var startup,
 var setupResource = function (aData) {
     "use strict";
     var resource, alias;
-    // Set up resource URI alias
     resource = Services.io.getProtocolHandler("resource")
                 .QueryInterface(Components.interfaces.nsIResProtocolHandler);
 
@@ -42,9 +40,9 @@ var setupResource = function (aData) {
         alias = Services.io.newURI("jar:" + alias.spec + "!/", null, null);
     }
 
-    // This triggers a warning on AMO validation
-    // The resource substitution is cleaned up by the addon's shutdown/uninstall methods
-    // Search for cleanupResource()
+    /* This triggers a warning on AMO validation
+     * The resource substitution is cleaned up by the addon's shutdown/uninstall methods
+     * Search for cleanupResource() */
     resource.setSubstitution("sixornot", alias);
 };
 
@@ -55,24 +53,26 @@ var cleanupResource = function () {
     resource.setSubstitution("sixornot", null);
 };
 
+var globalMM = Components.classes["@mozilla.org/globalmessagemanager;1"]
+                         .getService(Components.interfaces.nsIMessageListenerManager);
+
 /*
- * bootstrap.js API
+ * bootstrap.js API implementation
  */
 /* APP_STARTUP, ADDON_ENABLE, ADDON_INSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
 startup = function (aData, aReason) {
     "use strict";
-    // Set up sixornot resource alias
+    /* Set up resource://sixornot alias */
     setupResource(aData);
 
-    // Import logging module (adds global symbols: log, parse_exception)
     /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/logger.jsm");
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
     Components.utils.import("resource://sixornot/includes/dns.jsm");
     /*jslint es5: false */
 
-    // Init dns_handler
-    // This one is now only used for local address resolution
+    /* Init dns_handler
+     * This instance is now only used for local address resolution */
     dns_handler.init();
 
     // Create default preferences (if they are missing)
@@ -92,27 +92,24 @@ startup = function (aData, aReason) {
     }
     /*jslint es5: false */
 
-    // Load callback for when our addon finishes loading
+    /* Load callback for when our addon finishes loading */
     AddonManager.getAddonByID(aData.id, function (addon, data) {
-        // Run dns_handler tests
         if (prefs.get_int("loglevel") >= 2) {
             dns_handler.test_normalise_ip6();
             dns_handler.test_typeof_ip6();
             dns_handler.test_is_ip6();
         }
 
-        // Inject content script into all existing and subsequently created windows
-        var globalMM = Components.classes["@mozilla.org/globalmessagemanager;1"]
-                        .getService(Components.interfaces.nsIMessageListenerManager);
-        globalMM.loadFrameScript("resource://sixornot/includes/content.js", true); // TODO remove on shutdown
+        /* Inject content script into all existing and subsequently created windows */
+        globalMM.loadFrameScript("resource://sixornot/includes/content.js", true);
 
-        // Load into existing windows and set callback to load into any new ones too
+        /* Load into existing windows and set callback to load into any new ones too */
         watchWindows(ui.insert);
 
-        // Perform once-only UI setup
+        /* Perform once-only UI setup */
         ui.setup();
 
-        // The observers actually trigger events in the UI, nothing happens until they are registered
+        /* Start listening to HTTP requests */
         httpRequestObserver.register();
     });
 };
@@ -121,14 +118,20 @@ startup = function (aData, aReason) {
 shutdown = function (aData, aReason) {
     "use strict";
     if (aReason !== APP_SHUTDOWN) {
-        // Unload all UI via init-time unload() callbacks
+        httpRequestObserver.unregister();
+
+        /* Stop loading our content script into new windows */
+        globalMM.removeDelayedFrameScript("resource://sixornot/includes/content.js");
+        /* Disable and clean up existing content scripts (note: there isn't yet a way
+         * to remove these entirely, the best we can do is clean up */
+        globalMM.broadcastAsyncMessage("sixornot@baldock.me:unload");
+
+        /* Unload all UI via init-time unload() callbacks */
         unload();
 
         ui.teardown();
 
-        httpRequestObserver.unregister();
-
-        // Unload our own code modules
+        /* Unload our own code modules */
         if (CustomizableUIAvailable) {
             Components.utils.unload("resource://sixornot/includes/gui.jsm");
         } else {
@@ -144,16 +147,15 @@ shutdown = function (aData, aReason) {
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
         Components.utils.unload("resource://sixornot/includes/locale.jsm");
         Components.utils.unload("resource://sixornot/includes/utility.jsm");
-        // Shutdown dns_handler
         dns_handler.shutdown();
         Components.utils.unload("resource://sixornot/includes/dns.jsm");
         Components.utils.unload("resource://sixornot/includes/prefs.jsm");
         Components.utils.unload("resource://sixornot/includes/logger.jsm");
 
-        // Remove resource alias
+        /* Remove resource alias */
         cleanupResource();
 
-        // Flush bundles (see bug 719376)
+        /* Flush bundles (see bug 719376) */
         Services.strings.flushBundles();
     }
 };
@@ -167,12 +169,12 @@ install = function (aData, aReason) {
 uninstall = function (aData, aReason) {
     "use strict";
 
-    // If uninstalling, remove our preferences
+    /* If uninstalling, remove our preferences */
     if (aReason === ADDON_UNINSTALL) {
         Services.prefs.getBranch("extensions.sixornot").deleteBranch("");
     }
 
-    // Remove resource alias
+    /* Remove resource alias */
     cleanupResource();
 };
 
