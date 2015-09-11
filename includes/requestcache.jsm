@@ -2,10 +2,8 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-/*jslint es5: true */
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
-/*jslint es5: false */
 
 // Provided by Firefox:
 /*global Components */
@@ -27,14 +25,15 @@ var createRequestCache = function () {
             host: host,
             address: address,
             address_family: address_family,
-            remote: true,
             count: 1,
             ipv6s: [],
             ipv4s: [],
-            dns_status: "ready",
-            dns_cancel: null,
             security: security,
             proxy: proxy,
+
+            remote: true,
+            dns_status: "ready",
+            dns_cancel: null,
             lookup_ips: function (callback) {
                 var entry, on_returned_ips;
                 // Don't do IP lookup for local file entries

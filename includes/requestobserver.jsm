@@ -137,7 +137,7 @@ var onExamineResponse = function(subject, topic) {
         proxy: proxyInfo
     };
 
-    log("httpRequestObserver: sending: " + JSON.stringify(requestRecord), 0);
+    log("httpRequestObserver: sending: " + JSON.stringify(requestRecord), 1);
 
     /*jslint bitwise: true */
     if (httpChannel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
