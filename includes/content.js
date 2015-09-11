@@ -19,9 +19,6 @@ var printCaches = function (text) {
     log("--" + requests.printCache(), 1);
 };
 
-Components.utils.import("resource://sixornot/includes/dns.jsm");
-dns_handler.init();
-
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 
 /* State */
@@ -45,7 +42,7 @@ var onHttpInitialLoadMessage = function (message) {
 var onHttpLoadMessage = function (message) {
     log("got http-load, host: " + message.data.host + ", address: " + message.data.address + ", address_family: " + message.data.addressFamily);
 
-    requests.addOrUpdate(message.data, currentWindowId, dnsComplete);
+    requests.addOrUpdate(message.data, currentWindowId);
 
     sendUpdateUIMessage(requests.get(currentWindowId));
 };
@@ -60,10 +57,6 @@ var sendUpdateUIMessage = function (data) {
 };
 
 var pageChange = function () {
-    sendUpdateUIMessage(requests.get(currentWindowId));
-};
-
-var dnsComplete = function () {
     sendUpdateUIMessage(requests.get(currentWindowId));
 };
 
@@ -101,7 +94,7 @@ var onDOMWindowCreated = function (evt) {
         requests.addOrUpdateToWaitingList(newEntry);
     }
 
-    requests.createOrExtendCacheEntry(newEntry ? newEntry.host : "", currentWindowId, dnsComplete);
+    requests.createOrExtendCacheEntry(newEntry ? newEntry.host : "", currentWindowId);
 
     pageChange();
 };
@@ -127,8 +120,7 @@ var onUnloadEvent = function (evt) {
 
 var onUnload = function () {
     log("onUnload", 0);
-    dns_handler.shutdown();
-    requests = null; // TODO requestscache clear all method?
+    requests = null; // TODO requestcache clear all method?
     removeEventListener("DOMWindowCreated", onDOMWindowCreated);
     removeEventListener("unload", onUnloadEvent);
     windowObserver.unregister();

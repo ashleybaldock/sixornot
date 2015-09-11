@@ -3,7 +3,6 @@
  */
 
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-Components.utils.import("resource://sixornot/includes/dns.jsm");
 
 // Provided by Firefox:
 /*global Components */
@@ -11,7 +10,7 @@ Components.utils.import("resource://sixornot/includes/dns.jsm");
 // Provided by Sixornot
 /*global parse_exception, prefs */
 
-var EXPORTED_SYMBOLS = [ "createRequestCache" ];
+var EXPORTED_SYMBOLS = ["createRequestCache"];
 
 /*
  * Contains two lists:
@@ -29,42 +28,7 @@ var createRequestCache = function () {
             ipv6s: [],
             ipv4s: [],
             security: security,
-            proxy: proxy,
-
-            remote: true,
-            dns_status: "ready",
-            dns_cancel: null,
-            lookup_ips: function (callback) {
-                var entry, on_returned_ips;
-                // Don't do IP lookup for local file entries
-                if (this.address_family === 1) {
-                    this.dns_status = "complete";
-                    return;
-                }
-                // Don't do IP lookup for proxied connections
-                if (this.proxy.type === "http" || this.proxy.type === "https" || this.proxy.proxyResolvesHost) {
-                    this.dns_status = "proxy";
-                    return;
-                }
-                entry = this;
-                on_returned_ips = function (ips) {
-                    entry.dns_cancel = null;
-                    if (ips[0] === "FAIL") {
-                        entry.ipv6s = [];
-                        entry.ipv4s = [];
-                        entry.dns_status = "failure";
-                    } else {
-                        entry.ipv6s = ips.filter(dns_handler.is_ip6);
-                        entry.ipv4s = ips.filter(dns_handler.is_ip4);
-                        entry.dns_status = "complete";
-                    }
-                    callback();
-                };
-                if (entry.dns_cancel) {
-                    entry.dns_cancel.cancel();
-                }
-                entry.dns_cancel = dns_handler.resolve_remote_async(entry.host, on_returned_ips);
-            }
+            proxy: proxy
         };
     };
 
@@ -77,7 +41,7 @@ var createRequestCache = function () {
                 innerId: id
             };
         },
-        createOrExtendCacheEntry: function (mainhost, id, dns_complete_callback) {
+        createOrExtendCacheEntry: function (mainhost, id) {
             if (!this.cache.hasOwnProperty(id)) {
                 this.cache[id] = this.createCacheEntry(mainhost, id);
             }
@@ -91,10 +55,10 @@ var createRequestCache = function () {
                     addressFamily: item.address_family,
                     security: item.security,
                     proxy: item.proxy
-                }, id, dns_complete_callback);
+                }, id);
             }, this);
         },
-        addOrUpdate: function (data, id, dns_complete_callback) {
+        addOrUpdate: function (data, id) {
             if (!this.cache.hasOwnProperty(id)) {
                 this.createCacheEntry(id);
             }
@@ -113,7 +77,6 @@ var createRequestCache = function () {
             })) {
                 log("addOrUpdate, host: " + data.host + ", remoteAddress: " + data.address, 1);
                 new_entry = createHost(data.host, data.address, data.addressFamily, data.security, data.proxy);
-                new_entry.lookup_ips(dns_complete_callback);
                 this.cache[id].entries.push(new_entry);
             }
         },
@@ -125,11 +88,6 @@ var createRequestCache = function () {
         },
         remove: function (id) {
             if (this.cache.hasOwnProperty(id)) {
-                this.get(id).entries.forEach(function (item, index, items) {
-                    if (item.dns_cancel) {
-                        item.dns_cancel.cancel();
-                    }
-                });
                 delete this.cache[id];
             }
         },
