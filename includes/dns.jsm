@@ -14,6 +14,7 @@ Components.utils.import("resource://sixornot/includes/logger.jsm");
 
 var EXPORTED_SYMBOLS = [
     "dnsResolver",
+    "ipUtils",
     "create_local_address_info"
 ];
 
@@ -226,8 +227,11 @@ var dnsResolver = (function () {
             } else {
                 return resolveRemoteFirefox(host, callback);
             }
-        },
+        }
+    };
+}());
 
+var ipUtils = {
     /*
         IP Address utility functions
     */
@@ -337,7 +341,7 @@ var dnsResolver = (function () {
         "use strict";
         var split_address;
         // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
-        if (!dnsResolver.is_ip4(ip_address)) {
+        if (!this.is_ip4(ip_address)) {
             return false;
         }
         split_address = ip_address.split(".").map(Number);
@@ -368,68 +372,10 @@ var dnsResolver = (function () {
         }
     },
 
-    test_is_ip6 : function () {
-        "use strict";
-        var overall, tests, i, result;
-        overall = true;
-        tests = [
-                        ["::",                                      true],
-                        ["::1",                                     true],
-                        ["fe80::fa22:22ff:fee8:2222",               true],
-                        ["fc00::",                                  true],
-                        ["ff00:1234:5678:9abc:def0:d:ee:fff",       true],
-                        ["2:0::1:2",                                true],
-                        ["2001:8b1:1fe4:1::2222",                   true],
-                        ["2001:08b1:1fe4:0001:0000:0000:0000:2222", true],
-                        ["192.168.2.1",                             false],
-                        ["blah",                                    false],
-                        [":::",                                     false],
-                        [":",                                       false],
-                        ["1::2::3",                                 false]
-                    ];
-        for (i = 0; i < tests.length; i += 1) {
-            result = this.is_ip6(tests[i][0]);
-            if (result === tests[i][1]) {
-                log("test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
-            } else {
-                log("test_is_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
-                overall = false;
-            }
-        }
-        return overall;
-    },
-
     // Quick check for address family
     is_ip6 : function (ip_address) {
         "use strict";
         return ip_address && (ip_address.indexOf(":") !== -1);
-    },
-
-    test_normalise_ip6 : function () {
-        "use strict";
-        var overall, tests, i, result;
-        overall = true;
-        tests = [
-                        ["::",                                      "0000:0000:0000:0000:0000:0000:0000:0000"],
-                        ["::1",                                     "0000:0000:0000:0000:0000:0000:0000:0001"],
-                        ["fe80::fa22:22ff:fee8:2222",               "fe80:0000:0000:0000:fa22:22ff:fee8:2222"],
-                        ["fc00::",                                  "fc00:0000:0000:0000:0000:0000:0000:0000"],
-                        ["ff00:1234:5678:9abc:def0:d:ee:fff",       "ff00:1234:5678:9abc:def0:000d:00ee:0fff"],
-                        ["2:0::1:2",                                "0002:0000:0000:0000:0000:0000:0001:0002"],
-                        ["2001:8b1:1fe4:1::2222",                   "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
-                        ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
-                        ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"]
-                    ];
-        for (i = 0; i < tests.length; i += 1) {
-            result = this.normalise_ip6(tests[i][0]);
-            if (result === tests[i][1]) {
-                log("test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result, 1);
-            } else {
-                log("test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result, 1);
-                overall = false;
-            }
-        }
-        return overall;
     },
 
     // Expand IPv6 address into long version
@@ -451,38 +397,6 @@ var dnsResolver = (function () {
         };
 
         return outarray.map(pad_left).join(":").toLowerCase();
-    },
-
-    // Unit test suite for typeof_ip6 function, returns false if a test fails
-    test_typeof_ip6 : function () {
-        "use strict";
-        var overall, tests, i, result;
-        overall = true;
-        tests = [
-                        ["::", "unspecified"],
-                        ["::1", "localhost"],
-                        ["fe80::fa22:22ff:fee8:2222", "linklocal"],
-                        ["fec0::ffff:fa22:22ff:fee8:2222", "sitelocal"],
-                        ["fc00::1", "uniquelocal"],
-                        ["ff00::1", "multicast"],
-                        ["2002::1", "6to4"],
-                        ["2001:0000::1", "teredo"],
-                        ["2001:8b1:1fe4:1::2222", "global"],
-                        ["192.168.2.1", false],
-                        ["blah", false],
-                        [":", false],
-                        ["...", false]
-                    ];
-        for (i = 0; i < tests.length; i += 1) {
-            result = this.typeof_ip6(tests[i][0]);
-            if (result === tests[i][1]) {
-                log("test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
-            } else {
-                log("test_typeof_ip6, failed test value: " + tests[i][0] + ", expected result: " + i[1] + ", actual result: " + result);
-                overall = false;
-            }
-        }
-        return overall;
     },
 
     // Return the type of an IPv6 address
@@ -546,19 +460,18 @@ var dnsResolver = (function () {
         {
             return 1;   // b comes before a
         }
-
     },
 
     typeof_ip6 : function (ip_address) {
         "use strict";
         var norm_address;
-        log("dnsResolver:typeof_ip6: " + ip_address, 3);
+        log("ipUtils:typeof_ip6: " + ip_address, 3);
         // 1. Check IP version, return false if v4
-        if (!dnsResolver.is_ip6(ip_address)) {
+        if (!this.is_ip6(ip_address)) {
             return false;
         }
         // 2. Normalise address, return false if normalisation fails
-        norm_address = dnsResolver.normalise_ip6(ip_address);
+        norm_address = this.normalise_ip6(ip_address);
         // 3. Compare against type patterns
         if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0000")
         {
@@ -595,27 +508,100 @@ var dnsResolver = (function () {
         }
         // If no other type then address is global
         return "global";
+    }
+};
+
+var ipTests = {
+    // Unit test suite for typeof_ip6 function, returns false if a test fails
+    test_typeof_ip6 : function () {
+        "use strict";
+        var overall, tests, i, result;
+        overall = true;
+        tests = [
+                        ["::", "unspecified"],
+                        ["::1", "localhost"],
+                        ["fe80::fa22:22ff:fee8:2222", "linklocal"],
+                        ["fec0::ffff:fa22:22ff:fee8:2222", "sitelocal"],
+                        ["fc00::1", "uniquelocal"],
+                        ["ff00::1", "multicast"],
+                        ["2002::1", "6to4"],
+                        ["2001:0000::1", "teredo"],
+                        ["2001:8b1:1fe4:1::2222", "global"],
+                        ["192.168.2.1", false],
+                        ["blah", false],
+                        [":", false],
+                        ["...", false]
+                    ];
+        for (i = 0; i < tests.length; i += 1) {
+            result = ipUtils.typeof_ip6(tests[i][0]);
+            if (result === tests[i][1]) {
+                log("test_typeof_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+            } else {
+                log("test_typeof_ip6, failed test value: " + tests[i][0] + ", expected result: " + i[1] + ", actual result: " + result);
+                overall = false;
+            }
+        }
+        return overall;
     },
 
-    /*
-        Misc.
-    */
-
-    // Cancels an active ctypes DNS lookup request currently being actioned by Worker
-    cancel_request : function (request) {
+    test_normalise_ip6 : function () {
         "use strict";
-        log("dnsResolver:cancel_request - request: " + request, 3);
-        try {
-            // This function can be called with request as a null or undefined value
-            if (request) {
-                request.cancel(Components.results.NS_ERROR_ABORT);
+        var overall, tests, i, result;
+        overall = true;
+        tests = [
+                        ["::",                                      "0000:0000:0000:0000:0000:0000:0000:0000"],
+                        ["::1",                                     "0000:0000:0000:0000:0000:0000:0000:0001"],
+                        ["fe80::fa22:22ff:fee8:2222",               "fe80:0000:0000:0000:fa22:22ff:fee8:2222"],
+                        ["fc00::",                                  "fc00:0000:0000:0000:0000:0000:0000:0000"],
+                        ["ff00:1234:5678:9abc:def0:d:ee:fff",       "ff00:1234:5678:9abc:def0:000d:00ee:0fff"],
+                        ["2:0::1:2",                                "0002:0000:0000:0000:0000:0000:0001:0002"],
+                        ["2001:8b1:1fe4:1::2222",                   "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
+                        ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
+                        ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"]
+                    ];
+        for (i = 0; i < tests.length; i += 1) {
+            result = ipUtils.normalise_ip6(tests[i][0]);
+            if (result === tests[i][1]) {
+                log("test_normalise_ip6, passed test value: " + tests[i][0] + ", result: " + result, 1);
+            } else {
+                log("test_normalise_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result, 1);
+                overall = false;
             }
-        } catch (e) {
-            Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
         }
+        return overall;
+    },
+
+    test_is_ip6 : function () {
+        "use strict";
+        var overall, tests, i, result;
+        overall = true;
+        tests = [
+                        ["::",                                      true],
+                        ["::1",                                     true],
+                        ["fe80::fa22:22ff:fee8:2222",               true],
+                        ["fc00::",                                  true],
+                        ["ff00:1234:5678:9abc:def0:d:ee:fff",       true],
+                        ["2:0::1:2",                                true],
+                        ["2001:8b1:1fe4:1::2222",                   true],
+                        ["2001:08b1:1fe4:0001:0000:0000:0000:2222", true],
+                        ["192.168.2.1",                             false],
+                        ["blah",                                    false],
+                        [":::",                                     false],
+                        [":",                                       false],
+                        ["1::2::3",                                 false]
+                    ];
+        for (i = 0; i < tests.length; i += 1) {
+            result = ipUtils.is_ip6(tests[i][0]);
+            if (result === tests[i][1]) {
+                log("test_is_ip6, passed test value: " + tests[i][0] + ", result: " + result);
+            } else {
+                log("test_is_ip6, failed test value: " + tests[i][0] + ", expected result: " + tests[i][1] + ", actual result: " + result);
+                overall = false;
+            }
+        }
+        return overall;
     }
-}
-}());
+};
 
 var create_local_address_info = function () {
     var on_returned_ips, dns_cancel, new_local_host_info;
@@ -640,8 +626,8 @@ var create_local_address_info = function () {
         if (ips[0] === "FAIL") {
             local_host_info.dns_status = "failure";
         } else {
-            local_host_info.ipv6s = ips.filter(dnsResolver.is_ip6);
-            local_host_info.ipv4s = ips.filter(dnsResolver.is_ip4);
+            local_host_info.ipv6s = ips.filter(ipUtils.is_ip6);
+            local_host_info.ipv4s = ips.filter(ipUtils.is_ip4);
             local_host_info.dns_status = "complete";
         }
 

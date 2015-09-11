@@ -94,12 +94,6 @@ startup = function (aData, aReason) {
 
     /* Load callback for when our addon finishes loading */
     AddonManager.getAddonByID(aData.id, function (addon, data) {
-        if (prefs.get_int("loglevel") >= 2) {
-            dnsResolver.test_normalise_ip6();
-            dnsResolver.test_typeof_ip6();
-            dnsResolver.test_is_ip6();
-        }
-
         /* Inject content script into all existing and subsequently created windows */
         globalMM.loadFrameScript("resource://sixornot/includes/content.js", true);
 

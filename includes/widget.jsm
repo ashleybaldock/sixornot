@@ -60,8 +60,8 @@ var createWidget = function (node, win) {
                     dnsCancel = dnsResolver.resolveRemote(mainHost.host, function (ips) {
                         dnsCancel = null;
                         if (ips[0] !== "FAIL") {
-                            ipv6s = ips.filter(dnsResolver.is_ip6);
-                            ipv4s = ips.filter(dnsResolver.is_ip4);
+                            ipv6s = ips.filter(ipUtils.is_ip6);
+                            ipv4s = ips.filter(ipUtils.is_ip4);
                         }
                         log("widget dns complete, ipv4s: [" + ipv4s + "], ipv6s: [" + ipv6s + "]", 0);
                         update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
