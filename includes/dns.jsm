@@ -9,10 +9,8 @@
 /*global log, parse_exception */
 
 // Module imports we need
-/*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
-/*jslint es5: false */
 
 var EXPORTED_SYMBOLS = [
     "dns_handler",
@@ -26,11 +24,11 @@ var callbacks = {
     // callback to call.
 
     // callback_ids is an array of 2-item arrays - [ID <int>, callback <func>]
-    callback_ids : [],
-    next_id : 0,
+    callback_ids: [],
+    next_id: 0,
 
     // Index this.callback_ids and return required callback
-    find_by_id : function (callback_id) {
+    find_by_id: function (callback_id) {
         "use strict";
         log("callbacks.find_by_id - callback_id: " + callback_id, 3);
         // Returns -1 if ID not found
@@ -39,7 +37,7 @@ var callbacks = {
         }).indexOf(callback_id);
     },
 
-    remove : function (callback_id) {
+    remove: function (callback_id) {
         "use strict";
         var i;
         i = this.find_by_id(callback_id);
@@ -53,7 +51,7 @@ var callbacks = {
         return false;
     },
 
-    add : function (callback) {
+    add: function (callback) {
         "use strict";
         // Use next available callback ID, return that ID
         this.next_id = this.next_id + 1;
@@ -62,7 +60,7 @@ var callbacks = {
         return this.next_id;
     },
 
-    make_cancel_obj : function (callback_id) {
+    make_cancel_obj: function (callback_id) {
         "use strict";
         log("dns_handler:make_cancel_obj - callback_id: " + callback_id, 3);
         return {
@@ -75,8 +73,8 @@ var callbacks = {
     }
 };
 
-var dns_service = Components.classes["@mozilla.org/network/dns-service;1"]
-                            .getService(Components.interfaces.nsIDNSService);
+var dnsService = Components.classes["@mozilla.org/network/dns-service;1"]
+                           .getService(Components.interfaces.nsIDNSService);
 
 // The DNS Handler which does most of the work of the extension
 var dns_handler = {
@@ -93,13 +91,6 @@ var dns_handler = {
         checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
         log: 254            // A logging message (sent from worker to main thread only)
     },
-
-    RESOLVE_BYPASS_CACHE:    0x01, //This flag suppresses the internal DNS lookup cache.
-    RESOLVE_CANONICAL_NAME:  0x02, //The canonical name of the specified host will be queried.
-    RESOLVE_PRIORITY_MEDIUM: 0x04, //The query is given medium priority.
-    RESOLVE_PRIORITY_LOW:    0x08, //The query is given lower priority.
-    RESOLVE_SPECULATE:       0x10, //Indicates request is speculative.
-    RESOLVE_DISABLE_IPV6:    0x20, //If this flag is set, only IPv4 addresses will be returned by asyncResolve() and resolve(). 
 
     /* Initialises the native dns resolver (if possible) - call this first! */
     init : function () {
@@ -179,7 +170,7 @@ var dns_handler = {
     },
 
     get_local_hostname : function () {
-        return dns_service.myHostName;
+        return dnsService.myHostName;
     },
 
     /* Resolve local IP address(es) */
@@ -269,7 +260,7 @@ var dns_handler = {
             }
         };
         try {
-            return dns_service.asyncResolve(host, 1, my_callback, null);
+            return dnsService.asyncResolve(host, 0x01, my_callback, null);
         } catch (e) {
             Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
             callback(["FAIL"]);
