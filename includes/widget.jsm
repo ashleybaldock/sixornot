@@ -28,9 +28,14 @@ var createWidget = function (node, win) {
 
     var messanger = getMessanger(win, function (data) { updateIconForNode(data, node); });
 
+    var lastMainHost = "";
+    var dnsCancel;
+
     // Change icon via class (icon set via stylesheet)
     updateIconForNode = function (data, node) {
         if (data.main === "") {
+            // Cancel existing DNS lookup callback
+            if (dnsCancel) { dnsCancel.cancel(); }
             // No matching entry for main host (probably a local file)
             remove_sixornot_classes_from(node);
             add_class_to_node("sixornot_other", node);
@@ -38,9 +43,35 @@ var createWidget = function (node, win) {
             var mainHost = data.entries.find(function (element, index, array) {
                 return element.host === data.main;
             });
-            //log("mainHost: " + JSON.stringify(mainHost), 1);
-            update_node_icon_for_host(node, mainHost);
+
+            // No DNS lookup for proxied connections or local files
+            if (mainHost.address_family === 1
+             || mainHost.proxy.type === "http"
+             || mainHost.proxy.type === "https"
+             || mainHost.proxy.proxyResolvesHost) {
+                if (dnsCancel) { dnsCancel.cancel(); }
+                update_node_icon_for_host(node, mainHost, [], []);
+            } else if (mainHost.host !== lastMainHost) {
+                //  Cancel existing lookup/callback
+                if (dnsCancel) { dnsCancel.cancel(); }
+                update_node_icon_for_host(node, mainHost, [], []);
+                //  Trigger DNS lookup
+                dnsCancel = dns_handler.resolve_remote_async(mainHost, function (ips) {
+                    var ipv4s, ipv6s;
+                    dnsCancel = null;
+                    if (ips[0] === "FAIL") {
+                        ipv6s = [];
+                        ipv4s = [];
+                    } else {
+                        ipv6s = ips.filter(dns_handler.is_ip6);
+                        ipv4s = ips.filter(dns_handler.is_ip4);
+                    }
+                    update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
+                });
+            }
         }
+        // Always update last main host
+        lastMainHost = data.main;
     };
 
     onClick = function () {

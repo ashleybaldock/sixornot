@@ -354,7 +354,7 @@ var createIcon = function (doc, addto) {
 
     return {
         update: function (host) {
-            update_node_icon_for_host(icon, host);
+            update_node_icon_for_host(icon, host, host.ipv4s, host.ipv6s);
         },
         remove: function () {
             addto.removeChild(icon);
