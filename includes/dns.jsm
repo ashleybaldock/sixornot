@@ -272,17 +272,10 @@ var dns_handler = {
     /*
         IP Address utility functions
     */
-    validate_ip4 : function (ip_address) {
-        "use strict";
-        log("dns_handler:validate_ip4: " + ip_address, 3);
-        // TODO - Write this function if needed, extensive validation of IPv4 address
-        return false;
-    },
 
-    // Quick check for address family, not a validator (see validate_ip4)
+    // Quick check for address family
     is_ip4 : function (ip_address) {
         "use strict";
-        log("dns_handler:is_ip4 " + ip_address, 3);
         return ip_address && (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
     },
 
@@ -384,7 +377,6 @@ var dns_handler = {
     typeof_ip4 : function (ip_address) {
         "use strict";
         var split_address;
-        log("dns_handler:typeof_ip4 " + ip_address, 3);
         // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
         if (!dns_handler.is_ip4(ip_address)) {
             return false;
@@ -448,17 +440,9 @@ var dns_handler = {
         return overall;
     },
 
-    validate_ip6 : function (ip_address) {
-        "use strict";
-        log("dns_handler:validate_ip6: " + ip_address, 3);
-        // TODO - Write this function if needed, extensive validation of IPv6 address
-        return false;
-    },
-
-    // Quick check for address family, not a validator (see validate_ip6)
+    // Quick check for address family
     is_ip6 : function (ip_address) {
         "use strict";
-        log("dns_handler:is_ip6: " + ip_address, 3);
         return ip_address && (ip_address.indexOf(":") !== -1);
     },
 
@@ -493,7 +477,6 @@ var dns_handler = {
     normalise_ip6 : function (ip6_address) {
         "use strict";
         var sides, left_parts, right_parts, middle, outarray, pad_left;
-        log("dns_handler:normalise_ip6: " + ip6_address, 3);
         // Split by instances of ::
         sides = ip6_address.split("::");
         // Split remaining sections by instances of :
