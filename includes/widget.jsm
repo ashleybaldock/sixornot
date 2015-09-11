@@ -31,12 +31,16 @@ var createWidget = function (node, win) {
 
     var lastMainHost = "";
     var dnsCancel;
+    var ipv4s = [];
+    var ipv6s = [];
 
     // Change icon via class (icon set via stylesheet)
     updateIconForNode = function (data, node) {
         if (data.main === "") {
             // Cancel existing DNS lookup callback
             if (dnsCancel) { dnsCancel.cancel(); }
+            ipv6s = [];
+            ipv4s = [];
             // No matching entry for main host (probably a local file)
             remove_sixornot_classes_from(node);
             add_class_to_node("sixornot_other", node);
@@ -51,19 +55,17 @@ var createWidget = function (node, win) {
              || mainHost.proxy.type === "https"
              || mainHost.proxy.proxyResolvesHost) {
                 if (dnsCancel) { dnsCancel.cancel(); }
-                update_node_icon_for_host(node, mainHost, [], []);
+                ipv6s = [];
+                ipv4s = [];
             } else if (mainHost.host !== lastMainHost) {
                 //  Cancel existing lookup/callback
                 if (dnsCancel) { dnsCancel.cancel(); }
-                update_node_icon_for_host(node, mainHost, [], []);
+                ipv6s = [];
+                ipv4s = [];
                 //  Trigger DNS lookup
                 dnsCancel = dns_handler.resolve_remote_async(mainHost.host, function (ips) {
-                    var ipv4s, ipv6s;
                     dnsCancel = null;
-                    if (ips[0] === "FAIL") {
-                        ipv6s = [];
-                        ipv4s = [];
-                    } else {
+                    if (ips[0] !== "FAIL") {
                         ipv6s = ips.filter(dns_handler.is_ip6);
                         ipv4s = ips.filter(dns_handler.is_ip4);
                     }
@@ -71,6 +73,7 @@ var createWidget = function (node, win) {
                     update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
                 });
             }
+            update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
         }
         // Always update last main host
         lastMainHost = data.main;
