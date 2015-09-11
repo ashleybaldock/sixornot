@@ -580,14 +580,10 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     /* Do DNS lookup for host */
     var dnsCancel;
 
-    // No DNS lookup for proxied connections or local files
     if (!(host.address_family === 1
      || host.proxy.type === "http"
      || host.proxy.type === "https"
      || host.proxy.proxyResolvesHost)) {
-        //  Cancel existing lookup/callback
-        if (dnsCancel) { dnsCancel.cancel(); }
-        //  Trigger DNS lookup
         dnsCancel = dns_handler.resolve_remote_async(host.host, function (results) {
             dnsCancel = null;
             if (results[0] !== "FAIL") {

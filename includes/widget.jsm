@@ -12,9 +12,9 @@ Components.utils.import("resource://sixornot/includes/panel.jsm");
 Components.utils.import("resource://sixornot/includes/messanger.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 
-var EXPORTED_SYMBOLS = [ "createWidget" ];
+var EXPORTED_SYMBOLS = ["createWidget"];
 
-// Create widget which handles shared logic between button/addressbar icon
+/* Contains shared code used by both the address bar icon and button */
 var createWidget = function (node, win) {
     var panel, updateIconForNode,
         onClick, onContentScriptLoaded;
@@ -49,33 +49,30 @@ var createWidget = function (node, win) {
                 return element.host === data.main;
             });
 
-            // No DNS lookup for proxied connections or local files
-            if (mainHost.address_family === 1
-             || mainHost.proxy.type === "http"
-             || mainHost.proxy.type === "https"
-             || mainHost.proxy.proxyResolvesHost) {
-                if (dnsCancel) { dnsCancel.cancel(); }
-                ipv6s = [];
-                ipv4s = [];
-            } else if (mainHost.host !== lastMainHost) {
+            if (mainHost.host !== lastMainHost) {
                 //  Cancel existing lookup/callback
                 if (dnsCancel) { dnsCancel.cancel(); }
                 ipv6s = [];
                 ipv4s = [];
-                //  Trigger DNS lookup
-                dnsCancel = dns_handler.resolve_remote_async(mainHost.host, function (ips) {
-                    dnsCancel = null;
-                    if (ips[0] !== "FAIL") {
-                        ipv6s = ips.filter(dns_handler.is_ip6);
-                        ipv4s = ips.filter(dns_handler.is_ip4);
-                    }
-                    log("widget dns complete callback, ipv4s: " + ipv4s + ", ipv6s:" + ipv6s, 0);
-                    update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
-                });
+                if (!(host.address_family === 1
+                 || host.proxy.type === "http"
+                 || host.proxy.type === "https"
+                 || host.proxy.proxyResolvesHost)) {
+                    //  Trigger DNS lookup
+                    dnsCancel = dns_handler.resolve_remote_async(mainHost.host, function (ips) {
+                        dnsCancel = null;
+                        if (ips[0] !== "FAIL") {
+                            ipv6s = ips.filter(dns_handler.is_ip6);
+                            ipv4s = ips.filter(dns_handler.is_ip4);
+                        }
+                        log("widget dns complete, ipv4s: [" + ipv4s + "], ipv6s: [" + ipv6s + "]", 0);
+                        update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
+                    });
+                }
             }
             update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
         }
-        // Always update last main host
+        /* Always update last main host */
         lastMainHost = data.main;
     };
 
@@ -88,7 +85,7 @@ var createWidget = function (node, win) {
     panel = createPanel(win, node.id + "-panel");
     node.appendChild(panel);
 
-    // Update greyscale property + icon
+    /* Update greyscale property + icon */
     updateGreyscale();
 
     /* Add event listeners */
@@ -101,5 +98,6 @@ var createWidget = function (node, win) {
         greyscaleObserver.unregister();
         messanger.shutdown();
         node.removeEventListener("click", onClick, false);
+        if (dnsCancel) { dnsCancel.cancel(); }
     }, win);
 };
