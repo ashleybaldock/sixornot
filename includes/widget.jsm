@@ -67,7 +67,7 @@ var createWidget = function (node, win) {
                         ipv6s = ips.filter(dns_handler.is_ip6);
                         ipv4s = ips.filter(dns_handler.is_ip4);
                     }
-                    log("dns complete callback, ipv4s: " + ipv4s + ", ipv6s:" + ipv6s, 0);
+                    log("widget dns complete callback, ipv4s: " + ipv4s + ", ipv6s:" + ipv6s, 0);
                     update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
                 });
             }

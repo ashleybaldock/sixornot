@@ -167,14 +167,14 @@ var createPanel = function (win, panel_id) {
     return panel;
 };
 
-var countDnsAddresses = function (host) {
+var countDnsAddresses = function (host, ipv4s, ipv6s) {
     var count = 0;
-    host.ipv6s.forEach(function (address, index, addresses) {
+    ipv6s.forEach(function (address, index, addresses) {
         if (address !== host.address) {
             count += 1;
         }
     });
-    host.ipv4s.forEach(function (address, index, addresses) {
+    ipv4s.forEach(function (address, index, addresses) {
         if (address !== host.address) {
             count += 1;
         }
@@ -233,7 +233,7 @@ var createIPs = function (doc, addto) {
     var address_box = doc.createElement("vbox");
     addto.appendChild(address_box);
 
-    var showhide, host_cache, showing, toggleDetail, obj;
+    var showhide, host_cache, ipv4s_cache, ipv6s_cache, showing, toggleDetail, obj;
 
     showhide = doc.createElement("label");
     showhide.setAttribute("value", "");
@@ -243,7 +243,7 @@ var createIPs = function (doc, addto) {
     toggleDetail = function (evt) {
         evt.stopPropagation();
         showing = !showing;
-        obj.update(host_cache);
+        obj.update(host_cache, ipv4s_cache, ipv6s_cache);
     };
 
     var entries = [];
@@ -251,10 +251,9 @@ var createIPs = function (doc, addto) {
     obj = {
         init: function (host, initialShow) {
             showing = initialShow;
-            this.update(host);
         },
-        update: function (host) {
-            var count = countDnsAddresses(host);
+        update: function (host, ipv4s, ipv6s) {
+            var count = countDnsAddresses(host, ipv4s, ipv6s);
 
             if (count > 0) {
                 if (showing) {
@@ -282,10 +281,10 @@ var createIPs = function (doc, addto) {
                 // Regenerate additional address entries
                 var entriesIndex = 1;
                 if (showing) {
-                    host.ipv6s.sort(function (a, b) {
+                    ipv6s.sort(function (a, b) {
                         return dns_handler.sort_ip6.call(dns_handler, a, b);
                     });
-                    host.ipv6s.forEach(function (address, index, addresses) {
+                    ipv6s.forEach(function (address, index, addresses) {
                         if (address !== host.address) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(
@@ -298,10 +297,10 @@ var createIPs = function (doc, addto) {
                         }
                         entriesIndex++;
                     });
-                    host.ipv4s.sort(function (a, b) {
+                    ipv4s.sort(function (a, b) {
                         return dns_handler.sort_ip4.call(dns_handler, a, b);
                     });
-                    host.ipv4s.forEach(function (address, index, addresses) {
+                    ipv4s.forEach(function (address, index, addresses) {
                         if (address !== host.address) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(
@@ -323,6 +322,8 @@ var createIPs = function (doc, addto) {
             } 
 
             host_cache = host;
+            ipv4s_cache = ipv4s;
+            ipv6s_cache = ipv6s;
         },
         remove: function () {
             entries.forEach(function (item, index, items) {
@@ -353,8 +354,8 @@ var createIcon = function (doc, addto) {
     addto.appendChild(icon);
 
     return {
-        update: function (host) {
-            update_node_icon_for_host(icon, host, host.ipv4s, host.ipv6s);
+        update: function (host, ipv4s, ipv6s) {
+            update_node_icon_for_host(icon, host, ipv4s, ipv6s);
         },
         remove: function () {
             addto.removeChild(icon);
@@ -490,7 +491,7 @@ var createHostname = function (doc, addto) {
     hostname.addEventListener("click", copyToClipboard, false);
 
     return {
-        update: function (host, mainhost) {
+        update: function (host, mainhost, ipv4s, ipv6s) {
             var text = host.host;
 
             hostname.setAttribute("value", host.host);
@@ -506,18 +507,18 @@ var createHostname = function (doc, addto) {
                 text = text + "," + host.address;
             }
             /* Sort the lists of addresses */
-            host.ipv6s.sort(function (a, b) {
+            ipv6s.sort(function (a, b) {
                 return dns_handler.sort_ip6.call(dns_handler, a, b);
             });
-            host.ipv4s.sort(function (a, b) {
+            ipv4s.sort(function (a, b) {
                 return dns_handler.sort_ip4.call(dns_handler, a, b);
             });
-            host.ipv6s.forEach(function (address, index, addresses) {
+            ipv6s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
                     text = text + "," + address;
                 }
             });
-            host.ipv4s.forEach(function (address, index, addresses) {
+            ipv4s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
                     text = text + "," + address;
                 }
@@ -549,22 +550,50 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     hostname = createHostname(doc, row);
     ips = createIPs(doc, row);
 
+    var ipv4s = [];
+    var ipv6s = [];
 
     /* Update elements on create */
-    icon.update(host);
-    hostname.update(host, mainhost);
+    icon.update(host, ipv4s, ipv6s);
+    hostname.update(host, mainhost, ipv4s, ipv6s);
     count.update(host);
     sslinfo.update(host);
     proxyinfo.update(host);
     ips.init(host, host.host === mainhost);
+    ips.update(host, ipv4s, ipv6s);
 
     /* Add this element after the last one */
     addafter.add_after(row);
+
+    /* Do DNS lookup for host */
+    var dnsCancel;
+
+    // No DNS lookup for proxied connections or local files
+    if (!(host.address_family === 1
+     || host.proxy.type === "http"
+     || host.proxy.type === "https"
+     || host.proxy.proxyResolvesHost)) {
+        //  Cancel existing lookup/callback
+        if (dnsCancel) { dnsCancel.cancel(); }
+        //  Trigger DNS lookup
+        dnsCancel = dns_handler.resolve_remote_async(host.host, function (results) {
+            dnsCancel = null;
+            if (results[0] !== "FAIL") {
+                ipv6s = results.filter(dns_handler.is_ip6);
+                ipv4s = results.filter(dns_handler.is_ip4);
+            }
+            log("remoteListingRow dns complete callback, ipv4s: " + ipv4s + ", ipv6s:" + ipv6s, 0);
+            hostname.update(host, mainhost, ipv4s, ipv6s);
+            icon.update(host, ipv4s, ipv6s);
+            ips.update(host, ipv4s, ipv6s);
+        });
+    }
 
     /* Object representing row of entry */
     return {
         host: host.host,
         remove: function () {
+            if (dnsCancel) { dnsCancel.cancel(); }
             icon.remove();
             hostname.remove();
             count.remove();
@@ -582,12 +611,12 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             }
         },
         update: function (host, mainhost) {
-            icon.update(host);
-            hostname.update(host, mainhost);
+            icon.update(host, ipv4s, ipv6s);
+            hostname.update(host, mainhost, ipv4s, ipv6s); // To update copy/paste text
             count.update(host);
             sslinfo.update(host);
             proxyinfo.update(host);
-            ips.update(host, host.host === mainhost);
+            ips.update(host, ipv4s, ipv6s);
         }
     };
 };
@@ -699,7 +728,7 @@ var createLocalListingRow = function (doc, addafter) {
         },
         update: function (host) {
             var entriesIndex = 0;
-            hostname.update(host);
+            hostname.update(host, false, host.ipv4s, host.ipv6s);
             if (prefs.get_bool("showlocal")) {
                 host.ipv6s.sort(function (a, b) {
                     return dns_handler.sort_ip6.call(dns_handler, a, b);
