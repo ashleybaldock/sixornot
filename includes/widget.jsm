@@ -50,7 +50,6 @@ var createWidget = function (node, win) {
             });
 
             if (mainHost.host !== lastMainHost) {
-                //  Cancel existing lookup/callback
                 if (dnsCancel) { dnsCancel.cancel(); }
                 ipv6s = [];
                 ipv4s = [];
@@ -58,12 +57,11 @@ var createWidget = function (node, win) {
                  || host.proxy.type === "http"
                  || host.proxy.type === "https"
                  || host.proxy.proxyResolvesHost)) {
-                    //  Trigger DNS lookup
-                    dnsCancel = dns_handler.resolve_remote_async(mainHost.host, function (ips) {
+                    dnsCancel = dnsResolver.resolveRemote(mainHost.host, function (ips) {
                         dnsCancel = null;
                         if (ips[0] !== "FAIL") {
-                            ipv6s = ips.filter(dns_handler.is_ip6);
-                            ipv4s = ips.filter(dns_handler.is_ip4);
+                            ipv6s = ips.filter(dnsResolver.is_ip6);
+                            ipv4s = ips.filter(dnsResolver.is_ip4);
                         }
                         log("widget dns complete, ipv4s: [" + ipv4s + "], ipv6s: [" + ipv6s + "]", 0);
                         update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);

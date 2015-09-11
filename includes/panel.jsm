@@ -193,11 +193,11 @@ var createIPEntry = function (doc, addto) {
     };
     conipaddr.addEventListener("click", copyToClipboard, false);
 
-    var isRouteable = function (address, family) { // TODO put this in dns_handler
+    var isRouteable = function (address, family) { // TODO put this in dnsResolver
         if (family === 6) {
-            return (["6to4", "teredo", "global"].indexOf(dns_handler.typeof_ip6(address)) != -1);
+            return (["6to4", "teredo", "global"].indexOf(dnsResolver.typeof_ip6(address)) != -1);
         } else if (family === 4) {
-            return (["rfc1918", "6to4relay", "global"].indexOf(dns_handler.typeof_ip4(address)) != -1);
+            return (["rfc1918", "6to4relay", "global"].indexOf(dnsResolver.typeof_ip4(address)) != -1);
         } else {
             return false;
         }
@@ -294,7 +294,7 @@ var createIPs = function (doc, addto) {
                 var entriesIndex = 1;
                 if (showing) {
                     ipv6s.sort(function (a, b) {
-                        return dns_handler.sort_ip6.call(dns_handler, a, b);
+                        return dnsResolver.sort_ip6.call(dnsResolver, a, b);
                     });
                     ipv6s.forEach(function (address, index, addresses) {
                         if (address !== host.address) {
@@ -310,7 +310,7 @@ var createIPs = function (doc, addto) {
                         entriesIndex++;
                     });
                     ipv4s.sort(function (a, b) {
-                        return dns_handler.sort_ip4.call(dns_handler, a, b);
+                        return dnsResolver.sort_ip4.call(dnsResolver, a, b);
                     });
                     ipv4s.forEach(function (address, index, addresses) {
                         if (address !== host.address) {
@@ -520,10 +520,10 @@ var createHostname = function (doc, addto) {
             }
             /* Sort the lists of addresses */
             ipv6s.sort(function (a, b) {
-                return dns_handler.sort_ip6.call(dns_handler, a, b);
+                return dnsResolver.sort_ip6.call(dnsResolver, a, b);
             });
             ipv4s.sort(function (a, b) {
-                return dns_handler.sort_ip4.call(dns_handler, a, b);
+                return dnsResolver.sort_ip4.call(dnsResolver, a, b);
             });
             ipv6s.forEach(function (address, index, addresses) {
                 if (address !== host.address) {
@@ -584,11 +584,11 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
      || host.proxy.type === "http"
      || host.proxy.type === "https"
      || host.proxy.proxyResolvesHost)) {
-        dnsCancel = dns_handler.resolve_remote_async(host.host, function (results) {
+        dnsCancel = dnsResolver.resolveRemote(host.host, function (results) {
             dnsCancel = null;
             if (results[0] !== "FAIL") {
-                ipv6s = results.filter(dns_handler.is_ip6);
-                ipv4s = results.filter(dns_handler.is_ip4);
+                ipv6s = results.filter(dnsResolver.is_ip6);
+                ipv4s = results.filter(dnsResolver.is_ip4);
             }
             log("remoteListingRow dns complete callback, ipv4s: " + ipv4s + ", ipv6s:" + ipv6s, 0);
             hostname.update(host, mainhost, ipv4s, ipv6s);
@@ -750,7 +750,7 @@ var createLocalListingRow = function (doc, addafter) {
             hostname.update(host, false, host.ipv4s, host.ipv6s);
 
             host.ipv6s.sort(function (a, b) {
-                return dns_handler.sort_ip6.call(dns_handler, a, b);
+                return dnsResolver.sort_ip6.call(dnsResolver, a, b);
             });
             host.ipv6s.forEach(function (address, index, addresses) {
                 if (entries.length < entriesIndex + 1) {
@@ -761,7 +761,7 @@ var createLocalListingRow = function (doc, addafter) {
                 entriesIndex++;
             });
             host.ipv4s.sort(function (a, b) {
-                return dns_handler.sort_ip4.call(dns_handler, a, b);
+                return dnsResolver.sort_ip4.call(dnsResolver, a, b);
             });
             host.ipv4s.forEach(function (address, index, addresses) {
                 if (entries.length < entriesIndex + 1) {

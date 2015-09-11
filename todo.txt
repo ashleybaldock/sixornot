@@ -29,6 +29,16 @@ Update documentation
 optimise memory usage (don't use a chromeworker per tab)                    - DONE
 unload for content script                                                   - DONE
 Handle resource:// URLs better (displays E at present)                      - DONE
+Proxy detection + info
+Add better proxy detection (per-connection) and icon display                - DONE
+Disable native DNS resolution for proxied connections                       - DONE
+ - if it's an http/https proxy                                              - DONE
+    - show proxy icon in toolbar/host info for http/https proxy hosts       - DONE
+    - show address in brackets for http/https proxied connections           - DONE
+ - if it's a socks proxy and has resolve via DNS set                        - DONE
+Show icon in panel against proxied hosts                                    - DONE
+ - Proxy information on mouseover                                           - DONE
+Show coloured proxy icon if DNS lookups disabled                            - DONE
 
 SSL information for connections
  - Show padlock icon for each host                                          - DONE
@@ -45,16 +55,10 @@ observe showallips preference and update panel                              - DO
  - fix local address display on expand                                      - DONE
  - on toggle show all update copytext for host
 
-Proxy detection + info
-Add better proxy detection (per-connection) and icon display                - DONE
-Disable native DNS resolution for proxied connections                       - DONE
- - if it's an http/https proxy                                              - DONE
-    - show proxy icon in toolbar/host info for http/https proxy hosts       - DONE
-    - show address in brackets for http/https proxied connections           - DONE
- - if it's a socks proxy and has resolve via DNS set                        - DONE
-Show icon in panel against proxied hosts                                    - DONE
- - Proxy information on mouseover                                           - DONE
-Show coloured proxy icon if DNS lookups disabled                            - DONE
+Refactor DNS
+ - move unit tests out to proper unit testing system
+ - move ip utility functions into own object
+ - Unit tests for dnsResolver:sort_ip4 & dnsResolver:sort_ip6
 
 Consider changing resource:// URLs to chrome:// ?
  - http://stackoverflow.com/questions/23748077/firefox-extension-differences-of-the-chrome-and-resource-protocols
@@ -231,5 +235,4 @@ Testing
     Test on various windows platforms (XP x86, Vista, 7 x86/x64)
     Test on linux + implement ctypes for linux platforms
 
-    Unit tests for dns_handler:sort_ip4 & dns_handler:sort_ip6
 

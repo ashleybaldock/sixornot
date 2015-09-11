@@ -7,7 +7,7 @@
 /*global APP_STARTUP, APP_SHUTDOWN, ADDON_ENABLE, ADDON_DISABLE, ADDON_INSTALL, ADDON_UNINSTALL, ADDON_UPGRADE, ADDON_DOWNGRADE */
 
 // Provided in included modules:
-/*global unload, watchWindows, dns_handler, log, parse_exception, prefs, requests, insert_code, create_button */
+/*global unload, watchWindows, dnsResolver, log, parse_exception, prefs, requests, insert_code, create_button */
 
 var CustomizableUIAvailable = true, e;
 /*jslint es5: true */
@@ -71,9 +71,9 @@ startup = function (aData, aReason) {
     Components.utils.import("resource://sixornot/includes/dns.jsm");
     /*jslint es5: false */
 
-    /* Init dns_handler
+    /* Init dnsResolver
      * This instance is now only used for local address resolution */
-    dns_handler.init();
+    dnsResolver.init();
 
     // Create default preferences (if they are missing)
     prefs.create();
@@ -95,9 +95,9 @@ startup = function (aData, aReason) {
     /* Load callback for when our addon finishes loading */
     AddonManager.getAddonByID(aData.id, function (addon, data) {
         if (prefs.get_int("loglevel") >= 2) {
-            dns_handler.test_normalise_ip6();
-            dns_handler.test_typeof_ip6();
-            dns_handler.test_is_ip6();
+            dnsResolver.test_normalise_ip6();
+            dnsResolver.test_typeof_ip6();
+            dnsResolver.test_is_ip6();
         }
 
         /* Inject content script into all existing and subsequently created windows */
@@ -147,7 +147,7 @@ shutdown = function (aData, aReason) {
         Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
         Components.utils.unload("resource://sixornot/includes/locale.jsm");
         Components.utils.unload("resource://sixornot/includes/utility.jsm");
-        dns_handler.shutdown();
+        dnsResolver.shutdown();
         Components.utils.unload("resource://sixornot/includes/dns.jsm");
         Components.utils.unload("resource://sixornot/includes/prefs.jsm");
         Components.utils.unload("resource://sixornot/includes/logger.jsm");
