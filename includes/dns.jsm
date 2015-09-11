@@ -699,21 +699,6 @@ var create_local_address_info = function () {
         } else {
             local_host_info.ipv6s = ips.filter(dns_handler.is_ip6);
             local_host_info.ipv4s = ips.filter(dns_handler.is_ip4);
-            /*if (prefs.get_bool("showallips")) {
-                local_host_info.ipv6s = ips.filter(dns_handler.is_ip6);
-                local_host_info.ipv4s = ips.filter(dns_handler.is_ip4);
-            } else {
-                local_host_info.ipv6s = ips.filter(function (addr) {
-                    return (dns_handler.is_ip6(addr)
-                        && ["6to4", "teredo", "global"]
-                            .indexOf(dns_handler.typeof_ip6(addr)) != -1);
-                });
-                local_host_info.ipv4s = ips.filter(function (addr) {
-                    return (dns_handler.is_ip4(addr)
-                        && ["rfc1918", "6to4relay", "global"]
-                            .indexOf(dns_handler.typeof_ip4(addr)) != -1);
-                });
-            }*/
             local_host_info.dns_status = "complete";
         }
 

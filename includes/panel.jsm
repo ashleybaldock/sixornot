@@ -193,7 +193,18 @@ var createIPEntry = function (doc, addto) {
     };
     conipaddr.addEventListener("click", copyToClipboard, false);
 
+    var isRouteable = function (address, family) { // TODO put this in dns_handler
+        if (family === 6) {
+            return (["6to4", "teredo", "global"].indexOf(dns_handler.typeof_ip6(address)) != -1);
+        } else if (family === 4) {
+            return (["rfc1918", "6to4relay", "global"].indexOf(dns_handler.typeof_ip4(address)) != -1);
+        } else {
+            return false;
+        }
+    };
+
     return {
+        isRouteable: true,
         show: function () {
             conipaddr.setAttribute("hidden", false);
             return this;
@@ -203,6 +214,7 @@ var createIPEntry = function (doc, addto) {
             return this;
         },
         update: function (address, address_family, showAsProxied) {
+            this.isRouteable = isRouteable(address, address_family);
             if (address_family === 6 || address_family === 4) {
                 if (showAsProxied) {
                     conipaddr.setAttribute("value", "(" + address + ")");
@@ -716,6 +728,7 @@ var createLocalListingRow = function (doc, addafter) {
     row.appendChild(address_box);
 
     var entries = [];
+    var maxVisibleIndex = 0;
 
     return {
         remove: function () {
@@ -726,42 +739,52 @@ var createLocalListingRow = function (doc, addafter) {
             entries = [];
             row.parentNode.removeChild(row);
         },
+        updateShowAllIPs: function () {
+            entries.forEach(function (item, index, items) {
+                if (index >= maxVisibleIndex) return;
+                if (prefs.get_bool("showallips") || item.isRouteable) {
+                    item.show();
+                } else {
+                    item.hide();
+                }
+            });
+        },
         update: function (host) {
             var entriesIndex = 0;
             hostname.update(host, false, host.ipv4s, host.ipv6s);
-            if (prefs.get_bool("showlocal")) {
-                host.ipv6s.sort(function (a, b) {
-                    return dns_handler.sort_ip6.call(dns_handler, a, b);
-                });
-                host.ipv6s.forEach(function (address, index, addresses) {
-                    if (entries.length < entriesIndex + 1) {
-                        entries.push(
-                            createIPEntry(doc, address_box)
-                                .update(address, 6, false));
-                    } else {
-                        entries[entriesIndex].update(address, 6, false).show();
-                    }
-                    entriesIndex++;
-                });
-                host.ipv4s.sort(function (a, b) {
-                    return dns_handler.sort_ip4.call(dns_handler, a, b);
-                });
-                host.ipv4s.forEach(function (address, index, addresses) {
-                    if (entries.length < entriesIndex + 1) {
-                        entries.push(
-                            createIPEntry(doc, address_box)
-                                .update(address, 4, false));
-                    } else {
-                        entries[entriesIndex].update(address, 4, false).show();
-                    }
-                    entriesIndex++;
-                });
-            }
+
+            host.ipv6s.sort(function (a, b) {
+                return dns_handler.sort_ip6.call(dns_handler, a, b);
+            });
+            host.ipv6s.forEach(function (address, index, addresses) {
+                if (entries.length < entriesIndex + 1) {
+                    entries.push(createIPEntry(doc, address_box).update(address, 6, false).hide());
+                } else {
+                    entries[entriesIndex].update(address, 6, false).hide();
+                }
+                entriesIndex++;
+            });
+            host.ipv4s.sort(function (a, b) {
+                return dns_handler.sort_ip4.call(dns_handler, a, b);
+            });
+            host.ipv4s.forEach(function (address, index, addresses) {
+                if (entries.length < entriesIndex + 1) {
+                    entries.push(createIPEntry(doc, address_box).update(address, 4, false).hide());
+                } else {
+                    entries[entriesIndex].update(address, 4, false).hide();
+                }
+                entriesIndex++;
+            });
+
+            maxVisibleIndex = entriesIndex;
+
             // Hide additional entries
             entries.forEach(function (item, index, items) {
                 if (index < entriesIndex) return;
                 item.hide();
             });
+
+            this.updateShowAllIPs();
         },
         /* Adds the contents of this object after the specified element */
         add_after: function (element) {
@@ -786,6 +809,12 @@ var createLocalAnchor = function (doc, parent_element) {
         setShowhideText();
         entries.forEach(function (item) {
             item.update_visibility();
+        });
+    };
+
+    var updateShowingAll = function () {
+        entries.forEach(function (item) {
+            item.updateShowAllIPs();
         });
     };
 
@@ -837,14 +866,18 @@ var createLocalAnchor = function (doc, parent_element) {
     var entries = [];
 
     showhide.addEventListener("click", toggleShowingLocal, false);
-    // TODO also observe showallips and update display
+
     var showLocalObserver = prefs.createObserver("extensions.sixornot.showlocal", updateShowingLocal)
                                  .register();
+
+    var showAllObserver = prefs.createObserver("extensions.sixornot.showallips", updateShowingAll)
+                               .register();
 
     return {
         remove: function () {
             this.remove_all_entries();
             showLocalObserver.unregister();
+            showAllObserver.unregister();
             showhide.removeEventListener("click", toggleShowingLocal, false);
         },
         update: function (host) {
