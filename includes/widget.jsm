@@ -53,10 +53,10 @@ var createWidget = function (node, win) {
                 if (dnsCancel) { dnsCancel.cancel(); }
                 ipv6s = [];
                 ipv4s = [];
-                if (!(host.address_family === 1
-                 || host.proxy.type === "http"
-                 || host.proxy.type === "https"
-                 || host.proxy.proxyResolvesHost)) {
+                if (!(mainHost.address_family === 1
+                 || mainHost.proxy.type === "http"
+                 || mainHost.proxy.type === "https"
+                 || mainHost.proxy.proxyResolvesHost)) {
                     dnsCancel = dnsResolver.resolveRemote(mainHost.host, function (ips) {
                         dnsCancel = null;
                         if (ips[0] !== "FAIL") {

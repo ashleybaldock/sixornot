@@ -77,7 +77,7 @@ var callbacks = {
 var dnsService = Components.classes["@mozilla.org/network/dns-service;1"]
                            .getService(Components.interfaces.nsIDNSService);
 
-var reqids: {
+var reqids = {
     shutdown: 0,        // Shut down DNS resolver, must be last request!
     remotelookup: 1,    // Perform dns.resolve_remote lookup
     locallookup: 2,     // Perform dns.resolve_local lookup
@@ -305,14 +305,14 @@ var ipUtils = {
     sort_ip4 : function (a, b) {
         "use strict";
         var typeof_a, typeof_b;
-        typeof_a = this.typeof_ip4(a);
-        typeof_b = this.typeof_ip4(b);
+        typeof_a = ipUtils.typeof_ip4(a);
+        typeof_b = ipUtils.typeof_ip4(b);
         // addresses of different types have a distinct precedence order
         // global, rfc1918, [other]
         if (typeof_a === typeof_b) {
             // TODO - move padding out of this function so it doesn't happen for every comparison in the sort
-            a = this.pad_ip4(a);
-            b = this.pad_ip4(b);
+            a = ipUtils.pad_ip4(a);
+            b = ipUtils.pad_ip4(b);
             if (a === b)
             {
                 return 0;   // Identical
@@ -341,7 +341,7 @@ var ipUtils = {
         "use strict";
         var split_address;
         // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
-        if (!this.is_ip4(ip_address)) {
+        if (!ipUtils.is_ip4(ip_address)) {
             return false;
         }
         split_address = ip_address.split(".").map(Number);
@@ -420,14 +420,14 @@ var ipUtils = {
     sort_ip6 : function (a, b) {
         "use strict";
         var typeof_a, typeof_b;
-        typeof_a = this.typeof_ip6(a);
-        typeof_b = this.typeof_ip6(b);
+        typeof_a = ipUtils.typeof_ip6(a);
+        typeof_b = ipUtils.typeof_ip6(b);
         // addresses of different types have a distinct precedence order
         // global, linklocal, [other]
         if (typeof_a === typeof_b) {
             // TODO - move normalise out of this function so it doesn't happen for every comparison in the sort
-            a = this.normalise_ip6(a);
-            b = this.normalise_ip6(b);
+            a = ipUtils.normalise_ip6(a);
+            b = ipUtils.normalise_ip6(b);
             if (a === b)
             {
                 return 0;   // Identical
@@ -467,11 +467,11 @@ var ipUtils = {
         var norm_address;
         log("ipUtils:typeof_ip6: " + ip_address, 3);
         // 1. Check IP version, return false if v4
-        if (!this.is_ip6(ip_address)) {
+        if (!ipUtils.is_ip6(ip_address)) {
             return false;
         }
         // 2. Normalise address, return false if normalisation fails
-        norm_address = this.normalise_ip6(ip_address);
+        norm_address = ipUtils.normalise_ip6(ip_address);
         // 3. Compare against type patterns
         if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0000")
         {

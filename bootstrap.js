@@ -65,20 +65,11 @@ startup = function (aData, aReason) {
     /* Set up resource://sixornot alias */
     setupResource(aData);
 
-    /*jslint es5: true */
     Components.utils.import("resource://sixornot/includes/logger.jsm");
     Components.utils.import("resource://sixornot/includes/prefs.jsm");
-    Components.utils.import("resource://sixornot/includes/dns.jsm");
-    /*jslint es5: false */
-
-    /* Init dnsResolver
-     * This instance is now only used for local address resolution */
-    dnsResolver.init();
-
     // Create default preferences (if they are missing)
-    prefs.create();
-
-    /*jslint es5: true */
+    prefs.create(); // TODO - can we do this on prefs module load instead of via a specific method (like with DNS?)
+    Components.utils.import("resource://sixornot/includes/dns.jsm");
     Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
     Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
     Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
@@ -90,7 +81,6 @@ startup = function (aData, aReason) {
     } else {
         Components.utils.import("resource://sixornot/includes/gui-legacy.jsm");
     }
-    /*jslint es5: false */
 
     /* Load callback for when our addon finishes loading */
     AddonManager.getAddonByID(aData.id, function (addon, data) {
