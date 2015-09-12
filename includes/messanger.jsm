@@ -2,9 +2,11 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
+/* global log */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
+/* exported getMessanger */
 var EXPORTED_SYMBOLS = [ "getMessanger" ];
 
 var getMessanger = function (win, updateCallback) {

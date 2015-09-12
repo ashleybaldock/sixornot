@@ -2,21 +2,11 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-// Provided by Firefox:
-/*global Components, Services */
-
-// Provided by Sixornot
-/*global prefs */
-
-// Module imports we need
-/*jslint es5: true */
+/* global prefs */
 Components.utils.import("resource://gre/modules/Services.jsm");
-
-// Import preferences
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 
-/*jslint es5: false */
-
+/* exported log, parse_exception */
 var EXPORTED_SYMBOLS = ["log", "parse_exception"];
 
 // Log a message to error console, but only if it is important enough

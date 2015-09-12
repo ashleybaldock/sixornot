@@ -2,11 +2,11 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-/*global ChromeWorker, log, parse_exception */
+/* global ChromeWorker, log, parse_exception */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
-/* exported EXPORTED_SYMBOLS, dnsResolver, ipUtils, create_local_address_info */
+/* exported dnsResolver, ipUtils, create_local_address_info */
 var EXPORTED_SYMBOLS = ["dnsResolver", "ipUtils", "create_local_address_info"];
 
 var callbacks = {

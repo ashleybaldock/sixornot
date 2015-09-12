@@ -2,19 +2,12 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
-// Provided by Firefox:
-/*global Components, Services */
-
-// Provided by Sixornot
-/*global log, parse_exception, prefs */
-
-// Module imports we need
-/*jslint es5: true */
+/* global log, prefs */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
-/*jslint es5: false */
 
+/* exported gt */
 var EXPORTED_SYMBOLS = [ "gt" ];
 
 var gt = (function () {
@@ -28,7 +21,7 @@ var gt = (function () {
         } catch (e) {
             return false;
         }
-    }
+    };
 
     var locale = prefs.get_char("overridelocale");
     if (locale !== "") {
