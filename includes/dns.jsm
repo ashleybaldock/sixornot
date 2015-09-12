@@ -2,21 +2,12 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-// Provided by Firefox:
-/*global Components, Services, ChromeWorker */
-
-// Provided by Sixornot
-/*global log, parse_exception */
-
-// Module imports we need
+/*global ChromeWorker, log, parse_exception */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
-var EXPORTED_SYMBOLS = [
-    "dnsResolver",
-    "ipUtils",
-    "create_local_address_info"
-];
+/* exported EXPORTED_SYMBOLS, dnsResolver, ipUtils, create_local_address_info */
+var EXPORTED_SYMBOLS = ["dnsResolver", "ipUtils", "create_local_address_info"];
 
 var callbacks = {
     // Set up request map, which will map async requests to their callbacks
@@ -30,7 +21,6 @@ var callbacks = {
 
     // Index this.callback_ids and return required callback
     find_by_id: function (callback_id) {
-        "use strict";
         log("callbacks.find_by_id - callback_id: " + callback_id, 3);
         // Returns -1 if ID not found
         return this.callback_ids.map(function (a) {
@@ -39,7 +29,6 @@ var callbacks = {
     },
 
     remove: function (callback_id) {
-        "use strict";
         var i;
         i = this.find_by_id(callback_id);
         if (i !== -1) {
@@ -53,7 +42,6 @@ var callbacks = {
     },
 
     add: function (callback) {
-        "use strict";
         // Use next available callback ID, return that ID
         this.next_id = this.next_id + 1;
         this.callback_ids.push([this.next_id, callback]);
@@ -62,7 +50,6 @@ var callbacks = {
     },
 
     make_cancel_obj: function (callback_id) {
-        "use strict";
         log("dnsResolver:make_cancel_obj - callback_id: " + callback_id, 3);
         return {
             cancel : function () {
@@ -92,20 +79,48 @@ var dnsResolver = (function () {
     var resolveLocalWithCTypes = true;
     var worker = null;
 
+    var setupWorker = function (url) {
+        worker = new ChromeWorker(url);
+
+        worker.onmessage = function (evt) {  
+            var data, callback;
+            data = JSON.parse(evt.data);
+
+            if (data.reqid === reqids.log) { // Log message from dns_worker
+                log(data.content[0], data.content[1]);
+            } else if (data.reqid === reqids.checkremote) { // checkremote, set remote ctypes status
+                resolveRemoteUsingCTypes = data.content;
+            } else if (data.reqid === reqids.checklocal) { // checklocal, set local ctypes status
+                resolveLocalWithCTypes = data.content;
+            } else if (data.reqid === reqids.remotelookup ||
+                       data.reqid === reqids.locallookup) { // remotelookup/locallookup, find correct callback and call it
+                callback = callbacks.remove(data.callbackid);
+                // Execute callback
+                if (callback) {
+                    callback(data.content);
+                }
+            }
+        };
+
+        worker.onerror = function (err) {
+            log(err.message + ", " + err.filename + ", " + err.lineno, 1);
+        };
+    };
+
     switch(Services.appinfo.OS.toLowerCase()) {
         case "darwin":
             log("dnsResolver - init darwin ctypes resolver", 1);
-            worker = new ChromeWorker("resource://sixornot/includes/ctypes/darwin.js");
+            setupWorker("resource://sixornot/includes/ctypes/darwin.js");
             break;
 
         case "linux":
             log("dnsResolver - init linux ctypes resolver", 1);
-            worker = new ChromeWorker("resource://sixornot/includes/ctypes/linux.js");
+            setupWorker("resource://sixornot/includes/ctypes/linux.js");
             break;
 
         case "winnt":
             log("dnsResolver - init winnt ctypes resolver", 1);
-            worker = new ChromeWorker("resource://sixornot/includes/ctypes/winnt.js");
+            setupWorker("resource://sixornot/includes/ctypes/winnt.js");
             break;
 
         default:
@@ -113,32 +128,8 @@ var dnsResolver = (function () {
             log("dnsResolver - init firefox resolver", 1);
             resolveRemoteUsingCTypes = false;
             resolveLocalWithCTypes = false;
-            return;
+            break;
     }
-
-    worker.onmessage = function (evt) {  
-        var data, callback;
-        data = JSON.parse(evt.data);
-
-        if (data.reqid === reqids.log) { // Log message from dns_worker
-            log(data.content[0], data.content[1]);
-        } else if (data.reqid === reqids.checkremote) { // checkremote, set remote ctypes status
-            resolveRemoteUsingCTypes = data.content;
-        } else if (data.reqid === reqids.checklocal) { // checklocal, set local ctypes status
-            resolveLocalWithCTypes = data.content;
-        } else if (data.reqid === reqids.remotelookup ||
-                   data.reqid === reqids.locallookup) { // remotelookup/locallookup, find correct callback and call it
-            callback = callbacks.remove(data.callbackid);
-            // Execute callback
-            if (callback) {
-                callback(data.content);
-            }
-        }
-    };
-
-    worker.onerror = function (err) {
-        log(err.message + ", " + err.filename + ", " + err.lineno, 1);
-    };
 
     var resolveLocalCTypes = function (callback) {
         var new_callback_id = callbacks.add(callback);
@@ -200,13 +191,17 @@ var dnsResolver = (function () {
         // TODO can this be an unload() call?
         shutdown: function () {
             log("dnsResolver:shutdown", 1);
+            resolveRemoteUsingCTypes = false;
+            resolveLocalWithCTypes = false;
 
-            worker.postMessage(JSON.stringify({"reqid": reqids.shutdown, "content": null}));
+            if (worker) {
+                worker.postMessage(JSON.stringify({"reqid": reqids.shutdown, "content": null}));
 
-            // Remove worker's event listeners as added in init(), this prevents messages
-            // sent by the worker after shutdown from triggering anything
-            worker.onmessage = null;
-            worker.onerror = null;
+                // Remove worker's event listeners as added in init(), this prevents messages
+                // sent by the worker after shutdown from triggering anything
+                worker.onmessage = null;
+                worker.onerror = null;
+            }
         },
 
         getLocalHostname: function () {
@@ -238,55 +233,11 @@ var ipUtils = {
 
     // Quick check for address family
     is_ip4 : function (ip_address) {
-        "use strict";
         return ip_address && (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);
     },
 
-    // Return the type of an IPv6 address
-    /*
-        -- For IPv4 addresses types are (from RFC 3330) --
-
-        Address Block             Present Use                       Reference
-        ---------------------------------------------------------------------
-        0.0.0.0/8            "This" Network                 [RFC1700, page 4]
-        10.0.0.0/8           Private-Use Networks                   [RFC1918]
-        14.0.0.0/8           Public-Data Networks         [RFC1700, page 181]
-        24.0.0.0/8           Cable Television Networks                    --
-        39.0.0.0/8           Reserved but subject
-                               to allocation                       [RFC1797]
-        127.0.0.0/8          Loopback                       [RFC1700, page 5]
-        128.0.0.0/16         Reserved but subject
-                               to allocation                             --
-        169.254.0.0/16       Link Local                                   --
-        172.16.0.0/12        Private-Use Networks                   [RFC1918]
-        191.255.0.0/16       Reserved but subject
-                               to allocation                             --
-        192.0.0.0/24         Reserved but subject
-                               to allocation                             --
-        192.0.2.0/24         Test-Net
-        192.88.99.0/24       6to4 Relay Anycast                     [RFC3068]
-        192.168.0.0/16       Private-Use Networks                   [RFC1918]
-        198.18.0.0/15        Network Interconnect
-                               Device Benchmark Testing            [RFC2544]
-        223.255.255.0/24     Reserved but subject
-                               to allocation                             --
-        224.0.0.0/4          Multicast                              [RFC3171]
-        240.0.0.0/4          Reserved for Future Use        [RFC1700, page 4]
-
-        route           0.0.0.0/8                                   Starts with 0
-        local           127.0.0.0/24                                Starts with 127
-        rfc1918         10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16   Starts with 10, 172.16-31, 192.168
-        linklocal       169.254.0.0/16                              Starts with 169.254
-        reserved        240.0.0.0/4                                 Starts with 240-255
-        documentation   192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24   Starts with 192.0.2, 198.51.100, 203.0.113
-        6to4relay       192.88.99.0/24                              Starts with 192.88.99
-        benchmark       198.18.0.0/15                               Starts with 198.18, 198.19
-        multicast       224.0.0.0/4                                 Starts with 224-239
-    */
-
     // Pad an IPv4 address to permit lexicographical sorting
     pad_ip4 : function (ip4_address) {
-        "use strict";
         var pad = function (n) {
             return ("00" + n).substr(-3);
         };
@@ -294,7 +245,6 @@ var ipUtils = {
     },
     // Remove leading zeros from IPv4 address
     unpad_ip4 : function (ip4_address) {
-        "use strict";
         var unpad = function (n) {
             return parseInt(n, 10);
         };
@@ -303,14 +253,12 @@ var ipUtils = {
 
     // Sort IPv4 addresses into logical ordering
     sort_ip4 : function (a, b) {
-        "use strict";
         var typeof_a, typeof_b;
         typeof_a = ipUtils.typeof_ip4(a);
         typeof_b = ipUtils.typeof_ip4(b);
         // addresses of different types have a distinct precedence order
         // global, rfc1918, [other]
         if (typeof_a === typeof_b) {
-            // TODO - move padding out of this function so it doesn't happen for every comparison in the sort
             a = ipUtils.pad_ip4(a);
             b = ipUtils.pad_ip4(b);
             if (a === b)
@@ -337,50 +285,58 @@ var ipUtils = {
         }
     },
 
+    /*
+     *  route           0.0.0.0/8                                   Starts with 0
+     *  local           127.0.0.0/24                                Starts with 127
+     *  rfc1918         10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16   Starts with 10, 172.16-31, 192.168
+     *  linklocal       169.254.0.0/16                              Starts with 169.254
+     *  reserved        240.0.0.0/4                                 Starts with 240-255
+     *  6to4relay       192.88.99.0/24                              Starts with 192.88.99
+     *  benchmark       198.18.0.0/15                               Starts with 198.18, 198.19
+     *  multicast       224.0.0.0/4                                 Starts with 224-239
+     */
     typeof_ip4 : function (ip_address) {
-        "use strict";
         var split_address;
-        // TODO - Function in_subnet (network, subnetmask, ip) to check if specified IP is in the specified subnet range
         if (!ipUtils.is_ip4(ip_address)) {
             return false;
         }
         split_address = ip_address.split(".").map(Number);
         if (split_address[0] === 0) {
             return "route";
-        } else if (split_address[0] === 127) {
+        }
+        if (split_address[0] === 127) {
             return "localhost";
-        } else if (split_address[0] === 10
+        }
+        if (split_address[0] === 10
              || (split_address[0] === 172 && split_address[1] >= 16 && split_address[1] <= 31)
              || (split_address[0] === 192 && split_address[1] === 168)) {
             return "rfc1918";
-        } else if (split_address[0] === 169 && split_address[1] === 254) {
-            return "linklocal";
-        } else if (split_address[0] >= 240) {
-            return "reserved";
-        } else if ((split_address[0] === 192 && split_address[1] === 0  && split_address[2] === 2)
-              || (split_address[0] === 198 && split_address[1] === 51 && split_address[2] === 100)
-              || (split_address[0] === 203 && split_address[1] === 0  && split_address[2] === 113)) {
-            return "documentation";
-        } else if (split_address[0] === 192 && split_address[1] === 88 && split_address[2] === 99) {
-            return "6to4relay";
-        } else if (split_address[0] === 198 && [18,19].indexOf(split_address[1]) !== -1) {
-            return "benchmark";
-        } else if (split_address[0] >= 224 && split_address[0] <= 239) {
-            return "multicast";
-        } else {
-            return "global";
         }
+        if (split_address[0] === 169 && split_address[1] === 254) {
+            return "linklocal";
+        }
+        if (split_address[0] >= 240) {
+            return "reserved";
+        }
+        if (split_address[0] === 192 && split_address[1] === 88 && split_address[2] === 99) {
+            return "6to4relay";
+        }
+        if (split_address[0] === 198 && [18,19].indexOf(split_address[1]) !== -1) {
+            return "benchmark";
+        }
+        if (split_address[0] >= 224 && split_address[0] <= 239) {
+            return "multicast";
+        }
+        return "global";
     },
 
     // Quick check for address family
     is_ip6 : function (ip_address) {
-        "use strict";
         return ip_address && (ip_address.indexOf(":") !== -1);
     },
 
     // Expand IPv6 address into long version
     normalise_ip6 : function (ip6_address) {
-        "use strict";
         var sides, left_parts, right_parts, middle, outarray, pad_left;
         // Split by instances of ::
         sides = ip6_address.split("::");
@@ -399,41 +355,20 @@ var ipUtils = {
         return outarray.map(pad_left).join(":").toLowerCase();
     },
 
-    // Return the type of an IPv6 address
-    /*
-        -- For IPv6 addresses types are: --
-        unspecified     ::/128                                          All zeros
-        local           ::1/128         0000:0000:0000:0000:0000:0000:0000:0001
-        linklocal       fe80::/10                                       Starts with fe8, fe9, fea, feb
-        sitelocal       fec0::/10   (deprecated)                        Starts with fec, fed, fee, fef
-        uniquelocal     fc00::/7    (similar to RFC1918 addresses)      Starts with: fc or fd
-        pdmulticast     ff00::/8                                        Starts with ff
-        v4transition    ::ffff:0:0/96 (IPv4-mapped)                     Starts with 0000:0000:0000:0000:0000:ffff
-                        ::ffff:0:0:0/96 (Stateless IP/ICMP Translation) Starts with 0000:0000:0000:0000:ffff:0000
-                        0064:ff9b::/96 ("Well-Known" prefix)            Starts with 0064:ff9b:0000:0000:0000:0000
-        6to4            2002::/16                                       Starts with 2002
-        teredo          2001::/32                                       Starts with 2001:0000
-        benchmark       2001:2::/48                                     Starts with 2001:0002:0000
-        documentation   2001:db8::/32                                   Starts with 2001:0db8
-    */
     // Sort IPv6 addresses into logical ordering
     sort_ip6 : function (a, b) {
-        "use strict";
         var typeof_a, typeof_b;
         typeof_a = ipUtils.typeof_ip6(a);
         typeof_b = ipUtils.typeof_ip6(b);
         // addresses of different types have a distinct precedence order
         // global, linklocal, [other]
         if (typeof_a === typeof_b) {
-            // TODO - move normalise out of this function so it doesn't happen for every comparison in the sort
             a = ipUtils.normalise_ip6(a);
             b = ipUtils.normalise_ip6(b);
-            if (a === b)
-            {
+            if (a === b) {
                 return 0;   // Identical
             }
-            else if (a > b)
-            {
+            if (a > b) {
                 return 1;   // a > b
             }
             return -1;      // b > a
@@ -443,27 +378,38 @@ var ipUtils = {
             // Return -1 if a < b, 0 if a == b, 1 if a > b
         }
         // They are not equal
-        else if (typeof_a === "global")
-        {
+        if (typeof_a === "global") {
             return -1;  // a comes before b
         }
-        else if (typeof_b === "global")
-        {
+        if (typeof_b === "global") {
             return 1;   // b comes before a
         }
         // Neither of them are global
-        else if (typeof_a === "linklocal")
-        {
+        if (typeof_a === "linklocal") {
             return -1;  // a comes before b
         }
-        else if (typeof_b === "linklocal")
-        {
+        if (typeof_b === "linklocal") {
             return 1;   // b comes before a
         }
     },
 
+    /*
+     *  -- For IPv6 addresses types are: --
+     *  unspecified     ::/128                                          All zeros
+     *  local           ::1/128         0000:0000:0000:0000:0000:0000:0000:0001
+     *  linklocal       fe80::/10                                       Starts with fe8, fe9, fea, feb
+     *  sitelocal       fec0::/10   (deprecated)                        Starts with fec, fed, fee, fef
+     *  uniquelocal     fc00::/7    (similar to RFC1918 addresses)      Starts with: fc or fd
+     *  pdmulticast     ff00::/8                                        Starts with ff
+     *  v4transition    ::ffff:0:0/96 (IPv4-mapped)                     Starts with 0000:0000:0000:0000:0000:ffff
+     *                  ::ffff:0:0:0/96 (Stateless IP/ICMP Translation) Starts with 0000:0000:0000:0000:ffff:0000
+     *                  0064:ff9b::/96 ("Well-Known" prefix)            Starts with 0064:ff9b:0000:0000:0000:0000
+     *  6to4            2002::/16                                       Starts with 2002
+     *  teredo          2001::/32                                       Starts with 2001:0000
+     *  benchmark       2001:2::/48                                     Starts with 2001:0002:0000
+     *  documentation   2001:db8::/32                                   Starts with 2001:0db8
+     */
     typeof_ip6 : function (ip_address) {
-        "use strict";
         var norm_address;
         log("ipUtils:typeof_ip6: " + ip_address, 3);
         // 1. Check IP version, return false if v4
@@ -473,37 +419,29 @@ var ipUtils = {
         // 2. Normalise address, return false if normalisation fails
         norm_address = ipUtils.normalise_ip6(ip_address);
         // 3. Compare against type patterns
-        if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0000")
-        {
+        if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0000") {
             return "unspecified";
         }
         if (norm_address === "0000:0000:0000:0000:0000:0000:0000:0001"
-         || norm_address === "fe80:0000:0000:0000:0000:0000:0000:0001") // linklocal address of loopback interface on Mac OSX
-        {
+         || norm_address === "fe80:0000:0000:0000:0000:0000:0000:0001") {
             return "localhost";
         }
-        if (["fe8", "fe9", "fea", "feb"].indexOf(norm_address.substr(0, 3)) !== -1)
-        {
+        if (["fe8", "fe9", "fea", "feb"].indexOf(norm_address.substr(0, 3)) !== -1) {
             return "linklocal";
         }
-        if (["fec", "fed", "fee", "fef"].indexOf(norm_address.substr(0, 3)) !== -1)
-        {
+        if (["fec", "fed", "fee", "fef"].indexOf(norm_address.substr(0, 3)) !== -1) {
             return "sitelocal";
         }
-        if (["fc", "fd"].indexOf(norm_address.substr(0, 2)) !== -1)
-        {
+        if (["fc", "fd"].indexOf(norm_address.substr(0, 2)) !== -1) {
             return "uniquelocal";
         }
-        if (["ff"].indexOf(norm_address.substr(0, 2)) !== -1)
-        {
+        if (["ff"].indexOf(norm_address.substr(0, 2)) !== -1) {
             return "multicast";
         }
-        if (["2002"].indexOf(norm_address.substr(0, 4)) !== -1)
-        {
+        if (["2002"].indexOf(norm_address.substr(0, 4)) !== -1) {
             return "6to4";
         }
-        if (["2001:0000"].indexOf(norm_address.substr(0, 9)) !== -1)
-        {
+        if (["2001:0000"].indexOf(norm_address.substr(0, 9)) !== -1) {
             return "teredo";
         }
         // If no other type then address is global
@@ -514,7 +452,6 @@ var ipUtils = {
 var ipTests = {
     // Unit test suite for typeof_ip6 function, returns false if a test fails
     test_typeof_ip6 : function () {
-        "use strict";
         var overall, tests, i, result;
         overall = true;
         tests = [
@@ -545,7 +482,6 @@ var ipTests = {
     },
 
     test_normalise_ip6 : function () {
-        "use strict";
         var overall, tests, i, result;
         overall = true;
         tests = [
@@ -572,7 +508,6 @@ var ipTests = {
     },
 
     test_is_ip6 : function () {
-        "use strict";
         var overall, tests, i, result;
         overall = true;
         tests = [

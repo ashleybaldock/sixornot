@@ -2,6 +2,7 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
+/* global log, gt, stylesheet, unload, prefs, util, createAddressBarIcon, createWidget */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/utility.jsm");
@@ -12,7 +13,8 @@ Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
 Components.utils.import("resource://sixornot/includes/widget.jsm");
 Components.utils.import("resource://sixornot/includes/addressbaricon.jsm");
 
-var EXPORTED_SYMBOLS = [ "ui" ];
+/* exported ui */
+var EXPORTED_SYMBOLS = ["ui"];
 
 const FIREFOX_ID = "{ec8030f7-c20a-464f-9b0e-13a3a9e97384}";
 const ADDRESSBAR_ICON_ID = "sixornot-addressbaricon";
@@ -46,7 +48,7 @@ var inject_into_new_windows_with_path = function (sheet, path) {
                 }
             });
         }
-    };
+    }
 
     // Could also use chrome-document-global-created events for this
     Services.ww.registerNotification(on_new_window);
@@ -86,7 +88,7 @@ var ui = {
         if (Services.appinfo.ID !== FIREFOX_ID || Services.appinfo.OS === "Linux") {
             stylesheet.injectIntoWindowWithUnload(win, legacyStylesheets.large);
         }
-        var on_beforecustomization = function (evt) {
+        var on_beforecustomization = function () {
             log("on_beforecustomization", 1);
             /* On pre-Australis platforms the panel for customisation of the toolbars
              * is a different XUL document. We need to inject our CSS modifications
@@ -99,7 +101,7 @@ var ui = {
                 log("failed to find customizeToolbarSheetIFrame", 1);
             }
         };
-        var on_aftercustomization = function (evt) {
+        var on_aftercustomization = function () {
             log("on_aftercustomization", 1);
             var iframe = win.document.getElementById("customizeToolbarSheetIFrame");
             if (iframe) {
@@ -145,13 +147,13 @@ var createButton = function (win) {
     button.setAttribute("orient", "horizontal");
 
     /* Add button to toolbox palette, since it needs a parent */
-    gbi(doc, "navigator-toolbox").palette.appendChild(button);
+    util.gbi(doc, "navigator-toolbox").palette.appendChild(button);
 
     /* Move to location specified in prefs
        If location is blank, then it isn't moved (stays in toolbox palette) */
     toolbar_id = prefs.get_char("toolbar");
     if (toolbar_id !== "") {
-        toolbar = gbi(doc, toolbar_id);
+        toolbar = util.gbi(doc, toolbar_id);
 
         nextitem_id = prefs.get_char("nextitem");
         if (nextitem_id === "") {
@@ -159,7 +161,7 @@ var createButton = function (win) {
             toolbar.insertItem(BUTTON_ID);
         } else {
             // Add to specified position, if nextID is found
-            nextitem = gbi(doc, nextitem_id);
+            nextitem = util.gbi(doc, nextitem_id);
             if (nextitem && nextitem.parentNode.id === toolbar_id) {
                 toolbar.insertItem(BUTTON_ID, nextitem);
             } else {
@@ -172,7 +174,7 @@ var createButton = function (win) {
     * When button location is customised store the new location in preferences
     * so we can load into the same place next time
     */
-    customize_handler = function (evt) {
+    customize_handler = function () {
         var button_parent, button_nextitem, toolbar_id, nextitem_id;
         log("createButton:customize_handler", 2);
         log("----- button customise, button parent id: " + button.parentNode.id, 1);

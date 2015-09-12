@@ -2,9 +2,7 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
-// Provided by Firefox:
-/*global Components, Services */
-
+/* global log, gt, ipUtils, dnsResolver, util, getMessanger, unload, prefs, create_local_address_info */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/utility.jsm");
@@ -14,14 +12,14 @@ Components.utils.import("resource://sixornot/includes/dns.jsm");
 Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
 Components.utils.import("resource://sixornot/includes/messanger.jsm");
 
-var EXPORTED_SYMBOLS = [ "createPanel" ];
+/* exported createPanel */
+var EXPORTED_SYMBOLS = ["createPanel"];
 
 /* Creates and sets up a panel to display information which can then be bound to an icon */
 var createPanel = function (win, panel_id) {
     var doc, panel, panel_vbox, grid, grid_rows, grid_cols,
-    remote_anchor, local_anchor, forceScrollbars,
-    on_click, onPopupShowing, onPopupHiding, on_page_change,
-    on_new_host, on_address_change, on_count_change;
+        remote_anchor, local_anchor, forceScrollbars,
+        onPopupShowing, onPopupHiding;
 
     doc = win.document;
 
@@ -43,14 +41,14 @@ var createPanel = function (win, panel_id) {
         }
     };
 
-    onPopupShowing = function (evt) {
+    onPopupShowing = function () {
         log("panel:onPopupShowing", 2);
         messanger.subscribeToCurrentBrowser();
         messanger.requestUpdate();
         local_anchor.panelShowing();
     };
 
-    onPopupHiding = function (evt) {
+    onPopupHiding = function () {
         log("panel:onPopupHiding", 2);
         messanger.unsubscribe();
         local_anchor.panelHiding();
@@ -58,13 +56,13 @@ var createPanel = function (win, panel_id) {
 
     var onClickSettingsLink = function (evt) {
         panel.hidePopup();
-        open_preferences();
+        util.open_preferences();
         evt.stopPropagation();
     };
 
     var onClickDocLink = function (evt) {
         panel.hidePopup();
-        open_hyperlink(gt("sixornot_weblink"));
+        util.open_hyperlink(gt("sixornot_weblink"));
         evt.stopPropagation();
     };
 
@@ -169,12 +167,12 @@ var createPanel = function (win, panel_id) {
 
 var countDnsAddresses = function (host, ipv4s, ipv6s) {
     var count = 0;
-    ipv6s.forEach(function (address, index, addresses) {
+    ipv6s.forEach(function (address) {
         if (address !== host.address) {
             count += 1;
         }
     });
-    ipv4s.forEach(function (address, index, addresses) {
+    ipv4s.forEach(function (address) {
         if (address !== host.address) {
             count += 1;
         }
@@ -188,7 +186,7 @@ var createIPEntry = function (doc, addto) {
 
     var copyText = "";
     var copyToClipboard = function (evt) {
-        copy_to_clipboard(copyText);
+        util.copy_to_clipboard(copyText);
         evt.stopPropagation();
     };
     conipaddr.addEventListener("click", copyToClipboard, false);
@@ -296,7 +294,7 @@ var createIPs = function (doc, addto) {
                     ipv6s.sort(function (a, b) {
                         return ipUtils.sort_ip6.call(dnsResolver, a, b);
                     });
-                    ipv6s.forEach(function (address, index, addresses) {
+                    ipv6s.forEach(function (address) {
                         if (address !== host.address) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(
@@ -312,7 +310,7 @@ var createIPs = function (doc, addto) {
                     ipv4s.sort(function (a, b) {
                         return ipUtils.sort_ip4.call(dnsResolver, a, b);
                     });
-                    ipv4s.forEach(function (address, index, addresses) {
+                    ipv4s.forEach(function (address) {
                         if (address !== host.address) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(
@@ -327,7 +325,7 @@ var createIPs = function (doc, addto) {
                     });
                 }
                 // Hide additional entries
-                entries.forEach(function (item, index, items) {
+                entries.forEach(function (item, index) {
                     if (index < entriesIndex) return;
                     item.hide();
                 });
@@ -338,7 +336,7 @@ var createIPs = function (doc, addto) {
             ipv6s_cache = ipv6s;
         },
         remove: function () {
-            entries.forEach(function (item, index, items) {
+            entries.forEach(function (item) {
                 try {
                     item.remove();
                 } catch (e) {
@@ -358,16 +356,14 @@ var createIPs = function (doc, addto) {
 };
 
 var createIcon = function (doc, addto) {
-    var icon, update;
-
-    icon = doc.createElement("image");
+    var icon = doc.createElement("image");
     icon.setAttribute("width", "16");
     icon.setAttribute("height", "16");
     addto.appendChild(icon);
 
     return {
         update: function (host, ipv4s, ipv6s) {
-            update_node_icon_for_host(icon, host, ipv4s, ipv6s);
+            util.update_node_icon_for_host(icon, host, ipv4s, ipv6s);
         },
         remove: function () {
             addto.removeChild(icon);
@@ -376,9 +372,7 @@ var createIcon = function (doc, addto) {
 };
 
 var createSSLInfo = function (doc, addto) {
-    var sslinfo, update;
-
-    sslinfo = doc.createElement("image");
+    var sslinfo = doc.createElement("image");
     sslinfo.setAttribute("height", "16");
     addto.appendChild(sslinfo);
 
@@ -386,21 +380,21 @@ var createSSLInfo = function (doc, addto) {
         update: function (host) {
             if (host.security.isExtendedValidation) {
                 if (!sslinfo.classList.contains("sixornot_ssl_ev")) {
-                    remove_ssl_classes_from_node(sslinfo);
+                    util.remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl_ev");
                     sslinfo.setAttribute("tooltiptext", host.security.cipherName);
                     sslinfo.setAttribute("width", "16");
                 }
             } else if (host.security.cipherName) {
                 if (!sslinfo.classList.contains("sixornot_ssl")) {
-                    remove_ssl_classes_from_node(sslinfo);
+                    util.remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl");
                     sslinfo.setAttribute("tooltiptext", host.security.cipherName);
                     sslinfo.setAttribute("width", "16");
                 }
             } else {
                 if (!sslinfo.classList.contains("sixornot_ssl_off")) {
-                    remove_ssl_classes_from_node(sslinfo);
+                    util.remove_ssl_classes_from_node(sslinfo);
                     sslinfo.classList.add("sixornot_ssl_off");
                     sslinfo.setAttribute("tooltiptext", "");
                     sslinfo.setAttribute("width", "0");
@@ -414,9 +408,7 @@ var createSSLInfo = function (doc, addto) {
 };
 
 var createProxyInfo = function (doc, addto) {
-    var proxyinfo, update;
-
-    proxyinfo = doc.createElement("image");
+    var proxyinfo = doc.createElement("image");
     proxyinfo.setAttribute("height", "16");
     addto.appendChild(proxyinfo);
 
@@ -497,7 +489,7 @@ var createHostname = function (doc, addto) {
 
     var copyText = "";
     var copyToClipboard = function (evt) {
-        copy_to_clipboard(copyText);
+        util.copy_to_clipboard(copyText);
         evt.stopPropagation();
     };
     hostname.addEventListener("click", copyToClipboard, false);
@@ -525,12 +517,12 @@ var createHostname = function (doc, addto) {
             ipv4s.sort(function (a, b) {
                 return ipUtils.sort_ip4.call(dnsResolver, a, b);
             });
-            ipv6s.forEach(function (address, index, addresses) {
+            ipv6s.forEach(function (address) {
                 if (address !== host.address) {
                     text = text + "," + address;
                 }
             });
-            ipv4s.forEach(function (address, index, addresses) {
+            ipv4s.forEach(function (address) {
                 if (address !== host.address) {
                     text = text + "," + address;
                 }
@@ -551,7 +543,7 @@ var createHostname = function (doc, addto) {
    Also takes a reference to the element to add this element after
    e.g. header or the preceeding list item */
 var createRemoteListingRow = function (doc, addafter, host, mainhost) {
-    var row, icon, sslinfo, proxyinfo, count, hostname, ips, showhide, update;
+    var row, icon, sslinfo, proxyinfo, count, hostname, ips;
 
     row = doc.createElement("row");
     row.setAttribute("align", "start");
@@ -653,7 +645,7 @@ var createRemoteAnchor = function (doc, parent_element) {
         },
         remove_all_entries: function () {
             log("remote_anchor:remove_all_entries", 2);
-            entries.forEach(function (item, index, items) {
+            entries.forEach(function (item) {
                 try {
                     item.remove();
                 } catch (e) {
@@ -675,7 +667,7 @@ var createRemoteAnchor = function (doc, parent_element) {
             // New entries may be inserted anywhere (supports alphabetical ordering)
             // model may have more items than entries
             var entriesIndex = 0;
-            model.entries.forEach(function(item, index, array) {
+            model.entries.forEach(function(item) {
                 var entry = entries[entriesIndex];
                 if (entry && entry.host === item.host) {
                     entry.update(item, model.main);
@@ -736,7 +728,7 @@ var createLocalListingRow = function (doc, addafter) {
             row.parentNode.removeChild(row);
         },
         updateShowAllIPs: function () {
-            entries.forEach(function (item, index, items) {
+            entries.forEach(function (item, index) {
                 if (index >= maxVisibleIndex) return;
                 if (prefs.get_bool("showallips") || item.isRouteable) {
                     item.show();
@@ -752,7 +744,7 @@ var createLocalListingRow = function (doc, addafter) {
             host.ipv6s.sort(function (a, b) {
                 return ipUtils.sort_ip6.call(dnsResolver, a, b);
             });
-            host.ipv6s.forEach(function (address, index, addresses) {
+            host.ipv6s.forEach(function (address) {
                 if (entries.length < entriesIndex + 1) {
                     entries.push(createIPEntry(doc, address_box).update(address, 6, false).hide());
                 } else {
@@ -763,7 +755,7 @@ var createLocalListingRow = function (doc, addafter) {
             host.ipv4s.sort(function (a, b) {
                 return ipUtils.sort_ip4.call(dnsResolver, a, b);
             });
-            host.ipv4s.forEach(function (address, index, addresses) {
+            host.ipv4s.forEach(function (address) {
                 if (entries.length < entriesIndex + 1) {
                     entries.push(createIPEntry(doc, address_box).update(address, 4, false).hide());
                 } else {
@@ -775,7 +767,7 @@ var createLocalListingRow = function (doc, addafter) {
             maxVisibleIndex = entriesIndex;
 
             // Hide additional entries
-            entries.forEach(function (item, index, items) {
+            entries.forEach(function (item, index) {
                 if (index < entriesIndex) return;
                 item.hide();
             });

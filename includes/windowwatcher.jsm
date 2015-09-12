@@ -36,25 +36,12 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/*jslint white: true, maxerr: 100, indent: 4 */
-
-// Provided by Firefox:
-/*global Components, Services */
-
-// Provided by Sixornot
-/*global log, parse_exception */
-
-// Module imports we need
-/*jslint es5: true */
+/*global Components, Services, log */
 Components.utils.import("resource://gre/modules/Services.jsm");
-
-// Import logging
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
-/*jslint es5: false */
-
+/* exported EXPORTED_SYMBOLS, watchWindows, unload, runOnWindows */
 var EXPORTED_SYMBOLS = ["watchWindows", "unload", "runOnWindows"];
-
 
 var unload = (function () {
     "use strict";

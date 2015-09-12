@@ -2,14 +2,9 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-// Provided by Firefox:
-/*global Components, Services */
-
-// Module imports we need
-/*jslint es5: true */
 Components.utils.import("resource://gre/modules/Services.jsm");
-/*jslint es5: false */
 
+/* exported prefs */
 var EXPORTED_SYMBOLS = ["prefs"];
 
 var PREF_SIXORNOT = "extensions.sixornot.";
@@ -53,7 +48,7 @@ var prefs = {
                 Services.prefs.removeObserver(prefToObserve, this);
                 return this;
             }
-        }
+        };
     },
 
     get_int: function (name) {
@@ -61,11 +56,11 @@ var prefs = {
         try {
             return this.PREF_BRANCH_SIXORNOT.getIntPref(name);
         } catch (e) {
-        }
-        if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof(1)) {
-            return this.defaults[name];
-        } else {
-            throw "Sixornot - Preference type mismatch";
+            if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof(1)) {
+                return this.defaults[name];
+            } else {
+                throw "Sixornot - Preference type mismatch";
+            }
         }
     },
 
@@ -79,11 +74,11 @@ var prefs = {
         try {
             return this.PREF_BRANCH_SIXORNOT.getBoolPref(name);
         } catch (e) {
-        }
-        if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof(true)) {
-            return this.defaults[name];
-        } else {
-            throw "Sixornot - Preference type mismatch";
+            if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof(true)) {
+                return this.defaults[name];
+            } else {
+                throw "Sixornot - Preference type mismatch";
+            }
         }
     },
 
@@ -97,11 +92,11 @@ var prefs = {
         try {
             return this.PREF_BRANCH_SIXORNOT.getCharPref(name);
         } catch (e) {
-        }
-        if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof("")) {
-            return this.defaults[name];
-        } else {
-            throw "Sixornot - Preference type mismatch";
+            if (this.defaults.hasOwnProperty(name) && typeof(this.defaults[name]) === typeof("")) {
+                return this.defaults[name];
+            } else {
+                throw "Sixornot - Preference type mismatch";
+            }
         }
     },
 

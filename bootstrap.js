@@ -3,14 +3,14 @@
  */
 
 // Provided by Firefox:
-/*global Components, Services, AddonManager */
-/*global APP_STARTUP, APP_SHUTDOWN, ADDON_ENABLE, ADDON_DISABLE, ADDON_INSTALL, ADDON_UNINSTALL, ADDON_UPGRADE, ADDON_DOWNGRADE */
+/* global AddonManager, APP_SHUTDOWN, ADDON_UNINSTALL */
 
 // Provided in included modules:
-/*global unload, watchWindows, dnsResolver, log, parse_exception, prefs, requests, insert_code, create_button */
+/* global prefs, watchWindows, ui, httpRequestObserver, unload, dnsResolver */
 
-var CustomizableUIAvailable = true, e;
-/*jslint es5: true */
+/* exported startup, shutdown, install, uninstall */
+
+var CustomizableUIAvailable = true;
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://gre/modules/AddonManager.jsm");
 try {
@@ -18,12 +18,6 @@ try {
 } catch (e) {
     CustomizableUIAvailable = false;
 }
-/*jslint es5: false */
-
-var startup,
-    shutdown,
-    install,
-    uninstall;
 
 /*
  * Resource alias management (for resource:// URLs)
@@ -59,8 +53,7 @@ var globalMM = Components.classes["@mozilla.org/globalmessagemanager;1"]
 /*
  * bootstrap.js API implementation
  */
-/* APP_STARTUP, ADDON_ENABLE, ADDON_INSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
-startup = function (aData, aReason) {
+var startup = function (aData) {
     "use strict";
     /* Set up resource://sixornot alias */
     setupResource(aData);
@@ -83,7 +76,7 @@ startup = function (aData, aReason) {
     }
 
     /* Load callback for when our addon finishes loading */
-    AddonManager.getAddonByID(aData.id, function (addon, data) {
+    AddonManager.getAddonByID(aData.id, function () {
         /* Inject content script into all existing and subsequently created windows */
         globalMM.loadFrameScript("resource://sixornot/includes/content.js", true);
 
@@ -98,8 +91,7 @@ startup = function (aData, aReason) {
     });
 };
 
-/* APP_SHUTDOWN, ADDON_DISABLE, ADDON_UNINSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
-shutdown = function (aData, aReason) {
+var shutdown = function (aData, aReason) {
     "use strict";
     if (aReason !== APP_SHUTDOWN) {
         httpRequestObserver.unregister();
@@ -144,13 +136,11 @@ shutdown = function (aData, aReason) {
     }
 };
 
-/* ADDON_INSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
-install = function (aData, aReason) {
+var install = function () {
     "use strict";
 };
 
-/* ADDON_UNINSTALL, ADDON_UPGRADE, or ADDON_DOWNGRADE */
-uninstall = function (aData, aReason) {
+var uninstall = function (aData, aReason) {
     "use strict";
 
     /* If uninstalling, remove our preferences */

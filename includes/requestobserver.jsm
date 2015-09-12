@@ -2,12 +2,11 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-// Provided by Firefox:
-/*global Components, Services */
-
+/*global log, parse_exception */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
+/* exported httpRequestObserver */
 var EXPORTED_SYMBOLS = ["httpRequestObserver"];
 
 // https://developer.mozilla.org/en-US/Add-ons/Code_snippets/Tabbed_browser#Getting_the_browser_that_fires_the_http-on-modify-request_notification
@@ -20,8 +19,8 @@ var legacyGetBrowser = function (contentWindow) {
 
 var onExamineResponse = function(subject, topic) {
     var httpChannel, httpChannelInternal, proxyChannel,
-	notificationCallbacks, loadContext, e1, e2,
-	remoteAddress, remoteAddressFamily, topFrameMM;
+        notificationCallbacks, loadContext,
+        remoteAddress, remoteAddressFamily, topFrameMM;
 
     httpChannel = subject.QueryInterface(Components.interfaces.nsIHttpChannel);
     httpChannelInternal = subject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
@@ -48,8 +47,8 @@ var onExamineResponse = function(subject, topic) {
             topFrameElement = legacyGetBrowser(loadContext.associatedWindow);
         }
         topFrameMM = topFrameElement.messageManager;
-    } catch (e2) {
-        log("httpRequestObserver: could not find messageManager for request browser - exception: " + parse_exception(e2), 0);
+    } catch (e) {
+        log("httpRequestObserver: could not find messageManager for request browser - exception: " + parse_exception(e), 0);
         return;
     }
 
@@ -64,7 +63,7 @@ var onExamineResponse = function(subject, topic) {
         try {
             remoteAddress = httpChannelInternal.remoteAddress;
             remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
-        } catch (e1) {
+        } catch (e) {
             log("httpRequestObserver - http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 1);
             remoteAddress = "";
             remoteAddressFamily = 0;
@@ -154,7 +153,7 @@ var onExamineResponse = function(subject, topic) {
  * Ignores connections which aren't related to browser windows
  */
 var httpRequestObserver = {
-    observe: function (subject, topic, data) {
+    observe: function (subject, topic) {
         if (topic === "http-on-examine-response"
          || topic === "http-on-examine-cached-response"
          || topic === "http-on-examine-merged-response") {

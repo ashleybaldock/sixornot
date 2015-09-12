@@ -38,8 +38,8 @@ var createAddressBarIcon = function (win, id) {
     updateVisibility();
 
     /* Position the icon */
-    urlbaricons = gbi(doc, "urlbar-icons");
-    starbutton = gbi(doc, "star-button");
+    urlbaricons = util.gbi(doc, "urlbar-icons");
+    starbutton = util.gbi(doc, "star-button");
     /* If star icon visible, insert before it, otherwise just append to urlbaricons */
     if (!starbutton) {
         urlbaricons.appendChild(icon);

@@ -2,16 +2,12 @@
  * Copyright 2014-2015 Timothy Baldock. All Rights Reserved.
  */
 
-// Provided by Firefox:
-/*global Components, Services */
-
-// Provided by Sixornot
-/*global log, parse_exception, windowWatcher, unload */
-
+/*global log, unload */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
 
+/* exported stylesheet */
 var EXPORTED_SYMBOLS = ["stylesheet"];
 
 var stylesheet = {

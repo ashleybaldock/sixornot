@@ -2,14 +2,10 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
+/* global log */
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
-// Provided by Firefox:
-/*global Components */
-
-// Provided by Sixornot
-/*global parse_exception, prefs */
-
+/* exported createRequestCache */
 var EXPORTED_SYMBOLS = ["createRequestCache"];
 
 /*
@@ -48,7 +44,7 @@ var createRequestCache = function () {
 
             // Move anything currently on waiting list into new cache entry
             var waitinglist = this.waitinglist.splice(0, Number.MAX_VALUE);
-            waitinglist.forEach(function (item, index, array) {
+            waitinglist.forEach(function (item) {
                 this.addOrUpdate({
                     host: item.host,
                     address: item.address,
@@ -62,7 +58,7 @@ var createRequestCache = function () {
             if (!this.cache.hasOwnProperty(id)) {
                 this.createCacheEntry(id);
             }
-            if (!this.cache[id].entries.some(function (item, index, items) {
+            if (!this.cache[id].entries.some(function (item) {
                 if (item.host === data.host) {
                     item.count += 1;
 
@@ -76,8 +72,8 @@ var createRequestCache = function () {
                 }
             })) {
                 log("addOrUpdate, host: " + data.host + ", remoteAddress: " + data.address, 1);
-                new_entry = createHost(data.host, data.address, data.addressFamily, data.security, data.proxy);
-                this.cache[id].entries.push(new_entry);
+                this.cache[id].entries.push(
+                    createHost(data.host, data.address, data.addressFamily, data.security, data.proxy));
             }
         },
         get: function (id) {
@@ -94,7 +90,7 @@ var createRequestCache = function () {
 
         waitinglist: [],
         addOrUpdateToWaitingList: function (data) {
-            if (!this.waitinglist.some(function (item, index, items) {
+            if (!this.waitinglist.some(function (item) {
                 if (item.host === data.host) {
                     item.count += 1;
                     if (item.address !== data.address && data.address !== "") {
@@ -124,7 +120,7 @@ var createRequestCache = function () {
                     out += "[" + property + ": [";
                     out += "mainHost: '" + this.cache[property].main + "', ";
                     out += "entries: [";
-                    this.cache[property].entries.forEach(function (item, index, items) {
+                    this.cache[property].entries.forEach(function (item) {
                         out += "['";
                         out += item.host;
                         out += "'] ";
@@ -136,7 +132,7 @@ var createRequestCache = function () {
         },
         printWaitingList: function () {
             var out = "waitinglist is:\n";
-            this.waitinglist.forEach(function (item, index, items) {
+            this.waitinglist.forEach(function (item) {
                 out += "[";
                 out += item.host;
                 out += "],";

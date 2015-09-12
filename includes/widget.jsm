@@ -2,6 +2,7 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
+/* global log, prefs, util, getMessanger, dnsResolver, ipUtils, createPanel, unload */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/utility.jsm");
@@ -12,18 +13,18 @@ Components.utils.import("resource://sixornot/includes/panel.jsm");
 Components.utils.import("resource://sixornot/includes/messanger.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 
+/* exported EXPORTED_SYMBOLS, createWidget */
 var EXPORTED_SYMBOLS = ["createWidget"];
 
 /* Contains shared code used by both the address bar icon and button */
 var createWidget = function (node, win) {
-    var panel, updateIconForNode,
-        onClick, onContentScriptLoaded;
+    var panel, updateIconForNode, onClick;
 
     var updateGreyscale = function () {
         if (prefs.get_bool("greyscaleicons")) {
-            add_greyscale_class_to_node(node);
+            util.add_greyscale_class_to_node(node);
         } else {
-            remove_greyscale_class_from_node(node);
+            util.remove_greyscale_class_from_node(node);
         }
     };
 
@@ -42,10 +43,10 @@ var createWidget = function (node, win) {
             ipv6s = [];
             ipv4s = [];
             // No matching entry for main host (probably a local file)
-            remove_sixornot_classes_from(node);
-            add_class_to_node("sixornot_other", node);
+            util.remove_sixornot_classes_from(node);
+            util.add_class_to_node("sixornot_other", node);
         } else {
-            var mainHost = data.entries.find(function (element, index, array) {
+            var mainHost = data.entries.find(function (element) {
                 return element.host === data.main;
             });
 
@@ -64,11 +65,11 @@ var createWidget = function (node, win) {
                             ipv4s = ips.filter(ipUtils.is_ip4);
                         }
                         log("widget dns complete, ipv4s: [" + ipv4s + "], ipv6s: [" + ipv6s + "]", 0);
-                        update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
+                        util.update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
                     });
                 }
             }
-            update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
+            util.update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
         }
         /* Always update last main host */
         lastMainHost = data.main;
