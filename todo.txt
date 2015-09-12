@@ -29,7 +29,7 @@ Update documentation
 optimise memory usage (don't use a chromeworker per tab)                    - DONE
 unload for content script                                                   - DONE
 Handle resource:// URLs better (displays E at present)                      - DONE
-Proxy detection + info
+Proxy detection + info                                                      - DONE
 Add better proxy detection (per-connection) and icon display                - DONE
 Disable native DNS resolution for proxied connections                       - DONE
  - if it's an http/https proxy                                              - DONE
@@ -39,14 +39,13 @@ Disable native DNS resolution for proxied connections                       - DO
 Show icon in panel against proxied hosts                                    - DONE
  - Proxy information on mouseover                                           - DONE
 Show coloured proxy icon if DNS lookups disabled                            - DONE
-
-SSL information for connections
+eslint validation                                                           - DONE
+SSL information for connections                                             - DONE
  - Show padlock icon for each host                                          - DONE
 
 split MM from widget/panel into object for code reuse                       - DONE
  - maybe update panel via widget?
 investigate channelIsForDownload on nsIHttpChannelInternal
-jslint validation
 test on non-E10S (determine min version)
 test on legacy platforms
  - SeaMonkey                                            - Seems working
@@ -90,6 +89,7 @@ Overview mode for icon
 Local info:
 Retrieve interface information along with addresses
  - Display local addresses per interface
+ - Linting ctypes files
 
 Retrieve netmask information for each address and display (e.g. 1999::1/64)
  - Also collect tunnel interface IPs on Vista+
