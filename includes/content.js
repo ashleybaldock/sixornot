@@ -7,24 +7,24 @@
 
 var contentScriptId = Math.floor((Math.random() * 100000) + 1); 
 
+/* global sendAsyncMessage, addMessageListener, removeMessageListener, log:true, createRequestCache */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 var _log = log;
 log = function (message, severity) {
     _log("SCS: " + contentScriptId + ": " + message, severity);
 };
-var printCaches = function (text) {
+/*var printCaches = function (text) {
     log(text + " - caches: ", 1);
     log("--" + requests.printWaitingList(), 1);
     log("--" + requests.printCache(), 1);
-};
+};*/
 
 Components.utils.import("resource://sixornot/includes/requestcache.jsm");
 
 /* State */
 var requests = createRequestCache();
 var currentWindowId = 0;
-var unloaded = false;
 
 log("content script loaded", 1);
 sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: contentScriptId});
@@ -47,7 +47,7 @@ var onHttpLoadMessage = function (message) {
     sendUpdateUIMessage(requests.get(currentWindowId));
 };
 
-var onUpdateUIMessage = function (message) {
+var onUpdateUIMessage = function () {
     sendUpdateUIMessage(requests.get(currentWindowId));
 };
 
@@ -78,7 +78,7 @@ var onDOMWindowCreated = function (evt) {
     log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 0);
 
     if (protocol === "file:") {
-        newEntry = {host: "Local File", address: "", addressFamily: 1}
+        newEntry = {host: "Local File", address: "", addressFamily: 1};
     } else if (protocol === "about:" || protocol === "resource:" || protocol === "chrome:") {
         newEntry = {host: loc, address: "", addressFamily: 1};
     } else if (hostname) { // Ignore empty windows
@@ -100,7 +100,7 @@ var onDOMWindowCreated = function (evt) {
 };
 
 var windowObserver = {
-    observe: function (subject, topic, data) {
+    observe: function (subject) {
         var innerId = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
         requests.remove(innerId);
     },
@@ -128,7 +128,6 @@ var onUnload = function () {
     removeMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMessage);
     removeMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
     removeMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
-    unloaded = true;
 };
 
 /* Listen and observe */

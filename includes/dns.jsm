@@ -6,7 +6,7 @@
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
-/* exported dnsResolver, ipUtils, create_local_address_info */
+/* exported dnsResolver, ipUtils, ipTests, create_local_address_info */
 var EXPORTED_SYMBOLS = ["dnsResolver", "ipUtils", "create_local_address_info"];
 
 var callbacks = {
@@ -108,27 +108,27 @@ var dnsResolver = (function () {
     };
 
     switch(Services.appinfo.OS.toLowerCase()) {
-        case "darwin":
-            log("dnsResolver - init darwin ctypes resolver", 1);
-            setupWorker("resource://sixornot/includes/ctypes/darwin.js");
-            break;
+    case "darwin":
+        log("dnsResolver - init darwin ctypes resolver", 1);
+        setupWorker("resource://sixornot/includes/ctypes/darwin.js");
+        break;
 
-        case "linux":
-            log("dnsResolver - init linux ctypes resolver", 1);
-            setupWorker("resource://sixornot/includes/ctypes/linux.js");
-            break;
+    case "linux":
+        log("dnsResolver - init linux ctypes resolver", 1);
+        setupWorker("resource://sixornot/includes/ctypes/linux.js");
+        break;
 
-        case "winnt":
-            log("dnsResolver - init winnt ctypes resolver", 1);
-            setupWorker("resource://sixornot/includes/ctypes/winnt.js");
-            break;
+    case "winnt":
+        log("dnsResolver - init winnt ctypes resolver", 1);
+        setupWorker("resource://sixornot/includes/ctypes/winnt.js");
+        break;
 
-        default:
-            // Fallback to using Firefox DNS resolver
-            log("dnsResolver - init firefox resolver", 1);
-            resolveRemoteUsingCTypes = false;
-            resolveLocalWithCTypes = false;
-            break;
+    default:
+        // Fallback to using Firefox DNS resolver
+        log("dnsResolver - init firefox resolver", 1);
+        resolveRemoteUsingCTypes = false;
+        resolveLocalWithCTypes = false;
+        break;
     }
 
     var resolveLocalCTypes = function (callback) {
@@ -455,20 +455,20 @@ var ipTests = {
         var overall, tests, i, result;
         overall = true;
         tests = [
-                        ["::", "unspecified"],
-                        ["::1", "localhost"],
-                        ["fe80::fa22:22ff:fee8:2222", "linklocal"],
-                        ["fec0::ffff:fa22:22ff:fee8:2222", "sitelocal"],
-                        ["fc00::1", "uniquelocal"],
-                        ["ff00::1", "multicast"],
-                        ["2002::1", "6to4"],
-                        ["2001:0000::1", "teredo"],
-                        ["2001:8b1:1fe4:1::2222", "global"],
-                        ["192.168.2.1", false],
-                        ["blah", false],
-                        [":", false],
-                        ["...", false]
-                    ];
+            ["::", "unspecified"],
+            ["::1", "localhost"],
+            ["fe80::fa22:22ff:fee8:2222", "linklocal"],
+            ["fec0::ffff:fa22:22ff:fee8:2222", "sitelocal"],
+            ["fc00::1", "uniquelocal"],
+            ["ff00::1", "multicast"],
+            ["2002::1", "6to4"],
+            ["2001:0000::1", "teredo"],
+            ["2001:8b1:1fe4:1::2222", "global"],
+            ["192.168.2.1", false],
+            ["blah", false],
+            [":", false],
+            ["...", false]
+        ];
         for (i = 0; i < tests.length; i += 1) {
             result = ipUtils.typeof_ip6(tests[i][0]);
             if (result === tests[i][1]) {
@@ -485,16 +485,16 @@ var ipTests = {
         var overall, tests, i, result;
         overall = true;
         tests = [
-                        ["::",                                      "0000:0000:0000:0000:0000:0000:0000:0000"],
-                        ["::1",                                     "0000:0000:0000:0000:0000:0000:0000:0001"],
-                        ["fe80::fa22:22ff:fee8:2222",               "fe80:0000:0000:0000:fa22:22ff:fee8:2222"],
-                        ["fc00::",                                  "fc00:0000:0000:0000:0000:0000:0000:0000"],
-                        ["ff00:1234:5678:9abc:def0:d:ee:fff",       "ff00:1234:5678:9abc:def0:000d:00ee:0fff"],
-                        ["2:0::1:2",                                "0002:0000:0000:0000:0000:0000:0001:0002"],
-                        ["2001:8b1:1fe4:1::2222",                   "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
-                        ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
-                        ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"]
-                    ];
+            ["::",                                      "0000:0000:0000:0000:0000:0000:0000:0000"],
+            ["::1",                                     "0000:0000:0000:0000:0000:0000:0000:0001"],
+            ["fe80::fa22:22ff:fee8:2222",               "fe80:0000:0000:0000:fa22:22ff:fee8:2222"],
+            ["fc00::",                                  "fc00:0000:0000:0000:0000:0000:0000:0000"],
+            ["ff00:1234:5678:9abc:def0:d:ee:fff",       "ff00:1234:5678:9abc:def0:000d:00ee:0fff"],
+            ["2:0::1:2",                                "0002:0000:0000:0000:0000:0000:0001:0002"],
+            ["2001:8b1:1fe4:1::2222",                   "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
+            ["2001:08b1:1fe4:0001:0000:0000:0000:2222", "2001:08b1:1fe4:0001:0000:0000:0000:2222"],
+            ["fe80::fa1e:dfff:fee8:db18%en1",           "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"]
+        ];
         for (i = 0; i < tests.length; i += 1) {
             result = ipUtils.normalise_ip6(tests[i][0]);
             if (result === tests[i][1]) {
@@ -511,20 +511,20 @@ var ipTests = {
         var overall, tests, i, result;
         overall = true;
         tests = [
-                        ["::",                                      true],
-                        ["::1",                                     true],
-                        ["fe80::fa22:22ff:fee8:2222",               true],
-                        ["fc00::",                                  true],
-                        ["ff00:1234:5678:9abc:def0:d:ee:fff",       true],
-                        ["2:0::1:2",                                true],
-                        ["2001:8b1:1fe4:1::2222",                   true],
-                        ["2001:08b1:1fe4:0001:0000:0000:0000:2222", true],
-                        ["192.168.2.1",                             false],
-                        ["blah",                                    false],
-                        [":::",                                     false],
-                        [":",                                       false],
-                        ["1::2::3",                                 false]
-                    ];
+            ["::",                                      true],
+            ["::1",                                     true],
+            ["fe80::fa22:22ff:fee8:2222",               true],
+            ["fc00::",                                  true],
+            ["ff00:1234:5678:9abc:def0:d:ee:fff",       true],
+            ["2:0::1:2",                                true],
+            ["2001:8b1:1fe4:1::2222",                   true],
+            ["2001:08b1:1fe4:0001:0000:0000:0000:2222", true],
+            ["192.168.2.1",                             false],
+            ["blah",                                    false],
+            [":::",                                     false],
+            [":",                                       false],
+            ["1::2::3",                                 false]
+        ];
         for (i = 0; i < tests.length; i += 1) {
             result = ipUtils.is_ip6(tests[i][0]);
             if (result === tests[i][1]) {

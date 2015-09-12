@@ -2,13 +2,7 @@
  * Copyright 2014-2015 Timothy Baldock. All Rights Reserved.
  */
 
-// Provided by Firefox:
-/*global Components, Services, ChromeWorker */
-
-// Provided by Sixornot
-/*global gt, log, parse_exception, stylesheet, createAddressBarIcon */
-
-/*jslint es5: true */
+/*global CustomizableUI, gt, log, stylesheet, createAddressBarIcon, createWidget */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource:///modules/CustomizableUI.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
@@ -16,9 +10,9 @@ Components.utils.import("resource://sixornot/includes/locale.jsm");
 Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
 Components.utils.import("resource://sixornot/includes/widget.jsm");
 Components.utils.import("resource://sixornot/includes/addressbaricon.jsm");
-/*jslint es5: false */
 
-var EXPORTED_SYMBOLS = [ "ui" ];
+/* exported ui */
+var EXPORTED_SYMBOLS = ["ui"];
 
 const ADDRESSBAR_ICON_ID = "sixornot-addressbaricon";
 const BUTTON_ID          = "sixornot-button";
