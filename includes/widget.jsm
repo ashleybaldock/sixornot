@@ -13,7 +13,7 @@ Components.utils.import("resource://sixornot/includes/panel.jsm");
 Components.utils.import("resource://sixornot/includes/messanger.jsm");
 Components.utils.import("resource://sixornot/includes/dns.jsm");
 
-/* exported EXPORTED_SYMBOLS, createWidget */
+/* exported createWidget */
 var EXPORTED_SYMBOLS = ["createWidget"];
 
 /* Contains shared code used by both the address bar icon and button */

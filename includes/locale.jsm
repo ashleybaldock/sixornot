@@ -8,7 +8,7 @@ Components.utils.import("resource://sixornot/includes/logger.jsm");
 Components.utils.import("resource://sixornot/includes/prefs.jsm");
 
 /* exported gt */
-var EXPORTED_SYMBOLS = [ "gt" ];
+var EXPORTED_SYMBOLS = ["gt"];
 
 var gt = (function () {
     "use strict";

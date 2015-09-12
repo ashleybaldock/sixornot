@@ -36,11 +36,11 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/*global Components, Services, log */
+/* global Components, Services, log */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
-/* exported EXPORTED_SYMBOLS, watchWindows, unload, runOnWindows */
+/* exported watchWindows, unload, runOnWindows */
 var EXPORTED_SYMBOLS = ["watchWindows", "unload", "runOnWindows"];
 
 var unload = (function () {
@@ -96,7 +96,6 @@ var unload = (function () {
             };
         }
 
-        // TODO test that this is still working properly and removes everything properly
         unloaders.push(callback);
 
         return remove_unloader;
@@ -112,29 +111,19 @@ var unload = (function () {
 var runOnLoad = function (win, callback) {
     "use strict";
     // Listen for one load event before checking the window type
-    log("Sixornot - runOnLoad", 1);
     win.addEventListener("load", function load_once () {
-        log("Sixornot - runOnLoad - loaded", 1);
         win.removeEventListener("load", load_once, false);
 
         // Now that the window has loaded, only handle browser windows
         if (win.document.documentElement.getAttribute("windowtype") === "navigator:browser") {
-            log("Sixornot - runOnLoad - type: navigator:browser", 1);
-
             /* On SeaMonkey gBrowser only exists after getBrowser has been called */
             if (win.getBrowser) {
-                log("Sixornot - WindowWatcher - win.getBrowser exists, calling it", 1);
                 win.getBrowser();
             }
 
             if (win.gBrowser) {
-                log("Sixornot - WindowWatcher - gBrowser exists", 1);
                 callback(win);
-            } else {
-                log("Sixornot - WindowWatcher - gBrowser not found!", 1);
             }
-        } else {
-            log("Sixornot - runOnLoad - skipping window: windowtype not navigator:browser", 1);
         }
     }, false);
 };
@@ -156,10 +145,8 @@ var runOnWindows = function (callback) {
         browserWindow = browserWindows.getNext();
         if (browserWindow.document.readyState === "complete") {
             if (browserWindow.document.documentElement.getAttribute("windowtype") === "navigator:browser") {
-                log("Sixornot - runOnWindows:readyState:complete and windowtype is navigator:browser", 1);
                 callback(browserWindow);
             } else {
-                log("Sixornot - runOnWindows:readyState:complete but windowtype not navigator:browser", 1);
             }
         } else {
             // Wait for the window to load before continuing
@@ -180,15 +167,12 @@ var watchWindows = function (callback) {
     // Watch for new browser windows opening then wait for them to load
     function windowWatcher (subject, topic) {
         if (topic === "domwindowopened") {
-            log("Sixornot - windowWatcher:domwindowopened", 1);
             runOnLoad(subject, callback);
         }
     }
-    log("Sixornot - watchWindows - registering notification", 1);
     Services.ww.registerNotification(windowWatcher);
 
     // Add functionality to existing windows
-    log("Sixornot - watchWindows - running on existing windows", 1);
     runOnWindows(callback);
 
     // Make sure to stop watching for windows if we're unloading
