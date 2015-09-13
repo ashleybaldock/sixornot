@@ -17,21 +17,21 @@ cp icon.png ../dist/$version/src/
 cp icon64.png ../dist/$version/src/
 
 mkdir ../dist/$version/src/chrome
-cp chrome/addressbaricon ../dist/$version/src/chrome/
+cp chrome/addressbaricon.jsm ../dist/$version/src/chrome/
 cp chrome/content.js ../dist/$version/src/chrome/
 cp chrome/dns.jsm ../dist/$version/src/chrome/
 cp chrome/gui-legacy.jsm ../dist/$version/src/chrome/
 cp chrome/gui.jsm ../dist/$version/src/chrome/
 cp chrome/locale.jsm ../dist/$version/src/chrome/
 cp chrome/logger.jsm ../dist/$version/src/chrome/
-cp chrome/messanger ../dist/$version/src/chrome/
+cp chrome/messanger.jsm ../dist/$version/src/chrome/
 cp chrome/panel.jsm ../dist/$version/src/chrome/
 cp chrome/prefs.jsm ../dist/$version/src/chrome/
 cp chrome/requestcache.jsm ../dist/$version/src/chrome/
 cp chrome/requestobserver.jsm ../dist/$version/src/chrome/
 cp chrome/stylesheet.jsm ../dist/$version/src/chrome/
 cp chrome/utility.jsm ../dist/$version/src/chrome/
-cp chrome/widget ../dist/$version/src/chrome/
+cp chrome/widget.jsm ../dist/$version/src/chrome/
 cp chrome/windowwatcher.jsm ../dist/$version/src/chrome/
 
 mkdir ../dist/$version/src/chrome/ctypes
@@ -63,6 +63,8 @@ cp locale/de/options.dtd ../dist/$version/src/locale/de/
 # Copy documentation
 mkdir ../dist/$version/src/chrome/doc
 cp chrome/doc/* ../dist/$version/src/chrome/doc/
+mkdir ../dist/$version/src/chrome/doc/en
+cp chrome/doc/en/* ../dist/$version/src/chrome/doc/en/
 
 # Create .zip file from build directory (with .xpi file extension)
 cd ../dist/$version/src/

@@ -2,11 +2,11 @@
 
 # Generate the imagesrc.jsm file containing image data for use by addon
 
-outfile_base="css/base.css" # For all browsers
-outfile_large="css/large.css" # For linux and SeaMonkey
-outfile_cust="css/customize.css" # Customize panel on SeaMonkey + Firefox Australis
-outfile_cust_ffp29="css/customize_pre29.css" # Customize panel on pre-29 Firefox
-outfile_cust_ffp29_linux="css/customize_pre29_linux.css" # Customize panel pre-29 Firefox (Linux)
+outfile_base="chrome/css/base.css" # For all browsers
+outfile_large="chrome/css/large.css" # For linux and SeaMonkey
+outfile_cust="chrome/css/customize.css" # Customize panel on SeaMonkey + Firefox Australis
+outfile_cust_ffp29="chrome/css/customize_pre29.css" # Customize panel on pre-29 Firefox
+outfile_cust_ffp29_linux="chrome/css/customize_pre29_linux.css" # Customize panel pre-29 Firefox (Linux)
 
 icon_file32_colour="./images/sixornot_icon_32.png"
 icon_file32_grey="./images/sixornot_icon_32_grey.png"
