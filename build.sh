@@ -16,37 +16,37 @@ cp install.rdf ../dist/$version/src/
 cp icon.png ../dist/$version/src/
 cp icon64.png ../dist/$version/src/
 
-mkdir ../dist/$version/src/includes
-cp includes/addressbaricon ../dist/$version/src/includes/
-cp includes/content.js ../dist/$version/src/includes/
-cp includes/dns.jsm ../dist/$version/src/includes/
-cp includes/gui-legacy.jsm ../dist/$version/src/includes/
-cp includes/gui.jsm ../dist/$version/src/includes/
-cp includes/locale.jsm ../dist/$version/src/includes/
-cp includes/logger.jsm ../dist/$version/src/includes/
-cp includes/messanger ../dist/$version/src/includes/
-cp includes/panel.jsm ../dist/$version/src/includes/
-cp includes/prefs.jsm ../dist/$version/src/includes/
-cp includes/requestcache.jsm ../dist/$version/src/includes/
-cp includes/requestobserver.jsm ../dist/$version/src/includes/
-cp includes/stylesheet.jsm ../dist/$version/src/includes/
-cp includes/utility.jsm ../dist/$version/src/includes/
-cp includes/widget ../dist/$version/src/includes/
-cp includes/windowwatcher.jsm ../dist/$version/src/includes/
+mkdir ../dist/$version/src/chrome
+cp chrome/addressbaricon ../dist/$version/src/chrome/
+cp chrome/content.js ../dist/$version/src/chrome/
+cp chrome/dns.jsm ../dist/$version/src/chrome/
+cp chrome/gui-legacy.jsm ../dist/$version/src/chrome/
+cp chrome/gui.jsm ../dist/$version/src/chrome/
+cp chrome/locale.jsm ../dist/$version/src/chrome/
+cp chrome/logger.jsm ../dist/$version/src/chrome/
+cp chrome/messanger ../dist/$version/src/chrome/
+cp chrome/panel.jsm ../dist/$version/src/chrome/
+cp chrome/prefs.jsm ../dist/$version/src/chrome/
+cp chrome/requestcache.jsm ../dist/$version/src/chrome/
+cp chrome/requestobserver.jsm ../dist/$version/src/chrome/
+cp chrome/stylesheet.jsm ../dist/$version/src/chrome/
+cp chrome/utility.jsm ../dist/$version/src/chrome/
+cp chrome/widget ../dist/$version/src/chrome/
+cp chrome/windowwatcher.jsm ../dist/$version/src/chrome/
 
-mkdir ../dist/$version/src/includes/ctypes
-cp includes/ctypes/worker_base.js ../dist/$version/src/includes/ctypes/
-cp includes/ctypes/darwin.js ../dist/$version/src/includes/ctypes/
-cp includes/ctypes/linux.js ../dist/$version/src/includes/ctypes/
-cp includes/ctypes/winnt.js ../dist/$version/src/includes/ctypes/
+mkdir ../dist/$version/src/chrome/ctypes
+cp chrome/ctypes/worker_base.js ../dist/$version/src/chrome/ctypes/
+cp chrome/ctypes/darwin.js ../dist/$version/src/chrome/ctypes/
+cp chrome/ctypes/linux.js ../dist/$version/src/chrome/ctypes/
+cp chrome/ctypes/winnt.js ../dist/$version/src/chrome/ctypes/
 
-mkdir ../dist/$version/src/css
+mkdir ../dist/$version/src/chrome/css
 ./gen_css.sh
-cp css/base.css ../dist/$version/src/css/
-cp css/large.css ../dist/$version/src/css/
-cp css/customize.css ../dist/$version/src/css/
-cp css/customize_pre29.css ../dist/$version/src/css/
-cp css/customize_pre29_linux.css ../dist/$version/src/css/
+cp chrome/css/base.css ../dist/$version/src/chrome/css/
+cp chrome/css/large.css ../dist/$version/src/chrome/css/
+cp chrome/css/customize.css ../dist/$version/src/chrome/css/
+cp chrome/css/customize_pre29.css ../dist/$version/src/chrome/css/
+cp chrome/css/customize_pre29_linux.css ../dist/$version/src/chrome/css/
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale
@@ -61,8 +61,8 @@ cp locale/de/sixornot.properties ../dist/$version/src/locale/de/
 cp locale/de/options.dtd ../dist/$version/src/locale/de/
 
 # Copy documentation
-mkdir ../dist/$version/src/doc
-cp doc/* ../dist/$version/src/doc/
+mkdir ../dist/$version/src/chrome/doc
+cp chrome/doc/* ../dist/$version/src/chrome/doc/
 
 # Create .zip file from build directory (with .xpi file extension)
 cd ../dist/$version/src/
