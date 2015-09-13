@@ -47,7 +47,6 @@ split MM from widget/panel into object for code reuse                       - DO
  - maybe update panel via widget?
 disable seamonkey/pre-australis compat (pending testing in 2.1)             - DONE
 
-investigate channelIsForDownload on nsIHttpChannelInternal
 test on FF 38
 check logging levels (check for level zero)
 
@@ -61,6 +60,7 @@ Consider changing resource:// URLs to chrome:// ?
 
 
 #2.1
+investigate channelIsForDownload on nsIHttpChannelInternal
 test on legacy platforms
  - SeaMonkey                                            - Seems working
  - FF ESR
