@@ -19,7 +19,6 @@ var prefs = {
         showaddressicon:    false,
         greyscaleicons:     false,
         loglevel:           0,
-        overridelocale:     "",
         showallips:         false,
         showlocal:          true
     },
