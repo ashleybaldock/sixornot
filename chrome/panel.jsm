@@ -687,7 +687,7 @@ var createLocalListingRow = function (doc, addafter) {
     var row = doc.createElement("row");
     row.setAttribute("align", "start");
     var update_row_visibility = function () {
-        if (prefs.get_bool("showlocal")) {
+        if (prefs.getBool("showlocal")) {
             row.classList.remove("sixornot-invisible");
         } else {
             row.classList.add("sixornot-invisible");
@@ -730,7 +730,7 @@ var createLocalListingRow = function (doc, addafter) {
         updateShowAllIPs: function () {
             entries.forEach(function (item, index) {
                 if (index >= maxVisibleIndex) return;
-                if (prefs.get_bool("showallips") || item.isRouteable) {
+                if (prefs.getBool("showallips") || item.isRouteable) {
                     item.show();
                 } else {
                     item.hide();
@@ -807,7 +807,7 @@ var createLocalAnchor = function (doc, parent_element) {
     };
 
     var toggleShowingLocal = function (evt) {
-        prefs.set_bool("showlocal", !prefs.get_bool("showlocal"));
+        prefs.setBool("showlocal", !prefs.getBool("showlocal"));
         evt.stopPropagation();
     };
 
@@ -826,7 +826,7 @@ var createLocalAnchor = function (doc, parent_element) {
     showhideSpacer.classList.add("sixornot-hidden");
 
     var setShowhideText = function () {
-        if (prefs.get_bool("showlocal")) {
+        if (prefs.getBool("showlocal")) {
             showhide.setAttribute("value", "[" + gt("hide_text") + "]");
             showhide.setAttribute("tooltiptext", gt("tt_hide_local"));
             showhideSpacer.setAttribute("value", "[" + gt("hide_text") + "]");

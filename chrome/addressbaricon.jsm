@@ -18,7 +18,7 @@ var createAddressBarIcon = function (win, id) {
     var icon, urlbaricons, starbutton, doc;
 
     var updateVisibility = function () {
-        if (prefs.get_bool("showaddressicon")) {
+        if (prefs.getBool("showaddressicon")) {
             icon.setAttribute("hidden", false);
         } else {
             icon.setAttribute("hidden", true);

@@ -6,7 +6,7 @@
 /* global AddonManager, APP_SHUTDOWN, ADDON_UNINSTALL */
 
 // Provided in included modules:
-/* global prefs, watchWindows, ui, httpRequestObserver, unload, dnsResolver */
+/* global watchWindows, ui, httpRequestObserver, unload, dnsResolver */
 
 /* exported startup, shutdown, install, uninstall */
 
@@ -29,8 +29,6 @@ var startup = function (aData) {
     "use strict";
     Components.utils.import("chrome://sixornot/content/logger.jsm");
     Components.utils.import("chrome://sixornot/content/prefs.jsm");
-    // Create default preferences (if they are missing)
-    prefs.create(); // TODO - can we do this on prefs module load instead of via a specific method (like with DNS?)
     Components.utils.import("chrome://sixornot/content/dns.jsm");
     Components.utils.import("chrome://sixornot/content/windowwatcher.jsm");
     Components.utils.import("chrome://sixornot/content/requestobserver.jsm");
@@ -97,9 +95,6 @@ var shutdown = function (aData, aReason) {
         Components.utils.unload("chrome://sixornot/content/prefs.jsm");
         Components.utils.unload("chrome://sixornot/content/logger.jsm");
 
-        /* Remove resource alias */
-        cleanupResource();
-
         /* Flush bundles (see bug 719376) */
         Services.strings.flushBundles();
     }
@@ -111,13 +106,9 @@ var install = function () {
 
 var uninstall = function (aData, aReason) {
     "use strict";
-
     /* If uninstalling, remove our preferences */
     if (aReason === ADDON_UNINSTALL) {
         Services.prefs.getBranch("extensions.sixornot").deleteBranch("");
     }
-
-    /* Remove resource alias */
-    cleanupResource();
 };
 

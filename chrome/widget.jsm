@@ -20,7 +20,7 @@ var createWidget = function (node, win) {
     var panel, updateIconForNode, onClick;
 
     var updateGreyscale = function () {
-        if (prefs.get_bool("greyscaleicons")) {
+        if (prefs.getBool("greyscaleicons")) {
             util.add_greyscale_class_to_node(node);
         } else {
             util.remove_greyscale_class_from_node(node);

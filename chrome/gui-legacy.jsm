@@ -151,11 +151,11 @@ var createButton = function (win) {
 
     /* Move to location specified in prefs
        If location is blank, then it isn't moved (stays in toolbox palette) */
-    toolbar_id = prefs.get_char("toolbar");
+    toolbar_id = prefs.getChar("toolbar");
     if (toolbar_id !== "") {
         toolbar = util.gbi(doc, toolbar_id);
 
-        nextitem_id = prefs.get_char("nextitem");
+        nextitem_id = prefs.getChar("nextitem");
         if (nextitem_id === "") {
             // Add to end of the specified bar
             toolbar.insertItem(BUTTON_ID);
@@ -187,8 +187,8 @@ var createButton = function (win) {
                 nextitem_id = button_nextitem && button_nextitem.id;
             }
         }
-        prefs.set_char("toolbar", toolbar_id || "");
-        prefs.set_char("nextitem", nextitem_id || "");
+        prefs.setChar("toolbar", toolbar_id || "");
+        prefs.setChar("nextitem", nextitem_id || "");
     };
 
     /* Add event listeners */

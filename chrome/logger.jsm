@@ -14,7 +14,7 @@ var log = (function () {
     "use strict";
     var get_loglevel = function () {
         try {
-            return prefs.get_int("loglevel");
+            return prefs.getInt("loglevel");
         } catch (e) {
             // Fallback to hard-coded default (minimal logging)
             return 0;

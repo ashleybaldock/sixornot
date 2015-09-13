@@ -146,7 +146,6 @@ var runOnWindows = function (callback) {
         if (browserWindow.document.readyState === "complete") {
             if (browserWindow.document.documentElement.getAttribute("windowtype") === "navigator:browser") {
                 callback(browserWindow);
-            } else {
             }
         } else {
             // Wait for the window to load before continuing

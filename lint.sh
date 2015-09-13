@@ -1,3 +1,3 @@
 #!/bin/sh
 
-eslint bootstrap.js includes/*.js includes/*.jsm
+eslint bootstrap.js chrome/*.js chrome/*.jsm
