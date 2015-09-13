@@ -19,9 +19,6 @@ try {
     CustomizableUIAvailable = false;
 }
 
-var globalMM = Components.classes["@mozilla.org/globalmessagemanager;1"]
-                         .getService(Components.interfaces.nsIMessageListenerManager);
-
 /*
  * bootstrap.js API implementation
  */
@@ -45,7 +42,7 @@ var startup = function (aData) {
     /* Load callback for when our addon finishes loading */
     AddonManager.getAddonByID(aData.id, function () {
         /* Inject content script into all existing and subsequently created windows */
-        globalMM.loadFrameScript("chrome://sixornot/content/content.js", true);
+        Services.mm.loadFrameScript("chrome://sixornot/content/content.js", true);
 
         /* Load into existing windows and set callback to load into any new ones too */
         watchWindows(ui.insert);
@@ -64,10 +61,10 @@ var shutdown = function (aData, aReason) {
         httpRequestObserver.unregister();
 
         /* Stop loading our content script into new windows */
-        globalMM.removeDelayedFrameScript("chrome://sixornot/content/content.js");
+        Services.mm.removeDelayedFrameScript("chrome://sixornot/content/content.js");
         /* Disable and clean up existing content scripts (note: there isn't yet a way
          * to remove these entirely, the best we can do is clean up */
-        globalMM.broadcastAsyncMessage("sixornot@baldock.me:unload");
+        Services.mm.broadcastAsyncMessage("sixornot@baldock.me:unload");
 
         /* Unload all UI via init-time unload() callbacks */
         unload();

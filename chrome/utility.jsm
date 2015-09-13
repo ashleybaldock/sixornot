@@ -5,6 +5,8 @@
 /* global log */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/logger.jsm");
+var clipboardhelper = Components.classes["@mozilla.org/widget/clipboardhelper;1"]
+                                .getService(Components.interfaces.nsIClipboardHelper);
 
 /* exported util */
 var EXPORTED_SYMBOLS = ["util"];
@@ -71,9 +73,7 @@ var util = {
     copy_to_clipboard: function (text) {
         log("copy_to_clipboard: '" + text + "'", 2);
         try {
-            Components.classes["@mozilla.org/widget/clipboardhelper;1"]
-                .getService(Components.interfaces.nsIClipboardHelper)
-                .copyString(text);
+            clipboardhelper.copyString(text);
         } catch (e) {
             Components.utils.reportError(e);
         }
