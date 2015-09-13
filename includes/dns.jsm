@@ -73,7 +73,6 @@ var reqids = {
     log: 254            // A logging message (sent from worker to main thread only)
 };
 
-// The DNS Handler which does most of the work of the extension
 var dnsResolver = (function () {
     var resolveRemoteUsingCTypes = true;
     var resolveLocalWithCTypes = true;
@@ -227,10 +226,6 @@ var dnsResolver = (function () {
 }());
 
 var ipUtils = {
-    /*
-        IP Address utility functions
-    */
-
     // Quick check for address family
     is_ip4 : function (ip_address) {
         return ip_address && (ip_address.indexOf(".") !== -1 && ip_address.indexOf(":") === -1);

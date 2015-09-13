@@ -1,9 +1,6 @@
 # TODO
 
 
-# Known bugs:
-
-
 # 2.0.0
 E10S support                                                                - DONE
 Use Services.jsm in place of Components.classes.getService where possible   - DONE
@@ -12,6 +9,7 @@ Replace env.jsm with Services.jsm.appinfo                                   - DO
 Refactor requestcache/requestobserver
  - Unify host listing object with local host listing object
  - Better end-to-end management of host entries including creation
+ - tests for requestcache behaviour
  - Accessor methods for cache/waitinglist                                   - DONE
  - Move methods to destroy entries into requests object                     - DONE
  - Abstract implementation of cache - maybe change from an array            - DONE
@@ -42,28 +40,31 @@ Show coloured proxy icon if DNS lookups disabled                            - DO
 eslint validation                                                           - DONE
 SSL information for connections                                             - DONE
  - Show padlock icon for each host                                          - DONE
-
-split MM from widget/panel into object for code reuse                       - DONE
- - maybe update panel via widget?
-investigate channelIsForDownload on nsIHttpChannelInternal
-test on non-E10S (determine min version)
-test on legacy platforms
- - SeaMonkey                                            - Seems working
- - FF ESR
 observe showallips preference and update panel                              - DONE
  - fix local address display on expand                                      - DONE
  - on toggle show all update copytext for host
-check logging levels (check for level zeros)
+split MM from widget/panel into object for code reuse                       - DONE
+ - maybe update panel via widget?
+disable seamonkey/pre-australis compat (pending testing in 2.1)             - DONE
+
+investigate channelIsForDownload on nsIHttpChannelInternal
+test on FF 38
+check logging levels (check for level zero)
 
 Refactor DNS
  - move unit tests out to proper unit testing system
- - move ip utility functions into own object
+ - move ip utility functions into own object                                - DONE
  - Unit tests for dnsResolver:sort_ip4 & dnsResolver:sort_ip6
 
 Consider changing resource:// URLs to chrome:// ?
  - http://stackoverflow.com/questions/23748077/firefox-extension-differences-of-the-chrome-and-resource-protocols
 
+
 #2.1
+test on legacy platforms
+ - SeaMonkey                                            - Seems working
+ - FF ESR
+
 NAT64 prefixes
  - Detection + conversion of embedded IPv4 addresses
  - Configurable prefix
@@ -88,6 +89,7 @@ Overview mode for icon
  - show blue icon only if all hosts have only AAAA records
 
 Local info:
+Refactor local address code
 Retrieve interface information along with addresses
  - Display local addresses per interface
  - Linting ctypes files

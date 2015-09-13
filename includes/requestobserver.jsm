@@ -2,7 +2,7 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-/*global log, parse_exception */
+/* global log, parse_exception */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://sixornot/includes/logger.jsm");
 
@@ -10,12 +10,12 @@ Components.utils.import("resource://sixornot/includes/logger.jsm");
 var EXPORTED_SYMBOLS = ["httpRequestObserver"];
 
 // https://developer.mozilla.org/en-US/Add-ons/Code_snippets/Tabbed_browser#Getting_the_browser_that_fires_the_http-on-modify-request_notification
-var legacyGetBrowser = function (contentWindow) {
+/*var legacyGetBrowser = function (contentWindow) {
     var aDOMWindow = contentWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIWebNavigation)
                                       .QueryInterface(Components.interfaces.nsIDocShellTreeItem).rootTreeItem
                                       .QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindow);
     return aDOMWindow.gBrowser._getTabForContentWindow(contentWindow.top).linkedBrowser;
-};
+};*/
 
 var onExamineResponse = function(subject, topic) {
     var httpChannel, httpChannelInternal, proxyChannel,
@@ -39,21 +39,19 @@ var onExamineResponse = function(subject, topic) {
 
     /* Try and locate a messageManager for the browser initiating this request */
     try {
-        // TODO - work out what exceptions from these lines actually mean
         loadContext = notificationCallbacks.getInterface(Components.interfaces.nsILoadContext);
-        var topFrameElement = loadContext.topFrameElement;  // TODO - will this always be the browser element, e.g. for iframes?
-        if (!topFrameElement) { // Compatibility with FF38 and below with E10S disabled
-            // TODO - only call this if we are on a pre-FF38 browser!
+        var topFrameElement = loadContext.topFrameElement;
+        /*if (!topFrameElement) { // Compatibility with FF38 and below with E10S disabled
             topFrameElement = legacyGetBrowser(loadContext.associatedWindow);
-        }
+        }*/
         topFrameMM = topFrameElement.messageManager;
     } catch (e) {
-        log("httpRequestObserver: could not find messageManager for request browser - exception: " + parse_exception(e), 0);
+        log("httpRequestObserver: could not find messageManager for request browser - exception: " + parse_exception(e), 1);
         return;
     }
 
     // Check for browser windows loading things like favicons and filter out
-    if (!loadContext.isContent) {   // TODO does this work?
+    if (!loadContext.isContent) {   // TODO does this still work?
         log("httpRequestObserver: loadContext is not content - skipping", 1);
         return;
     }
