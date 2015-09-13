@@ -19,6 +19,7 @@ Optimise panel + other code                                                 - DO
  - Refactor UI to split out legacy components & freeze                      - DONE
     - Test legacy UI
  - Refactor locale handling code to use built-in functionality              - DONE
+ - Removed overridelocale setting                                           - DONE
 Add observer for http-on-examine-merged-response                            - DONE
 Update documentation
  - document proxy support                                                   - DONE
