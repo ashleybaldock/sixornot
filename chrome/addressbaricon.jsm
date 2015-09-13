@@ -4,12 +4,12 @@
 
 /* global log, gt, util, unload, prefs, createWidget */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
-Components.utils.import("resource://sixornot/includes/utility.jsm");
-Components.utils.import("resource://sixornot/includes/locale.jsm");
-Components.utils.import("resource://sixornot/includes/prefs.jsm");
-Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
-Components.utils.import("resource://sixornot/includes/widget.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
+Components.utils.import("chrome://sixornot/content/utility.jsm");
+Components.utils.import("chrome://sixornot/content/locale.jsm");
+Components.utils.import("chrome://sixornot/content/prefs.jsm");
+Components.utils.import("chrome://sixornot/content/windowwatcher.jsm");
+Components.utils.import("chrome://sixornot/content/widget.jsm");
 
 /* exported createAddressBarIcon */
 var EXPORTED_SYMBOLS = ["createAddressBarIcon"];

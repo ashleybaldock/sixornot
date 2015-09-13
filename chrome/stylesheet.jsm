@@ -4,16 +4,16 @@
 
 /*global log, unload */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
-Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
+Components.utils.import("chrome://sixornot/content/windowwatcher.jsm");
 
 /* exported stylesheet */
 var EXPORTED_SYMBOLS = ["stylesheet"];
 
 var stylesheet = {
     sheets: {
-        base: Services.io.newURI("resource://sixornot/css/base.css", null, null),
-        customize: Services.io.newURI("resource://sixornot/css/customize.css", null, null)
+        base: Services.io.newURI("chrome://sixornot/content/css/base.css", null, null),
+        customize: Services.io.newURI("chrome://sixornot/content/css/customize.css", null, null)
     },
     injectIntoWindow: function (win, sheet) {
         log("Sixornot - injecting stylesheet: '" + sheet.prePath + sheet.path + "' into window: '" + win.name + "'", 2);

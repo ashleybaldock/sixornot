@@ -4,7 +4,7 @@
 
 /* global ChromeWorker, log, parse_exception */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
 
 /* exported dnsResolver, ipUtils, ipTests, create_local_address_info */
 var EXPORTED_SYMBOLS = ["dnsResolver", "ipUtils", "create_local_address_info"];
@@ -109,17 +109,17 @@ var dnsResolver = (function () {
     switch(Services.appinfo.OS.toLowerCase()) {
     case "darwin":
         log("dnsResolver - init darwin ctypes resolver", 1);
-        setupWorker("resource://sixornot/includes/ctypes/darwin.js");
+        setupWorker("chrome://sixornot/content/ctypes/darwin.js");
         break;
 
     case "linux":
         log("dnsResolver - init linux ctypes resolver", 1);
-        setupWorker("resource://sixornot/includes/ctypes/linux.js");
+        setupWorker("chrome://sixornot/content/ctypes/linux.js");
         break;
 
     case "winnt":
         log("dnsResolver - init winnt ctypes resolver", 1);
-        setupWorker("resource://sixornot/includes/ctypes/winnt.js");
+        setupWorker("chrome://sixornot/content/ctypes/winnt.js");
         break;
 
     default:

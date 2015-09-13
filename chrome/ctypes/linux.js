@@ -343,5 +343,5 @@ var resolver = {
     }
 };
 
-importScripts("resource://sixornot/includes/ctypes/worker_base.js");
+importScripts("chrome://sixornot/content/ctypes/worker_base.js");
 

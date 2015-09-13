@@ -9,7 +9,7 @@ var contentScriptId = Math.floor((Math.random() * 100000) + 1);
 
 /* global sendAsyncMessage, addMessageListener, removeMessageListener, log:true, createRequestCache */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
 var _log = log;
 log = function (message, severity) {
     _log("SCS: " + contentScriptId + ": " + message, severity);
@@ -20,7 +20,7 @@ log = function (message, severity) {
     log("--" + requests.printCache(), 1);
 };*/
 
-Components.utils.import("resource://sixornot/includes/requestcache.jsm");
+Components.utils.import("chrome://sixornot/content/requestcache.jsm");
 
 /* State */
 var requests = createRequestCache();

@@ -4,7 +4,7 @@
 
 /* global log */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
 
 /* exported getMessanger */
 var EXPORTED_SYMBOLS = [ "getMessanger" ];

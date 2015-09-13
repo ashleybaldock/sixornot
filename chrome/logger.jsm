@@ -4,7 +4,7 @@
 
 /* global prefs */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/prefs.jsm");
+Components.utils.import("chrome://sixornot/content/prefs.jsm");
 
 /* exported log, parse_exception */
 var EXPORTED_SYMBOLS = ["log", "parse_exception"];

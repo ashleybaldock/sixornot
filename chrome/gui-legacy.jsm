@@ -4,14 +4,14 @@
 
 /* global log, gt, stylesheet, unload, prefs, util, createAddressBarIcon, createWidget */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
-Components.utils.import("resource://sixornot/includes/utility.jsm");
-Components.utils.import("resource://sixornot/includes/locale.jsm");
-Components.utils.import("resource://sixornot/includes/prefs.jsm");
-Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
-Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
-Components.utils.import("resource://sixornot/includes/widget.jsm");
-Components.utils.import("resource://sixornot/includes/addressbaricon.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
+Components.utils.import("chrome://sixornot/content/utility.jsm");
+Components.utils.import("chrome://sixornot/content/locale.jsm");
+Components.utils.import("chrome://sixornot/content/prefs.jsm");
+Components.utils.import("chrome://sixornot/content/windowwatcher.jsm");
+Components.utils.import("chrome://sixornot/content/stylesheet.jsm");
+Components.utils.import("chrome://sixornot/content/widget.jsm");
+Components.utils.import("chrome://sixornot/content/addressbaricon.jsm");
 
 /* exported ui */
 var EXPORTED_SYMBOLS = ["ui"];
@@ -23,9 +23,9 @@ const BUTTON_ID          = "sixornot-button";
 
 /* Stylesheet utility functions for legacy platforms */
 var legacyStylesheets = {
-    large: Services.io.newURI("resource://sixornot/css/large.css", null, null),
-    customize_ffp29: Services.io.newURI("resource://sixornot/css/customize_pre29.css", null, null),
-    customize_ffp29_linux: Services.io.newURI("resource://sixornot/css/customize_pre29_linux.css", null, null)
+    large: Services.io.newURI("chrome://sixornot/content/css/large.css", null, null),
+    customize_ffp29: Services.io.newURI("chrome://sixornot/content/css/customize_pre29.css", null, null),
+    customize_ffp29_linux: Services.io.newURI("chrome://sixornot/content/css/customize_pre29_linux.css", null, null)
 };
 
 var get_customize_sheet_for_platform = function () {

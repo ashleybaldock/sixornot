@@ -4,7 +4,7 @@
 
 /* global log, parse_exception */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
 
 /* exported httpRequestObserver */
 var EXPORTED_SYMBOLS = ["httpRequestObserver"];

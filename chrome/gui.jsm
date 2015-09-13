@@ -5,11 +5,11 @@
 /*global CustomizableUI, gt, log, stylesheet, createAddressBarIcon, createWidget */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource:///modules/CustomizableUI.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
-Components.utils.import("resource://sixornot/includes/locale.jsm");
-Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
-Components.utils.import("resource://sixornot/includes/widget.jsm");
-Components.utils.import("resource://sixornot/includes/addressbaricon.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
+Components.utils.import("chrome://sixornot/content/locale.jsm");
+Components.utils.import("chrome://sixornot/content/stylesheet.jsm");
+Components.utils.import("chrome://sixornot/content/widget.jsm");
+Components.utils.import("chrome://sixornot/content/addressbaricon.jsm");
 
 /* exported ui */
 var EXPORTED_SYMBOLS = ["ui"];

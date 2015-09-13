@@ -3,7 +3,7 @@
  */
 
 /* global log */
-Components.utils.import("resource://sixornot/includes/logger.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
 
 /* exported createRequestCache */
 var EXPORTED_SYMBOLS = ["createRequestCache"];
@@ -56,7 +56,8 @@ var createRequestCache = function () {
         },
         addOrUpdate: function (data, id) {
             if (!this.cache.hasOwnProperty(id)) {
-                this.createCacheEntry(id);
+                // HTTP load without associated DOMWindowCreated/HTTP initial load
+                this.createOrExtendCacheEntry("", id);
             }
             if (!this.cache[id].entries.some(function (item) {
                 if (item.host === data.host) {

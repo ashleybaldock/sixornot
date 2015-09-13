@@ -36,9 +36,9 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/* global Components, Services, log */
+/* global log */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
 
 /* exported watchWindows, unload, runOnWindows */
 var EXPORTED_SYMBOLS = ["watchWindows", "unload", "runOnWindows"];

@@ -19,34 +19,6 @@ try {
     CustomizableUIAvailable = false;
 }
 
-/*
- * Resource alias management (for resource:// URLs)
- */
-var setupResource = function (aData) {
-    "use strict";
-    var resource, alias;
-    resource = Services.io.getProtocolHandler("resource")
-                .QueryInterface(Components.interfaces.nsIResProtocolHandler);
-
-    alias = Services.io.newFileURI(aData.installPath);
-
-    if (!aData.installPath.isDirectory()) {
-        alias = Services.io.newURI("jar:" + alias.spec + "!/", null, null);
-    }
-
-    /* This triggers a warning on AMO validation
-     * The resource substitution is cleaned up by the addon's shutdown/uninstall methods
-     * Search for cleanupResource() */
-    resource.setSubstitution("sixornot", alias);
-};
-
-var cleanupResource = function () {
-    "use strict";
-    var resource = Services.io.getProtocolHandler("resource")
-                .QueryInterface(Components.interfaces.nsIResProtocolHandler);
-    resource.setSubstitution("sixornot", null);
-};
-
 var globalMM = Components.classes["@mozilla.org/globalmessagemanager;1"]
                          .getService(Components.interfaces.nsIMessageListenerManager);
 
@@ -55,30 +27,27 @@ var globalMM = Components.classes["@mozilla.org/globalmessagemanager;1"]
  */
 var startup = function (aData) {
     "use strict";
-    /* Set up resource://sixornot alias */
-    setupResource(aData);
-
-    Components.utils.import("resource://sixornot/includes/logger.jsm");
-    Components.utils.import("resource://sixornot/includes/prefs.jsm");
+    Components.utils.import("chrome://sixornot/content/logger.jsm");
+    Components.utils.import("chrome://sixornot/content/prefs.jsm");
     // Create default preferences (if they are missing)
     prefs.create(); // TODO - can we do this on prefs module load instead of via a specific method (like with DNS?)
-    Components.utils.import("resource://sixornot/includes/dns.jsm");
-    Components.utils.import("resource://sixornot/includes/windowwatcher.jsm");
-    Components.utils.import("resource://sixornot/includes/requestobserver.jsm");
-    Components.utils.import("resource://sixornot/includes/stylesheet.jsm");
-    Components.utils.import("resource://sixornot/includes/addressbaricon.jsm");
-    Components.utils.import("resource://sixornot/includes/widget.jsm");
-    Components.utils.import("resource://sixornot/includes/messanger.jsm");
+    Components.utils.import("chrome://sixornot/content/dns.jsm");
+    Components.utils.import("chrome://sixornot/content/windowwatcher.jsm");
+    Components.utils.import("chrome://sixornot/content/requestobserver.jsm");
+    Components.utils.import("chrome://sixornot/content/stylesheet.jsm");
+    Components.utils.import("chrome://sixornot/content/addressbaricon.jsm");
+    Components.utils.import("chrome://sixornot/content/widget.jsm");
+    Components.utils.import("chrome://sixornot/content/messanger.jsm");
     if (CustomizableUIAvailable) {
-        Components.utils.import("resource://sixornot/includes/gui.jsm");
+        Components.utils.import("chrome://sixornot/content/gui.jsm");
     } else {
-        Components.utils.import("resource://sixornot/includes/gui-legacy.jsm");
+        Components.utils.import("chrome://sixornot/content/gui-legacy.jsm");
     }
 
     /* Load callback for when our addon finishes loading */
     AddonManager.getAddonByID(aData.id, function () {
         /* Inject content script into all existing and subsequently created windows */
-        globalMM.loadFrameScript("resource://sixornot/includes/content.js", true);
+        globalMM.loadFrameScript("chrome://sixornot/content/content.js", true);
 
         /* Load into existing windows and set callback to load into any new ones too */
         watchWindows(ui.insert);
@@ -97,7 +66,7 @@ var shutdown = function (aData, aReason) {
         httpRequestObserver.unregister();
 
         /* Stop loading our content script into new windows */
-        globalMM.removeDelayedFrameScript("resource://sixornot/includes/content.js");
+        globalMM.removeDelayedFrameScript("chrome://sixornot/content/content.js");
         /* Disable and clean up existing content scripts (note: there isn't yet a way
          * to remove these entirely, the best we can do is clean up */
         globalMM.broadcastAsyncMessage("sixornot@baldock.me:unload");
@@ -109,24 +78,24 @@ var shutdown = function (aData, aReason) {
 
         /* Unload our own code modules */
         if (CustomizableUIAvailable) {
-            Components.utils.unload("resource://sixornot/includes/gui.jsm");
+            Components.utils.unload("chrome://sixornot/content/gui.jsm");
         } else {
-            Components.utils.unload("resource://sixornot/includes/gui-legacy.jsm");
+            Components.utils.unload("chrome://sixornot/content/gui-legacy.jsm");
         }
-        Components.utils.unload("resource://sixornot/includes/addressbaricon.jsm");
-        Components.utils.unload("resource://sixornot/includes/panel.jsm");
-        Components.utils.unload("resource://sixornot/includes/widget.jsm");
-        Components.utils.unload("resource://sixornot/includes/messanger.jsm");
-        Components.utils.unload("resource://sixornot/includes/stylesheet.jsm");
-        Components.utils.unload("resource://sixornot/includes/requestobserver.jsm");
-        Components.utils.unload("resource://sixornot/includes/requestcache.jsm");
-        Components.utils.unload("resource://sixornot/includes/windowwatcher.jsm");
-        Components.utils.unload("resource://sixornot/includes/locale.jsm");
-        Components.utils.unload("resource://sixornot/includes/utility.jsm");
+        Components.utils.unload("chrome://sixornot/content/addressbaricon.jsm");
+        Components.utils.unload("chrome://sixornot/content/panel.jsm");
+        Components.utils.unload("chrome://sixornot/content/widget.jsm");
+        Components.utils.unload("chrome://sixornot/content/messanger.jsm");
+        Components.utils.unload("chrome://sixornot/content/stylesheet.jsm");
+        Components.utils.unload("chrome://sixornot/content/requestobserver.jsm");
+        Components.utils.unload("chrome://sixornot/content/requestcache.jsm");
+        Components.utils.unload("chrome://sixornot/content/windowwatcher.jsm");
+        Components.utils.unload("chrome://sixornot/content/locale.jsm");
+        Components.utils.unload("chrome://sixornot/content/utility.jsm");
         dnsResolver.shutdown();
-        Components.utils.unload("resource://sixornot/includes/dns.jsm");
-        Components.utils.unload("resource://sixornot/includes/prefs.jsm");
-        Components.utils.unload("resource://sixornot/includes/logger.jsm");
+        Components.utils.unload("chrome://sixornot/content/dns.jsm");
+        Components.utils.unload("chrome://sixornot/content/prefs.jsm");
+        Components.utils.unload("chrome://sixornot/content/logger.jsm");
 
         /* Remove resource alias */
         cleanupResource();

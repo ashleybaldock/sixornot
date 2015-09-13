@@ -4,8 +4,8 @@
 
 /* global log, prefs */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://sixornot/includes/logger.jsm");
-Components.utils.import("resource://sixornot/includes/prefs.jsm");
+Components.utils.import("chrome://sixornot/content/logger.jsm");
+Components.utils.import("chrome://sixornot/content/prefs.jsm");
 
 /* exported gt */
 var EXPORTED_SYMBOLS = ["gt"];
@@ -25,7 +25,7 @@ var gt = (function () {
 
     var locale = prefs.get_char("overridelocale");
     if (locale !== "") {
-        stringBundle = Services.strings.createBundle("resource://sixornot/locale/" + locale + "/sixornot.properties");
+        stringBundle = Services.strings.createBundle("chrome://sixornot/locale/" + locale + "/sixornot.properties");
         if (isValidBundle(stringBundle)) {
             log("init locale - overriding locale as: " + locale, 1);
         } else {
@@ -33,7 +33,7 @@ var gt = (function () {
             if (localeBase) {
                 locale = locale.match(/(\w+)-\w+/)[1];
                 if (locale) {
-                    stringBundle = Services.strings.createBundle("resource://sixornot/locale/" + locale + "/sixornot.properties");
+                    stringBundle = Services.strings.createBundle("chrome://sixornot/locale/" + locale + "/sixornot.properties");
                 }
             }
             if (!localeBase || !locale || !isValidBundle(stringBundle)) {
