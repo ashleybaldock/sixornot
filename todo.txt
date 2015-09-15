@@ -47,7 +47,11 @@ split MM from widget/panel into object for code reuse                       - DO
  - maybe update panel via widget?
 disable seamonkey/pre-australis compat (pending testing in 2.1)             - DONE
 
-create IPAddress type and use it to unify ipv4s/ipv6s arrays
+create IPAddress type and use it to unify ipv4s/ipv6s arrays                - DONE
+ - update output format of the firefox resolver to use new object
+ - change format of requestcache entry's IP address to match
+    i.e. has an address and family entry on an object
+ - unify entity used for request cache with that produced by httpobserver
 
 test on FF 38
 check logging levels (check for level zero)

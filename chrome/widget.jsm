@@ -17,6 +17,7 @@ var EXPORTED_SYMBOLS = ["createWidget"];
 
 /* Contains shared code used by both the address bar icon and button */
 var createWidget = function (node, win) {
+    "use strict";
     var panel, updateIconForNode, onClick;
 
     var updateGreyscale = function () {

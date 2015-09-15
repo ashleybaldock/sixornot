@@ -176,6 +176,7 @@ var dnsResolver = (function () {
                     return;  
                 }
                 // Otherwise address was found
+                // TODO change return format to match ctypes resolver
                 ip_addresses = [];
                 while (dnsresponse.hasMore()) {
                     ip_addresses.push(dnsresponse.getNextAddrAsString());
@@ -333,7 +334,7 @@ var create_local_address_info = function () {
             host           : "",
             address        : "",
             address_family : 0,
-            dns_status     : "pending"
+            dns_status     : "pending" // TODO do we still need this?
         };
     };
     on_returned_ips = function (results, callback, thisArg) {

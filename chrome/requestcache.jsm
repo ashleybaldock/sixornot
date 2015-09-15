@@ -18,11 +18,9 @@ var createRequestCache = function () {
     var createHost = function (host, address, address_family, security, proxy) {
         return {
             host: host,
-            address: address,
+            address: address, // TODO change this to be an object ip: {address:, family:}
             address_family: address_family,
             count: 1,
-            ipv6s: [],
-            ipv4s: [],
             security: security,
             proxy: proxy
         };
