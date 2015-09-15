@@ -42,10 +42,12 @@ SSL information for connections                                             - DO
  - Show padlock icon for each host                                          - DONE
 observe showallips preference and update panel                              - DONE
  - fix local address display on expand                                      - DONE
- - on toggle show all update copytext for host
+ - on toggle show all update copytext for host                              - DONE
 split MM from widget/panel into object for code reuse                       - DONE
  - maybe update panel via widget?
 disable seamonkey/pre-australis compat (pending testing in 2.1)             - DONE
+
+create IPAddress type and use it to unify ipv4s/ipv6s arrays
 
 test on FF 38
 check logging levels (check for level zero)

@@ -2,9 +2,10 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-/* global ChromeWorker, log, parse_exception */
+/* global ChromeWorker, log, parse_exception, createIPAddress */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/logger.jsm");
+Components.utils.import("chrome://sixornot/content/ipaddress.jsm");
 var dnsService = Components.classes["@mozilla.org/network/dns-service;1"]
                            .getService(Components.interfaces.nsIDNSService);
 
@@ -349,6 +350,20 @@ var ipUtils = {
         return outarray.map(pad_left).join(":").toLowerCase();
     },
 
+    sort: function (a, b) {
+        if (a.family && a.family === 6) {
+            if (b.family && b.family === 6) {
+                return sortIPv6(a, b);
+            } else {
+                return -1; // a comes before b (IPv6 before IPv4)
+            }
+        } else if (b.family && b.family === 6) {
+            return 1; // b comes before a (IPv6 before IPv4)
+        } else {
+            return sortIPv4(a, b);
+        }
+    },
+
     // Sort IPv6 addresses into logical ordering
     sort_ip6 : function (a, b) {
         var typeof_a, typeof_b;
@@ -438,7 +453,6 @@ var ipUtils = {
         if (["2001:0000"].indexOf(norm_address.substr(0, 9)) !== -1) {
             return "teredo";
         }
-        // If no other type then address is global
         return "global";
     },
 
@@ -459,9 +473,7 @@ var create_local_address_info = function () {
             ipv6s          : [],
             host           : "",
             address        : "",
-            remote         : false,
             address_family : 0,
-            show_detail    : true,
             dns_status     : "pending"
         };
     };
