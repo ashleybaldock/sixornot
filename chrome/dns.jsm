@@ -440,6 +440,13 @@ var ipUtils = {
         }
         // If no other type then address is global
         return "global";
+    },
+
+    isRouteable6: function (address) {
+        return (["6to4", "teredo", "global"].indexOf(ipUtils.typeof_ip6(address)) != -1);
+    },
+    isRouteable4: function (address) {
+        return (["rfc1918", "6to4relay", "global"].indexOf(ipUtils.typeof_ip4(address)) != -1);
     }
 };
 
@@ -466,8 +473,8 @@ var create_local_address_info = function () {
         if (ips[0] === "FAIL") {
             local_host_info.dns_status = "failure";
         } else {
-            local_host_info.ipv6s = ips.filter(ipUtils.is_ip6);
-            local_host_info.ipv4s = ips.filter(ipUtils.is_ip4);
+            local_host_info.ipv6s = ips.filter(ipUtils.is_ip6).sort(ipUtils.sort_ip6);
+            local_host_info.ipv4s = ips.filter(ipUtils.is_ip4).sort(ipUtils.sort_ip4);
             local_host_info.dns_status = "complete";
         }
 

@@ -191,18 +191,7 @@ var createIPEntry = function (doc, addto) {
     };
     conipaddr.addEventListener("click", copyToClipboard, false);
 
-    var isRouteable = function (address, family) { // TODO put this in dnsResolver
-        if (family === 6) {
-            return (["6to4", "teredo", "global"].indexOf(ipUtils.typeof_ip6(address)) != -1);
-        } else if (family === 4) {
-            return (["rfc1918", "6to4relay", "global"].indexOf(ipUtils.typeof_ip4(address)) != -1);
-        } else {
-            return false;
-        }
-    };
-
     return {
-        isRouteable: true,
         show: function () {
             conipaddr.setAttribute("hidden", false);
             return this;
@@ -211,10 +200,9 @@ var createIPEntry = function (doc, addto) {
             conipaddr.setAttribute("hidden", true);
             return this;
         },
-        update: function (address, address_family, showAsProxied) {
-            this.isRouteable = isRouteable(address, address_family);
+        update: function (address, address_family, showAsProxy) {
             if (address_family === 6 || address_family === 4) {
-                if (showAsProxied) {
+                if (showAsProxy) {
                     conipaddr.setAttribute("value", "(" + address + ")");
                 } else {
                     conipaddr.setAttribute("value", address);
@@ -291,9 +279,6 @@ var createIPs = function (doc, addto) {
                 // Regenerate additional address entries
                 var entriesIndex = 1;
                 if (showing) {
-                    ipv6s.sort(function (a, b) {
-                        return ipUtils.sort_ip6.call(dnsResolver, a, b);
-                    });
                     ipv6s.forEach(function (address) {
                         if (address !== host.address) {
                             if (entries.length < entriesIndex + 1) {
@@ -306,9 +291,6 @@ var createIPs = function (doc, addto) {
                             }
                         }
                         entriesIndex++;
-                    });
-                    ipv4s.sort(function (a, b) {
-                        return ipUtils.sort_ip4.call(dnsResolver, a, b);
                     });
                     ipv4s.forEach(function (address) {
                         if (address !== host.address) {
@@ -415,9 +397,9 @@ var createProxyInfo = function (doc, addto) {
     return {
         update: function (host) {
             if (host.proxy.type === "http"
-                || host.proxy.type === "https"
-                || host.proxy.type === "socks4"
-                || host.proxy.type === "socks") {
+             || host.proxy.type === "https"
+             || host.proxy.type === "socks4"
+             || host.proxy.type === "socks") {
                 if (!proxyinfo.classList.contains("sixornot_proxy_on")) {
                     proxyinfo.classList.remove("sixornot_proxy_off");
                     proxyinfo.classList.add("sixornot_proxy_on");
@@ -510,13 +492,6 @@ var createHostname = function (doc, addto) {
             if (host.address !== "") {
                 text = text + "," + host.address;
             }
-            /* Sort the lists of addresses */
-            ipv6s.sort(function (a, b) {
-                return ipUtils.sort_ip6.call(dnsResolver, a, b);
-            });
-            ipv4s.sort(function (a, b) {
-                return ipUtils.sort_ip4.call(dnsResolver, a, b);
-            });
             ipv6s.forEach(function (address) {
                 if (address !== host.address) {
                     text = text + "," + address;
@@ -579,8 +554,8 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
         dnsCancel = dnsResolver.resolveRemote(host.host, function (results) {
             dnsCancel = null;
             if (results[0] !== "FAIL") {
-                ipv6s = results.filter(ipUtils.is_ip6);
-                ipv4s = results.filter(ipUtils.is_ip4);
+                ipv6s = results.filter(ipUtils.is_ip6).sort(ipUtils.sort_ip6);
+                ipv4s = results.filter(ipUtils.is_ip4).sort(ipUtils.sort_ip4);
             }
             log("remoteListingRow dns complete callback, ipv4s: " + ipv4s + ", ipv6s:" + ipv6s, 0);
             hostname.update(host, mainhost, ipv4s, ipv6s);
@@ -727,39 +702,33 @@ var createLocalListingRow = function (doc, addafter) {
             entries = [];
             row.parentNode.removeChild(row);
         },
-        updateShowAllIPs: function () {
-            entries.forEach(function (item, index) {
-                if (index >= maxVisibleIndex) return;
-                if (prefs.getBool("showallips") || item.isRouteable) {
-                    item.show();
-                } else {
-                    item.hide();
-                }
-            });
-        },
         update: function (host) {
             var entriesIndex = 0;
-            hostname.update(host, false, host.ipv4s, host.ipv6s);
 
-            host.ipv6s.sort(function (a, b) {
-                return ipUtils.sort_ip6.call(dnsResolver, a, b);
-            });
-            host.ipv6s.forEach(function (address) {
+            var ipv6sFiltered, ipv4sFiltered;
+            if (prefs.getBool("showallips")) {
+                ipv6sFiltered = host.ipv6s;
+                ipv4sFiltered = host.ipv4s;
+            } else {
+                ipv6sFiltered = host.ipv6s.filter(ipUtils.isRouteable6);
+                ipv4sFiltered = host.ipv4s.filter(ipUtils.isRouteable4);
+            }
+
+            hostname.update(host, false, ipv4sFiltered, ipv6sFiltered);
+
+            ipv6sFiltered.forEach(function (address) {
                 if (entries.length < entriesIndex + 1) {
-                    entries.push(createIPEntry(doc, address_box).update(address, 6, false).hide());
+                    entries.push(createIPEntry(doc, address_box).update(address, 6, false));
                 } else {
-                    entries[entriesIndex].update(address, 6, false).hide();
+                    entries[entriesIndex].update(address, 6, false).show();
                 }
                 entriesIndex++;
             });
-            host.ipv4s.sort(function (a, b) {
-                return ipUtils.sort_ip4.call(dnsResolver, a, b);
-            });
-            host.ipv4s.forEach(function (address) {
+            ipv4sFiltered.forEach(function (address) {
                 if (entries.length < entriesIndex + 1) {
-                    entries.push(createIPEntry(doc, address_box).update(address, 4, false).hide());
+                    entries.push(createIPEntry(doc, address_box).update(address, 4, false));
                 } else {
-                    entries[entriesIndex].update(address, 4, false).hide();
+                    entries[entriesIndex].update(address, 4, false).show();
                 }
                 entriesIndex++;
             });
@@ -771,8 +740,6 @@ var createLocalListingRow = function (doc, addafter) {
                 if (index < entriesIndex) return;
                 item.hide();
             });
-
-            this.updateShowAllIPs();
         },
         /* Adds the contents of this object after the specified element */
         add_after: function (element) {
@@ -793,6 +760,8 @@ var createLocalAnchor = function (doc, parent_element) {
     title.setAttribute("value", gt("header_local"));
     title.classList.add("sixornot-title");
 
+    var cachedHost;
+
     var updateShowingLocal = function () {
         setShowhideText();
         entries.forEach(function (item) {
@@ -801,8 +770,9 @@ var createLocalAnchor = function (doc, parent_element) {
     };
 
     var updateShowingAll = function () {
+        if (!cachedHost) return;
         entries.forEach(function (item) {
-            item.updateShowAllIPs();
+            item.update(cachedHost);
         });
     };
 
@@ -869,6 +839,7 @@ var createLocalAnchor = function (doc, parent_element) {
             showhide.removeEventListener("click", toggleShowingLocal, false);
         },
         update: function (host) {
+            cachedHost = host;
             if (entries.length <= 0) {
                 // For now entries only ever contains one thing
                 entries.push(createLocalListingRow(doc, this));
