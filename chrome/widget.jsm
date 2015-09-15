@@ -2,7 +2,7 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
-/* global log, prefs, util, getMessanger, dnsResolver, ipUtils, createPanel, unload */
+/* global log, prefs, util, getMessanger, dnsResolver, createPanel, unload */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/logger.jsm");
 Components.utils.import("chrome://sixornot/content/utility.jsm");
@@ -31,16 +31,14 @@ var createWidget = function (node, win) {
 
     var lastMainHost = "";
     var dnsCancel;
-    var ipv4s = [];
-    var ipv6s = [];
+    var ips = [];
 
     // Change icon via class (icon set via stylesheet)
     updateIconForNode = function (data, node) {
         if (data.main === "") {
             // Cancel existing DNS lookup callback
             if (dnsCancel) { dnsCancel.cancel(); }
-            ipv6s = [];
-            ipv4s = [];
+            ips = [];
             // No matching entry for main host (probably a local file)
             util.remove_sixornot_classes_from(node);
             util.add_class_to_node("sixornot_other", node);
@@ -51,8 +49,7 @@ var createWidget = function (node, win) {
 
             if (mainHost.host !== lastMainHost) {
                 if (dnsCancel) { dnsCancel.cancel(); }
-                ipv6s = [];
-                ipv4s = [];
+                ips = [];
                 if (!(mainHost.address_family === 1
                  || mainHost.proxy.type === "http"
                  || mainHost.proxy.type === "https"
@@ -60,7 +57,7 @@ var createWidget = function (node, win) {
                     dnsCancel = dnsResolver.resolveRemote(mainHost.host, function (results) {
                         dnsCancel = null;
                         if (results.success) {
-                            ips = results.addresses; //.sort(ipUtils.sort); TODO - implement sorting
+                            ips = results.addresses;
                         } else {
                             ips = [];
                         }
@@ -69,7 +66,7 @@ var createWidget = function (node, win) {
                     });
                 }
             }
-            util.update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
+            util.update_node_icon_for_host(node, mainHost, ips);
         }
         /* Always update last main host */
         lastMainHost = data.main;

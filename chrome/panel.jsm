@@ -527,7 +527,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
         dnsCancel = dnsResolver.resolveRemote(host.host, function (results) {
             dnsCancel = null;
             if (results.success) {
-                ips = results.addresses; //.sort(ipUtils.sort); TODO - implement sorting
+                ips = results.addresses.sort(ipUtils.sort);
             } else {
                 ips = [];
             }
