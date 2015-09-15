@@ -89,6 +89,7 @@ var shutdown = function (aData, aReason) {
         Components.utils.unload("chrome://sixornot/content/utility.jsm");
         dnsResolver.shutdown();
         Components.utils.unload("chrome://sixornot/content/dns.jsm");
+        Components.utils.unload("chrome://sixornot/content/ipaddress.jsm");
         Components.utils.unload("chrome://sixornot/content/prefs.jsm");
         Components.utils.unload("chrome://sixornot/content/logger.jsm");
 

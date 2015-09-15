@@ -81,12 +81,14 @@ var util = {
 
     // Sixornot display class related functions
 
-    get_icon_class: function (record, ipv4s, ipv6s) {
+    get_icon_class: function (record, ips) {
         if (record.proxy.type === "http" || record.proxy.type === "https") {
             return "sixornot_proxy";
         }
+        var hasIPv6DNS = ips.some(function (ip) { return ip.family === 6; });
+        var hasIPv4DNS = ips.some(function (ip) { return ip.family === 4; });
         if (record.address_family === 4) {
-            if (ipv6s.length !== 0) {
+            if (hasIPv6DNS) {
                 // Actual is v4, DNS is v4 + v6 -> Orange
                 return "sixornot_4pot6";
             } else {
@@ -94,7 +96,7 @@ var util = {
                 return "sixornot_4only";
             }
         } else if (record.address_family === 6) {
-            if (ipv4s.length === 0 && ipv6s.length !== 0) {
+            if (!hasIPv4DNS && hasIPv6DNS) {
                 // Actual is v6, DNS is v6 -> Blue
                 return "sixornot_6only";
             } else {
@@ -103,8 +105,8 @@ var util = {
             }
         } else if (record.address_family === 2) {
             // address family 2 is cached responses
-            if (ipv6s.length === 0) {
-                if (ipv4s.length === 0) {
+            if (!hasIPv6DNS) {
+                if (!hasIPv4DNS) {
                     // No addresses, grey cache icon
                     return "sixornot_other_cache";
                 } else {
@@ -112,7 +114,7 @@ var util = {
                     return "sixornot_4only_cache";
                 }
             } else {
-                if (ipv4s.length === 0) {
+                if (!hasIPv4DNS) {
                     // Only v6 addresses from DNS, blue cache icon
                     return "sixornot_6only_cache";
                 } else {
@@ -139,8 +141,8 @@ var util = {
         node.classList.add(new_item_class);
     },
 
-    update_node_icon_for_host: function (node, host_record, ipv4s, ipv6s) {
-        var new_icon_class = this.get_icon_class(host_record, ipv4s, ipv6s);
+    update_node_icon_for_host: function (node, host_record, ips) {
+        var new_icon_class = this.get_icon_class(host_record, ips);
         if (!node.classList.contains(new_icon_class)) {
             this.remove_sixornot_classes_from(node);
             this.add_class_to_node(new_icon_class, node);

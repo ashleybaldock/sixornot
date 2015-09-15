@@ -96,7 +96,16 @@ var dnsResolver = (function () {
                 callback = callbacks.remove(data.callbackid);
                 // Execute callback
                 if (callback) {
-                    callback(data.content);
+                    var result = {success: true, addresses: []};
+                    if (data[0] === "FAIL") {
+                        result.success = false;
+                    } else {
+                        // TODO update firefox resolver to use same format
+                        data.content.forEach(function (addr) {
+                            result.addresses.push(createIPAddress(addr));
+                        });
+                    }
+                    callback(result);
                 }
             }
         };
@@ -246,6 +255,22 @@ var ipUtils = {
         return ip4_address.split(".").map(unpad).join(".");
     },
 
+    sort: function (a, b) {
+        if (a.family && a.family === 6) {
+            if (b.family && b.family === 6) {
+                return -1;
+                //return sortIPv6(a, b); TODO
+            } else {
+                return -1; // a comes before b (IPv6 before IPv4)
+            }
+        } else if (b.family && b.family === 6) {
+            return 1; // b comes before a (IPv6 before IPv4)
+        } else {
+            return 1;
+            //return sortIPv4(a, b); TODO
+        }
+    },
+
     // Sort IPv4 addresses into logical ordering
     sort_ip4 : function (a, b) {
         var typeof_a, typeof_b;
@@ -350,20 +375,6 @@ var ipUtils = {
         return outarray.map(pad_left).join(":").toLowerCase();
     },
 
-    sort: function (a, b) {
-        if (a.family && a.family === 6) {
-            if (b.family && b.family === 6) {
-                return sortIPv6(a, b);
-            } else {
-                return -1; // a comes before b (IPv6 before IPv4)
-            }
-        } else if (b.family && b.family === 6) {
-            return 1; // b comes before a (IPv6 before IPv4)
-        } else {
-            return sortIPv4(a, b);
-        }
-    },
-
     // Sort IPv6 addresses into logical ordering
     sort_ip6 : function (a, b) {
         var typeof_a, typeof_b;
@@ -456,11 +467,20 @@ var ipUtils = {
         return "global";
     },
 
-    isRouteable6: function (address) {
-        return (["6to4", "teredo", "global"].indexOf(ipUtils.typeof_ip6(address)) != -1);
+    isRouteable: function (ip) {
+        if (ip.family === 6) {
+            return isRouteable6(ip);
+        } else if (ip.family === 4) {
+            return isRouteable4(ip);
+        } else {
+            return false;
+        }
     },
-    isRouteable4: function (address) {
-        return (["rfc1918", "6to4relay", "global"].indexOf(ipUtils.typeof_ip4(address)) != -1);
+    isRouteable6: function (ip) {
+        return (["6to4", "teredo", "global"].indexOf(ipUtils.typeof_ip6(ip.address)) != -1);
+    },
+    isRouteable4: function (ip) {
+        return (["rfc1918", "6to4relay", "global"].indexOf(ipUtils.typeof_ip4(ip.address)) != -1);
     }
 };
 
@@ -469,25 +489,23 @@ var create_local_address_info = function () {
     dns_cancel = null;
     new_local_host_info = function () {
         return {
-            ipv4s          : [],
-            ipv6s          : [],
+            ips            : [],
             host           : "",
             address        : "",
             address_family : 0,
             dns_status     : "pending"
         };
     };
-    on_returned_ips = function (ips, callback, thisArg) {
+    on_returned_ips = function (results, callback, thisArg) {
         var local_host_info = new_local_host_info();
-        log("panel:local_address_info:on_returned_ips - ips: " + ips, 1);
+        log("panel:local_address_info:on_returned_ips - results: " + results, 1);
         dns_cancel = null;
-        local_host_info.host = dnsResolver.getLocalHostname();
-        if (ips[0] === "FAIL") {
-            local_host_info.dns_status = "failure";
-        } else {
-            local_host_info.ipv6s = ips.filter(ipUtils.is_ip6).sort(ipUtils.sort_ip6);
-            local_host_info.ipv4s = ips.filter(ipUtils.is_ip4).sort(ipUtils.sort_ip4);
+        local_host_info.host = dnsResolver.getLocalHostname(); // TODO why do we set hostname here?
+        if (results.success) {
             local_host_info.dns_status = "complete";
+            local_host_info.ips = results.addresses; //.sort(ipUtils.sort); TODO implement sorting
+        } else {
+            local_host_info.dns_status = "failure";
         }
 
         callback.call(thisArg, local_host_info);
@@ -495,8 +513,8 @@ var create_local_address_info = function () {
     return {
         get_local_host_info: function (callback, thisArg) {
             this.cancel();
-            dns_cancel = dnsResolver.resolveLocal(function (ips) {
-                on_returned_ips(ips, callback, thisArg);
+            dns_cancel = dnsResolver.resolveLocal(function (results) {
+                on_returned_ips(results, callback, thisArg);
             });
         },
         cancel: function () {

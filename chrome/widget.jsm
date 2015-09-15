@@ -57,14 +57,15 @@ var createWidget = function (node, win) {
                  || mainHost.proxy.type === "http"
                  || mainHost.proxy.type === "https"
                  || mainHost.proxy.proxyResolvesHost)) {
-                    dnsCancel = dnsResolver.resolveRemote(mainHost.host, function (ips) {
+                    dnsCancel = dnsResolver.resolveRemote(mainHost.host, function (results) {
                         dnsCancel = null;
-                        if (ips[0] !== "FAIL") {
-                            ipv6s = ips.filter(ipUtils.is_ip6);
-                            ipv4s = ips.filter(ipUtils.is_ip4);
+                        if (results.success) {
+                            ips = results.addresses; //.sort(ipUtils.sort); TODO - implement sorting
+                        } else {
+                            ips = [];
                         }
-                        log("widget dns complete, ipv4s: [" + ipv4s + "], ipv6s: [" + ipv6s + "]", 0);
-                        util.update_node_icon_for_host(node, mainHost, ipv4s, ipv6s);
+                        log("widget dns complete callback, ips: " + ips, 0);
+                        util.update_node_icon_for_host(node, mainHost, ips);
                     });
                 }
             }
