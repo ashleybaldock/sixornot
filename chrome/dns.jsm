@@ -9,8 +9,8 @@ Components.utils.import("chrome://sixornot/content/ipaddress.jsm");
 var dnsService = Components.classes["@mozilla.org/network/dns-service;1"]
                            .getService(Components.interfaces.nsIDNSService);
 
-/* exported dnsResolver, ipUtils, create_local_address_info */
-var EXPORTED_SYMBOLS = ["dnsResolver", "ipUtils", "create_local_address_info"];
+/* exported dnsResolver, ipUtils, createLocalAddressInfo */
+var EXPORTED_SYMBOLS = ["dnsResolver", "ipUtils", "createLocalAddressInfo"];
 
 var callbacks = {
     // Set up request map, which will map async requests to their callbacks
@@ -311,40 +311,26 @@ var ipUtils = {
     }
 };
 
-var create_local_address_info = function () {
-    var on_returned_ips, dns_cancel, new_local_host_info;
-    dns_cancel = null;
-    new_local_host_info = function () {
-        return {
-            ips: [],
-            host: "",
-            ip: {
-                address: "",
-                family : 0
-            }
-        };
-    };
-    on_returned_ips = function (results, callback, thisArg) {
-        var local_host_info = new_local_host_info();
-        log("panel:local_address_info:on_returned_ips - results: " + results, 1);
-        dns_cancel = null;
-        local_host_info.host = dnsResolver.getLocalHostname();
-        if (results.success) {
-            local_host_info.ips = results.addresses.sort(ipUtils.sort);
-        }
-
-        callback.call(thisArg, local_host_info);
+var createLocalAddressInfo = function () {
+    var dnsCancel = null;
+    var onReturnIPs = function (results, callback, thisArg) {
+        dnsCancel = null;
+        callback.call(thisArg, {
+            host: dnsResolver.getLocalHostname(),
+            ips: results.addresses.sort(ipUtils.sort),
+            ip: {address: "", family : 0}
+        });
     };
     return {
-        get_local_host_info: function (callback, thisArg) {
+        get: function (callback, thisArg) {
             this.cancel();
-            dns_cancel = dnsResolver.resolveLocal(function (results) {
-                on_returned_ips(results, callback, thisArg);
+            dnsCancel = dnsResolver.resolveLocal(function (results) {
+                onReturnIPs(results, callback, thisArg);
             });
         },
         cancel: function () {
-            if (dns_cancel) {
-                dns_cancel.cancel();
+            if (dnsCancel) {
+                dnsCancel.cancel();
             }
         }
     };

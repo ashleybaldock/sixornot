@@ -2,7 +2,7 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
-/* global log, gt, ipUtils, dnsResolver, util, getMessanger, unload, prefs, create_local_address_info */
+/* global log, gt, ipUtils, dnsResolver, util, getMessanger, unload, prefs, createLocalAddressInfo */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/logger.jsm");
 Components.utils.import("chrome://sixornot/content/utility.jsm");
@@ -16,42 +16,38 @@ Components.utils.import("chrome://sixornot/content/messanger.jsm");
 var EXPORTED_SYMBOLS = ["createPanel"];
 
 /* Creates and sets up a panel to display information which can then be bound to an icon */
-var createPanel = function (win, panel_id) {
-    var doc, panel, panel_vbox, grid, grid_rows, grid_cols,
-        remote_anchor, local_anchor, forceScrollbars,
-        onPopupShowing, onPopupHiding;
-
-    doc = win.document;
+var createPanel = function (win, panelId) {
+    var doc = win.document;
 
     // Called by content script of active tab
     // Message contains data to update icon/UI
     var updateUI = function (data) {
-        remote_anchor.update_model(data);
+        remoteAnchor.updateModel(data);
         forceScrollbars();
     };
 
     var messanger = getMessanger(win, updateUI);
 
     /* Ensure panel contents visible with scrollbars */
-    forceScrollbars = function () {
-        if (panel_vbox.clientHeight > panel.clientHeight) {
-            panel_vbox.setAttribute("maxheight", panel.clientHeight - 50);
+    var forceScrollbars = function () {
+        if (panelVbox.clientHeight > panel.clientHeight) {
+            panelVbox.setAttribute("maxheight", panel.clientHeight - 50);
             // TODO if panel width changes after this is applied horizontal fit breaks
-            //panel.setAttribute("minwidth", panel_vbox.clientWidth + 40);
+            //panel.setAttribute("minwidth", panelVbox.clientWidth + 40);
         }
     };
 
-    onPopupShowing = function () {
+    var onPopupShowing = function () {
         log("panel:onPopupShowing", 2);
         messanger.subscribeToCurrentBrowser();
         messanger.requestUpdate();
-        local_anchor.panelShowing();
+        localAnchor.panelShowing();
     };
 
-    onPopupHiding = function () {
+    var onPopupHiding = function () {
         log("panel:onPopupHiding", 2);
         messanger.unsubscribe();
-        local_anchor.panelHiding();
+        localAnchor.panelHiding();
     };
 
     var onClickSettingsLink = function (evt) {
@@ -67,70 +63,68 @@ var createPanel = function (win, panel_id) {
     };
 
     /* Panel UI */
-    panel = doc.createElement("panel");
+    var panel = doc.createElement("panel");
     panel.setAttribute("type", "arrow");
-    panel.setAttribute("id", panel_id);
+    panel.setAttribute("id", panelId);
     panel.setAttribute("flip", "slide");
     panel.setAttribute("hidden", true);
     panel.setAttribute("position", "bottomcenter topright");
     panel.classList.add("sixornot-panel");
 
     /* Contains all other elements in panel */
-    panel_vbox = doc.createElement("vbox");
-    panel_vbox.setAttribute("flex", "1");
-    panel_vbox.style.overflowY = "auto";
-    panel_vbox.style.overflowX = "hidden";
-    panel.appendChild(panel_vbox);
+    var panelVbox = doc.createElement("vbox");
+    panelVbox.setAttribute("flex", "1");
+    panelVbox.style.overflowY = "auto";
+    panelVbox.style.overflowX = "hidden";
+    panel.appendChild(panelVbox);
 
     /* Grid into which address entries are put */
-    grid = doc.createElement("grid");
-    grid_rows = doc.createElement("rows");
-    grid_cols = doc.createElement("columns");
+    var grid = doc.createElement("grid");
+    var gridRows = doc.createElement("rows");
+    var gridCols = doc.createElement("columns");
     // 7 columns wide - icon, sslinfo, proxyinfo, count, host, address, show/hide
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid_cols.appendChild(doc.createElement("column"));
-    grid.appendChild(grid_cols);
-    grid.appendChild(grid_rows);
-    panel_vbox.appendChild(grid);
+    gridCols.appendChild(doc.createElement("column"));
+    gridCols.appendChild(doc.createElement("column"));
+    gridCols.appendChild(doc.createElement("column"));
+    gridCols.appendChild(doc.createElement("column"));
+    gridCols.appendChild(doc.createElement("column"));
+    gridCols.appendChild(doc.createElement("column"));
+    gridCols.appendChild(doc.createElement("column"));
+    grid.appendChild(gridCols);
+    grid.appendChild(gridRows);
+    panelVbox.appendChild(grid);
 
     /* Anchors are locations to insert entries into grid */
-    remote_anchor = createRemoteAnchor(doc, grid_rows);
-    local_anchor = createLocalAnchor(doc, grid_rows);
+    var remoteAnchor = createRemoteAnchor(doc, gridRows);
+    var localAnchor = createLocalAnchor(doc, gridRows);
 
     /* Links at bottom of panel */
-    var settingsLink, docLink, spacer, urlhbox, makeSpacer;
-
     /* Settings */
-    settingsLink = doc.createElement("label");
+    var settingsLink = doc.createElement("label");
     settingsLink.setAttribute("value", gt("header_settings"));
     settingsLink.setAttribute("tooltiptext", gt("tt_open_settings"));
     settingsLink.classList.add("sixornot-link");
     settingsLink.classList.add("sixornot-title");
 
     /* Documentation link */
-    docLink = doc.createElement("label");
+    var docLink = doc.createElement("label");
     docLink.setAttribute("value", gt("sixornot_documentation"));
     docLink.classList.add("sixornot-link");
     docLink.classList.add("sixornot-title");
     docLink.setAttribute("tooltiptext", gt("tt_gotowebsite"));
 
-    spacer = doc.createElement("label");
+    var spacer = doc.createElement("label");
     spacer.setAttribute("value", " - ");
     spacer.classList.add("sixornot-title");
 
-    makeSpacer = function () {
+    var makeSpacer = function () {
         var spacer = doc.createElement("spacer");
         spacer.setAttribute("flex", "1");
         return spacer;
     };
 
     /* Add everything to parent node */
-    urlhbox = doc.createElement("hbox");
+    var urlhbox = doc.createElement("hbox");
     urlhbox.appendChild(makeSpacer());
     urlhbox.appendChild(settingsLink);
     urlhbox.appendChild(spacer);
@@ -138,7 +132,7 @@ var createPanel = function (win, panel_id) {
     urlhbox.appendChild(makeSpacer());
     urlhbox.setAttribute("align", "center");
     urlhbox.style.marginTop = "3px";
-    grid_rows.appendChild(urlhbox);
+    gridRows.appendChild(urlhbox);
 
     /* Subscribe to events */
     settingsLink.addEventListener("click", onClickSettingsLink, false);
@@ -151,8 +145,8 @@ var createPanel = function (win, panel_id) {
         messanger.shutdown();
         panel.removeEventListener("popupshowing", onPopupShowing, false);
         panel.removeEventListener("popuphiding", onPopupHiding, false);
-        remote_anchor.remove(); // Removes child event listeners
-        local_anchor.remove(); // Removes child event listeners
+        remoteAnchor.remove(); // Removes child event listeners
+        localAnchor.remove(); // Removes child event listeners
         settingsLink.removeEventListener("click", onClickSettingsLink, false);
         docLink.removeEventListener("click", onClickDocLink, false);
 
@@ -212,23 +206,18 @@ var createIPEntry = function (doc, addto) {
 };
 
 var createIPs = function (doc, addto) {
-    var address_box = doc.createElement("vbox");
-    addto.appendChild(address_box);
+    var addressBox = doc.createElement("vbox");
+    addto.appendChild(addressBox);
 
-    var showhide, host_cache, ips_cache, showing, toggleDetail, obj;
-
-    showhide = doc.createElement("label");
+    var showhide = doc.createElement("label");
     showhide.setAttribute("value", "");
     showhide.classList.add("sixornot-link");
     addto.appendChild(showhide);
 
-    toggleDetail = function (evt) {
-        evt.stopPropagation();
-        showing = !showing;
-        obj.update(host_cache, ips_cache);
-    };
-
     var entries = [];
+    var hostCache;
+    var ipsCache;
+    var showing;
 
     var countDnsAddresses = function (host, ips) {
         var count = 0;
@@ -240,7 +229,7 @@ var createIPs = function (doc, addto) {
         return count;
     };
 
-    obj = {
+    var obj = {
         init: function (host, initialShow) {
             showing = initialShow;
         },
@@ -264,7 +253,7 @@ var createIPs = function (doc, addto) {
 
             if (entries.length <= 0) {
                 entries.push(
-                    createIPEntry(doc, address_box)
+                    createIPEntry(doc, addressBox)
                         .update(host.ip, host.proxy.type === "http"));
             }
 
@@ -275,7 +264,7 @@ var createIPs = function (doc, addto) {
                 ips.forEach(function (ip) {
                     if (ip.address !== host.ip.address) {
                         if (entries.length < entriesIndex + 1) {
-                            entries.push(createIPEntry(doc, address_box).update(ip, false));
+                            entries.push(createIPEntry(doc, addressBox).update(ip, false));
                         } else {
                             // Update existing
                             entries[entriesIndex].update(ip, false).show();
@@ -290,8 +279,8 @@ var createIPs = function (doc, addto) {
                 item.hide();
             });
 
-            host_cache = host;
-            ips_cache = ips;
+            hostCache = host;
+            ipsCache = ips;
         },
         remove: function () {
             entries.forEach(function (item) {
@@ -304,8 +293,14 @@ var createIPs = function (doc, addto) {
             entries = [];
             showhide.removeEventListener("click", toggleDetail, false);
             addto.removeChild(showhide);
-            addto.removeChild(address_box);
+            addto.removeChild(addressBox);
         }
+    };
+
+    var toggleDetail = function (evt) {
+        evt.stopPropagation();
+        showing = !showing;
+        obj.update(hostCache, ipsCache);
     };
 
     showhide.addEventListener("click", toggleDetail, false);
@@ -489,16 +484,14 @@ var createHostname = function (doc, addto) {
    Also takes a reference to the element to add this element after
    e.g. header or the preceeding list item */
 var createRemoteListingRow = function (doc, addafter, host, mainhost) {
-    var row, icon, sslinfo, proxyinfo, count, hostname, ipAddresses;
-
-    row = doc.createElement("row");
+    var row = doc.createElement("row");
     row.setAttribute("align", "start");
-    icon = createIcon(doc, row);
-    count = createCount(doc, row);
-    sslinfo = createSSLInfo(doc, row);
-    proxyinfo = createProxyInfo(doc, row);
-    hostname = createHostname(doc, row);
-    ipAddresses = createIPs(doc, row);
+    var icon = createIcon(doc, row);
+    var count = createCount(doc, row);
+    var sslinfo = createSSLInfo(doc, row);
+    var proxyinfo = createProxyInfo(doc, row);
+    var hostname = createHostname(doc, row);
+    var ipAddresses = createIPs(doc, row);
 
     var ips = [];
 
@@ -512,7 +505,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     ipAddresses.update(host, ips);
 
     /* Add this element after the last one */
-    addafter.add_after(row);
+    addafter.addAfter(row);
 
     /* Do DNS lookup for host */
     var dnsCancel;
@@ -548,7 +541,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             ipAddresses.remove();
             row.parentNode.removeChild(row);
         },
-        add_after: function (element) {
+        addAfter: function (element) {
             /* Add the element specified immediately after this one in the DOM */
             if (row.nextSibling) {
                 row.parentNode.insertBefore(element, row.nextSibling);
@@ -567,30 +560,28 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     };
 };
 
-var createRemoteAnchor = function (doc, parent_element) {
-    var model, entries, title_remote;
+var createRemoteAnchor = function (doc, parentElement) {
+    var model = { innerId: 0 };
+    var entries = [];
 
-    model = { innerId: 0 };
-    entries = [];
-
-    title_remote = doc.createElement("label");
-    title_remote.setAttribute("value", gt("header_remote"));
-    title_remote.classList.add("sixornot-title");
-    parent_element.appendChild(title_remote);
+    var titleRemote = doc.createElement("label");
+    titleRemote.setAttribute("value", gt("header_remote"));
+    titleRemote.classList.add("sixornot-title");
+    parentElement.appendChild(titleRemote);
 
     return {
-        add_after: function (element) {
-            if (title_remote.nextSibling) {
-                parent_element.insertBefore(element, title_remote.nextSibling);
+        addAfter: function (element) {
+            if (titleRemote.nextSibling) {
+                parentElement.insertBefore(element, titleRemote.nextSibling);
             } else {
-                parent_element.appendChild(element);
+                parentElement.appendChild(element);
             }
         },
         remove: function () {
-            this.remove_all_entries();
+            this.removeAllEntries();
         },
-        remove_all_entries: function () {
-            log("remote_anchor:remove_all_entries", 2);
+        removeAllEntries: function () {
+            log("remoteAnchor:removeAllEntries", 2);
             entries.forEach(function (item) {
                 try {
                     item.remove();
@@ -600,12 +591,12 @@ var createRemoteAnchor = function (doc, parent_element) {
             });
             entries = [];
         },
-        update_model: function (new_model) {
-            if (model.innerId !== new_model.innerId) {
+        updateModel: function (newModel) {
+            if (model.innerId !== newModel.innerId) {
                 // If model.innerId does not match, regenerate from scratch
-                this.remove_all_entries();
+                this.removeAllEntries();
             }
-            model = new_model;
+            model = newModel;
             this.update();
         },
         update: function () {
@@ -632,17 +623,17 @@ var createRemoteAnchor = function (doc, parent_element) {
 var createLocalListingRow = function (doc, addafter) {
     var row = doc.createElement("row");
     row.setAttribute("align", "start");
-    var update_row_visibility = function () {
+    var updateRowVisibility = function () {
         if (prefs.getBool("showlocal")) {
             row.classList.remove("sixornot-invisible");
         } else {
             row.classList.add("sixornot-invisible");
         }
     };
-    update_row_visibility();
+    updateRowVisibility();
 
     /* Add this element after the last one */
-    addafter.add_after(row);
+    addafter.addAfter(row);
 
     // Four spacers since local rows don't have icon, sslinfo, proxyinfo or count
     row.appendChild(doc.createElement("label"));
@@ -658,11 +649,10 @@ var createLocalListingRow = function (doc, addafter) {
 
     var hostname = createHostname(doc, row);
 
-    var address_box = doc.createElement("vbox");
-    row.appendChild(address_box);
+    var addressBox = doc.createElement("vbox");
+    row.appendChild(addressBox);
 
     var entries = [];
-    var maxVisibleIndex = 0;
 
     return {
         remove: function () {
@@ -673,28 +663,26 @@ var createLocalListingRow = function (doc, addafter) {
             entries = [];
             row.parentNode.removeChild(row);
         },
-        update: function (host) {
+        update: function (localhost) {
             var entriesIndex = 0;
 
             var ipsFiltered;
             if (prefs.getBool("showallips")) {
-                ipsFiltered = host.ips;
+                ipsFiltered = localhost.ips;
             } else {
-                ipsFiltered = host.ips.filter(ipUtils.isRouteable);
+                ipsFiltered = localhost.ips.filter(ipUtils.isRouteable);
             }
 
-            hostname.update(host, false, ipsFiltered);
+            hostname.update(localhost, false, ipsFiltered);
 
             ipsFiltered.forEach(function (address) {
                 if (entries.length < entriesIndex + 1) {
-                    entries.push(createIPEntry(doc, address_box).update(address, false));
+                    entries.push(createIPEntry(doc, addressBox).update(address, false));
                 } else {
                     entries[entriesIndex].update(address, false).show();
                 }
                 entriesIndex++;
             });
-
-            maxVisibleIndex = entriesIndex;
 
             // Hide additional entries
             entries.forEach(function (item, index) {
@@ -703,33 +691,32 @@ var createLocalListingRow = function (doc, addafter) {
             });
         },
         /* Adds the contents of this object after the specified element */
-        add_after: function (element) {
+        addAfter: function (element) {
             if (this.row.nextSibling) {
                 this.row.parentNode.insertBefore(element, this.row.nextSibling);
             } else {
                 this.row.parentNode.appendChild(element);
             }
         },
-        update_visibility: function () {
-            update_row_visibility();
+        updateVisibility: function () {
+            updateRowVisibility();
         }
     };
 };
 
-var createLocalAnchor = function (doc, parent_element) {
+var createLocalAnchor = function (doc, parentElement) {
     var title = doc.createElement("label");
     title.setAttribute("value", gt("header_local"));
     title.classList.add("sixornot-title");
 
-    var cachedHost;
-
     var updateShowingLocal = function () {
         setShowhideText();
         entries.forEach(function (item) {
-            item.update_visibility();
+            item.updateVisibility();
         });
     };
 
+    var cachedHost;
     var updateShowingAll = function () {
         if (!cachedHost) return;
         entries.forEach(function (item) {
@@ -778,11 +765,7 @@ var createLocalAnchor = function (doc, parent_element) {
     hbox.appendChild(showhide);
     hbox.setAttribute("align", "center");
     hbox.style.marginTop = "3px";
-    parent_element.appendChild(hbox);
-
-    var localAddressInfo = create_local_address_info();
-
-    var entries = [];
+    parentElement.appendChild(hbox);
 
     showhide.addEventListener("click", toggleShowingLocal, false);
 
@@ -792,9 +775,11 @@ var createLocalAnchor = function (doc, parent_element) {
     var showAllObserver = prefs.createObserver("extensions.sixornot.showallips", updateShowingAll)
                                .register();
 
+    var localAddressInfo = createLocalAddressInfo();
+    var entries = [];
     return {
         remove: function () {
-            this.remove_all_entries();
+            this.removeAllEntries();
             showLocalObserver.unregister();
             showAllObserver.unregister();
             showhide.removeEventListener("click", toggleShowingLocal, false);
@@ -809,14 +794,14 @@ var createLocalAnchor = function (doc, parent_element) {
                 item.update(host);
             });
         },
-        add_after: function (element) {
+        addAfter: function (element) {
             if (hbox.nextSibling) {
-                parent_element.insertBefore(element, hbox.nextSibling);
+                parentElement.insertBefore(element, hbox.nextSibling);
             } else {
-                parent_element.appendChild(element);
+                parentElement.appendChild(element);
             }
         },
-        remove_all_entries: function () {
+        removeAllEntries: function () {
             entries.forEach(function (item) {
                 item.remove();
             });
@@ -826,7 +811,7 @@ var createLocalAnchor = function (doc, parent_element) {
             localAddressInfo.cancel();
         },
         panelShowing : function () {
-            localAddressInfo.get_local_host_info(this.update, this);
+            localAddressInfo.get(this.update, this);
         }
     };
 };

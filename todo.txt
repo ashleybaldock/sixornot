@@ -7,7 +7,6 @@ Use Services.jsm in place of Components.classes.getService where possible   - DO
  - https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/Services.jsm
 Replace env.jsm with Services.jsm.appinfo                                   - DONE
 Refactor requestcache/requestobserver
- - Unify host listing object with local host listing object
  - Better end-to-end management of host entries including creation
  - tests for requestcache behaviour
  - Accessor methods for cache/waitinglist                                   - DONE
