@@ -100,7 +100,6 @@ var dnsResolver = (function () {
                     if (data[0] === "FAIL") {
                         result.success = false;
                     } else {
-                        // TODO update firefox resolver to use same format
                         data.content.forEach(function (addr) {
                             result.addresses.push(createIPAddress(addr));
                         });
@@ -156,41 +155,29 @@ var dnsResolver = (function () {
     };
 
     var resolveRemoteFirefox = function (host, callback) {
-        var my_callback = {
+        var completeCallback = {
             onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
                 var ip_addresses;
                 // Request has been cancelled - ignore
                 if (nsstatus === Components.results.NS_ERROR_ABORT) {
                     return;
                 }
-                // Request has failed for some reason
+                var result = {success: true, addresses: []};
                 if (nsstatus !== 0 || !dnsresponse || !dnsresponse.hasMore()) {
-                    if (nsstatus === Components.results.NS_ERROR_UNKNOWN_HOST) {
-                        log("dnsResolver:resolveRemoteFirefox - resolve host failed, unknown host", 1);
-                        callback(["FAIL"]);
-                    } else {
-                        log("dnsResolver:resolveRemoteFirefox - resolve host failed, status: " + nsstatus, 1);
-                        callback(["FAIL"]);
-                    }
-                    // Address was not found in DNS for some reason
-                    return;  
+                    result.success = false;
+                } else {
+                    while (dnsresponse.hasMore()) {
+                        result.addresses.push(createIPAddress(dnsresponse.getNextAddrAsString()));
+                    });
                 }
-                // Otherwise address was found
-                // TODO change return format to match ctypes resolver
-                ip_addresses = [];
-                while (dnsresponse.hasMore()) {
-                    ip_addresses.push(dnsresponse.getNextAddrAsString());
-                }
-                // Call callback for this request with ip_addresses array as argument
-                log("dnsResolver:resolveRemoteFirefox - resolved addresses: " + ip_addresses, 2);
-                callback(ip_addresses);
+                callback(result);
             }
         };
         try {
-            return dnsService.asyncResolve(host, 0x01, my_callback, null);
+            return dnsService.asyncResolve(host, 0x01, completeCallback, null);
         } catch (e) {
-            Components.utils.reportError("Sixornot EXCEPTION: " + parse_exception(e));
-            callback(["FAIL"]);
+            Components.utils.reportError("Sixornot dnsService:asyncResolve EXCEPTION: " + parse_exception(e));
+            callback({success: false, addresses: []});
             return null;
         }
     };
