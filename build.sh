@@ -22,6 +22,7 @@ cp chrome/content.js ../dist/$version/src/chrome/
 cp chrome/dns.jsm ../dist/$version/src/chrome/
 cp chrome/gui-legacy.jsm ../dist/$version/src/chrome/
 cp chrome/gui.jsm ../dist/$version/src/chrome/
+cp chrome/ipaddress.jsm ../dist/$version/src/chrome/
 cp chrome/locale.jsm ../dist/$version/src/chrome/
 cp chrome/logger.jsm ../dist/$version/src/chrome/
 cp chrome/messanger.jsm ../dist/$version/src/chrome/

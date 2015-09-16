@@ -7,7 +7,7 @@
 
 var contentScriptId = Math.floor((Math.random() * 100000) + 1); 
 
-/* global sendAsyncMessage, addMessageListener, removeMessageListener, log:true, createRequestCache */
+/* global sendAsyncMessage, addMessageListener, removeMessageListener, log:true, createRequestCache, cacheEntry */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/logger.jsm");
 var _log = log;
