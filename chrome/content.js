@@ -81,21 +81,17 @@ var onDOMWindowCreated = function (evt) {
     if (protocol === "file:") {
         entry.host = "Local File";
         entry.ip.family = 1;
+        requests.addOrUpdateToWaitingList(entry);
     } else if (protocol === "about:" || protocol === "resource:" || protocol === "chrome:") {
         entry.host = loc;
         entry.ip.family = 1;
-    } else if (hostname) { // Ignore empty windows
-        entry.host = hostname;
+        requests.addOrUpdateToWaitingList(entry);
+    } else if (hostname) {
+        entry.host = hostname; // Don't add to waiting list, should be done by http initial load
     }
 
     // All http-load events for this browser should now be associated with this inner ID
     currentWindowId = topInner;
-
-    if (entry.host) { // Ignore empty windows
-        // TODO only pick up waiting list entries if they match the domain
-        // of the DOMWindowCreated event (to avoid picking up things from old pages)
-        requests.addOrUpdateToWaitingList(entry);
-    }
 
     requests.createOrExtendCacheEntry(entry.host, currentWindowId);
 
