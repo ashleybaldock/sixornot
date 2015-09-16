@@ -6,8 +6,7 @@ E10S support                                                                - DO
 Use Services.jsm in place of Components.classes.getService where possible   - DONE
  - https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/Services.jsm
 Replace env.jsm with Services.jsm.appinfo                                   - DONE
-Refactor requestcache/requestobserver
- - Better end-to-end management of host entries including creation
+Refactor requestcache/requestobserver                                       - DONE
  - tests for requestcache behaviour
  - Accessor methods for cache/waitinglist                                   - DONE
  - Move methods to destroy entries into requests object                     - DONE
