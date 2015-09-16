@@ -62,17 +62,16 @@ var pageChange = function () {
 
 var onDOMWindowCreated = function (evt) {
     var win = evt.originalTarget.defaultView;
-    var utils = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                   .getInterface(Components.interfaces.nsIDOMWindowUtils);
-    var inner = utils.currentInnerWindowID;
-    var topWin = win.top;
-    var topUtils = topWin.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                         .getInterface(Components.interfaces.nsIDOMWindowUtils);
-    var topInner = topUtils.currentInnerWindowID;
+    var inner = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                   .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                   .currentInnerWindowID;
+    var topInner = win.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                          .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                          .currentInnerWindowID;
 
-    var protocol = evt.originalTarget.defaultView.location.protocol;
-    var hostname = evt.originalTarget.defaultView.location.hostname;
-    var loc = evt.originalTarget.defaultView.location.href;
+    var protocol = win.location.protocol;
+    var hostname = win.location.hostname;
+    var loc = win.location.href;
 
     log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 0);
 
@@ -87,7 +86,7 @@ var onDOMWindowCreated = function (evt) {
         entry.ip.family = 1;
         requests.addOrUpdateToWaitingList(entry);
     } else if (hostname) {
-        entry.host = hostname; // Don't add to waiting list, should be done by http initial load
+        entry.host = hostname; // Don't add to waiting list, should be done by http (initial) load
     }
 
     // All http-load events for this browser should now be associated with this inner ID
