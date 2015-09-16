@@ -211,7 +211,6 @@ var createIPEntry = function (doc, addto) {
     };
 };
 
-// TODO if entry becomes main host later, update to show details
 var createIPs = function (doc, addto) {
     var address_box = doc.createElement("vbox");
     addto.appendChild(address_box);
@@ -268,29 +267,28 @@ var createIPs = function (doc, addto) {
                     createIPEntry(doc, address_box)
                         .update(host.ip, host.proxy.type === "http"));
             }
-            if (entries[0].address !== host.ip.address) {
-                entries[0].update(host.ip, host.proxy.type === "http");
-                // Regenerate additional address entries
-                var entriesIndex = 1;
-                if (showing) {
-                    ips.forEach(function (ip) {
-                        if (ip.address !== host.ip.address) {
-                            if (entries.length < entriesIndex + 1) {
-                                entries.push(createIPEntry(doc, address_box).update(ip, false));
-                            } else {
-                                // Update existing
-                                entries[entriesIndex].update(ip, false).show();
-                            }
+
+            entries[0].update(host.ip, host.proxy.type === "http");
+            // Regenerate additional address entries
+            var entriesIndex = 1;
+            if (showing) {
+                ips.forEach(function (ip) {
+                    if (ip.address !== host.ip.address) {
+                        if (entries.length < entriesIndex + 1) {
+                            entries.push(createIPEntry(doc, address_box).update(ip, false));
+                        } else {
+                            // Update existing
+                            entries[entriesIndex].update(ip, false).show();
                         }
                         entriesIndex++;
-                    });
-                }
-                // Hide additional entries
-                entries.forEach(function (item, index) {
-                    if (index < entriesIndex) return;
-                    item.hide();
+                    }
                 });
-            } 
+            }
+            // Hide additional entries
+            entries.forEach(function (item, index) {
+                if (index < entriesIndex) return;
+                item.hide();
+            });
 
             host_cache = host;
             ips_cache = ips;
