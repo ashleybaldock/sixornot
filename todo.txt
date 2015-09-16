@@ -17,11 +17,11 @@ Optimise panel + other code                                                 - DO
  - Refactor locale handling code to use built-in functionality              - DONE
  - Removed overridelocale setting                                           - DONE
 Add observer for http-on-examine-merged-response                            - DONE
-Update documentation
+Update documentation                                                        - DONE
  - document proxy support                                                   - DONE
  - document SSL support                                                     - DONE
  - integrate documentation into addon instead of online                     - DONE
- - remove references to overridelocale
+ - remove references to overridelocale                                      - DONE
 optimise memory usage (don't use a chromeworker per tab)                    - DONE
 unload for content script                                                   - DONE
 Handle resource:// URLs better (displays E at present)                      - DONE
@@ -42,14 +42,13 @@ observe showallips preference and update panel                              - DO
  - fix local address display on expand                                      - DONE
  - on toggle show all update copytext for host                              - DONE
 split MM from widget/panel into object for code reuse                       - DONE
- - maybe update panel via widget?
 disable seamonkey/pre-australis compat (pending testing in 2.1)             - DONE
-
+Change resource:// URLs to chrome://                                        - DONE
 create IPAddress type and use it to unify ipv4s/ipv6s arrays                - DONE
  - update output format of the firefox resolver to use new object           - DONE
- - test firefox resolver for remote/local addresses
  - change format of requestcache entry's IP address to match                - DONE
  - unify entity used for request cache with that produced by httpobserver   - DONE
+ - test firefox resolver for remote/local addresses
 
 test on FF 38
 check logging levels (check for level zero)
@@ -57,10 +56,7 @@ check logging levels (check for level zero)
 Refactor DNS
  - move unit tests out to proper unit testing system                        - DONE
  - move ip utility functions into own object                                - DONE
- - Unit tests for dnsResolver:sort_ip4 & dnsResolver:sort_ip6
-
-Consider changing resource:// URLs to chrome:// ?
- - http://stackoverflow.com/questions/23748077/firefox-extension-differences-of-the-chrome-and-resource-protocols
+ - Unit testing for IP related methods
 
 
 #2.1
