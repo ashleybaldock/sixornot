@@ -87,7 +87,7 @@ var util = {
         }
         var hasIPv6DNS = ips.some(function (ip) { return ip.family === 6; });
         var hasIPv4DNS = ips.some(function (ip) { return ip.family === 4; });
-        if (record.address_family === 4) {
+        if (record.ip.family === 4) {
             if (hasIPv6DNS) {
                 // Actual is v4, DNS is v4 + v6 -> Orange
                 return "sixornot_4pot6";
@@ -95,7 +95,7 @@ var util = {
                 // Actual is v4, DNS is v4 (or not completed) -> Red
                 return "sixornot_4only";
             }
-        } else if (record.address_family === 6) {
+        } else if (record.ip.family === 6) {
             if (!hasIPv4DNS && hasIPv6DNS) {
                 // Actual is v6, DNS is v6 -> Blue
                 return "sixornot_6only";
@@ -103,7 +103,7 @@ var util = {
                 // Actual is v6, DNS is v4 + v6 (or not completed) -> Green
                 return "sixornot_6and4";
             }
-        } else if (record.address_family === 2) {
+        } else if (record.ip.family === 2) {
             // address family 2 is cached responses
             if (!hasIPv6DNS) {
                 if (!hasIPv4DNS) {
@@ -122,9 +122,9 @@ var util = {
                     return "sixornot_4pot6_cache";
                 }
             }
-        } else if (record.address_family === 1) {
+        } else if (record.ip.family === 1) {
             return "sixornot_other";
-        } else if (record.address_family === 0) {
+        } else if (record.ip.family === 0) {
             // This indicates that no addresses were available but request is not cached
             return "sixornot_error";
         }
@@ -141,8 +141,8 @@ var util = {
         node.classList.add(new_item_class);
     },
 
-    update_node_icon_for_host: function (node, host_record, ips) {
-        var new_icon_class = this.get_icon_class(host_record, ips);
+    update_node_icon_for_host: function (node, host, ips) {
+        var new_icon_class = this.get_icon_class(host, ips);
         if (!node.classList.contains(new_icon_class)) {
             this.remove_sixornot_classes_from(node);
             this.add_class_to_node(new_icon_class, node);

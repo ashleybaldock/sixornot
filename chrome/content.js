@@ -31,7 +31,7 @@ sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: contentScript
 
 /* Message handlers */
 var onHttpInitialLoadMessage = function (message) {
-    log("got http-initial-load, host: '" + message.data.host + "', address: '" + message.data.address + "', address_family: " + message.data.addressFamily);
+    log("got http-initial-load, host: '" + message.data.host + "', address: '" + message.data.ip.address + "', family: " + message.data.ip.family, 1);
 
     // Items placed onto waiting list will be moved by DOMWindowCreated handler
     requests.addOrUpdateToWaitingList(message.data);
@@ -40,7 +40,7 @@ var onHttpInitialLoadMessage = function (message) {
 };
 
 var onHttpLoadMessage = function (message) {
-    log("got http-load, host: " + message.data.host + ", address: " + message.data.address + ", address_family: " + message.data.addressFamily);
+    log("got http-load, host: " + message.data.host + ", address: " + message.data.ip.address + ", family: " + message.data.ip.family, 1);
 
     requests.addOrUpdate(message.data, currentWindowId);
 
@@ -61,7 +61,6 @@ var pageChange = function () {
 };
 
 var onDOMWindowCreated = function (evt) {
-    var newEntry;
     var win = evt.originalTarget.defaultView;
     var utils = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
                    .getInterface(Components.interfaces.nsIDOMWindowUtils);
@@ -77,24 +76,28 @@ var onDOMWindowCreated = function (evt) {
 
     log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 0);
 
+    var entry = cacheEntry.create();
+
     if (protocol === "file:") {
-        newEntry = {host: "Local File", address: "", addressFamily: 1};
+        entry.host = "Local File";
+        entry.ip.family = 1;
     } else if (protocol === "about:" || protocol === "resource:" || protocol === "chrome:") {
-        newEntry = {host: loc, address: "", addressFamily: 1};
+        entry.host = loc;
+        entry.ip.family = 1;
     } else if (hostname) { // Ignore empty windows
-        newEntry = {host: hostname, address: "", addressFamily: 0};
+        entry.host = hostname;
     }
 
     // All http-load events for this browser should now be associated with this inner ID
     currentWindowId = topInner;
 
-    if (newEntry) { // Ignore empty windows
+    if (entry.host) { // Ignore empty windows
         // TODO only pick up waiting list entries if they match the domain
         // of the DOMWindowCreated event (to avoid picking up things from old pages)
-        requests.addOrUpdateToWaitingList(newEntry);
+        requests.addOrUpdateToWaitingList(entry);
     }
 
-    requests.createOrExtendCacheEntry(newEntry ? newEntry.host : "", currentWindowId);
+    requests.createOrExtendCacheEntry(entry.host, currentWindowId);
 
     pageChange();
 };

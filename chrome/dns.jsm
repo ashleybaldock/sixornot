@@ -157,7 +157,6 @@ var dnsResolver = (function () {
     var resolveRemoteFirefox = function (host, callback) {
         var completeCallback = {
             onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
-                var ip_addresses;
                 // Request has been cancelled - ignore
                 if (nsstatus === Components.results.NS_ERROR_ABORT) {
                     return;
@@ -168,7 +167,7 @@ var dnsResolver = (function () {
                 } else {
                     while (dnsresponse.hasMore()) {
                         result.addresses.push(createIPAddress(dnsresponse.getNextAddrAsString()));
-                    });
+                    }
                 }
                 callback(result);
             }
@@ -317,11 +316,12 @@ var create_local_address_info = function () {
     dns_cancel = null;
     new_local_host_info = function () {
         return {
-            ips            : [],
-            host           : "",
-            address        : "",
-            address_family : 0,
-            dns_status     : "pending" // TODO do we still need this?
+            ips: [],
+            host: "",
+            ip: {
+                address: "",
+                family : 0
+            }
         };
     };
     on_returned_ips = function (results, callback, thisArg) {
@@ -330,10 +330,7 @@ var create_local_address_info = function () {
         dns_cancel = null;
         local_host_info.host = dnsResolver.getLocalHostname();
         if (results.success) {
-            local_host_info.dns_status = "complete";
             local_host_info.ips = results.addresses.sort(ipUtils.sort);
-        } else {
-            local_host_info.dns_status = "failure";
         }
 
         callback.call(thisArg, local_host_info);

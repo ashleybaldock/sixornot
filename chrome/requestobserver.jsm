@@ -2,9 +2,10 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-/* global log, parse_exception */
+/* global log, parse_exception, cacheEntry */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/logger.jsm");
+Components.utils.import("chrome://sixornot/content/requestcache.jsm");
 
 /* exported httpRequestObserver */
 var EXPORTED_SYMBOLS = ["httpRequestObserver"];
@@ -19,13 +20,9 @@ var EXPORTED_SYMBOLS = ["httpRequestObserver"];
 
 var onExamineResponse = function(subject, topic) {
     var httpChannel, httpChannelInternal, proxyChannel,
-        notificationCallbacks, loadContext,
-        remoteAddress, remoteAddressFamily, topFrameMM;
+        notificationCallbacks, loadContext, topFrameMM;
 
     httpChannel = subject.QueryInterface(Components.interfaces.nsIHttpChannel);
-    httpChannelInternal = subject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
-    proxyChannel = subject.QueryInterface(Components.interfaces.nsIProxiedChannel);
-
     notificationCallbacks = httpChannel.notificationCallbacks;
     if (!notificationCallbacks) {
         if (httpChannel.loadGroup) {
@@ -56,92 +53,62 @@ var onExamineResponse = function(subject, topic) {
         return;
     }
 
+    var entry = cacheEntry.create();
+    entry.host = httpChannel.URI.host;
+
     /* Extract address information */
     if (topic === "http-on-examine-response" || topic === "http-on-examine-merged-response") {
+        httpChannelInternal = subject.QueryInterface(Components.interfaces.nsIHttpChannelInternal);
         try {
-            remoteAddress = httpChannelInternal.remoteAddress;
-            remoteAddressFamily = remoteAddress.indexOf(":") === -1 ? 4 : 6;
+            entry.ip.address = httpChannelInternal.remoteAddress;
+            entry.ip.family = entry.ip.address.indexOf(":") === -1 ? 4 : 6;
         } catch (e) {
             log("httpRequestObserver - http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 1);
-            remoteAddress = "";
-            remoteAddressFamily = 0;
         }
     } else {
         log("httpRequestObserver - (probably cache hit) NOT http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 2);
-        remoteAddress = "";
-        remoteAddressFamily = 2;
+        entry.ip.family = 2;
     }
 
-    log("httpRequestObserver: Processing " + httpChannel.URI.host + " (" + (remoteAddress || "FROM_CACHE") + ")", 1);
-
     /* Extract proxy information */
-    var proxyInfo = {
-        host: null,
-        port: null,
-        type: "direct",
-        proxyResolvesHost: false
-    };
-
+    proxyChannel = subject.QueryInterface(Components.interfaces.nsIProxiedChannel);
     if (proxyChannel && proxyChannel.proxyInfo) {
-        proxyInfo.host = proxyChannel.proxyInfo.host;
-        proxyInfo.port = proxyChannel.proxyInfo.port;
-        proxyInfo.type = proxyChannel.proxyInfo.type;
-        proxyInfo.proxyResolvesHost = proxyChannel.proxyInfo.flags === 1;
+        entry.proxy.host = proxyChannel.proxyInfo.host;
+        entry.proxy.port = proxyChannel.proxyInfo.port;
+        entry.proxy.type = proxyChannel.proxyInfo.type;
+        entry.proxy.proxyResolvesHost = proxyChannel.proxyInfo.flags === 1;
     }
 
     /* Extract security information */
-    var security = {
-        cipherName: "",
-        keyLength: 0,
-        secretKeyLength: 0,
-        isExtendedValidation: false,
-        isDomainMismatch: false,
-        isNotValidAtThisTime: false,
-        isUntrusted: false,
-        shortSecurityDescription: "",
-        errorMessage: "",
-        securityState: 0    // TODO make this into flags
-    };
-
     if (httpChannel.securityInfo) {
         // https://dxr.mozilla.org/comm-central/source/mozilla/security/manager/ssl/nsISSLStatus.idl
         var sslStatusProvider = httpChannel.securityInfo.QueryInterface(Components.interfaces.nsISSLStatusProvider);
         if (sslStatusProvider && sslStatusProvider.SSLStatus) {
             var sslStatus = sslStatusProvider.SSLStatus.QueryInterface(Components.interfaces.nsISSLStatus);
             if (sslStatus) {
-                security.cipherName = sslStatus.cipherName;
-                security.keyLength = sslStatus.keyLength;
-                security.secretKeyLength = sslStatus.secretKeyLength;
-                security.isExtendedValidation = sslStatus.isExtendedValidation;
-                security.isDomainMismatch = sslStatus.isDomainMismatch;
-                security.isNotValidAtThisTime = sslStatus.isNotValidAtThisTime;
-                security.isUntrusted = sslStatus.isUntrusted;
+                entry.security.cipherName = sslStatus.cipherName;
+                entry.security.keyLength = sslStatus.keyLength;
+                entry.security.secretKeyLength = sslStatus.secretKeyLength;
+                entry.security.isExtendedValidation = sslStatus.isExtendedValidation;
+                entry.security.isDomainMismatch = sslStatus.isDomainMismatch;
+                entry.security.isNotValidAtThisTime = sslStatus.isNotValidAtThisTime;
+                entry.security.isUntrusted = sslStatus.isUntrusted;
             }
         }
         var nsITransportSecurityInfo = httpChannel.securityInfo.QueryInterface(Components.interfaces.nsITransportSecurityInfo);
         if (nsITransportSecurityInfo) {
-            security.shortSecurityDescription = nsITransportSecurityInfo.shortSecurityDescription;
-            security.errorMessage = nsITransportSecurityInfo.errorMessage;
-            security.securityState = nsITransportSecurityInfo.securityState;
+            entry.security.shortSecurityDescription = nsITransportSecurityInfo.shortSecurityDescription;
+            entry.security.errorMessage = nsITransportSecurityInfo.errorMessage;
+            entry.security.securityState = nsITransportSecurityInfo.securityState;
         }
     }
 
-    var requestRecord = {
-        host: httpChannel.URI.host,
-        address: remoteAddress,
-        addressFamily: remoteAddressFamily,
-        security: security,
-        proxy: proxyInfo
-    };
+    log("httpRequestObserver: sending: " + JSON.stringify(entry), 1);
 
-    log("httpRequestObserver: sending: " + JSON.stringify(requestRecord), 1);
-
-    /*jslint bitwise: true */
     if (httpChannel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
-    /*jslint bitwise: false */
-        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", requestRecord);
+        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", entry);
     } else {
-        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", requestRecord);
+        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", entry);
     }
 };
 

@@ -234,7 +234,7 @@ var createIPs = function (doc, addto) {
     var countDnsAddresses = function (host, ips) {
         var count = 0;
         ips.forEach(function (ip) {
-            if (ip.address !== host.address) {
+            if (ip.address !== host.ip.address) {
                 count += 1;
             }
         });
@@ -266,16 +266,15 @@ var createIPs = function (doc, addto) {
             if (entries.length <= 0) {
                 entries.push(
                     createIPEntry(doc, address_box)
-                        .update({address: host.address, family: host.address_family}, host.proxy.type === "http"));
+                        .update(host.ip, host.proxy.type === "http"));
             }
-            if (entries[0].address !== host.address ||
-                host_cache.dns_status !== host.dns_status) {
-                entries[0].update({address: host.address, family: host.address_family}, host.proxy.type === "http");
+            if (entries[0].address !== host.ip.address) {
+                entries[0].update(host.ip, host.proxy.type === "http");
                 // Regenerate additional address entries
                 var entriesIndex = 1;
                 if (showing) {
                     ips.forEach(function (ip) {
-                        if (ip.address !== host.address) {
+                        if (ip.address !== host.ip.address) {
                             if (entries.length < entriesIndex + 1) {
                                 entries.push(createIPEntry(doc, address_box).update(ip, false));
                             } else {
@@ -468,11 +467,11 @@ var createHostname = function (doc, addto) {
 
             hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
 
-            if (host.address !== "") {
-                text = text + "," + host.address;
+            if (host.ip.address !== "") {
+                text = text + "," + host.ip.address;
             }
             ips.forEach(function (ip) {
-                if (ip.address !== host.address) {
+                if (ip.address !== host.ip.address) {
                     text = text + "," + ip.address;
                 }
             });
@@ -520,7 +519,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     /* Do DNS lookup for host */
     var dnsCancel;
 
-    if (!(host.address_family === 1
+    if (!(host.ip.family === 1
      || host.proxy.type === "http"
      || host.proxy.type === "https"
      || host.proxy.proxyResolvesHost)) {

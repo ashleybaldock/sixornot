@@ -51,7 +51,7 @@ var createWidget = function (node, win) {
             if (mainHost.host !== lastMainHost) {
                 if (dnsCancel) { dnsCancel.cancel(); }
                 ips = [];
-                if (!(mainHost.address_family === 1
+                if (!(mainHost.ip.family === 1
                  || mainHost.proxy.type === "http"
                  || mainHost.proxy.type === "https"
                  || mainHost.proxy.proxyResolvesHost)) {

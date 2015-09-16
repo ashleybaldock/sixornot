@@ -5,8 +5,49 @@
 /* global log */
 Components.utils.import("chrome://sixornot/content/logger.jsm");
 
-/* exported createRequestCache */
-var EXPORTED_SYMBOLS = ["createRequestCache"];
+/* exported createRequestCache, cacheEntry */
+var EXPORTED_SYMBOLS = ["createRequestCache", "cacheEntry"];
+
+var cacheEntry = {
+    create: function () {
+        return {
+            host: "",
+            ip: {
+                address: "",
+                family: 0
+            },
+            count: 1,
+            security: {
+                cipherName: "",
+                keyLength: 0,
+                secretKeyLength: 0,
+                isExtendedValidation: false,
+                isDomainMismatch: false,
+                isNotValidAtThisTime: false,
+                isUntrusted: false,
+                shortSecurityDescription: "",
+                errorMessage: "",
+                securityState: 0    // TODO make this into flags
+            },
+            proxy: {
+                host: null,
+                port: null,
+                type: "direct",
+                proxyResolvesHost: false
+            }
+        };
+    },
+    update: function (to, from) {
+        to.count += 1;
+
+        if (to.ip.address !== from.ip.address && from.ip.address !== "") {
+            to.ip.address = from.ip.address;
+            to.ip.family = from.ip.family;
+        }
+        to.security = from.security;
+        to.proxy = from.proxy;
+    }
+};
 
 /*
  * Contains two lists:
@@ -14,112 +55,77 @@ var EXPORTED_SYMBOLS = ["createRequestCache"];
  * waitinglist - Requests which have yet to have an innerWindow ID assigned
  */
 var createRequestCache = function () {
-    /* Prepare and return a new blank entry for the hosts listing */
-    var createHost = function (host, address, address_family, security, proxy) {
+    var createCacheEntry = function (mainhost, id) {
         return {
-            host: host,
-            address: address, // TODO change this to be an object ip: {address:, family:}
-            address_family: address_family,
-            count: 1,
-            security: security,
-            proxy: proxy
+            main: mainhost,
+            entries: [],
+            innerId: id
         };
     };
+    var cache = {};
+    var waitinglist = [];
 
     return {
-        cache: {},
-        createCacheEntry: function (mainhost, id) {
-            return {
-                main: mainhost,
-                entries: [],
-                innerId: id
-            };
-        },
         createOrExtendCacheEntry: function (mainhost, id) {
-            if (!this.cache.hasOwnProperty(id)) {
-                this.cache[id] = this.createCacheEntry(mainhost, id);
+            if (!cache.hasOwnProperty(id)) {
+                cache[id] = createCacheEntry(mainhost, id);
             }
 
             // Move anything currently on waiting list into new cache entry
-            var waitinglist = this.waitinglist.splice(0, Number.MAX_VALUE);
-            waitinglist.forEach(function (item) {
-                this.addOrUpdate({
-                    host: item.host,
-                    address: item.address,
-                    addressFamily: item.address_family,
-                    security: item.security,
-                    proxy: item.proxy
-                }, id);
+            waitinglist.splice(0, Number.MAX_VALUE).forEach(function (item) {
+                this.addOrUpdate(item, id);
             }, this);
         },
-        addOrUpdate: function (data, id) {
-            if (!this.cache.hasOwnProperty(id)) {
+
+        addOrUpdate: function (entry, id) {
+            if (!cache.hasOwnProperty(id)) {
                 // HTTP load without associated DOMWindowCreated/HTTP initial load
                 this.createOrExtendCacheEntry("", id);
             }
-            if (!this.cache[id].entries.some(function (item) {
-                if (item.host === data.host) {
-                    item.count += 1;
-
-                    if (item.address !== data.address && data.address !== "") {
-                        item.address = data.address;
-                        item.address_family = data.addressFamily;
-                    }
-                    item.security = data.security;
-                    item.proxy = data.proxy;
+            if (!cache[id].entries.some(function (item) {
+                if (item.host === entry.host) { // Update
+                    cacheEntry.update(item, entry);
                     return true;
                 }
-            })) {
-                log("addOrUpdate, host: " + data.host + ", remoteAddress: " + data.address, 1);
-                this.cache[id].entries.push(
-                    createHost(data.host, data.address, data.addressFamily, data.security, data.proxy));
+            })) { // Add new
+                log("addOrUpdate, host: " + entry.host + ", address: " + entry.ip.address, 1);
+                cache[id].entries.push(entry);
             }
         },
+
         get: function (id) {
-            if (this.cache.hasOwnProperty(id)) {
-                return this.cache[id];
+            if (cache.hasOwnProperty(id)) {
+                return cache[id];
             }
             return null;
         },
+
         remove: function (id) {
-            if (this.cache.hasOwnProperty(id)) {
-                delete this.cache[id];
+            if (cache.hasOwnProperty(id)) {
+                delete cache[id];
             }
         },
 
-        waitinglist: [],
-        addOrUpdateToWaitingList: function (data) {
-            if (!this.waitinglist.some(function (item) {
-                if (item.host === data.host) {
-                    item.count += 1;
-                    if (item.address !== data.address && data.address !== "") {
-                        item.address = data.address;
-                        item.address_family = data.addressFamily;
-                    }
-                    if (data.security) {
-                        item.security = data.security; // TODO we need to handle updating/merging this a lot better
-                    }
-                    if (data.proxy) {
-                        item.proxy = data.proxy; // TODO we need to handle updating/merging this a lot better
-                    }
+        addOrUpdateToWaitingList: function (entry) {
+            if (!waitinglist.some(function (item) {
+                if (item.host === entry.host) { // Update
+                    cacheEntry.update(item, entry);
                     return true;
                 }
-            })) {
-                log("addOrUpdateToWaitingList, host: " + data.host + ", remoteAddress: " + data.address, 1);
-                if (!data.security) data.security = {}; // TODO handle this better
-                if (!data.proxy) data.proxy = {}; // TODO handle this better
-                this.waitinglist.push(
-                    createHost(data.host, data.address, data.addressFamily, data.security, data.proxy));
+            })) { // Add new
+                log("addOrUpdateToWaitingList, host: " + entry.host + ", address: " + entry.ip.address, 1);
+                waitinglist.push(entry);
             }
         },
+
         printCache: function () {
             var out = "cache is:\n";
-            for (var property in this.cache) {
-                if (this.cache.hasOwnProperty(property)) {
+            for (var property in cache) {
+                if (cache.hasOwnProperty(property)) {
                     out += "[" + property + ": [";
-                    out += "mainHost: '" + this.cache[property].main + "', ";
+                    out += "mainHost: '" + cache[property].main + "', ";
                     out += "entries: [";
-                    this.cache[property].entries.forEach(function (item) {
+                    cache[property].entries.forEach(function (item) {
                         out += "['";
                         out += item.host;
                         out += "'] ";
@@ -131,7 +137,7 @@ var createRequestCache = function () {
         },
         printWaitingList: function () {
             var out = "waitinglist is:\n";
-            this.waitinglist.forEach(function (item) {
+            waitinglist.forEach(function (item) {
                 out += "[";
                 out += item.host;
                 out += "],";
