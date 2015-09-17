@@ -23,17 +23,17 @@ var createPanel = function (win, panelId) {
     // Message contains data to update icon/UI
     var updateUI = function (data) {
         remoteAnchor.updateModel(data);
-        forceScrollbars();
+        adjustForScrollbar();
     };
 
     var messanger = getMessanger(win, updateUI);
 
     /* Ensure panel contents visible with scrollbars */
-    var forceScrollbars = function () {
-        if (panelVbox.clientHeight > panel.clientHeight) {
-            panelVbox.setAttribute("maxheight", panel.clientHeight - 50);
-            // TODO if panel width changes after this is applied horizontal fit breaks
-            //panel.setAttribute("minwidth", panelVbox.clientWidth + 40);
+    var adjustForScrollbar = function () {
+        if (panelVbox.scrollHeight > panel.clientHeight) {
+            panelVbox.style.paddingRight = "20px";
+        } else {
+            panelVbox.style.paddingRight = "0";
         }
     };
 
@@ -52,13 +52,13 @@ var createPanel = function (win, panelId) {
 
     var onClickSettingsLink = function (evt) {
         panel.hidePopup();
-        util.open_preferences();
+        util.openPreferences();
         evt.stopPropagation();
     };
 
     var onClickDocLink = function (evt) {
         panel.hidePopup();
-        util.open_hyperlink(gt("sixornot_weblink"));
+        util.openHyperlink(gt("sixornot_weblink"));
         evt.stopPropagation();
     };
 
@@ -82,14 +82,13 @@ var createPanel = function (win, panelId) {
     var grid = doc.createElement("grid");
     var gridRows = doc.createElement("rows");
     var gridCols = doc.createElement("columns");
-    // 7 columns wide - icon, sslinfo, proxyinfo, count, host, address, show/hide
-    gridCols.appendChild(doc.createElement("column"));
-    gridCols.appendChild(doc.createElement("column"));
-    gridCols.appendChild(doc.createElement("column"));
-    gridCols.appendChild(doc.createElement("column"));
-    gridCols.appendChild(doc.createElement("column"));
-    gridCols.appendChild(doc.createElement("column"));
-    gridCols.appendChild(doc.createElement("column"));
+    gridCols.appendChild(doc.createElement("column")); // icon
+    gridCols.appendChild(doc.createElement("column")); // sslinfo
+    gridCols.appendChild(doc.createElement("column")); // proxyinfo
+    gridCols.appendChild(doc.createElement("column")); // count
+    gridCols.appendChild(doc.createElement("column")); // host
+    gridCols.appendChild(doc.createElement("column")); // address
+    gridCols.appendChild(doc.createElement("column")); // showhide
     grid.appendChild(gridCols);
     grid.appendChild(gridRows);
     panelVbox.appendChild(grid);
@@ -103,19 +102,19 @@ var createPanel = function (win, panelId) {
     var settingsLink = doc.createElement("label");
     settingsLink.setAttribute("value", gt("header_settings"));
     settingsLink.setAttribute("tooltiptext", gt("tt_open_settings"));
-    settingsLink.classList.add("sixornot-link");
-    settingsLink.classList.add("sixornot-title");
+    util.setLink(settingsLink);
+    util.setTitle(settingsLink);
 
     /* Documentation link */
     var docLink = doc.createElement("label");
     docLink.setAttribute("value", gt("sixornot_documentation"));
-    docLink.classList.add("sixornot-link");
-    docLink.classList.add("sixornot-title");
+    util.setLink(docLink);
+    util.setTitle(docLink);
     docLink.setAttribute("tooltiptext", gt("tt_gotowebsite"));
 
     var spacer = doc.createElement("label");
     spacer.setAttribute("value", " - ");
-    spacer.classList.add("sixornot-title");
+    util.setTitle(spacer);
 
     var makeSpacer = function () {
         var spacer = doc.createElement("spacer");
@@ -165,7 +164,7 @@ var createIPEntry = function (doc, addto) {
 
     var copyText = "";
     var copyToClipboard = function (evt) {
-        util.copy_to_clipboard(copyText);
+        util.copyToClipboard(copyText);
         evt.stopPropagation();
     };
     conipaddr.addEventListener("click", copyToClipboard, false);
@@ -188,7 +187,7 @@ var createIPEntry = function (doc, addto) {
                 }
                 copyText = ip.address;
                 conipaddr.setAttribute("tooltiptext", gt("tt_copyaddr"));
-                conipaddr.classList.add("sixornot-link");
+                util.setLink(conipaddr);
             } else if (ip.family === 2) {
                 conipaddr.setAttribute("value", gt("addr_cached"));
                 copyText = "";
@@ -211,7 +210,7 @@ var createIPs = function (doc, addto) {
 
     var showhide = doc.createElement("label");
     showhide.setAttribute("value", "");
-    showhide.classList.add("sixornot-link");
+    util.setLink(showhide);
     addto.appendChild(showhide);
 
     var entries = [];
@@ -316,7 +315,7 @@ var createIcon = function (doc, addto) {
 
     return {
         update: function (host, ips) {
-            util.update_node_icon_for_host(icon, host, ips);
+            util.setSixornotClass(icon, host, ips);
         },
         remove: function () {
             addto.removeChild(icon);
@@ -331,27 +330,13 @@ var createSSLInfo = function (doc, addto) {
 
     return {
         update: function (host) {
-            if (host.security.isExtendedValidation) {
-                if (!sslinfo.classList.contains("sixornot_ssl_ev")) {
-                    util.remove_ssl_classes_from_node(sslinfo);
-                    sslinfo.classList.add("sixornot_ssl_ev");
-                    sslinfo.setAttribute("tooltiptext", host.security.cipherName);
-                    sslinfo.setAttribute("width", "16");
-                }
-            } else if (host.security.cipherName) {
-                if (!sslinfo.classList.contains("sixornot_ssl")) {
-                    util.remove_ssl_classes_from_node(sslinfo);
-                    sslinfo.classList.add("sixornot_ssl");
-                    sslinfo.setAttribute("tooltiptext", host.security.cipherName);
-                    sslinfo.setAttribute("width", "16");
-                }
+            util.setSecurityClass(sslinfo, host);
+            if (host.security.cipherName) {
+                sslinfo.setAttribute("tooltiptext", host.security.cipherName);
+                sslinfo.setAttribute("width", "16");
             } else {
-                if (!sslinfo.classList.contains("sixornot_ssl_off")) {
-                    util.remove_ssl_classes_from_node(sslinfo);
-                    sslinfo.classList.add("sixornot_ssl_off");
-                    sslinfo.setAttribute("tooltiptext", "");
-                    sslinfo.setAttribute("width", "0");
-                }
+                sslinfo.setAttribute("tooltiptext", "");
+                sslinfo.setAttribute("width", "0");
             }
         },
         remove: function () {
@@ -367,47 +352,37 @@ var createProxyInfo = function (doc, addto) {
 
     return {
         update: function (host) {
-            if (host.proxy.type === "http"
-             || host.proxy.type === "https"
-             || host.proxy.type === "socks4"
-             || host.proxy.type === "socks") {
-                if (!proxyinfo.classList.contains("sixornot_proxy_on")) {
-                    proxyinfo.classList.remove("sixornot_proxy_off");
-                    proxyinfo.classList.add("sixornot_proxy_on");
-                }
-                proxyinfo.setAttribute("width", "16");
-            } else {
-                if (!proxyinfo.classList.contains("sixornot_proxy_off")) {
-                    proxyinfo.classList.remove("sixornot_proxy_on");
-                    proxyinfo.classList.add("sixornot_proxy_off");
-                }
-                proxyinfo.setAttribute("width", "0");
-            }
+            util.setProxyClass(proxyinfo, host);
             if (host.proxy.type === "http") {
+                proxyinfo.setAttribute("width", "16");
                 proxyinfo.setAttribute("tooltiptext",
                     gt("proxy_base", [
                         gt("proxy_http"), host.proxy.host,
                         host.proxy.port, gt("proxy_lookups_disabled")
                     ]));
             } else if (host.proxy.type === "https") {
+                proxyinfo.setAttribute("width", "16");
                 proxyinfo.setAttribute("tooltiptext",
                     gt("proxy_base", [
                         gt("proxy_https"), host.proxy.host,
                         host.proxy.port, gt("proxy_lookups_disabled")
                     ]));
             } else if (host.proxy.type === "socks4") {
+                proxyinfo.setAttribute("width", "16");
                 proxyinfo.setAttribute("tooltiptext",
                     gt("proxy_base", [
                         gt("proxy_socks4"), host.proxy.host, host.proxy.port,
                         host.proxy.proxyResolvesHost ? gt("proxy_lookups_disabled") : ""
                     ]));
             } else if (host.proxy.type === "socks") {
+                proxyinfo.setAttribute("width", "16");
                 proxyinfo.setAttribute("tooltiptext",
                     gt("proxy_base", [
                         gt("proxy_socks5"), host.proxy.host, host.proxy.port,
                         host.proxy.proxyResolvesHost ? gt("proxy_lookups_disabled") : ""
                     ]));
             } else {
+                proxyinfo.setAttribute("width", "0");
                 proxyinfo.setAttribute("tooltiptext", "");
             }
         },
@@ -442,7 +417,7 @@ var createHostname = function (doc, addto) {
 
     var copyText = "";
     var copyToClipboard = function (evt) {
-        util.copy_to_clipboard(copyText);
+        util.copyToClipboard(copyText);
         evt.stopPropagation();
     };
     hostname.addEventListener("click", copyToClipboard, false);
@@ -452,12 +427,7 @@ var createHostname = function (doc, addto) {
             var text = host.host;
 
             hostname.setAttribute("value", host.host);
-            if (host.host === mainhost) {
-                hostname.classList.add("sixornot-bold");
-            } else {
-                hostname.classList.remove("sixornot-bold");
-            }
-
+            host.host === mainhost ? util.enableBold(hostname) : util.disableBold(hostname);
             hostname.setAttribute("tooltiptext", gt("tt_copydomclip"));
 
             if (host.ip.address !== "") {
@@ -469,7 +439,7 @@ var createHostname = function (doc, addto) {
                 }
             });
             copyText = text;
-            hostname.classList.add("sixornot-link");
+            util.setLink(hostname);
         },
         remove: function () {
             hostname.removeEventListener("click", copyToClipboard, false);
@@ -521,7 +491,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             } else {
                 ips = [];
             }
-            log("remoteListingRow dns complete callback, ips: " + ips, 0);
+            log("remoteListingRow dns complete callback, ips: " + ips, 1);
             hostname.update(host, mainhost, ips);
             icon.update(host, ips);
             ipAddresses.update(host, ips);
@@ -566,7 +536,7 @@ var createRemoteAnchor = function (doc, parentElement) {
 
     var titleRemote = doc.createElement("label");
     titleRemote.setAttribute("value", gt("header_remote"));
-    titleRemote.classList.add("sixornot-title");
+    util.setTitle(titleRemote);
     parentElement.appendChild(titleRemote);
 
     return {
@@ -624,11 +594,7 @@ var createLocalListingRow = function (doc, addafter) {
     var row = doc.createElement("row");
     row.setAttribute("align", "start");
     var updateRowVisibility = function () {
-        if (prefs.getBool("showlocal")) {
-            row.classList.remove("sixornot-invisible");
-        } else {
-            row.classList.add("sixornot-invisible");
-        }
+        prefs.getBool("showlocal") ? util.setShowing(row) : util.setHidden(row);
     };
     updateRowVisibility();
 
@@ -640,11 +606,11 @@ var createLocalListingRow = function (doc, addafter) {
     row.appendChild(doc.createElement("label"));
     var sslinfoSpacer = doc.createElement("image");
     sslinfoSpacer.setAttribute("width", "0");
-    sslinfoSpacer.classList.add("sixornot_ssl_off");
+    util.setSecurityClass(sslinfoSpacer);
     row.appendChild(sslinfoSpacer);
     var proxyinfoSpacer = doc.createElement("image");
     proxyinfoSpacer.setAttribute("width", "0");
-    proxyinfoSpacer.classList.add("sixornot_proxy_off");
+    util.setProxyClass(proxyinfospacer);
     row.appendChild(proxyinfoSpacer);
 
     var hostname = createHostname(doc, row);
@@ -707,7 +673,7 @@ var createLocalListingRow = function (doc, addafter) {
 var createLocalAnchor = function (doc, parentElement) {
     var title = doc.createElement("label");
     title.setAttribute("value", gt("header_local"));
-    title.classList.add("sixornot-title");
+    util.setTitle(title);
 
     var updateShowingLocal = function () {
         setShowhideText();
@@ -736,12 +702,12 @@ var createLocalAnchor = function (doc, parentElement) {
     };
 
     var showhide = doc.createElement("label");
-    showhide.classList.add("sixornot-title");
-    showhide.classList.add("sixornot-link");
+    util.setLink(showhide);
+    util.setTitle(showhide);
 
     var showhideSpacer = doc.createElement("label");
-    showhideSpacer.classList.add("sixornot-title");
-    showhideSpacer.classList.add("sixornot-hidden");
+    util.setTitle(showhideSpacer);
+    util.setHidden(showhideSpacer);
 
     var setShowhideText = function () {
         if (prefs.getBool("showlocal")) {

@@ -20,9 +20,9 @@ var createWidget = function (node, win) {
     "use strict";
     var updateGreyscale = function () {
         if (prefs.getBool("greyscaleicons")) {
-            util.add_greyscale_class_to_node(node);
+            util.enableGreyscale(node);
         } else {
-            util.remove_greyscale_class_from_node(node);
+            util.disableGreyscale(node);
         }
     };
 
@@ -37,8 +37,7 @@ var createWidget = function (node, win) {
             if (dnsCancel) { dnsCancel.cancel(); }
             ips = [];
             // No matching entry for main host (probably a local file)
-            util.remove_sixornot_classes_from(node);
-            util.add_class_to_node("sixornot_other", node);
+            util.setSixornotClass(node);
         } else {
             var mainHost = data.entries.find(function (element) {
                 return element.host === data.main;
@@ -59,11 +58,11 @@ var createWidget = function (node, win) {
                             ips = [];
                         }
                         log("widget dns complete callback, ips: " + ips, 1);
-                        util.update_node_icon_for_host(node, mainHost, ips);
+                        util.setSixornotClass(node, mainHost, ips);
                     });
                 }
             }
-            util.update_node_icon_for_host(node, mainHost, ips);
+            util.setSixornotClass(node, mainHost, ips);
         }
         /* Always update last main host */
         lastMainHost = data.main;

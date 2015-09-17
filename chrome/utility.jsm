@@ -11,7 +11,7 @@ var clipboardhelper = Components.classes["@mozilla.org/widget/clipboardhelper;1"
 /* exported util */
 var EXPORTED_SYMBOLS = ["util"];
 
-var sixornot_classes = [
+var sixornotClasses = [
     "sixornot_4only", "sixornot_4only_cache",
     "sixornot_4pot6", "sixornot_4pot6_cache",
     "sixornot_6and4", "sixornot_6and4_cache",
@@ -20,12 +20,93 @@ var sixornot_classes = [
     "sixornot_proxy", "sixornot_error"
 ];
 
-var sixornot_ssl_classes = [
+var securityClasses = [
     "sixornot_ssl",
     "sixornot_ssl_ev",
     "sixornot_ssl_partial",
     "sixornot_ssl_off"
 ];
+
+var proxyClasses = [
+    "sixornot_proxy_on",
+    "sixornot_proxy_off"
+];
+var getIconClass = function (record, ips) {
+    if (record.proxy.type === "http" || record.proxy.type === "https") {
+        return "sixornot_proxy";
+    }
+    var hasIPv6DNS = ips.some(function (ip) { return ip.family === 6; });
+    var hasIPv4DNS = ips.some(function (ip) { return ip.family === 4; });
+    if (record.ip.family === 4) {
+        if (hasIPv6DNS) {
+            // Actual is v4, DNS is v4 + v6 -> Orange
+            return "sixornot_4pot6";
+        } else {
+            // Actual is v4, DNS is v4 (or not completed) -> Red
+            return "sixornot_4only";
+        }
+    } else if (record.ip.family === 6) {
+        if (!hasIPv4DNS && hasIPv6DNS) {
+            // Actual is v6, DNS is v6 -> Blue
+            return "sixornot_6only";
+        } else {
+            // Actual is v6, DNS is v4 + v6 (or not completed) -> Green
+            return "sixornot_6and4";
+        }
+    } else if (record.ip.family === 2) {
+        // address family 2 is cached responses
+        if (!hasIPv6DNS) {
+            if (!hasIPv4DNS) {
+                // No addresses, grey cache icon
+                return "sixornot_other_cache";
+            } else {
+                // Only v4 addresses from DNS, red cache icon
+                return "sixornot_4only_cache";
+            }
+        } else {
+            if (!hasIPv4DNS) {
+                // Only v6 addresses from DNS, blue cache icon
+                return "sixornot_6only_cache";
+            } else {
+                // Both kinds of addresses from DNS, yellow cache icon
+                return "sixornot_4pot6_cache";
+            }
+        }
+    } else if (record.ip.family === 1) {
+        return "sixornot_other";
+    } else if (record.ip.family === 0) {
+        // This indicates that no addresses were available but request is not cached
+        return "sixornot_error";
+    }
+    return "sixornot_other";
+};
+
+var getSecurityClass = function (record) {
+    if (record.security.isExtendedValidation) {
+        return "sixornot_ssl_ev";
+    } else if (record.security.cipherName) {
+        return "sixornot_ssl";
+    } else {
+        return "sixornot_ssl_off";
+    }
+};
+
+var getProxyClass = function (record) {
+    if (record.proxy.type === "http"
+     || record.proxy.type === "https"
+     || record.proxy.type === "socks4"
+     || record.proxy.type === "socks") {
+        return "sixornot_proxy_on";
+    } else {
+        return "sixornot_proxy_off";
+    }
+};
+
+var removeClassesFrom = function (node, classes) {
+    classes.forEach(function (item) {
+        node.classList.remove(item);
+    });
+};
 
 var util = {
     /* Proxy to getElementById */
@@ -38,7 +119,7 @@ var util = {
         }
     },
 
-    open_preferences: function () {
+    openPreferences: function () {
         var currentWindow, currentBrowser;
         try {
             // Add tab to most recent window, regardless of where this function was called from
@@ -48,7 +129,7 @@ var util = {
                 currentWindow.toEM("addons://detail/sixornot@entropy.me.uk");
             } else if (currentWindow.BrowserOpenAddonsMgr) {
                 currentWindow.BrowserOpenAddonsMgr("addons://detail/sixornot@entropy.me.uk");
-            } else {
+            } else { // TODO legacy - can probably remove this
                 currentBrowser = currentWindow.getBrowser();
                 currentBrowser.selectedTab = currentBrowser.addTab("about:addons");
             }
@@ -57,7 +138,7 @@ var util = {
         }
     },
 
-    open_hyperlink: function (link) {
+    openHyperlink: function (link) {
         var currentWindow, currentBrowser;
         try {
             // Add tab to most recent window, regardless of where this function was called from
@@ -70,8 +151,8 @@ var util = {
         }
     },
 
-    copy_to_clipboard: function (text) {
-        log("copy_to_clipboard: '" + text + "'", 2);
+    copyToClipboard: function (text) {
+        log("copyToClipboard: '" + text + "'", 2);
         try {
             clipboardhelper.copyString(text);
         } catch (e) {
@@ -79,88 +160,66 @@ var util = {
         }
     },
 
-    // Sixornot display class related functions
-
-    get_icon_class: function (record, ips) {
-        if (record.proxy.type === "http" || record.proxy.type === "https") {
-            return "sixornot_proxy";
+    /* Sixornot display class related functions */
+    setSixornotClass: function (node, host, ips) {
+        var newClass = "sixornot_other";
+        if (host) {
+            newClass = getIconClass(host, ips);
         }
-        var hasIPv6DNS = ips.some(function (ip) { return ip.family === 6; });
-        var hasIPv4DNS = ips.some(function (ip) { return ip.family === 4; });
-        if (record.ip.family === 4) {
-            if (hasIPv6DNS) {
-                // Actual is v4, DNS is v4 + v6 -> Orange
-                return "sixornot_4pot6";
-            } else {
-                // Actual is v4, DNS is v4 (or not completed) -> Red
-                return "sixornot_4only";
-            }
-        } else if (record.ip.family === 6) {
-            if (!hasIPv4DNS && hasIPv6DNS) {
-                // Actual is v6, DNS is v6 -> Blue
-                return "sixornot_6only";
-            } else {
-                // Actual is v6, DNS is v4 + v6 (or not completed) -> Green
-                return "sixornot_6and4";
-            }
-        } else if (record.ip.family === 2) {
-            // address family 2 is cached responses
-            if (!hasIPv6DNS) {
-                if (!hasIPv4DNS) {
-                    // No addresses, grey cache icon
-                    return "sixornot_other_cache";
-                } else {
-                    // Only v4 addresses from DNS, red cache icon
-                    return "sixornot_4only_cache";
-                }
-            } else {
-                if (!hasIPv4DNS) {
-                    // Only v6 addresses from DNS, blue cache icon
-                    return "sixornot_6only_cache";
-                } else {
-                    // Both kinds of addresses from DNS, yellow cache icon
-                    return "sixornot_4pot6_cache";
-                }
-            }
-        } else if (record.ip.family === 1) {
-            return "sixornot_other";
-        } else if (record.ip.family === 0) {
-            // This indicates that no addresses were available but request is not cached
-            return "sixornot_error";
-        }
-        return "sixornot_other";
-    },
-
-    remove_sixornot_classes_from: function (node) {
-        sixornot_classes.forEach(function (item) {
-            node.classList.remove(item);
-        });
-    },
-
-    add_class_to_node: function (new_item_class, node) {
-        node.classList.add(new_item_class);
-    },
-
-    update_node_icon_for_host: function (node, host, ips) {
-        var new_icon_class = this.get_icon_class(host, ips);
-        if (!node.classList.contains(new_icon_class)) {
-            this.remove_sixornot_classes_from(node);
-            this.add_class_to_node(new_icon_class, node);
+        if (!node.classList.contains(newClass)) {
+            removeClassesFrom(node, sixornotClasses);
+            node.classList.add(newClass);
         }
     },
 
-    add_greyscale_class_to_node: function (node) {
+    setSecurityClass: function (node, host) {
+        var newClass = "sixornot_ssl_off";
+        if (host) {
+            newClass = getSecurityClass(host);
+        }
+        if (!node.classList.contains(newClass)) {
+            removeClassesFrom(node, securityClasses);
+            node.classList.add(newClass);
+        }
+    },
+
+    setProxyClass: function (node, host) {
+        var newClass = "sixornot_proxy_off";
+        if (host) {
+            newClass = getProxyClass(host);
+        }
+        if (!node.classList.contains(newClass)) {
+            removeClassesFrom(node, proxyClasses);
+            node.classList.add(newClass);
+        }
+    },
+
+    enableBold: function (node) {
+        node.classList.add("sixornot-bold");
+    },
+    disableBold: function (node) {
+        node.classList.remove("sixornot-bold");
+    },
+
+    enableGreyscale: function (node) {
         node.classList.add("sixornot_grey");
     },
-
-    remove_greyscale_class_from_node: function (node) {
+    disableGreyscale: function (node) {
         node.classList.remove("sixornot_grey");
     },
 
-    remove_ssl_classes_from_node: function (node) {
-        sixornot_ssl_classes.forEach(function (item) {
-            node.classList.remove(item);
-        });
+    setLink: function (node) {
+        node.classList.add("sixornot-link");
+    },
+    setTitle: function (node) {
+        node.classList.add("sixornot-title");
+    },
+
+    setHidden: function (node) {
+        node.classList.add("sixornot-invisible");
+    },
+    setShowing: function (node) {
+        node.classList.remove("sixornot-invisible");
     }
 };
 
