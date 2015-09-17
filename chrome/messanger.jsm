@@ -17,6 +17,8 @@ var getMessanger = function (win, updateCallback) {
         var data = JSON.parse(message.data);
         if (data) {
             updateCallback(data);
+        } else {
+            updateCallback({main: "", entries: [], innerId: 0});
         }
     };
 
@@ -27,7 +29,6 @@ var getMessanger = function (win, updateCallback) {
     };
 
     var subscribeToCurrentBrowser = function () {
-        subscribeToBrowser(win.gBrowser.mCurrentBrowser);// TODO use selectedBrowser?
     };
 
     var unsubscribe = function () {
