@@ -10,14 +10,6 @@ Components.utils.import("chrome://sixornot/content/requestcache.jsm");
 /* exported httpRequestObserver */
 var EXPORTED_SYMBOLS = ["httpRequestObserver"];
 
-// https://developer.mozilla.org/en-US/Add-ons/Code_snippets/Tabbed_browser#Getting_the_browser_that_fires_the_http-on-modify-request_notification
-/*var legacyGetBrowser = function (contentWindow) {
-    var aDOMWindow = contentWindow.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIWebNavigation)
-                                      .QueryInterface(Components.interfaces.nsIDocShellTreeItem).rootTreeItem
-                                      .QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindow);
-    return aDOMWindow.gBrowser._getTabForContentWindow(contentWindow.top).linkedBrowser;
-};*/ // TODO legacy
-
 var onExamineResponse = function(subject, topic) {
     var httpChannel, httpChannelInternal, proxyChannel,
         notificationCallbacks, loadContext, topFrameMM;
@@ -37,11 +29,7 @@ var onExamineResponse = function(subject, topic) {
     /* Try and locate a messageManager for the browser initiating this request */
     try {
         loadContext = notificationCallbacks.getInterface(Components.interfaces.nsILoadContext);
-        var topFrameElement = loadContext.topFrameElement;
-        /*if (!topFrameElement) { // Compatibility with FF38 and below with E10S disabled // TODO legacy
-            topFrameElement = legacyGetBrowser(loadContext.associatedWindow);
-        }*/
-        topFrameMM = topFrameElement.messageManager;
+        topFrameMM = loadContext.topFrameElement.messageManager;
     } catch (e) {
         log("httpRequestObserver: could not find messageManager for request browser - exception: " + parse_exception(e), 1);
         return;

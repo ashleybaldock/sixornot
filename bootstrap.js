@@ -10,14 +10,9 @@
 
 /* exported startup, shutdown, install, uninstall */
 
-var CustomizableUIAvailable = true;
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource://gre/modules/AddonManager.jsm");
-try {
-    Components.utils.import("resource:///modules/CustomizableUI.jsm");
-} catch (e) {
-    CustomizableUIAvailable = false;
-}
+Components.utils.import("resource:///modules/CustomizableUI.jsm");
 
 /*
  * bootstrap.js API implementation
@@ -33,11 +28,7 @@ var startup = function (aData) {
     Components.utils.import("chrome://sixornot/content/addressbaricon.jsm");
     Components.utils.import("chrome://sixornot/content/widget.jsm");
     Components.utils.import("chrome://sixornot/content/messanger.jsm");
-    if (CustomizableUIAvailable) {
-        Components.utils.import("chrome://sixornot/content/gui.jsm");
-    } else {
-        Components.utils.import("chrome://sixornot/content/gui-legacy.jsm");
-    }
+    Components.utils.import("chrome://sixornot/content/gui.jsm");
 
     /* Load callback for when our addon finishes loading */
     AddonManager.getAddonByID(aData.id, function () {
@@ -72,11 +63,7 @@ var shutdown = function (aData, aReason) {
         ui.teardown();
 
         /* Unload our own code modules */
-        if (CustomizableUIAvailable) {
-            Components.utils.unload("chrome://sixornot/content/gui.jsm");
-        } else {
-            Components.utils.unload("chrome://sixornot/content/gui-legacy.jsm");
-        }
+        Components.utils.unload("chrome://sixornot/content/gui.jsm");
         Components.utils.unload("chrome://sixornot/content/addressbaricon.jsm");
         Components.utils.unload("chrome://sixornot/content/panel.jsm");
         Components.utils.unload("chrome://sixornot/content/widget.jsm");

@@ -129,9 +129,6 @@ var util = {
                 currentWindow.toEM("addons://detail/sixornot@entropy.me.uk");
             } else if (currentWindow.BrowserOpenAddonsMgr) {
                 currentWindow.BrowserOpenAddonsMgr("addons://detail/sixornot@entropy.me.uk");
-            } else { // TODO legacy - can probably remove this
-                currentBrowser = currentWindow.getBrowser();
-                currentBrowser.selectedTab = currentBrowser.addTab("about:addons");
             }
         } catch (e) {
             Components.utils.reportError(e);

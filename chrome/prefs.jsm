@@ -16,8 +16,6 @@ var prefs = (function () {
     // network.http.fast-fallback-to-IPv4
 
     var defaults = {
-        toolbar:            "nav-bar",  // TODO legacy
-        nextitem:           "",         // TODO legacy
         showaddressicon:    false,
         greyscaleicons:     false,
         loglevel:           0,

@@ -20,7 +20,6 @@ mkdir ../dist/$version/src/chrome
 cp chrome/addressbaricon.jsm ../dist/$version/src/chrome/
 cp chrome/content.js ../dist/$version/src/chrome/
 cp chrome/dns.jsm ../dist/$version/src/chrome/
-cp chrome/gui-legacy.jsm ../dist/$version/src/chrome/ # legacy
 cp chrome/gui.jsm ../dist/$version/src/chrome/
 cp chrome/ipaddress.jsm ../dist/$version/src/chrome/
 cp chrome/locale.jsm ../dist/$version/src/chrome/
@@ -46,8 +45,6 @@ mkdir ../dist/$version/src/chrome/css
 cp chrome/css/base.css ../dist/$version/src/chrome/css/
 cp chrome/css/large.css ../dist/$version/src/chrome/css/ # legacy
 cp chrome/css/customize.css ../dist/$version/src/chrome/css/
-cp chrome/css/customize_pre29.css ../dist/$version/src/chrome/css/ # legacy
-cp chrome/css/customize_pre29_linux.css ../dist/$version/src/chrome/css/ # legacy
 
 # Copy locale(s)
 mkdir ../dist/$version/src/locale
