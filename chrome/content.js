@@ -118,7 +118,6 @@ var onUnloadEvent = function (evt) {
 
 var onUnload = function () {
     log("onUnload", 1);
-    requests = null; // TODO requestcache clear all method?
     removeEventListener("DOMWindowCreated", onDOMWindowCreated);
     removeEventListener("unload", onUnloadEvent);
     windowObserver.unregister();
@@ -126,6 +125,7 @@ var onUnload = function () {
     removeMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMessage);
     removeMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
     removeMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
+    requests = null; // TODO requestcache clear all method?
 };
 
 /* Listen and observe */

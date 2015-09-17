@@ -2,9 +2,8 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
-/* global log, gt, util, unload, prefs, createWidget */
+/* global gt, util, unload, prefs, createWidget */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("chrome://sixornot/content/logger.jsm");
 Components.utils.import("chrome://sixornot/content/utility.jsm");
 Components.utils.import("chrome://sixornot/content/locale.jsm");
 Components.utils.import("chrome://sixornot/content/prefs.jsm");
@@ -15,8 +14,6 @@ Components.utils.import("chrome://sixornot/content/widget.jsm");
 var EXPORTED_SYMBOLS = ["createAddressBarIcon"];
 
 var createAddressBarIcon = function (win, id) {
-    var icon, urlbaricons, starbutton, doc;
-
     var updateVisibility = function () {
         if (prefs.getBool("showaddressicon")) {
             icon.setAttribute("hidden", false);
@@ -26,8 +23,8 @@ var createAddressBarIcon = function (win, id) {
     };
 
     /* Create address bar icon */
-    doc = win.document;
-    icon = doc.createElement("box");
+    var doc = win.document;
+    var icon = doc.createElement("box");
     icon.setAttribute("id", id);
     icon.setAttribute("width", "16");
     icon.setAttribute("height", "16");
@@ -40,8 +37,8 @@ var createAddressBarIcon = function (win, id) {
     updateVisibility();
 
     /* Position the icon */
-    urlbaricons = util.gbi(doc, "urlbar-icons");
-    starbutton = util.gbi(doc, "star-button");
+    var urlbaricons = util.gbi(doc, "urlbar-icons");
+    var starbutton = util.gbi(doc, "star-button");
     /* If star icon visible, insert before it, otherwise just append to urlbaricons */
     if (!starbutton) {
         urlbaricons.appendChild(icon);
@@ -57,10 +54,10 @@ var createAddressBarIcon = function (win, id) {
 
     /* Add unload callback to remove the icon */
     unload(function () {
-        log("address bar icon unload", 2);
         visibilityObserver.unregister();
 
         /* Remove UI */
         icon.parentNode.removeChild(icon);
     }, win);
 };
+

@@ -27,7 +27,6 @@ var createButton = function () {
         tooltiptext : gt("tt_button"),
         onCreated : function (node) {
             var win = node.ownerDocument.defaultView;
-            log("button UI created", 2);
             createWidget(node, win);
         }
     };
@@ -54,7 +53,7 @@ var ui = {
         // Create address bar icon
         createAddressBarIcon(win, ADDRESSBAR_ICON_ID);
     },
-    teardown: function () {
+    teardown: function () { // TODO replace with global unload() callback?
         log("ui.teardown", 1);
         CustomizableUI.destroyWidget(BUTTON_ID);
     }

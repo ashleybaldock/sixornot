@@ -36,9 +36,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/* global log */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("chrome://sixornot/content/logger.jsm");
 
 /* exported watchWindows, unload, runOnWindows */
 var EXPORTED_SYMBOLS = ["watchWindows", "unload", "runOnWindows"];
@@ -149,7 +147,6 @@ var runOnWindows = function (callback) {
             }
         } else {
             // Wait for the window to load before continuing
-            log("Sixornot - runOnWindows:runOnLoad", 1);
             runOnLoad(browserWindow, callback);
         }
     }

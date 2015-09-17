@@ -16,7 +16,6 @@ var log = (function () {
         try {
             return prefs.getInt("loglevel");
         } catch (e) {
-            // Fallback to hard-coded default (minimal logging)
             return 0;
         }
     };
@@ -26,7 +25,6 @@ var log = (function () {
         if (level === undefined) {
             level = 1;
         }
-        // If preference unset, default to 1 (normal) level
         if (level <= get_loglevel()) {
             Services.console.logStringMessage("SON: " + message);
         }
@@ -36,7 +34,6 @@ var log = (function () {
 // Returns a string version of an exception object with its stack trace
 var parse_exception = function (e) {
     "use strict";
-    log("Sixornot - parse_exception", 2);
     if (!e) {
         return "";
     } else if (!e.stack) {

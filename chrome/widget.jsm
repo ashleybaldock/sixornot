@@ -18,8 +18,6 @@ var EXPORTED_SYMBOLS = ["createWidget"];
 /* Contains shared code used by both the address bar icon and button */
 var createWidget = function (node, win) {
     "use strict";
-    var panel, updateIconForNode, onClick;
-
     var updateGreyscale = function () {
         if (prefs.getBool("greyscaleicons")) {
             util.add_greyscale_class_to_node(node);
@@ -28,14 +26,12 @@ var createWidget = function (node, win) {
         }
     };
 
-    var messanger = getMessanger(win, function (data) { updateIconForNode(data, node); });
-
     var lastMainHost = "";
     var dnsCancel;
     var ips = [];
 
     // Change icon via class (icon set via stylesheet)
-    updateIconForNode = function (data, node) {
+    var updateIconForNode = function (data, node) {
         if (data.main === "") {
             // Cancel existing DNS lookup callback
             if (dnsCancel) { dnsCancel.cancel(); }
@@ -62,7 +58,7 @@ var createWidget = function (node, win) {
                         } else {
                             ips = [];
                         }
-                        log("widget dns complete callback, ips: " + ips, 0);
+                        log("widget dns complete callback, ips: " + ips, 1);
                         util.update_node_icon_for_host(node, mainHost, ips);
                     });
                 }
@@ -73,13 +69,13 @@ var createWidget = function (node, win) {
         lastMainHost = data.main;
     };
 
-    onClick = function () {
+    var onClick = function () {
         panel.setAttribute("hidden", false);
         panel.openPopup(node, panel.getAttribute("position"), 0, 0, false, false);
     };
 
     /* Create a panel to show details when clicked */
-    panel = createPanel(win, node.id + "-panel");
+    var panel = createPanel(win, node.id + "-panel");
     node.appendChild(panel);
 
     /* Update greyscale property + icon */
@@ -89,6 +85,7 @@ var createWidget = function (node, win) {
     node.addEventListener("click", onClick, false);
     var greyscaleObserver = prefs.createObserver("extensions.sixornot.greyscaleicons",
                                                   updateGreyscale).register();
+    var messanger = getMessanger(win, function (data) { updateIconForNode(data, node); });
 
     unload(function () {
         log("widget unload function", 2);

@@ -16,7 +16,7 @@ var EXPORTED_SYMBOLS = ["httpRequestObserver"];
                                       .QueryInterface(Components.interfaces.nsIDocShellTreeItem).rootTreeItem
                                       .QueryInterface(Components.interfaces.nsIInterfaceRequestor).getInterface(Components.interfaces.nsIDOMWindow);
     return aDOMWindow.gBrowser._getTabForContentWindow(contentWindow.top).linkedBrowser;
-};*/
+};*/ // TODO legacy
 
 var onExamineResponse = function(subject, topic) {
     var httpChannel, httpChannelInternal, proxyChannel,
@@ -38,7 +38,7 @@ var onExamineResponse = function(subject, topic) {
     try {
         loadContext = notificationCallbacks.getInterface(Components.interfaces.nsILoadContext);
         var topFrameElement = loadContext.topFrameElement;
-        /*if (!topFrameElement) { // Compatibility with FF38 and below with E10S disabled
+        /*if (!topFrameElement) { // Compatibility with FF38 and below with E10S disabled // TODO legacy
             topFrameElement = legacyGetBrowser(loadContext.associatedWindow);
         }*/
         topFrameMM = topFrameElement.messageManager;
