@@ -2,12 +2,10 @@
  * Copyright 2015 Timothy Baldock. All Rights Reserved.
  */
 
-/* global log */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("chrome://sixornot/content/logger.jsm");
 
 /* exported getMessanger */
-var EXPORTED_SYMBOLS = [ "getMessanger" ];
+var EXPORTED_SYMBOLS = ["getMessanger"];
 
 var getMessanger = function (win, updateCallback) {
     var currentBrowserMM;
@@ -16,27 +14,16 @@ var getMessanger = function (win, updateCallback) {
     // Called by content script of active tab
     // Message contains data to update icon/UI
     var onUpdateUIMessage = function (message) {
-        log("messanger:onUpdateUIMessage: data: " + message.data, 1);
         var data = JSON.parse(message.data);
         if (data) {
             updateCallback(data);
         }
     };
 
-    var onTabSelect = function (evt) {
-        log("messanger:onTabSelect", 1);
-        subscribeToBrowser(win.gBrowser.getBrowserForTab(evt.target));
-        requestUpdate();
-    };
-    var onTabOpen = function (evt) {
-        log("messanger:onTabOpen", 1);
-        subscribeToBrowser(win.gBrowser.getBrowserForTab(evt.target));
-        requestUpdate();
-    };
-
-    var onContentScriptLoaded = function (message) {
-        log("messanger:onContentScriptLoaded, id: " + message.data.id, 1);
-        subscribeToCurrentBrowser();
+    var subscribeToBrowser = function (browser) {
+        unsubscribe();
+        currentBrowserMM = browser.messageManager;
+        currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
     };
 
     var subscribeToCurrentBrowser = function () {
@@ -49,15 +36,23 @@ var getMessanger = function (win, updateCallback) {
         }
     };
 
-    var subscribeToBrowser = function (browser) {
-        unsubscribe();
-        currentBrowserMM = browser.messageManager;
-        currentBrowserMM.addMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
+    var requestUpdate = function () {
+        if (currentBrowserMM) {
+            currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
+        }
     };
 
-    // Ask active content script to send us an update, e.g. when switching tabs
-    var requestUpdate = function () {
-        currentBrowserMM.sendAsyncMessage("sixornot@baldock.me:update-ui");
+    var onContentScriptLoaded = function (message) {
+        subscribeToCurrentBrowser();
+    };
+
+    var onTabSelect = function (evt) {
+        subscribeToBrowser(win.gBrowser.getBrowserForTab(evt.target));
+        requestUpdate();
+    };
+    var onTabOpen = function (evt) {
+        subscribeToBrowser(win.gBrowser.getBrowserForTab(evt.target));
+        requestUpdate();
     };
 
     /* TabOpen event gets fired with a blank <browser>, and the page gets loaded into
@@ -78,9 +73,11 @@ var getMessanger = function (win, updateCallback) {
         requestUpdate: requestUpdate,
         shutdown: function () {
             windowMM.removeMessageListener("sixornot@baldock.me:content-script-loaded", onContentScriptLoaded);
-            unsubscribe();
             win.gBrowser.tabContainer.removeEventListener("TabOpen", onTabOpen, false);
             win.gBrowser.tabContainer.removeEventListener("TabSelect", onTabSelect, false);
+            unsubscribe();
+            currentBrowserMM = null;
+            windowMM = null;
         }
     };
 };

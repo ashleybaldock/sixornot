@@ -5,11 +5,13 @@
 /* content script
     This is loaded for every browser window */
 
+/* Unique ID used for logging */
 var contentScriptId = Math.floor((Math.random() * 100000) + 1); 
 
 /* global sendAsyncMessage, addMessageListener, removeMessageListener, log:true, createRequestCache, cacheEntry */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/logger.jsm");
+Components.utils.import("chrome://sixornot/content/requestcache.jsm");
 var _log = log;
 log = function (message, severity) {
     _log("SCS: " + contentScriptId + ": " + message, severity);
@@ -19,8 +21,6 @@ log = function (message, severity) {
     log("--" + requests.printWaitingList(), 1);
     log("--" + requests.printCache(), 1);
 };*/
-
-Components.utils.import("chrome://sixornot/content/requestcache.jsm");
 
 /* State */
 var requests = createRequestCache();
@@ -73,7 +73,7 @@ var onDOMWindowCreated = function (evt) {
     var hostname = win.location.hostname;
     var loc = win.location.href;
 
-    log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 0);
+    log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 1);
 
     var entry = cacheEntry.create();
 
@@ -117,7 +117,7 @@ var onUnloadEvent = function (evt) {
 };
 
 var onUnload = function () {
-    log("onUnload", 0);
+    log("onUnload", 1);
     requests = null; // TODO requestcache clear all method?
     removeEventListener("DOMWindowCreated", onDOMWindowCreated);
     removeEventListener("unload", onUnloadEvent);

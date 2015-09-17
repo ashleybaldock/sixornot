@@ -2,9 +2,6 @@
  * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
  */
 
-/* global log */
-Components.utils.import("chrome://sixornot/content/logger.jsm");
-
 /* exported createRequestCache, cacheEntry */
 var EXPORTED_SYMBOLS = ["createRequestCache", "cacheEntry"];
 
@@ -88,7 +85,6 @@ var createRequestCache = function () {
                     return true;
                 }
             })) { // Add new
-                log("addOrUpdate, host: " + entry.host + ", address: " + entry.ip.address, 1);
                 cache[id].entries.push(entry);
             }
         },
@@ -113,11 +109,11 @@ var createRequestCache = function () {
                     return true;
                 }
             })) { // Add new
-                log("addOrUpdateToWaitingList, host: " + entry.host + ", address: " + entry.ip.address, 1);
                 waitinglist.push(entry);
             }
         },
 
+        /* debug methods */
         printCache: function () {
             var out = "cache is:\n";
             for (var property in cache) {

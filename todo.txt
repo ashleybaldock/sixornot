@@ -52,6 +52,7 @@ create IPAddress type and use it to unify ipv4s/ipv6s arrays                - DO
 
 test on FF 38
 check logging levels (check for level zero)
+test unload/load works
 
 Refactor DNS
  - move unit tests out to proper unit testing system                        - DONE
