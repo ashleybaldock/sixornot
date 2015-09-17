@@ -19,8 +19,7 @@ var EXPORTED_SYMBOLS = ["createPanel"];
 var createPanel = function (win, panelId) {
     var doc = win.document;
 
-    // Called by content script of active tab
-    // Message contains data to update icon/UI
+    /* Called by content script of active tab */
     var updateUI = function (data) {
         remoteAnchor.updateModel(data);
         adjustForScrollbar();
@@ -28,7 +27,7 @@ var createPanel = function (win, panelId) {
 
     var messanger = getMessanger(win, updateUI);
 
-    /* Ensure panel contents visible with scrollbars */
+    /* Add space for scrollbar if one is showing */
     var adjustForScrollbar = function () {
         if (panelVbox.scrollHeight > panel.clientHeight) {
             panelVbox.style.paddingRight = "20px";
@@ -610,7 +609,7 @@ var createLocalListingRow = function (doc, addafter) {
     row.appendChild(sslinfoSpacer);
     var proxyinfoSpacer = doc.createElement("image");
     proxyinfoSpacer.setAttribute("width", "0");
-    util.setProxyClass(proxyinfospacer);
+    util.setProxyClass(proxyinfoSpacer);
     row.appendChild(proxyinfoSpacer);
 
     var hostname = createHostname(doc, row);
@@ -707,7 +706,7 @@ var createLocalAnchor = function (doc, parentElement) {
 
     var showhideSpacer = doc.createElement("label");
     util.setTitle(showhideSpacer);
-    util.setHidden(showhideSpacer);
+    showhideSpacer.classList.add("sixornot-hidden");
 
     var setShowhideText = function () {
         if (prefs.getBool("showlocal")) {
