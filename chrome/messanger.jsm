@@ -29,6 +29,7 @@ var getMessanger = function (win, updateCallback) {
     };
 
     var subscribeToCurrentBrowser = function () {
+        subscribeToBrowser(win.gBrowser.selectedBrowser);
     };
 
     var unsubscribe = function () {
