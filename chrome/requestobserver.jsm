@@ -47,6 +47,10 @@ var onExamineResponse = function(subject, topic) {
         return;
     }
 
+    if (!topFrameMM || !topFrameMM.sendAsyncMessage) {
+        log("httpRequestObserver: topFrameMM was undefined for this request", 1);
+    }
+
     // Check for browser windows loading things like favicons and filter out
     if (!loadContext.isContent) {   // TODO does this still work?
         log("httpRequestObserver: loadContext is not content - skipping", 1);
