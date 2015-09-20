@@ -744,10 +744,10 @@ var createLocalAnchor = function (doc, parentElement) {
     var entries = [];
     return {
         remove: function () {
-            this.removeAllEntries();
             showLocalObserver.unregister();
             showAllObserver.unregister();
             showhide.removeEventListener("click", toggleShowingLocal, false);
+            this.removeAllEntries();
         },
         update: function (host) {
             cachedHost = host;
@@ -767,8 +767,13 @@ var createLocalAnchor = function (doc, parentElement) {
             }
         },
         removeAllEntries: function () {
+            log("localAnchor:removeAllEntries", 2);
             entries.forEach(function (item) {
-                item.remove();
+                try {
+                    item.remove();
+                } catch (e) {
+                    Components.utils.reportError(e);
+                }
             });
             entries = [];
         },

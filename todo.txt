@@ -47,20 +47,21 @@ create IPAddress type and use it to unify ipv4s/ipv6s arrays                - DO
  - update output format of the firefox resolver to use new object           - DONE
  - change format of requestcache entry's IP address to match                - DONE
  - unify entity used for request cache with that produced by httpobserver   - DONE
- - test firefox resolver for remote/local addresses
-
-test on FF 38
-check logging levels (check for level zero)
-test unload/load works
-
-Refactor DNS
+ - test firefox resolver for remote/local addresses                         - DONE
+check logging levels (check for level zero)                                 - DONE
+test unload/load works                                                      - DONE
+Refactor DNS                                                                - DONE
  - move unit tests out to proper unit testing system                        - DONE
  - move ip utility functions into own object                                - DONE
- - Unit testing for IP related methods
+
+test on FF 38
+
 
 
 #2.1
-tests for requestcache behaviour
+Testing
+ - tests for requestcache behaviour
+ - Unit testing for IP related methods
 investigate channelIsForDownload on nsIHttpChannelInternal
 test on legacy platforms
  - SeaMonkey                                            - Seems working

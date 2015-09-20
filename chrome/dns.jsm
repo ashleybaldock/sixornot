@@ -115,7 +115,7 @@ var dnsResolver = (function () {
     };
 
     switch(Services.appinfo.OS.toLowerCase()) {
-    case "darwin1":
+    case "darwin":
         log("dnsResolver - init darwin ctypes resolver", 1);
         setupWorker("chrome://sixornot/content/ctypes/darwin.js");
         break;
