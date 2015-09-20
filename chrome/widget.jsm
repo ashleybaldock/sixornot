@@ -32,17 +32,17 @@ var createWidget = function (node, win) {
 
     // Change icon via class (icon set via stylesheet)
     var updateIconForNode = function (data, node) {
-        if (data.main === "") {
+        var mainHost = data.entries.find(function (element) {
+            return element.host === data.main;
+        });
+
+        if (data.main === "" || !mainHost) {
             // Cancel existing DNS lookup callback
             if (dnsCancel) { dnsCancel.cancel(); }
             ips = [];
             // No matching entry for main host (probably a local file)
             util.setSixornotClass(node);
         } else {
-            var mainHost = data.entries.find(function (element) {
-                return element.host === data.main;
-            });
-
             if (mainHost.host !== lastMainHost) {
                 if (dnsCancel) { dnsCancel.cancel(); }
                 ips = [];
