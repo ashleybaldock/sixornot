@@ -120,7 +120,7 @@ var util = {
     },
 
     openPreferences: function () {
-        var currentWindow, currentBrowser;
+        var currentWindow;
         try {
             // Add tab to most recent window, regardless of where this function was called from
             currentWindow = Services.wm.getMostRecentWindow("navigator:browser");

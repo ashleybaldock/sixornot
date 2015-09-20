@@ -44,7 +44,7 @@ var getMessanger = function (win, updateCallback) {
         }
     };
 
-    var onContentScriptLoaded = function (message) {
+    var onContentScriptLoaded = function () {
         subscribeToCurrentBrowser();
     };
 
