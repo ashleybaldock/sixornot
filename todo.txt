@@ -59,6 +59,10 @@ test on FF 38
 
 
 #2.1
+
+Support for [2001::1] format hostname (needs to match for mainHost functionality)
+
+
 Testing
  - tests for requestcache behaviour
  - Unit testing for IP related methods
