@@ -115,7 +115,7 @@ var dnsResolver = (function () {
     };
 
     switch(Services.appinfo.OS.toLowerCase()) {
-    case "darwin":
+    case "darwin1":
         log("dnsResolver - init darwin ctypes resolver", 1);
         setupWorker("chrome://sixornot/content/ctypes/darwin.js");
         break;
@@ -173,7 +173,10 @@ var dnsResolver = (function () {
             }
         };
         try {
-            return dnsService.asyncResolve(host, 0x01, completeCallback, null);
+            var cancelable = dnsService.asyncResolve(host, 0x01, completeCallback, null);
+            return function () {
+                cancelable.cancel(1);
+            };
         } catch (e) {
             Components.utils.reportError("Sixornot dnsService:asyncResolve EXCEPTION: " + parse_exception(e));
             callback({success: false, addresses: []});
