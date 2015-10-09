@@ -1,0 +1,185 @@
+body
+{
+    font: 12px/1.2 Verdana, Arial, Helvetica, sans-serif;
+    margin: 0;
+}
+
+div.header
+{
+    background-color: #C6D6FF;
+    background-image: url("sixornot_6only_c_128.png");
+    background-repeat: no-repeat;
+    background-position: center right;
+    padding: 0.5em;
+    margin: 0;
+    min-height: 136px;
+}
+
+h1
+{
+    padding: 0.5em;
+    padding-bottom: 0.2em;
+    margin: 0;
+    clear: both;
+}
+
+h2
+{
+    background-color: #618EFF;
+/*    background-color: #0044F8; */
+    padding: 0.5em;
+    clear: both;
+    color: #FFF;
+}
+
+h2.menu
+{
+    margin-top: 0;
+}
+
+h2 a, h3 a
+{
+    font-size: xx-small;
+    display: block;
+    float: right;
+    text-align: right;
+    color: #FFF;
+}
+h2 a:hover, h3 a:hover
+{
+    color: #618EFF;
+    background-color: #FFF;
+    text-decoration: none;
+}
+
+h3
+{
+    background-color: #618EFF;
+    margin: 0 0.5em;
+    padding: 0.5em;
+    clear: both;
+    color: #FFF;
+}
+
+p
+{
+    margin: 1em;
+}
+
+p.version
+{
+    margin: 0 1em;
+    padding-left: 0.5em;
+}
+
+p.monospace
+{
+    font-family: monospace;
+}
+
+pre
+{
+    margin: 1em 2em;
+    padding: 0.5em;
+    background-color: #C6D6FF;
+}
+
+ul.icon_list
+{
+    margin: 1em 2em;
+    padding: 0.5em;
+}
+
+ul.icon_list li
+{
+    list-style: none;
+    background-repeat: no-repeat;
+    background-position: center left;
+    margin: 0.5em 0;
+    padding-left: 60px;
+    vertical-align: middle;
+    min-height: 24px;
+}
+
+img.im_right
+{
+    float: right;
+    clear: both;
+}
+
+img.im_left
+{
+    float: left;
+    clear: both;
+}
+
+img.pad
+{
+    padding: 1em;
+}
+
+li.i_other
+{
+    background-image: url("sixornot_other_cg_24.png");
+}
+
+li.i_6only
+{
+    background-image: url("sixornot_6only_cg_24.png");
+}
+
+li.i_6and4
+{
+    background-image: url("sixornot_6and4_cg_24.png");
+}
+
+li.i_4pot6
+{
+    background-image: url("sixornot_4pot6_cg_24.png");
+}
+
+li.i_4only
+{
+    background-image: url("sixornot_4only_cg_24.png");
+}
+
+li.i_6only_cache
+{
+    background-image: url("sixornot_6only_cache_cg_24.png");
+}
+
+li.i_4pot6_cache
+{
+    background-image: url("sixornot_4pot6_cache_cg_24.png");
+}
+
+li.i_4only_cache
+{
+    background-image: url("sixornot_4only_cache_cg_24.png");
+}
+
+li.i_proxy
+{
+    background-image: url("sixornot_proxy_cg_24.png");
+}
+
+li.i_error
+{
+    background-image: url("sixornot_error_cg_24.png");
+}
+
+li.i_ssl
+{
+    background-image: url("sixornot_tls.png");
+}
+
+li.i_proxy_on
+{
+    background-image: url("sixornot_proxy_on.png");
+}
+
+span.red
+{
+    color: #F00;
+    font-weight: bold;
+}

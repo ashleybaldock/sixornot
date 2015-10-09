@@ -2,11 +2,9 @@
 
 # Generate the imagesrc.jsm file containing image data for use by addon
 
-outfile_base="css/base.css" # For all browsers
-outfile_large="css/large.css" # For linux and SeaMonkey
-outfile_cust="css/customize.css" # Customize panel on SeaMonkey + Firefox Australis
-outfile_cust_ffp29="css/customize_pre29.css" # Customize panel on pre-29 Firefox
-outfile_cust_ffp29_linux="css/customize_pre29_linux.css" # Customize panel pre-29 Firefox (Linux)
+outfile_base="chrome/css/base.css" # For all browsers
+outfile_large="chrome/css/large.css" # For linux and SeaMonkey
+outfile_cust="chrome/css/customize.css" # Customize panel on SeaMonkey + Firefox Australis
 
 icon_file32_colour="./images/sixornot_icon_32.png"
 icon_file32_grey="./images/sixornot_icon_32_grey.png"
@@ -139,86 +137,3 @@ cat >> $outfile_cust <<END_OF_FILE
 }
 END_OF_FILE
 
-# Customize panel for pre-Australis Firefox
-
-echo "gen_css.sh - Generating $outfile_cust_ffp29"
-cat > $outfile_cust_ffp29 <<END_OF_FILE
-/* This file is generated automatically by gen_css.sh */
-
-@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
-
-@-moz-document url("chrome://global/content/customizeToolbar.xul") {
-
-/* Customize panel icons for pre-Australis Firefox */
-
-END_OF_FILE
-
-if test -f "$icon_file16_colour"
-then
-    b64=`base64 $icon_file16_colour`
-    echo "    #CustomizeToolbarWindow #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust_ffp29
-fi
-if test -f "$icon_file16_grey"
-then
-    b64=`base64 $icon_file16_grey`
-    echo "    #CustomizeToolbarWindow #sixornot-button.sixornot_grey { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust_ffp29
-fi
-
-cat >> $outfile_cust_ffp29 <<END_OF_FILE
-}
-END_OF_FILE
-
-# Customize panel for pre-Australis Firefox (Linux)
-
-echo "gen_css.sh - Generating $outfile_cust_ffp29_linux"
-cat > $outfile_cust_ffp29_linux <<END_OF_FILE
-/* This file is generated automatically by gen_css.sh */
-
-@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
-
-@-moz-document url("chrome://global/content/customizeToolbar.xul") {
-
-/* Customize panel icons for pre-Australis Firefox (Linux) */
-
-END_OF_FILE
-
-if test -f "$icon_file24_colour"
-then
-    b64=`base64 $icon_file24_colour`
-    echo "    #CustomizeToolbarWindow #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust_ffp29_linux
-fi
-if test -f "$icon_file24_grey"
-then
-    b64=`base64 $icon_file24_grey`
-    echo "    #CustomizeToolbarWindow #sixornot-button.sixornot_grey { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_cust_ffp29_linux
-fi
-
-cat >> $outfile_cust_ffp29_linux <<END_OF_FILE
-}
-END_OF_FILE
-echo "gen_css.sh - done"
-
-#cat >> $outfile <<END_OF_FILE
-#}
-#@-moz-document url("chrome://global/content/customizeToolbar.xul") {
-#END_OF_FILE
-#
-#if test -f "$icon_file24"
-#then
-#    b64=`base64 $icon_file24`
-#    echo "    #sixornot-button.sixornot_grey, #sixornot-button { list-style-image: url(\"data:image/png;base64,$b64\"); }" >> $outfile
-#fi
-
-#cat >> $outfile <<END_OF_FILE
-#
-#  /* Necessary to mimic the behavior of all other buttons, which are darker when
-#pressed.
-##aus-view-button:hover:active:not([disabled="true"]):not([cui-areatype="menu-panel"]) {
-#list-style-image: url("chrome://aus-view/css/icon32-dark.png");
-#}*/
-#
-#  /*#sixornot-panel {
-#    width: 20em;
-#  }*/
-#}
-#END_OF_FILE

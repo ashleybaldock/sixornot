@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-GB" lang="en-GB">
+	
+<head>
+
+<link rel="stylesheet" type="text/css" href="../style.css" />
+
+<title>SixOrNot Documentation</title>
+
+</head>
+	
+<body>
+
+<div class="header">
+<h1>SixOrNot Documentation</h1>
+<p class="version">Version 2.0.0</p>
+</div>
+
+<h2 class="menu"><a name="Menu"></a>Contents</h2>
+<ol>
+<li><a href="#Installation">Installation</a></li>
+<li><a href="#Introduction">Introduction</a></li>
+<li><a href="#Interface">Interface</a>
+    <ul>
+    <li><a href="#Interface_Icons">Icon Meanings</a></li>
+    <!--<li><a href="#Interface_Warnings">Interface Warnings</a></li>-->
+    <li><a href="#Interface_Settings">Configurable Settings</a></li>
+    </ul>
+</li>
+<li><a href="#ProxyInfo">Proxy information</a>
+<li><a href="#OSSpecific">Operating System specific information</a>
+    <ul>
+    <li><a href="#OSSpecific_OSX">Mac OSX</a></li>
+    <li><a href="#OSSpecific_Windows7Vista">Windows 7/Windows Vista and above</a></li>
+    <li><a href="#OSSpecific_Windows2003">Windows XP/Windows Server 2003</a></li>
+    <li><a href="#OSSpecific_Linux">Linux</a></li>
+    <li><a href="#OSSpecific_Other">Other</a></li>
+    </ul>
+</li>
+<li><a href="#IPConcepts">IP Address Concepts</a></li>
+<li><a href="#FurtherReading">Further Reading</a></li>
+<li><a href="#SixOrNotLicence">SixOrNot Licence</a></li>
+</ol>
+
+
+<h2><a name="Introduction"></a>Introduction<a href="#Menu">Menu</a></h2>
+
+<p>SixOrNot is a Firefox extension which makes it easy for you to identify when the website you're connecting to supports the current generation Internet Protocol (version 6). It also allows you to see a list of all the servers contacted to load a page, along with the IP address your browser connected to to do so. DNS information about each server is also available so that you can see if a site could potentially be loaded via IPv6 if your local connection supported it (or to identify when connections were performed via IPv4 when they shouldn't have been). Also shown is whether the connection was made using TLS (along with the cipher used, and whether the certificate uses extended validation) and information about any proxy used for the connection.</p>
+
+<p>The SixOrNot icon can be displayed via an address bar icon or a button (which may be placed wherever you like in the Firefox UI). The icon indicates whether the main domain of the site you are viewing supports IPv6 and whether your browser used IPv6 to connect to it. SixOrNot looks at each connection Firefox makes and notes whether it was made using IPv4 or IPv6, the information is then displayed via a handy tooltip. SixOrNot also detects the IP address(es) of your local machine for informational display.</p>
+
+<h2><a name="Installation"></a>Installation<a href="#Menu">Menu</a></h2>
+
+<p>Installation is via the usual Firefox method, simply download the .xpi format attachment and accept when prompted to install. SixOrNot is a "restartless" or "bootstrapped" extension - this means you don't need to restart Firefox when it is installed and you should see the button appear in the navigation bar immediately. If you want to enable the address bar icon display open the SixOrNot settings panel (either click on the button and select "Settings" from the panel, or open the addons page and select SixOrNot from the list), check the "Show addressbar icon" option and the address bar icon will display. You can move the button to a different position in the UI (or remove it entirely) using the standard Firefox customization system.</p>
+
+<p>Upgrades are handled automatically.</p>
+
+<h2><a name="Interface"></a>Interface<a href="#Menu">Menu</a></h2>
+
+<p>The SixOrNot interface consists of an icon displayed either in the address bar or as a button. By default the address bar icon is disabled and the button is placed onto the navigation bar. You can move the button anywhere you like by entering the Firefox UI customisation mode and dragging it to the desired location. Whether accessed through the button or address bar icon the functionality is identical. Upon clicking the button/icon a tooltip panel is displayed which shows information about the site you are connecting to.</p>
+
+<p>The main icon permits you to see at-a-glance whether the current site supports IPv6 and whether you are connecting to it via IPv6. See <a href="#Interface_Icons">below</a> for an explanation of each icon.</p>
+
+<img src="sixornot_2.0.0_sc_ui_full.png" alt="Screenshot of the SixOrNot panel" class="pad" />
+
+<p>The panel has three sections:</p>
+
+<ul>
+<li><b>Remote</b>
+<p>For each domain contacted to load the current page a listing appears in this section. The main domain of the site is displayed in bold text. The first IP address listed for each entry is the address the browser used to connect, the remaining addresses are those retrieved from DNS records for the domain.</p>
+
+<p>Subsequent entries in the list are for domains which additional resources have been loaded from, e.g. images from content delivery networks. Again, the first address is the actual connection, the rest are from DNS. You can click on the [+XX] link to expand DNS information for the secondary connections, and then click on the [ - ] link to hide them again. The number to the left of the domain indicates the total number of connections made to that domain while loading this page.</p>
+
+<p>Two additional icons may be displayed:</p>
+
+    <ul class="icon_list">
+    <li class="i_ssl">This icon provides information about the security of the most recently made connection to this host. If the icon appears TLS was used to connect. A green icon indicates the server used an extended validation SSL certificate. On mouseover the cipher used is displayed.</li>
+    <li class="i_proxy_on">This icon indicates that a proxy was used for the most recent connection to this host. On mouseover the tooltip gives information about the type of proxy used, as well as a warning if DNS lookups were disabled (see proxy section below).</li>
+    </ul>
+
+</li>
+<li><b>Local</b>
+<p>All IP addresses configured for your machine are displayed here. By default only IP addresses which are globally routeable (including RFC1918 addresses likely to be in use with NAT) are shown. There is a setting to enable display of non-routeable addresses. The display of local addresses can be hidden by clicking the [hide] link to the right of the Local title.</p>
+
+</li>
+<li><b>Links</b>
+<p>This section contains a link to the SixOrNot settings panel in the about:addons page and a link to this documentation.</p>
+</li>
+</ul>
+
+<p>Clicking on a domain in the panel will copy that domain and a list of its associated IP addresses to the clipboard (in comma-separated form). Clicking on an IP address in the panel will copy that IP address to the clipboard.</p>
+
+    <h3><a name="Interface_Icons"></a>Icon Meanings<a href="#Interface">Interface</a></h3>
+
+    <p>The IP addressing state of each domain is displayed via a set of icons, their meanings are outlined below. Note that there are two sets of icons to choose between (one colourful, the other greyscale). The grey icons can look nicer on Mac OSX, and can be better for those who have difficulty distinguishing between colours.</p>
+
+    <ul class="icon_list">
+    <li class="i_other">This icon can mean a variety of things, generally it indicates that no IP address information exists for the current location or that there was a failure obtaining it. Try navigating to a website and ensuring you are not using a Proxy and that Offline mode isn't enabled.</li>
+    <li class="i_6only">This icon indicates that Firefox connected to this domain using IPv6 and only AAAA (IPv6) records were found for the domain in DNS. This generally means that the domain in question only supports IPv6. You should only ever see this icon if you have IPv6 connectivity on your machine.</li>
+    <li class="i_6and4">This icon indicates that Firefox connected to this domain using IPv6 and both AAAA (IPv6) and A (IPv4) records were found for the domain in DNS. You should only ever see this icon if you have IPv6 connectivity on your machine.</li>
+    <li class="i_4pot6">This icon indicates that Firefox connected to this domain using IPv4 and both AAAA (IPv6) and A (IPv4) records were found for the current domain. While the remote domain does support IPv6 your browser did not use it to connect. Typically this means you do not have IPv6 connectivity on your machine, but even if you do sometimes IPv4 is used instead for connections.</li>
+    <li class="i_4only">This icon indicates that Firefox connected to this domain using IPv4 and only A (IPv4) records were returned for the domain. Either your DNS is not capable of returning AAAA records or (more likely) the domain in question supports only the legacy version of the Internet Protocol suite. Why not ask why they haven't upgraded yet?</li>
+    <li class="i_6only_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Only AAAA (IPv6) records were found for this domain in DNS, indicating that the domain is probably available only via IPv6.</li>
+    <li class="i_4pot6_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Both AAAA (IPv6) and A (IPv4) records were found for this domain in DNS, indicating that the domain is IPv6 capable.</li>
+    <li class="i_4only_cache">This icon indicates that Firefox retrieved all objects in the current page from this domain from local cache (no external connections were made). Only A (IPv4) records were found for this domain in DNS, indicating that the domain is probably available only via IPv4.</li>
+    <li class="i_proxy">This icon indicates that an HTTP/HTTPS proxy was used for this connection. With these types of proxies no information is available about the connection made to the host (since Firefox connects to the proxy which then forwards the request). For these types of proxy DNS lookups are also disabled to avoid leaking information about sites visited.</li>
+    <li class="i_error">This icon indicates an error occurred for the domain in question.</li>
+    </ul>
+
+    <!--<h3><a name="Interface_Warnings"></a>Interface Warnings<a href="#Interface">Interface</a></h3>
+
+    <p>SixOrNot may display warnings in red text on the tooltip. More detailed explanations of these warnings can be found here.</p>
+
+    <ul>
+    <li><span class="red">Warning: Firefox IPv6 DNS lookups disabled!</span><br />This warning indicates that the Firefox preferences setting "network.dns.disableIPv6" has been set to true. This means that Firefox won't itself lookup IPv6 addresses for any of the domains you visit. Typically there's very little reason to enable this setting. SixOrNot usually uses a different mechanism to lookup DNS records so it will probably still find IPv6 addresses for domains even when this setting is enabled (though it will never display the Green icon in this case). For more information about this Firefox setting see the <a href="http://kb.mozillazine.org/Network.dns.disableIPv6">Mozilla Documentation</a>.</li>
+    <li><span class="red">Warning: Domain is in ipv4OnlyDomains list!</span><br />This warning indicates that the domain you are currently visiting is listed in the "network.dns.ipv4OnlyDomains" setting. This means that Firefox will never attempt to connect using IPv6 to this website, even if it has AAAA records in DNS and your own machine has IPv6 connectivity. SixOrNot will never display the Green icon for these sites but will still show the IPv6 addresses if they are found. More information about this Firefox setting can be found on the <a href="http://kb.mozillazine.org/Network.dns.ipv4OnlyDomains">Mozilla Documentation</a>.</li>
+    </ul>-->
+
+    <h3><a name="Interface_Settings"></a>Configurable Settings<a href="#Interface">Interface</a></h3>
+
+    <p>SixOrNot allows you to configure the following settings. Settings can be accessed via the addon settings panel, accessed either via the "Settings" link in the SixOrNot panel or via the about:addons page.</p>
+
+    <img src="sixornot_1.0.0_sc_settings.png" alt="Screenshot of the SixOrNot settings" class="pad" />
+
+    <ol>
+    <li>Whether or not the address bar icon should be displayed. This is either on or off. Hint: If you turn the address bar icon off and don't see the button try opening the Firefox toolbar customization system and drag the button onto a toolbar.</li>
+    <li>Whether to use the colourful icon set or the greyscale one. The grey icons can look better on Mac OSX and are also good for those with specific accessibility needs where colours aren't a sufficient means of communicating information.</li>
+    <li>Whether to display non-global locally configured IP addresses. By default SixOrNot does not show you locally configured IP addresses which would not normally be used to connect to remote websites, e.g. linklocal addresses. If you want to see these in the UI then enable this option.</li>
+    </ol>
+
+    <p>These options can also be configured via the following boolean values in "about:config":</p>
+
+    <pre>extensions.sixornot.showaddressicon = false</pre>
+    <pre>extensions.sixornot.greyscaleicons = false</pre>
+    <pre>extensions.sixornot.showallips = false</pre>
+
+    <p>Additionally, the following settings in about:config may be useful:</p>
+
+    <pre>extensions.sixornot.loglevel = 0</pre>
+
+    <p>This sets the SixOrNot logging output level - default is 0 (only errors), 1, 2 and 3 provide increasingly verbose logging output. Useful if you encounter a bug and need to send the log output to help me diagnose it.</p>
+
+    <p>The other extensions.sixornot settings should not generally be changed manually.</p>
+
+<h2><a name="ProxyInfo"></a>Proxy information<a href="#Menu">Menu</a></h2>
+
+<p>Firefox can be configured with several types of proxy and these affect SixOrNot's behaviour.</p>
+
+<ul>
+<li>HTTP/HTTPS proxy: DNS lookups disabled, purple proxy icon displayed, IP address of proxy shown as connection address (in brackets)</li>
+<li>SOCKS 4/5 proxy (with Remote DNS set): DNS lookups disabled, icon display indicates type of address for connection only, IP address reflects the host connected to.</li>
+<li>SOCKS 4/5 proxy: DNS lookups enabled, icon display as normal, IP address as normal.</li>
+</ul>
+
+<h2><a name="OSSpecific"></a>Operating System specific information<a href="#Menu">Menu</a></h2>
+
+<p>Due to the use of OS native DNS resolution and local address detection SixOrNot can behave differently on different operating systems running Firefox. Additionally support for IPv6 varies between OSes and some special steps are needed to enable it in some cases. See below for information on your OS.</p>
+
+    <h3><a name="OSSpecific_OSX"></a>Mac OSX<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>SixOrNot is fully compatible with OSX 10.6+ (although I have only tested version 2.0.0 on OSX 10.10). IPv6 is enabled by default in these versions of the operating system and no special configuration should be needed for full functionality. I have not tested SixOrNot with earlier versions of OSX so if you encounter problems please do let me know.</p>
+
+    <h3><a name="OSSpecific_Windows7Vista"></a>Windows 7/Windows Vista and above<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>SixOrNot is fully compatible with Windows 10, 8, 7 and Windows Vista SP2. These operating systems have IPv6 support enabled by default.</p>
+
+    <h3><a name="OSSpecific_Windows2003"></a>Windows XP/Windows Server 2003<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>As of version 2.0.0 SixOrNot does not offer support for Windows XP/Server 2003</p>
+
+    <h3><a name="OSSpecific_Linux"></a>Linux<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>SixOrNot has been tested under Ubuntu Linux (version 14.04). It should work on any distribution however. If you are experiencing problems with SixOrNot on a Linux distribution other than this please get in touch with me and I'll try to fix it for your distribution.</p>
+
+    <h3><a name="OSSpecific_Other"></a>Other<a href="#OSSpecific">Operating System specific information</a></h3>
+
+    <p>On other operating systems SixOrNot does not currently benefit from the ability to use native DNS resolution or local address lookup. This means that information about the local system's configured IP addresses may be limited, and information about remote IP addresses may be incomplete (particularly lacking IPv6 addresses on systems with no IPv6 connectivity). This is due to configuration-specific behaviour of Firefox's built-in DNS resolution. If you encounter any issues or have any questions about a specific operating system please contact me.</p>
+
+<h2><a name="IPConcepts"></a>IP Address Concepts<a href="#Menu">Menu</a></h2>
+
+<p>IP addresses are fundamental to the operation of the Internet, billions of people use millions of them every day and yet they are invisible in day-to-day use. Usually we don't need to care about IP addresses and in most cases one only becomes aware of them when something is broken. This is due to a system called DNS - the Domain Name System. This masks the technical complexity of addressing behind easy-to-remember domain names. When you visit a website behind the scenes the domain name of that website (everything between the "http://" and the first "/") is looked up via a DNS query to produce an IP address. These addresses are then used to determine how to communicate with the server responsible for serving that website.</p>
+
+<p>There are currently two flavours of IP address around because the Internet is going through a migration period from the old way of addressing things (known as Internet Protocol version 4, or IPv4) to a new addressing system (known as Internet Protocol version 6, or IPv6). The main difference is the number of addresses available, though this is far from the most important difference. IPv4 addresses are represented as 32-bit numbers, the largest number which can be represented in this way is 2^32 (2 to the power of 32) or 4,294,967,296. That sounds like a lot but we are rapidly running out of them (and in practice we can't even use all of those). IPv6 addresses are represented by 128-bit numbers, the largest number which can be represented in this way is 2^128 (2 to the power of 128) or 340,282,366,920,938,463,463,374,607,431,768,211,456 (that's approximately 340 billion billion billion billion, or 3.4x10^38).</p>
+
+<p>So why is there a problem? Adoption of the current IP addressing standard (IPv6) has been slow. Most traffic on the Internet still uses the legacy addressing scheme. At the time of writing less than 1% of all Internet traffic uses IPv6. Given the impending exhaustion of IPv4 addresses (at the time of writing the Asia-Pacific regional registry, APNIC, has already run out) this is a major problem facing the Internet community. The transition from IPv4 to IPv6 isn't an easy one and involves a lot of work, this is typically work which goes unnoticed to the end user. This is as it should be and for the vast majority of people IP addressing will continue to remain an invisible part of their Internet-using experience. The flip side of this invisibility however is that it's easy to overlook the pioneers who are already using IPv6 and raise awareness among those that are not. I am hopeful that by exposing the IP version being used as part of your web browsing this extension will help make it just a little bit more visible.</p>
+
+
+<h2><a name="FurtherReading"></a>Further Reading<a href="#Menu">Menu</a></h2>
+
+<p>For more information about IPv6, IPv4 address exhaustion and associated concepts please see the following links.</p>
+
+<ul>
+<li><a href="http://en.wikipedia.org/wiki/IPv4_address_exhaustion">http://en.wikipedia.org/wiki/IPv4_address_exhaustion</a></li>
+<li><a href="http://en.wikipedia.org/wiki/IPv6">http://en.wikipedia.org/wiki/IPv6</a></li>
+<li><a href="http://ipv6.he.net/certification/primer.php">http://ipv6.he.net/certification/primer.php</a></li>
+<li><a href="http://aaisp.net.uk/kb-broadband-ipv6.html">http://aaisp.net.uk/kb-broadband-ipv6.html</a></li>
+<li><a href="http://isoc.org/wp/worldipv6day/">http://isoc.org/wp/worldipv6day/</a></li>
+<li><a href="http://www.ietf.org/rfc/rfc3513.txt">http://www.ietf.org/rfc/rfc3513.txt</a></li>
+</ul>
+
+
+<h2><a name="SixOrNotLicence"></a>SixOrNot Licence<a href="#Menu">Menu</a></h2>
+
+<p>A reproduction of the SixOrNot Licence, for your convenience. This document is covered by the same licence.</p>
+
+<p class="monospace">Copyright &copy; 2008-2015 Timothy Baldock. All Rights Reserved.</p>
+
+<p class="monospace">Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:</p>
+
+<p class="monospace">1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.</p>
+
+<p class="monospace">2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.</p>
+
+<p class="monospace">3. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission from the author.</p>
+
+<p class="monospace">4. Products derived from this software may not be called "SixOrNot" nor may "SixOrNot" appear in their names without specific prior written permission from the author.</p>
+
+<p class="monospace">THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. </p>
+
+
+</body>
+	
+</html>
+
+

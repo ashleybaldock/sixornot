@@ -1,10 +1,139 @@
 # TODO
 
 
-# Known bugs:
-On Australis, changing the greyscale setting while the button is not displayed
-results in the button not conforming to the setting
+# 2.0.0
+E10S support                                                                - DONE
+Use Services.jsm in place of Components.classes.getService where possible   - DONE
+ - https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/Services.jsm
+Replace env.jsm with Services.jsm.appinfo                                   - DONE
+Refactor requestcache/requestobserver                                       - DONE
+ - tests for requestcache behaviour
+ - Accessor methods for cache/waitinglist                                   - DONE
+ - Move methods to destroy entries into requests object                     - DONE
+ - Abstract implementation of cache - maybe change from an array            - DONE
+Optimise panel + other code                                                 - DONE
+ - Avoid adding entries to panel until they are displayed                   - DONE
+ - Refactor UI to split out legacy components & freeze                      - DONE
+ - Refactor locale handling code to use built-in functionality              - DONE
+ - Removed overridelocale setting                                           - DONE
+Add observer for http-on-examine-merged-response                            - DONE
+Update documentation                                                        - DONE
+ - document proxy support                                                   - DONE
+ - document SSL support                                                     - DONE
+ - integrate documentation into addon instead of online                     - DONE
+ - remove references to overridelocale                                      - DONE
+optimise memory usage (don't use a chromeworker per tab)                    - DONE
+unload for content script                                                   - DONE
+Handle resource:// URLs better (displays E at present)                      - DONE
+Proxy detection + info                                                      - DONE
+Add better proxy detection (per-connection) and icon display                - DONE
+Disable native DNS resolution for proxied connections                       - DONE
+ - if it's an http/https proxy                                              - DONE
+    - show proxy icon in toolbar/host info for http/https proxy hosts       - DONE
+    - show address in brackets for http/https proxied connections           - DONE
+ - if it's a socks proxy and has resolve via DNS set                        - DONE
+Show icon in panel against proxied hosts                                    - DONE
+ - Proxy information on mouseover                                           - DONE
+Show coloured proxy icon if DNS lookups disabled                            - DONE
+eslint validation                                                           - DONE
+SSL information for connections                                             - DONE
+ - Show padlock icon for each host                                          - DONE
+observe showallips preference and update panel                              - DONE
+ - fix local address display on expand                                      - DONE
+ - on toggle show all update copytext for host                              - DONE
+split MM from widget/panel into object for code reuse                       - DONE
+disable seamonkey/pre-australis compat (pending testing in 2.1)             - DONE
+Change resource:// URLs to chrome://                                        - DONE
+create IPAddress type and use it to unify ipv4s/ipv6s arrays                - DONE
+ - update output format of the firefox resolver to use new object           - DONE
+ - change format of requestcache entry's IP address to match                - DONE
+ - unify entity used for request cache with that produced by httpobserver   - DONE
+ - test firefox resolver for remote/local addresses
 
+test on FF 38
+check logging levels (check for level zero)
+test unload/load works
+
+Refactor DNS
+ - move unit tests out to proper unit testing system                        - DONE
+ - move ip utility functions into own object                                - DONE
+ - Unit testing for IP related methods
+
+
+#2.1
+investigate channelIsForDownload on nsIHttpChannelInternal
+test on legacy platforms
+ - SeaMonkey                                            - Seems working
+ - FF ESR
+    - Test legacy UI
+Optimisations
+ - Avoid lengthy IP type/ordering calls
+
+NAT64 prefixes
+ - Detection + conversion of embedded IPv4 addresses
+ - Configurable prefix
+ - Autodetect prefixes (+ manual config too)
+ - Translation strings for config
+
+Warnings for ip6_disabled and ip4only_domain
+ - ip4only_domain should show a badge next to affected domains
+    - permit toggling whether a domain is on the ip4 only list or not
+ - ip6_disabled should show a warning on the panel
+    - maybe tint the entire panel red?
+
+
+SSL information for connections
+ (- Show yellow icon for mixed-mode connections)
+ - Certificate info on hover over icon (+ copy to clipboard on click)
+
+
+# 2.2
+Overview mode for icon 
+ - show green icon only if all connections made using v6
+ - show blue icon only if all hosts have only AAAA records
+
+Local info:
+Refactor local address code
+Retrieve interface information along with addresses
+ - Display local addresses per interface
+ - Linting ctypes files
+
+Retrieve netmask information for each address and display (e.g. 1999::1/64)
+ - Also collect tunnel interface IPs on Vista+
+
+Better greyscale icons (especially for cache entries)
+ - new monochrome icon set (match new FF icons?)
+
+
+# Rejected ideas:
+
+Detail view pane for info about each connection
+Copy everything (report) to clipboard
+Add ability to copy a list of all files fetched to clipboard (per-domain)
+Record total size of objects downloaded from each site + display (in KB? etc.)
+Icon display in status bar on SeaMonkey/Firefox alternatives
+switch over to nsIWebProgressListener - doesn't expose IP addresses!
+
+
+# Ideas
+
+Multiple workers to speed up DNS resolution
+Refactor return objects from DNS lookups (wrapped IP address objects w/ type etc.)
+
+Test internationalised domain names handling by native resolvers
+ - e.g. www.söhne.com
+
+Collect nsIHttpChannelInternal.localAddress info for each request
+ - Highlight addresses used to load pages?
+
+German translation for addon description
+
+Handling for edge-cases and special pages (text)
+Reverse DNS lookups? (local/remote)
+More info about IP address types, e.g. link-local, global etc.
+
+
+# Done
 
 # 1.0.0/0.8.3
 Release to get out of beta...
@@ -20,71 +149,6 @@ Test on FF 24, SeaMonkey 2.26, FF 29                                        - DO
 Test on FF 30/31 and future versions of SeaMonkey                           - DONE
 Test on Palemoon                                                            - DONE
 Confirm log level pref is set to 0
-
-# Post-submission
-Update listing page (upon approval)                                         -
- - Review summary and longer description                                    -
-German listing page localisation                                            -
-Update Russian listing page                                                 -
-Review documentation + screenshots                                          -
-
-# 1.1.0
-jslint validation
-Use Services.jsm in place of Components.classes.getService where possible
- - https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/Services.jsm
-Replace env.jsm with Services.jsm.appinfo
-Multiple workers to speed up DNS resolution
-Warnings for ip6_disabled and ip4only_domain
- - ip4only_domain should show a badge next to affected domains
- - ip6_disabled should show a warning on the panel
-Refactor requestcache/requestobserver
- - Unify host listing object with local host listing object
- - Accessor methods for cache/waitinglist
- - Move methods to destroy entries into requests object
- - Abstract implementation of cache - maybe change from an array
-Refactor return objects from DNS lookups (wrapped IP address objects w/ type etc.)
-Optimise panel + other code
- - Avoid lengthy IP type/ordering calls
- - Avoid adding entries to panel until they are displayed
-Update documentation
-
-Test internationalised domain names handling by native resolvers
- - e.g. www.söhne.com
-
-Collect nsIHttpChannelInternal.localAddress info for each request
- - Highlight addresses used to load pages?
-
-Retrieve interface information along with addresses
- - Display local addresses per interface
-Retrieve netmask information for each address and display (e.g. 1999::1/64)
- - Probably only possible on Vista+ for windows
-   - Split winnt worker into legacy XP one and newer Vista+ one (freeze XP one)
- - Also collect tunnel interface IPs on Vista+
-
-German translation for addon description
-
-# 1.2.0
-Proxy detection + info
-Add better proxy detection (per-connection) and icon display
- Use: https://developer.mozilla.org/en/XPCOM_Interface_Reference/nsIProtocolProxyService
- Same way that DNS lookups are done, with a callback
-Disable native DNS resolution for proxied connections
-investigate channelIsForDownload on nsIHttpChannelInternal
-Update documentation
-
-# TODO FUTURE
-Handling for edge-cases and special pages (text)
-Add ability to copy a list of all files fetched to clipboard (per-domain)
-Record total size of objects downloaded from each site + display (in KB? etc.)
-Icon display in status bar on SeaMonkey/Firefox alternatives
-Reverse DNS lookups? (local/remote)
-Detection + conversion of embedded IPv4 addresses
-NAT64 prefixes
-Better greyscale icons (especially for cache entries)
-More info about IP address types, e.g. link-local, global etc.
-
-
-# Done
 
 # 0.8.2
 Local IP address display                                                    - DONE
@@ -178,5 +242,4 @@ Testing
     Test on various windows platforms (XP x86, Vista, 7 x86/x64)
     Test on linux + implement ctypes for linux platforms
 
-    Unit tests for dns_handler:sort_ip4 & dns_handler:sort_ip6
 

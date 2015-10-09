@@ -1,0 +1,38 @@
+{
+    "rules": {
+        "indent": [
+            2,
+            4
+        ],
+        "quotes": [
+            2,
+            "double"
+        ],
+        "linebreak-style": [
+            2,
+            "unix"
+        ],
+        "semi": [
+            2,
+            "always"
+        ],
+        "no-unused-vars": [
+            2,
+            {"args": "after-used", "varsIgnorePattern": "EXPORTED_SYMBOLS"}
+        ]
+    },
+    "ecmaFeatures": {
+        "blockBindings": true
+    },
+    "env": {
+        "browser": true
+    },
+    "extends": "eslint:recommended",
+    "globals": {
+        "Components": true,
+        "Services": true
+    },
+    "exported": {
+        "EXPORTED_SYMBOLS": true
+    }
+}
