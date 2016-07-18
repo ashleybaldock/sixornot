@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
+ * Copyright 2008-2016 Ashley Baldock. All Rights Reserved.
  */
 
 /* global prefs */

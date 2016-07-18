@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Timothy Baldock. All Rights Reserved.
+ * Copyright 2016 Ashley Baldock. All Rights Reserved.
  */
 
 /* content script
@@ -25,9 +25,6 @@ log = function (message, severity) {
 /* State */
 var requests = createRequestCache();
 var currentWindowId = 0;
-
-log("content script loaded", 1);
-sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: contentScriptId});
 
 /* Message handlers */
 var onHttpInitialLoadMessage = function (message) {
@@ -110,30 +107,30 @@ var windowObserver = {
     }
 };
 
-var onUnloadEvent = function (evt) {
-    if (evt.target === this) {
-        onUnload();
-    }
-};
-
 var onUnload = function () {
-    log("onUnload", 1);
+    //Services.console.logStringMessage("SCS: unload " + contentScriptId);
     removeEventListener("DOMWindowCreated", onDOMWindowCreated);
-    removeEventListener("unload", onUnloadEvent);
+    removeEventListener("unload", onUnload);
     windowObserver.unregister();
     removeMessageListener("sixornot@baldock.me:unload", onUnload);
     removeMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMessage);
     removeMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
     removeMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
     requests = null; // TODO requestcache clear all method?
+    log = null;
+    _log = null;
+    //Services.console.logStringMessage("SCS: unload complete " + contentScriptId);
 };
 
 /* Listen and observe */
 windowObserver.register();
 addEventListener("DOMWindowCreated", onDOMWindowCreated);
-addEventListener("unload", onUnloadEvent);
+addEventListener("unload", onUnload);
 addMessageListener("sixornot@baldock.me:unload", onUnload);
 addMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMessage);
 addMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
 addMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
+
+log("content script loaded", 1);
+sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: contentScriptId});
 

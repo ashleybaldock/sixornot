@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Timothy Baldock. All Rights Reserved.
+ * Copyright 2015-2016 Ashley Baldock. All Rights Reserved.
  */
 
 /* global log, gt, ipUtils, dnsResolver, util, getMessanger, unload, prefs, createLocalAddressInfo */
@@ -744,10 +744,10 @@ var createLocalAnchor = function (doc, parentElement) {
     var entries = [];
     return {
         remove: function () {
-            this.removeAllEntries();
             showLocalObserver.unregister();
             showAllObserver.unregister();
             showhide.removeEventListener("click", toggleShowingLocal, false);
+            this.removeAllEntries();
         },
         update: function (host) {
             cachedHost = host;
@@ -767,8 +767,13 @@ var createLocalAnchor = function (doc, parentElement) {
             }
         },
         removeAllEntries: function () {
+            log("localAnchor:removeAllEntries", 2);
             entries.forEach(function (item) {
-                item.remove();
+                try {
+                    item.remove();
+                } catch (e) {
+                    Components.utils.reportError(e);
+                }
             });
             entries = [];
         },

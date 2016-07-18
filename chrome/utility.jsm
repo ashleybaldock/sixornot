@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Timothy Baldock. All Rights Reserved.
+ * Copyright 2015-2016 Ashley Baldock. All Rights Reserved.
  */
 
 /* global log */
@@ -120,7 +120,7 @@ var util = {
     },
 
     openPreferences: function () {
-        var currentWindow, currentBrowser;
+        var currentWindow;
         try {
             // Add tab to most recent window, regardless of where this function was called from
             currentWindow = Services.wm.getMostRecentWindow("navigator:browser");

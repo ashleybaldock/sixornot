@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2015 Timothy Baldock. All Rights Reserved.
+ * Copyright 2008-2016 Ashley Baldock. All Rights Reserved.
  */
 
 /* global ChromeWorker, log, parse_exception, createIPAddress */
@@ -173,7 +173,10 @@ var dnsResolver = (function () {
             }
         };
         try {
-            return dnsService.asyncResolve(host, 0x01, completeCallback, null);
+            var cancelable = dnsService.asyncResolve(host, 0x01, completeCallback, null);
+            return function () {
+                cancelable.cancel(1);
+            };
         } catch (e) {
             Components.utils.reportError("Sixornot dnsService:asyncResolve EXCEPTION: " + parse_exception(e));
             callback({success: false, addresses: []});
