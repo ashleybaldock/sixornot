@@ -6,7 +6,7 @@
 
         <em:id>sixornot@entropy.me.uk</em:id>
         <em:name>SixOrNot</em:name>
-        <em:version>2.0.0</em:version>
+        <em:version>2.0.1</em:version>
         <em:description>IPv6 status indicator</em:description>
         <em:type>2</em:type>
 
@@ -27,12 +27,12 @@
 			</Description>
 		</em:localized>
 
-        <em:creator>Timothy Baldock</em:creator>
+        <em:creator>Ashley Baldock</em:creator>
 
         <em:translator>ForstWoof</em:translator> <!-- Russian -->
 		<em:translator>Leartin</em:translator> <!-- German -->
 
-        <em:homepageURL>http://timothy.baldock.me/sixornot/</em:homepageURL>
+        <em:homepageURL>http://ashley.baldock.me/sixornot/</em:homepageURL>
 
         <em:bootstrap>true</em:bootstrap>
         <em:multiprocessCompatible>true</em:multiprocessCompatible>
@@ -42,7 +42,7 @@
             <Description>
                 <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
                 <em:minVersion>38.0</em:minVersion>
-                <em:maxVersion>42.*</em:maxVersion>
+                <em:maxVersion>47.*</em:maxVersion>
             </Description>
         </em:targetApplication>
     </Description>      

@@ -20,7 +20,7 @@
  * Contributor(s):
  *   Edward Lee <edilee@mozilla.com>
  *   Erik Vold <erikvvold@gmail.com>
- *   Timothy Baldock <timothy@baldock.me>
+ *   Ashley Baldock <ashley@baldock.me>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
