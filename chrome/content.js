@@ -24,76 +24,81 @@ log = function (message, severity) {
 
 /* State */
 var requests = createRequestCache();
-var currentWindowId = 0;
+var currentTopId = 0;
 
-/* Message handlers */
+/* Messaging */
 var onHttpInitialLoadMessage = function (message) {
-    log("got http-initial-load, host: '" + message.data.host + "', address: '" + message.data.ip.address + "', family: " + message.data.ip.family, 1);
+    var entry = message.data;
+    log("got http-initial-load, host: '" + entry.host + "', address: '" + entry.ip.address + "', family: " + entry.ip.family, 1);
 
-    // Items placed onto waiting list will be moved by DOMWindowCreated handler
-    requests.addOrUpdateToWaitingList(message.data);
+    /* Initial HTTP load doesn't have an associated innerId, place on waiting list
+     * Anything on the list when DOMWindowCreated is fired ends up as part of that id
+     */
+    requests.clearWaitingList();
+    requests.addOrUpdateWaitingList(entry);
 
-    sendUpdateUIMessage(requests.get(currentWindowId));
+    updateUI();
 };
 
 var onHttpLoadMessage = function (message) {
-    log("got http-load, host: " + message.data.host + ", address: " + message.data.ip.address + ", family: " + message.data.ip.family, 1);
+    var entry = message.data.entry, id = message.data.id;
+    log("got http-load, id: " + id + ", host: " + entry.host + ", address: " + entry.ip.address + ", family: " + entry.ip.family, 1);
 
-    requests.addOrUpdate(message.data, currentWindowId);
+    log(requests.printCache(), 1);
+    requests.update(entry, id);
 
-    sendUpdateUIMessage(requests.get(currentWindowId));
+    updateUI();
 };
 
 var onUpdateUIMessage = function () {
-    sendUpdateUIMessage(requests.get(currentWindowId));
+    updateUI();
 };
 
-/* Message senders */
-var sendUpdateUIMessage = function (data) {
-    sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(data));
+var updateUI = function () {
+    sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(requests.get(currentTopId)));
 };
 
-var pageChange = function () {
-    sendUpdateUIMessage(requests.get(currentWindowId));
-};
-
+/* Event handling */
 var onDOMWindowCreated = function (evt) {
     var win = evt.originalTarget.defaultView;
-    var inner = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                   .getInterface(Components.interfaces.nsIDOMWindowUtils)
-                   .currentInnerWindowID;
-    var topInner = win.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-                          .getInterface(Components.interfaces.nsIDOMWindowUtils)
-                          .currentInnerWindowID;
+    var innerId = win.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                     .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                     .currentInnerWindowID;
+    var topId = win.top.QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                       .getInterface(Components.interfaces.nsIDOMWindowUtils)
+                       .currentInnerWindowID;
 
     var protocol = win.location.protocol;
     var hostname = win.location.hostname;
     var loc = win.location.href;
 
-    log("DOMWindowCreated, inner: " + inner + ", topInner: " + topInner + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 1);
+    //log("DOMWindowCreated, innerId: " + innerId + ", topId: " + topId + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 1);
 
-    var entry = cacheEntry.create();
+    if (innerId === topId) {
+        currentTopId = topId;
 
-    if (protocol === "file:") {
-        entry.host = "Local File";
-        entry.ip.family = 1;
-        requests.addOrUpdateToWaitingList(entry);
-    } else if (protocol === "about:" || protocol === "resource:" || protocol === "chrome:") {
-        entry.host = loc;
-        entry.ip.family = 1;
-        requests.addOrUpdateToWaitingList(entry);
-    } else if (hostname) {
-        entry.host = hostname; // Don't add to waiting list, should be done by http (initial) load
+        var entry = cacheEntry.create();
+
+        if (protocol === "file:") {
+            entry.host = "Local File";
+            entry.ip.family = 1;
+        } else if (protocol === "about:" || protocol === "resource:" || protocol === "chrome:") {
+            entry.host = loc;
+            entry.ip.family = 1;
+        } else if (hostname) {
+            entry.host = hostname;
+        }
+        requests.addOrUpdateWaitingList(entry);
+
+        requests.createFromWaitingList(entry.host, currentTopId);
+    } else {
+        requests.deOrphan(innerId, topId);
     }
 
-    // All http-load events for this browser should now be associated with this inner ID
-    currentWindowId = topInner;
-
-    requests.createOrExtendCacheEntry(entry.host, currentWindowId);
-
-    pageChange();
+    updateUI();
 };
 
+// TODO - build this into requestcache
 var windowObserver = {
     observe: function (subject) {
         var innerId = subject.QueryInterface(Components.interfaces.nsISupportsPRUint64).data;
@@ -108,7 +113,6 @@ var windowObserver = {
 };
 
 var onUnload = function () {
-    //Services.console.logStringMessage("SCS: unload " + contentScriptId);
     removeEventListener("DOMWindowCreated", onDOMWindowCreated);
     removeEventListener("unload", onUnload);
     windowObserver.unregister();
@@ -119,7 +123,6 @@ var onUnload = function () {
     requests = null; // TODO requestcache clear all method?
     log = null;
     _log = null;
-    //Services.console.logStringMessage("SCS: unload complete " + contentScriptId);
 };
 
 /* Listen and observe */
@@ -131,6 +134,6 @@ addMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMes
 addMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
 addMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
 
-log("content script loaded", 1);
+log("content script loaded", 2);
 sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: contentScriptId});
 
