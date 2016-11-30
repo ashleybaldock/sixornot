@@ -96,7 +96,7 @@ var onExamineResponse = function(subject, topic) {
     if (httpChannel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
         topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", entry);
     } else {
-        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", {'entry': entry, 'id': id.toString()});
+        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", {'entry': entry, 'id': id});
     }
 };
 

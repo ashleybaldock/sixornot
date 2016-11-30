@@ -5,48 +5,24 @@
 /* content script
     This is loaded for every browser window */
 
-/* Unique ID used for logging */
-var contentScriptId = Math.floor((Math.random() * 100000) + 1); 
-
-/* global sendAsyncMessage, addMessageListener, removeMessageListener, log:true, createRequestCache, cacheEntry */
+/* global sendAsyncMessage, addMessageListener, removeMessageListener, createRequestCache, cacheEntry */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("chrome://sixornot/content/logger.jsm");
 Components.utils.import("chrome://sixornot/content/requestcache.jsm");
-var _log = log;
-log = function (message, severity) {
-    _log("SCS: " + contentScriptId + ": " + message, severity);
-};
-/*var printCaches = function (text) {
-    log(text + " - caches: ", 1);
-    log("--" + requests.printWaitingList(), 1);
-    log("--" + requests.printCache(), 1);
-};*/
 
 /* State */
 var requests = createRequestCache();
-var currentTopId = 0;
 
 /* Messaging */
 var onHttpInitialLoadMessage = function (message) {
     var entry = message.data;
-    log("got http-initial-load, host: '" + entry.host + "', address: '" + entry.ip.address + "', family: " + entry.ip.family, 1);
-
-    /* Initial HTTP load doesn't have an associated innerId, place on waiting list
-     * Anything on the list when DOMWindowCreated is fired ends up as part of that id
-     */
-    requests.clearWaitingList();
-    requests.addOrUpdateWaitingList(entry);
-
+    // Initial HTTP load doesn't have an associated innerId, wait until DOMWindowCreated fires and then copy
+    requests.setWaiting(entry);
     updateUI();
 };
 
 var onHttpLoadMessage = function (message) {
     var entry = message.data.entry, id = message.data.id;
-    log("got http-load, id: " + id + ", host: " + entry.host + ", address: " + entry.ip.address + ", family: " + entry.ip.family, 1);
-
-    log(requests.printCache(), 1);
-    requests.update(entry, id);
-
+    requests.update(id, entry);
     updateUI();
 };
 
@@ -55,7 +31,7 @@ var onUpdateUIMessage = function () {
 };
 
 var updateUI = function () {
-    sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(requests.get(currentTopId)));
+    sendAsyncMessage("sixornot@baldock.me:update-ui", JSON.stringify(requests.getCurrent()));
 };
 
 /* Event handling */
@@ -72,11 +48,7 @@ var onDOMWindowCreated = function (evt) {
     var hostname = win.location.hostname;
     var loc = win.location.href;
 
-    //log("DOMWindowCreated, innerId: " + innerId + ", topId: " + topId + ", hostname: '" + hostname + "', protocol: '" + protocol + "', location: '" + evt.originalTarget.defaultView.location + "'", 1);
-
     if (innerId === topId) {
-        currentTopId = topId;
-
         var entry = cacheEntry.create();
 
         if (protocol === "file:") {
@@ -88,9 +60,8 @@ var onDOMWindowCreated = function (evt) {
         } else if (hostname) {
             entry.host = hostname;
         }
-        requests.addOrUpdateWaitingList(entry);
 
-        requests.createFromWaitingList(entry.host, currentTopId);
+        requests.setCurrent(topId, entry);
     } else {
         requests.deOrphan(innerId, topId);
     }
@@ -121,8 +92,6 @@ var onUnload = function () {
     removeMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
     removeMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
     requests = null; // TODO requestcache clear all method?
-    log = null;
-    _log = null;
 };
 
 /* Listen and observe */
@@ -134,6 +103,5 @@ addMessageListener("sixornot@baldock.me:http-initial-load", onHttpInitialLoadMes
 addMessageListener("sixornot@baldock.me:http-load", onHttpLoadMessage);
 addMessageListener("sixornot@baldock.me:update-ui", onUpdateUIMessage);
 
-log("content script loaded", 2);
-sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {id: contentScriptId});
+sendAsyncMessage("sixornot@baldock.me:content-script-loaded", {});
 

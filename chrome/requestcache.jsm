@@ -49,24 +49,30 @@ var cacheEntry = {
 /*
  * Contains two lists:
  * cache - All requests which have been made for webpages which are still in history
- * waitinglist - Requests which have yet to have an innerWindow ID assigned
+ * waiting - When new initial window created, http-load occurs before we have a window ID
  */
 var createRequestCache = function () {
-    var createCacheEntry = function (mainhost, id) {
+    var cache = {};
+    var waiting = null;
+    var currentId = 0;
+
+    var createCacheEntry = function (id, mainhost) {
         return {
+            id: id,
             main: mainhost,
             entries: [],
-            innerId: id,
             parentId: null
         };
     };
-    var cache = {};
-    var waitinglist = [];
+
+    var createOrphan = function (id) {
+        cache[id] = createCacheEntry(id, "ORPHAN");
+    };
 
     return {
         deOrphan: function (id, parentId) {
             if (!cache.hasOwnProperty(id)) {
-                this.createOrphan(id);
+                createOrphan(id);
             } else if (cache[id].main !== "ORPHAN") {
                 return;
             }
@@ -76,31 +82,16 @@ var createRequestCache = function () {
             cache[id].main = "CHILD";
             cache[id].parentId = parentId;
             cache[id].entries.splice(0, Number.MAX_VALUE).forEach(function (item) {
-                this.update(item, parentId);
+                this.update(parentId, item);
             }, this);
-        },
-
-        createFromWaitingList: function (mainhost, id) {
-            if (!cache.hasOwnProperty(id)) {
-                cache[id] = createCacheEntry(mainhost, id);
-            }
-
-            // Move anything currently on waiting list into new cache entry
-            waitinglist.splice(0, Number.MAX_VALUE).forEach(function (item) {
-                this.update(item, id);
-            }, this);
-        },
-
-        createOrphan: function (id) {
-            cache[id] = createCacheEntry("ORPHAN", id);
         },
 
         // Update a cache entry, to add entries etc.
-        update: function (entry, id) {
+        update: function (id, entry) {
             if (!cache.hasOwnProperty(id)) {
                 // HTTP load can happen before DOMWindowCreated, so we don't have an id
                 // these are typically going to be orphans
-                this.createOrphan(id);
+                createOrphan(id);
             }
             if (cache[id].parentId) {
                 id = cache[id].parentId;
@@ -115,12 +106,9 @@ var createRequestCache = function () {
             }
         },
 
-        get: function (id) {
-            if (cache.hasOwnProperty(id)) {
-                if (cache[id].parentId) {
-                    return cache[cache[id].parentId];
-                }
-                return cache[id];
+        getCurrent: function () {
+            if (cache.hasOwnProperty(currentId)) {
+                return cache[currentId];
             }
             return null;
         },
@@ -131,21 +119,22 @@ var createRequestCache = function () {
             }
         },
 
-        clearWaitingList: function () {
-            waitinglist = [];
-        },
-
-        addOrUpdateWaitingList: function (entry) {
-            if (!waitinglist.some(function (item) {
-                if (item.host === entry.host) { // Update
-                    cacheEntry.update(item, entry);
-                    return true;
-                }
-            })) { // Add new
-                waitinglist.push(entry);
+        setCurrent: function (id, entry) {
+            currentId = id;
+            if (!cache.hasOwnProperty(id)) {
+                cache[id] = createCacheEntry(id, entry.host);
+            }
+            if (waiting) {
+                // waiting should contain IP info etc. for initial request
+                // TODO - may be good to check host matches
+                this.update(id, waiting);
+                waiting = null;
             }
         },
 
+        setWaiting: function (entry) {
+            waiting = entry;
+        },
 
 
 
@@ -156,6 +145,7 @@ var createRequestCache = function () {
                 if (cache.hasOwnProperty(property)) {
                     out += "[" + property + ": [";
                     out += "mainHost: '" + cache[property].main + "', ";
+                    out += "parentId: '" + cache[property].parentId + "', ";
                     out += "entries: [";
                     cache[property].entries.forEach(function (item) {
                         out += "['";
@@ -167,15 +157,6 @@ var createRequestCache = function () {
             }
             return out;
         },
-        printWaitingList: function () {
-            var out = "waitinglist is:\n";
-            waitinglist.forEach(function (item) {
-                out += "[";
-                out += item.host;
-                out += "],";
-            });
-            return out;
-        }
     };
 };
 

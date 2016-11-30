@@ -530,7 +530,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
 };
 
 var createRemoteAnchor = function (doc, parentElement) {
-    var model = { innerId: 0 };
+    var model = { id: 0 };
     var entries = [];
 
     var titleRemote = doc.createElement("label");
@@ -561,8 +561,8 @@ var createRemoteAnchor = function (doc, parentElement) {
             entries = [];
         },
         updateModel: function (newModel) {
-            if (model.innerId !== newModel.innerId) {
-                // If model.innerId does not match, regenerate from scratch
+            if (model.id !== newModel.id) {
+                // If model.id does not match, regenerate from scratch
                 this.removeAllEntries();
             }
             model = newModel;
