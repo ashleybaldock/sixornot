@@ -2,7 +2,7 @@
  * Copyright 2014-2016 Ashley Baldock. All Rights Reserved.
  */
 
-/*global log, unload */
+/*global unload */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/logger.jsm");
 Components.utils.import("chrome://sixornot/content/windowwatcher.jsm");
