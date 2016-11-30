@@ -18,7 +18,7 @@ cp icon64.png ../dist/$version/src/
 
 mkdir ../dist/$version/src/chrome
 cp chrome/addressbaricon.jsm ../dist/$version/src/chrome/
-cp chrome/content.js ../dist/$version/src/chrome/
+cp chrome/sixornot-content.js ../dist/$version/src/chrome/
 cp chrome/dns.jsm ../dist/$version/src/chrome/
 cp chrome/gui.jsm ../dist/$version/src/chrome/
 cp chrome/ipaddress.jsm ../dist/$version/src/chrome/
