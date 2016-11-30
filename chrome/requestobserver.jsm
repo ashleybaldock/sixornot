@@ -10,7 +10,7 @@ Components.utils.import("chrome://sixornot/content/requestcache.jsm");
 /* exported httpRequestObserver */
 var EXPORTED_SYMBOLS = ["httpRequestObserver"];
 
-var onExamineResponse = function(subject, topic) {
+var examineResponse = function(subject, topic) {
     var httpChannel, httpChannelInternal, proxyChannel,
         notificationCallbacks, loadContext, topFrameMM, id;
 
@@ -23,7 +23,6 @@ var onExamineResponse = function(subject, topic) {
             notificationCallbacks = httpChannel.loadGroup.notificationCallbacks;
         }
         if (!notificationCallbacks) {
-            log("httpRequestObserver: Unable to determine notificationCallbacks for this httpChannel", 1);
             return;
         }
     }
@@ -54,7 +53,6 @@ var onExamineResponse = function(subject, topic) {
             log("httpRequestObserver - http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 1);
         }
     } else {
-        log("httpRequestObserver - (probably cache hit) NOT http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 2);
         entry.ip.family = 2;
     }
 
@@ -91,12 +89,10 @@ var onExamineResponse = function(subject, topic) {
         }
     }
 
-    log("httpRequestObserver: sending: " + JSON.stringify(entry), 1);
-
     if (httpChannel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
         topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", entry);
     } else {
-        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", {'entry': entry, 'id': id});
+        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", {"entry": entry, "id": id});
     }
 };
 
@@ -110,7 +106,7 @@ var httpRequestObserver = {
         if (topic === "http-on-examine-response"
          || topic === "http-on-examine-cached-response"
          || topic === "http-on-examine-merged-response") {
-            onExamineResponse(subject, topic);
+            examineResponse(subject, topic);
         }
     },
 

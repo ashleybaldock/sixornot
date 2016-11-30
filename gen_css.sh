@@ -3,19 +3,14 @@
 # Generate the imagesrc.jsm file containing image data for use by addon
 
 outfile_base="chrome/css/base.css" # For all browsers
-outfile_large="chrome/css/large.css" # For linux and SeaMonkey
 outfile_cust="chrome/css/customize.css" # Customize panel on SeaMonkey + Firefox Australis
 
 icon_file32_colour="./images/sixornot_icon_32.png"
 icon_file32_grey="./images/sixornot_icon_32_grey.png"
 icon_file16_colour="./images/colour/16/6only.png"
 icon_file16_grey="./images/grey/16/6only.png"
-icon_file24_colour="./images/colour/24/6only.png"
-icon_file24_grey="./images/grey/24/6only.png"
 imagedir16_colour="./images/colour/16/*.png"
 imagedir16_grey="./images/grey/16/*.png"
-imagedir24_colour="./images/colour/24/*.png"
-imagedir24_grey="./images/grey/24/*.png"
 
 
 # Base icons and rules for all browsers
@@ -65,45 +60,6 @@ do
 done
 
 cat >> $outfile_base <<END_OF_FILE
-}
-END_OF_FILE
-
-# Large icons for FF pre-29 Linux & SeaMonkey
-
-echo "gen_css.sh - Generating $outfile_large"
-cat > $outfile_large <<END_OF_FILE
-/* This file is generated automatically by gen_css.sh */
-
-@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
-
-@-moz-document url("chrome://browser/content/browser.xul"),
-               url("chrome://navigator/content/navigator.xul") {
-
-/* Large icons used for Linux (pre-FF 29) and SeaMonkey */
-
-END_OF_FILE
-
-for file in $imagedir24_colour
-do
-    if test -f "$file" 
-    then
-        b64=`base64 $file`
-        filename=`basename $file`
-        echo "    toolbox[iconsize=\"large\"] #sixornot-button.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_large
-    fi
-done
-
-for file in $imagedir24_grey
-do
-    if test -f "$file" 
-    then
-        b64=`base64 $file`
-        filename=`basename $file`
-        echo "    toolbox[iconsize=\"large\"] #sixornot-button.sixornot_grey.sixornot_${filename%\.*} { list-style-image: url(\"data:image/png;base64,$b64\") !important; }" >> $outfile_large
-    fi
-done
-
-cat >> $outfile_large <<END_OF_FILE
 }
 END_OF_FILE
 

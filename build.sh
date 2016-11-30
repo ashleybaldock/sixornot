@@ -43,7 +43,6 @@ cp chrome/ctypes/winnt.js ../dist/$version/src/chrome/ctypes/
 mkdir ../dist/$version/src/chrome/css
 ./gen_css.sh
 cp chrome/css/base.css ../dist/$version/src/chrome/css/
-cp chrome/css/large.css ../dist/$version/src/chrome/css/ # legacy
 cp chrome/css/customize.css ../dist/$version/src/chrome/css/
 
 # Copy locale(s)

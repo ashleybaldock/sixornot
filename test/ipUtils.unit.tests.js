@@ -28,7 +28,7 @@ function include(path) {
     vm.runInThisContext(code, path);
 }
 
-include("chrome/dns.jsm");
+include("chrome/ipaddress.jsm");
 
 suite("ipUtils", function () {
     suite("typeof_ip6", function () {
@@ -42,15 +42,15 @@ suite("ipUtils", function () {
             {args: ["2002::1"], expected: "6to4"},
             {args: ["2001:0000::1"], expected: "teredo"},
             {args: ["2001:8b1:1fe4:1::2222"], expected: "global"},
-            {args: ["192.168.2.1"], expected: false},
-            {args: ["blah"], expected: false},
-            {args: [":"], expected: false},
-            {args: ["..."], expected: false}
+            {args: ["blah"], expected: undefined},
+            {args: [":"], expected: undefined},
+            {args: ["..."], expected: undefined}
         ];
 
         tests.forEach(function(testcase) {
             test("input: " + testcase.args[0] + ", expected: " + testcase.expected, function () {
-                expect(ipUtils.typeof_ip6(testcase.args[0])).to.be(testcase.expected);
+                var a = createIPAddress(testcase.args[0]);
+                expect(a.type).to.be(testcase.expected);
             });
         });
     });
@@ -65,34 +65,37 @@ suite("ipUtils", function () {
             {args: ["2:0::1:2"], expected: "0002:0000:0000:0000:0000:0000:0001:0002"},
             {args: ["2001:8b1:1fe4:1::2222"], expected: "2001:08b1:1fe4:0001:0000:0000:0000:2222"},
             {args: ["2001:08b1:1fe4:0001:0000:0000:0000:2222"], expected: "2001:08b1:1fe4:0001:0000:0000:0000:2222"},
+            {args: ["ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"], expected: "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"},
             {args: ["fe80::fa1e:dfff:fee8:db18%en1"], expected: "fe80:0000:0000:0000:fa1e:dfff:fee8:db18"}
         ];
 
         tests.forEach(function(testcase) {
             test("input: " + testcase.args[0] + ", expected: " + testcase.expected, function () {
-                expect(ipUtils.normalise_ip6(testcase.args[0])).to.be(testcase.expected);
+                var a = createIPAddress(testcase.args[0]);
+                expect(a.normalised).to.be(testcase.expected);
             });
         });
     });
 
     suite("is_ip6", function () {
         var tests = [
-            {args: ["::"], expected: true},
-            {args: ["::1"], expected: true},
-            {args: ["fc00::"], expected: true},
-            {args: ["ff00:1234:5678:9abc:def0:d:ee:fff"], expected: true},
-            {args: ["2:0::1:2"], expected: true},
-            {args: ["2001:08b1:1fe4:0001:0000:0000:0000:2222"], expected: true},
-            {args: ["192.168.2.1"], expected: false},
-            {args: ["blah"], expected: false},
-            {args: [":::"], expected: false},
-            {args: [":"], expected: false},
-            {args: ["1::2::3"], expected: false}
+            {args: ["::"], expected: 6},
+            {args: ["::1"], expected: 6},
+            {args: ["fc00::"], expected: 6},
+            {args: ["ff00:1234:5678:9abc:def0:d:ee:fff"], expected: 6},
+            {args: ["2:0::1:2"], expected: 6},
+            {args: ["2001:08b1:1fe4:0001:0000:0000:0000:2222"], expected: 6},
+            {args: ["192.168.2.1"], expected: 4},
+            {args: ["blah"], expected: 0},
+            {args: [":::"], expected: 0},
+            {args: [":"], expected: 0},
+            {args: ["1::2::3"], expected: 0}
         ];
 
         tests.forEach(function(testcase) {
             test("input: " + testcase.args[0] + ", expected: " + testcase.expected, function () {
-                expect(ipUtils.is_ip6(testcase.args[0])).to.be(testcase.expected);
+                var a = createIPAddress(testcase.args[0]);
+                expect(a.family).to.be(testcase.expected);
             });
         });
     });

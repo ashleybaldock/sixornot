@@ -47,8 +47,7 @@ var cacheEntry = {
 };
 
 /*
- * Contains two lists:
- * cache - All requests which have been made for webpages which are still in history
+ * cache - requests which have been made for webpages which are still in history
  * waiting - When new initial window created, http-load occurs before we have a window ID
  */
 var createRequestCache = function () {
@@ -156,7 +155,7 @@ var createRequestCache = function () {
                 }
             }
             return out;
-        },
+        }
     };
 };
 
