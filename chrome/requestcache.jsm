@@ -24,7 +24,7 @@ var cacheEntry = {
                 isUntrusted: false,
                 shortSecurityDescription: "",
                 errorMessage: "",
-                securityState: 0    // TODO make this into flags
+                securityState: 0
             },
             proxy: {
                 host: null,
@@ -85,7 +85,6 @@ var createRequestCache = function () {
             }, this);
         },
 
-        // Update a cache entry, to add entries etc.
         update: function (id, entry) {
             if (!cache.hasOwnProperty(id)) {
                 // HTTP load can happen before DOMWindowCreated, so we don't have an id
@@ -125,37 +124,16 @@ var createRequestCache = function () {
                 this.update(id, entry);
             }
             if (waiting) {
-                // waiting should contain IP info etc. for initial request
-                // TODO - may be good to check host matches
-                this.update(id, waiting);
+                if (cache[id].main === waiting.host) {
+                    // Update with info from initial request held in waiting
+                    this.update(id, waiting);
+                }
                 waiting = null;
             }
         },
 
         setWaiting: function (entry) {
             waiting = entry;
-        },
-
-
-
-        /* debug methods */
-        printCache: function () {
-            var out = "cache is:\n";
-            for (var property in cache) {
-                if (cache.hasOwnProperty(property)) {
-                    out += "[" + property + ": [";
-                    out += "mainHost: '" + cache[property].main + "', ";
-                    out += "parentId: '" + cache[property].parentId + "', ";
-                    out += "entries: [";
-                    cache[property].entries.forEach(function (item) {
-                        out += "['";
-                        out += item.host;
-                        out += "'] ";
-                    });
-                    out += "]]],\n";
-                }
-            }
-            return out;
         }
     };
 };
