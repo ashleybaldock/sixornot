@@ -4,6 +4,8 @@
 
 Bugfix
 - Fix bugs with tracking window IDs
+Remove legacy code
+Fix some tests
 
 
 #2.1
