@@ -122,6 +122,7 @@ var createRequestCache = function () {
             currentId = id;
             if (!cache.hasOwnProperty(id)) {
                 cache[id] = createCacheEntry(id, entry.host);
+                this.update(id, entry);
             }
             if (waiting) {
                 // waiting should contain IP info etc. for initial request
