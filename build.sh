@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script builds the SixOrNot addon ready for distribution
-version="2.0.0"
+version="2.0.1"
 
 # Create build directory by version
 mkdir ../dist/$version
@@ -18,7 +18,7 @@ cp icon64.png ../dist/$version/src/
 
 mkdir ../dist/$version/src/chrome
 cp chrome/addressbaricon.jsm ../dist/$version/src/chrome/
-cp chrome/content.js ../dist/$version/src/chrome/
+cp chrome/sixornot-content.js ../dist/$version/src/chrome/
 cp chrome/dns.jsm ../dist/$version/src/chrome/
 cp chrome/gui.jsm ../dist/$version/src/chrome/
 cp chrome/ipaddress.jsm ../dist/$version/src/chrome/
@@ -43,7 +43,6 @@ cp chrome/ctypes/winnt.js ../dist/$version/src/chrome/ctypes/
 mkdir ../dist/$version/src/chrome/css
 ./gen_css.sh
 cp chrome/css/base.css ../dist/$version/src/chrome/css/
-cp chrome/css/large.css ../dist/$version/src/chrome/css/ # legacy
 cp chrome/css/customize.css ../dist/$version/src/chrome/css/
 
 # Copy locale(s)

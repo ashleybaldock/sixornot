@@ -2,10 +2,9 @@
  * Copyright 2014-2016 Ashley Baldock. All Rights Reserved.
  */
 
-/*global CustomizableUI, gt, log, stylesheet, createAddressBarIcon, createWidget */
+/*global CustomizableUI, gt, stylesheet, createAddressBarIcon, createWidget */
 Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("resource:///modules/CustomizableUI.jsm");
-Components.utils.import("chrome://sixornot/content/logger.jsm");
 Components.utils.import("chrome://sixornot/content/locale.jsm");
 Components.utils.import("chrome://sixornot/content/stylesheet.jsm");
 Components.utils.import("chrome://sixornot/content/widget.jsm");
@@ -35,14 +34,12 @@ var createButton = function () {
 var ui = {
     /* Call once at addon startup */
     setup: function () {
-        log("ui.setup", 1);
         CustomizableUI.createWidget(createButton());
     },
     /* Call once for each window of the browser */
     insert: function (win) {
         // Don't insert into windows that already have UI
         if (win.document.getElementById(ADDRESSBAR_ICON_ID)) {
-            log("ui.insert: skipping window - UI already exists", 1);
             return;
         }
 
@@ -54,7 +51,6 @@ var ui = {
         createAddressBarIcon(win, ADDRESSBAR_ICON_ID);
     },
     teardown: function () { // TODO replace with global unload() callback?
-        log("ui.teardown", 1);
         CustomizableUI.destroyWidget(BUTTON_ID);
     }
 };

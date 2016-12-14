@@ -24,7 +24,6 @@ var callbacks = {
 
     // Index this.callback_ids and return required callback
     find_by_id: function (callback_id) {
-        log("callbacks.find_by_id - callback_id: " + callback_id, 3);
         // Returns -1 if ID not found
         return this.callback_ids.map(function (a) {
             return a[0];
@@ -35,12 +34,10 @@ var callbacks = {
         var i;
         i = this.find_by_id(callback_id);
         if (i !== -1) {
-            log("callbacks.remove - found and removed callback_id: " + callback_id, 3);
             // Return the callback function
             return this.callback_ids.splice(i, 1)[0][1];
         }
         // If ID not found, return false
-        log("callbacks.remove - could not find callback_id: " + callback_id, 3);
         return false;
     },
 
@@ -48,15 +45,12 @@ var callbacks = {
         // Use next available callback ID, return that ID
         this.next_id = this.next_id + 1;
         this.callback_ids.push([this.next_id, callback]);
-        log("callbacks.add - added new callback with id: " + this.next_id, 3);
         return this.next_id;
     },
 
     make_cancel_obj: function (callback_id) {
-        log("dnsResolver:make_cancel_obj - callback_id: " + callback_id, 3);
         return {
             cancel : function () {
-                log("cancel_obj - cancelling callback_id: " + callback_id, 3);
                 // Remove ID from callback_ids if it exists there
                 callbacks.remove(callback_id);
             }

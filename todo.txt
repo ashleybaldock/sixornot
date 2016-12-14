@@ -1,61 +1,11 @@
 # TODO
 
+# 2.0.1
 
-# 2.0.0
-E10S support                                                                - DONE
-Use Services.jsm in place of Components.classes.getService where possible   - DONE
- - https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/Services.jsm
-Replace env.jsm with Services.jsm.appinfo                                   - DONE
-Refactor requestcache/requestobserver                                       - DONE
- - Accessor methods for cache/waitinglist                                   - DONE
- - Move methods to destroy entries into requests object                     - DONE
- - Abstract implementation of cache - maybe change from an array            - DONE
-Optimise panel + other code                                                 - DONE
- - Avoid adding entries to panel until they are displayed                   - DONE
- - Refactor UI to split out legacy components & freeze                      - DONE
- - Refactor locale handling code to use built-in functionality              - DONE
- - Removed overridelocale setting                                           - DONE
-Add observer for http-on-examine-merged-response                            - DONE
-Update documentation                                                        - DONE
- - document proxy support                                                   - DONE
- - document SSL support                                                     - DONE
- - integrate documentation into addon instead of online                     - DONE
- - remove references to overridelocale                                      - DONE
-optimise memory usage (don't use a chromeworker per tab)                    - DONE
-unload for content script                                                   - DONE
-Handle resource:// URLs better (displays E at present)                      - DONE
-Proxy detection + info                                                      - DONE
-Add better proxy detection (per-connection) and icon display                - DONE
-Disable native DNS resolution for proxied connections                       - DONE
- - if it's an http/https proxy                                              - DONE
-    - show proxy icon in toolbar/host info for http/https proxy hosts       - DONE
-    - show address in brackets for http/https proxied connections           - DONE
- - if it's a socks proxy and has resolve via DNS set                        - DONE
-Show icon in panel against proxied hosts                                    - DONE
- - Proxy information on mouseover                                           - DONE
-Show coloured proxy icon if DNS lookups disabled                            - DONE
-eslint validation                                                           - DONE
-SSL information for connections                                             - DONE
- - Show padlock icon for each host                                          - DONE
-observe showallips preference and update panel                              - DONE
- - fix local address display on expand                                      - DONE
- - on toggle show all update copytext for host                              - DONE
-split MM from widget/panel into object for code reuse                       - DONE
-disable seamonkey/pre-australis compat (pending testing in 2.1)             - DONE
-Change resource:// URLs to chrome://                                        - DONE
-create IPAddress type and use it to unify ipv4s/ipv6s arrays                - DONE
- - update output format of the firefox resolver to use new object           - DONE
- - change format of requestcache entry's IP address to match                - DONE
- - unify entity used for request cache with that produced by httpobserver   - DONE
- - test firefox resolver for remote/local addresses                         - DONE
-check logging levels (check for level zero)                                 - DONE
-test unload/load works                                                      - DONE
-Refactor DNS                                                                - DONE
- - move unit tests out to proper unit testing system                        - DONE
- - move ip utility functions into own object                                - DONE
-
-test on FF 38
-
+Bugfix
+- Fix bugs with tracking window IDs
+Remove legacy code
+Fix some tests
 
 
 #2.1
@@ -67,10 +17,6 @@ Testing
  - tests for requestcache behaviour
  - Unit testing for IP related methods
 investigate channelIsForDownload on nsIHttpChannelInternal
-test on legacy platforms
- - SeaMonkey                                            - Seems working
- - FF ESR
-    - Test legacy UI
 Optimisations
  - Avoid lengthy IP type/ordering calls
 
@@ -83,9 +29,9 @@ NAT64 prefixes
 Warnings for ip6_disabled and ip4only_domain
  - ip4only_domain should show a badge next to affected domains
     - permit toggling whether a domain is on the ip4 only list or not
+    - configuration interface in settings to access list of ip4only_domains
  - ip6_disabled should show a warning on the panel
     - maybe tint the entire panel red?
-
 
 SSL information for connections
  (- Show yellow icon for mixed-mode connections)
@@ -139,6 +85,59 @@ More info about IP address types, e.g. link-local, global etc.
 
 
 # Done
+
+# 2.0.0
+E10S support                                                                - DONE
+Use Services.jsm in place of Components.classes.getService where possible   - DONE
+ - https://developer.mozilla.org/en-US/docs/Mozilla/JavaScript_code_modules/Services.jsm
+Replace env.jsm with Services.jsm.appinfo                                   - DONE
+Refactor requestcache/requestobserver                                       - DONE
+ - Accessor methods for cache/waitinglist                                   - DONE
+ - Move methods to destroy entries into requests object                     - DONE
+ - Abstract implementation of cache - maybe change from an array            - DONE
+Optimise panel + other code                                                 - DONE
+ - Avoid adding entries to panel until they are displayed                   - DONE
+ - Refactor UI to split out legacy components & freeze                      - DONE
+ - Refactor locale handling code to use built-in functionality              - DONE
+ - Removed overridelocale setting                                           - DONE
+Add observer for http-on-examine-merged-response                            - DONE
+Update documentation                                                        - DONE
+ - document proxy support                                                   - DONE
+ - document SSL support                                                     - DONE
+ - integrate documentation into addon instead of online                     - DONE
+ - remove references to overridelocale                                      - DONE
+optimise memory usage (don't use a chromeworker per tab)                    - DONE
+unload for content script                                                   - DONE
+Handle resource:// URLs better (displays E at present)                      - DONE
+Proxy detection + info                                                      - DONE
+Add better proxy detection (per-connection) and icon display                - DONE
+Disable native DNS resolution for proxied connections                       - DONE
+ - if it's an http/https proxy                                              - DONE
+    - show proxy icon in toolbar/host info for http/https proxy hosts       - DONE
+    - show address in brackets for http/https proxied connections           - DONE
+ - if it's a socks proxy and has resolve via DNS set                        - DONE
+Show icon in panel against proxied hosts                                    - DONE
+ - Proxy information on mouseover                                           - DONE
+Show coloured proxy icon if DNS lookups disabled                            - DONE
+eslint validation                                                           - DONE
+SSL information for connections                                             - DONE
+ - Show padlock icon for each host                                          - DONE
+observe showallips preference and update panel                              - DONE
+ - fix local address display on expand                                      - DONE
+ - on toggle show all update copytext for host                              - DONE
+split MM from widget/panel into object for code reuse                       - DONE
+disable seamonkey/pre-australis compat (pending testing in 2.1)             - DONE
+Change resource:// URLs to chrome://                                        - DONE
+create IPAddress type and use it to unify ipv4s/ipv6s arrays                - DONE
+ - update output format of the firefox resolver to use new object           - DONE
+ - change format of requestcache entry's IP address to match                - DONE
+ - unify entity used for request cache with that produced by httpobserver   - DONE
+ - test firefox resolver for remote/local addresses                         - DONE
+check logging levels (check for level zero)                                 - DONE
+test unload/load works                                                      - DONE
+Refactor DNS                                                                - DONE
+ - move unit tests out to proper unit testing system                        - DONE
+ - move ip utility functions into own object                                - DONE
 
 # 1.0.0/0.8.3
 Release to get out of beta...

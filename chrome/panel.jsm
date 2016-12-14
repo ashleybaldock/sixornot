@@ -2,9 +2,8 @@
  * Copyright 2015-2016 Ashley Baldock. All Rights Reserved.
  */
 
-/* global log, gt, ipUtils, dnsResolver, util, getMessanger, unload, prefs, createLocalAddressInfo */
+/* global gt, ipUtils, dnsResolver, util, getMessanger, unload, prefs, createLocalAddressInfo */
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("chrome://sixornot/content/logger.jsm");
 Components.utils.import("chrome://sixornot/content/utility.jsm");
 Components.utils.import("chrome://sixornot/content/locale.jsm");
 Components.utils.import("chrome://sixornot/content/prefs.jsm");
@@ -37,14 +36,12 @@ var createPanel = function (win, panelId) {
     };
 
     var onPopupShowing = function () {
-        log("panel:onPopupShowing", 2);
         messanger.subscribeToCurrentBrowser();
         messanger.requestUpdate();
         localAnchor.panelShowing();
     };
 
     var onPopupHiding = function () {
-        log("panel:onPopupHiding", 2);
         messanger.unsubscribe();
         localAnchor.panelHiding();
     };
@@ -139,7 +136,6 @@ var createPanel = function (win, panelId) {
     panel.addEventListener("popuphiding", onPopupHiding, false);
 
     unload(function () {
-        log("Unload panel", 2);
         messanger.shutdown();
         panel.removeEventListener("popupshowing", onPopupShowing, false);
         panel.removeEventListener("popuphiding", onPopupHiding, false);
@@ -490,7 +486,6 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             } else {
                 ips = [];
             }
-            log("remoteListingRow dns complete callback, ips: " + ips, 1);
             hostname.update(host, mainhost, ips);
             icon.update(host, ips);
             ipAddresses.update(host, ips);
@@ -530,7 +525,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
 };
 
 var createRemoteAnchor = function (doc, parentElement) {
-    var model = { innerId: 0 };
+    var model = { id: 0 };
     var entries = [];
 
     var titleRemote = doc.createElement("label");
@@ -550,7 +545,6 @@ var createRemoteAnchor = function (doc, parentElement) {
             this.removeAllEntries();
         },
         removeAllEntries: function () {
-            log("remoteAnchor:removeAllEntries", 2);
             entries.forEach(function (item) {
                 try {
                     item.remove();
@@ -561,8 +555,8 @@ var createRemoteAnchor = function (doc, parentElement) {
             entries = [];
         },
         updateModel: function (newModel) {
-            if (model.innerId !== newModel.innerId) {
-                // If model.innerId does not match, regenerate from scratch
+            if (model.id !== newModel.id) {
+                // If model.id does not match, regenerate from scratch
                 this.removeAllEntries();
             }
             model = newModel;
@@ -767,7 +761,6 @@ var createLocalAnchor = function (doc, parentElement) {
             }
         },
         removeAllEntries: function () {
-            log("localAnchor:removeAllEntries", 2);
             entries.forEach(function (item) {
                 try {
                     item.remove();

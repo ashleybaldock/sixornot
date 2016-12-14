@@ -33,7 +33,7 @@ var startup = function (aData) {
     /* Load callback for when our addon finishes loading */
     AddonManager.getAddonByID(aData.id, function () {
         /* Inject content script into all existing and subsequently created windows */
-        Services.mm.loadFrameScript("chrome://sixornot/content/content.js", true);
+        Services.mm.loadFrameScript("chrome://sixornot/content/sixornot-content.js", true);
 
         /* Load into existing windows and set callback to load into any new ones too */
         watchWindows(ui.insert);
@@ -52,7 +52,7 @@ var shutdown = function (aData, aReason) {
         httpRequestObserver.unregister();
 
         /* Stop loading our content script into new windows */
-        Services.mm.removeDelayedFrameScript("chrome://sixornot/content/content.js");
+        Services.mm.removeDelayedFrameScript("chrome://sixornot/content/sixornot-content.js");
         /* Disable and clean up existing content scripts (note: there isn't yet a way
          * to remove these entirely, the best we can do is clean up */
         Services.mm.broadcastAsyncMessage("sixornot@baldock.me:unload");

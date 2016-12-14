@@ -24,7 +24,7 @@ var cacheEntry = {
                 isUntrusted: false,
                 shortSecurityDescription: "",
                 errorMessage: "",
-                securityState: 0    // TODO make this into flags
+                securityState: 0
             },
             proxy: {
                 host: null,
@@ -47,37 +47,52 @@ var cacheEntry = {
 };
 
 /*
- * Contains two lists:
- * cache - All requests which have been made for webpages which are still in history
- * waitinglist - Requests which have yet to have an innerWindow ID assigned
+ * cache - requests which have been made for webpages which are still in history
+ * waiting - When new initial window created, http-load occurs before we have a window ID
  */
 var createRequestCache = function () {
-    var createCacheEntry = function (mainhost, id) {
+    var cache = {};
+    var waiting = null;
+    var currentId = 0;
+
+    var createCacheEntry = function (id, mainhost) {
         return {
+            id: id,
             main: mainhost,
             entries: [],
-            innerId: id
+            parentId: null
         };
     };
-    var cache = {};
-    var waitinglist = [];
+
+    var createOrphan = function (id) {
+        cache[id] = createCacheEntry(id, "ORPHAN");
+    };
 
     return {
-        createOrExtendCacheEntry: function (mainhost, id) {
+        deOrphan: function (id, parentId) {
             if (!cache.hasOwnProperty(id)) {
-                cache[id] = createCacheEntry(mainhost, id);
+                createOrphan(id);
+            } else if (cache[id].main !== "ORPHAN") {
+                return;
             }
-
-            // Move anything currently on waiting list into new cache entry
-            waitinglist.splice(0, Number.MAX_VALUE).forEach(function (item) {
-                this.addOrUpdate(item, id);
+            // Move anything associated with the orphan Id into the parent Id
+            // Leave behind an orphan link so that parent Id can be found
+            // Subsequent updates to orphan's entries update parent
+            cache[id].main = "CHILD";
+            cache[id].parentId = parentId;
+            cache[id].entries.splice(0, Number.MAX_VALUE).forEach(function (item) {
+                this.update(parentId, item);
             }, this);
         },
 
-        addOrUpdate: function (entry, id) {
+        update: function (id, entry) {
             if (!cache.hasOwnProperty(id)) {
-                // HTTP load without associated DOMWindowCreated/HTTP initial load
-                this.createOrExtendCacheEntry("", id);
+                // HTTP load can happen before DOMWindowCreated, so we don't have an id
+                // these are typically going to be orphans
+                createOrphan(id);
+            }
+            if (cache[id].parentId) {
+                id = cache[id].parentId;
             }
             if (!cache[id].entries.some(function (item) {
                 if (item.host === entry.host) { // Update
@@ -89,9 +104,9 @@ var createRequestCache = function () {
             }
         },
 
-        get: function (id) {
-            if (cache.hasOwnProperty(id)) {
-                return cache[id];
+        getCurrent: function () {
+            if (cache.hasOwnProperty(currentId)) {
+                return cache[currentId];
             }
             return null;
         },
@@ -102,43 +117,23 @@ var createRequestCache = function () {
             }
         },
 
-        addOrUpdateToWaitingList: function (entry) {
-            if (!waitinglist.some(function (item) {
-                if (item.host === entry.host) { // Update
-                    cacheEntry.update(item, entry);
-                    return true;
+        setCurrent: function (id, entry) {
+            currentId = id;
+            if (!cache.hasOwnProperty(id)) {
+                cache[id] = createCacheEntry(id, entry.host);
+                this.update(id, entry);
+            }
+            if (waiting) {
+                if (cache[id].main === waiting.host) {
+                    // Update with info from initial request held in waiting
+                    this.update(id, waiting);
                 }
-            })) { // Add new
-                waitinglist.push(entry);
+                waiting = null;
             }
         },
 
-        /* debug methods */
-        printCache: function () {
-            var out = "cache is:\n";
-            for (var property in cache) {
-                if (cache.hasOwnProperty(property)) {
-                    out += "[" + property + ": [";
-                    out += "mainHost: '" + cache[property].main + "', ";
-                    out += "entries: [";
-                    cache[property].entries.forEach(function (item) {
-                        out += "['";
-                        out += item.host;
-                        out += "'] ";
-                    });
-                    out += "]]],\n";
-                }
-            }
-            return out;
-        },
-        printWaitingList: function () {
-            var out = "waitinglist is:\n";
-            waitinglist.forEach(function (item) {
-                out += "[";
-                out += item.host;
-                out += "],";
-            });
-            return out;
+        setWaiting: function (entry) {
+            waiting = entry;
         }
     };
 };

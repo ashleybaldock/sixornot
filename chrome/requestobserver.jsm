@@ -10,38 +10,33 @@ Components.utils.import("chrome://sixornot/content/requestcache.jsm");
 /* exported httpRequestObserver */
 var EXPORTED_SYMBOLS = ["httpRequestObserver"];
 
-var onExamineResponse = function(subject, topic) {
+var examineResponse = function(subject, topic) {
     var httpChannel, httpChannelInternal, proxyChannel,
-        notificationCallbacks, loadContext, topFrameMM;
+        notificationCallbacks, loadContext, topFrameMM, id;
 
     httpChannel = subject.QueryInterface(Components.interfaces.nsIHttpChannel);
+    id = httpChannel.loadInfo.innerWindowID;
+
     notificationCallbacks = httpChannel.notificationCallbacks;
     if (!notificationCallbacks) {
         if (httpChannel.loadGroup) {
             notificationCallbacks = httpChannel.loadGroup.notificationCallbacks;
         }
-    }
-    if (!notificationCallbacks) {
-        log("httpRequestObserver: Unable to determine notificationCallbacks for this httpChannel", 1);
-        return;
+        if (!notificationCallbacks) {
+            return;
+        }
     }
 
     /* Try and locate a messageManager for the browser initiating this request */
     try {
         loadContext = notificationCallbacks.getInterface(Components.interfaces.nsILoadContext);
+        if (!loadContext.isContent) {
+            // Check for browser windows loading things like favicons and filter out
+            return;
+        }
         topFrameMM = loadContext.topFrameElement.messageManager;
     } catch (e) {
         log("httpRequestObserver: could not find messageManager for request browser - exception: " + parse_exception(e), 1);
-        return;
-    }
-
-    if (!topFrameMM || !topFrameMM.sendAsyncMessage) {
-        log("httpRequestObserver: topFrameMM was undefined for this request", 1);
-    }
-
-    // Check for browser windows loading things like favicons and filter out
-    if (!loadContext.isContent) {   // TODO does this still work?
-        log("httpRequestObserver: loadContext is not content - skipping", 1);
         return;
     }
 
@@ -58,7 +53,6 @@ var onExamineResponse = function(subject, topic) {
             log("httpRequestObserver - http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 1);
         }
     } else {
-        log("httpRequestObserver - (probably cache hit) NOT http-on-examine-response: remoteAddress was not accessible for: " + httpChannel.URI.spec, 2);
         entry.ip.family = 2;
     }
 
@@ -95,12 +89,10 @@ var onExamineResponse = function(subject, topic) {
         }
     }
 
-    log("httpRequestObserver: sending: " + JSON.stringify(entry), 1);
-
     if (httpChannel.loadFlags & Components.interfaces.nsIChannel.LOAD_INITIAL_DOCUMENT_URI) {
         topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-initial-load", entry);
     } else {
-        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", entry);
+        topFrameMM.sendAsyncMessage("sixornot@baldock.me:http-load", {"entry": entry, "id": id});
     }
 };
 
@@ -114,7 +106,7 @@ var httpRequestObserver = {
         if (topic === "http-on-examine-response"
          || topic === "http-on-examine-cached-response"
          || topic === "http-on-examine-merged-response") {
-            onExamineResponse(subject, topic);
+            examineResponse(subject, topic);
         }
     },
 
