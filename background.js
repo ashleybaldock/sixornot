@@ -40,7 +40,7 @@ var pageTracker = function () {
 
       var page = requestIds[details.requestId];
       page.update(details);
-      requestIds.delete(requestId);//TODO
+      //requestIds.delete(requestId);//TODO
     },
     newPage: function (details) {
       // Start a new page for the given tabId
