@@ -6,9 +6,54 @@
   </head>
 
 <body>
-  <div>
-    SixOrNot popup!
-  </div>
+  <script type="text/html" id="ip-template">
+    <li data-bind="text: address, click: copy, visible: visible" class="ipAddress"></li>
+  </script>
+  <script type="text/html" id="host-template">
+    <tr>
+      <td data-bind="css: statusClass" class="statusIcon"></td>
+      <td data-bind="text: formattedConnectionCount" class="connectionCount"></td>
+      <td data-bind="css: tlsClass, click: copyTLS" class="sslInfo"></td>
+      <td data-bind="css: proxyClass" class="proxyInfo"></td>
+      <td data-bind="text: hostname, click: copyAll" class="hostname"></td>
+      <td class="ipAddresses">
+        <ul>
+          <!-- ko template: { name: 'ip-template', data: mainIP } -->
+          <!-- /ko -->
+          <!-- ko template: { name: 'ip-template', foreach: additionalIPs } -->
+          <!-- /ko -->
+        </ul>
+      </td>
+      <td data-bind="text: togglerText, click: toggleIPs" class="ipToggle"></td>
+    </tr>
+  </script>
+
+  <table>
+    <tr>
+      <td colspan="7" class="header">Remote</td>
+    </tr>
+    <!-- ko template: { name: 'host-template', data: mainHost } -->
+    <!-- /ko -->
+    <!-- ko template: { name: 'host-template', foreach: remoteHosts } -->
+    <!-- /ko -->
+    <!--<tr>
+      <td colspan="7" class="header">Local</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td data-bind="text: localHostname" class="hostname"></td>
+      <td data-bind="text: localIPs" class="ipAddresses"></td>
+    </tr>-->
+    <tr>
+      <td colspan="7" class="header">
+        <a href="#" data-bind="click: openSettings">Open Settings</a> - <a href="#">Documentation</a>
+      </td>
+    </tr>
+  </table>
+
   <script src="node_modules/knockout/build/output/knockout-latest.debug.js"></script>
   <script src="node_modules/knockout-mapping/dist/knockout.mapping.js"></script>
   <script src="ko.persist.js"></script>
