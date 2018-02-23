@@ -1,0 +1,57 @@
+{
+  "manifest_version": 2,
+  "name": "SixOrNot",
+  "version": "3.0.0",
+  "author": "Ashley Baldock",
+
+  "applications": {
+    "gecko": {
+      "id": "sixornot@entropy.me.uk"
+    }
+  },
+
+  "description": "IPv6 status indicator",
+
+  "permissions": [
+    "webRequest",
+    "<all_urls>"
+  ],
+
+  "icons": {
+    "64": "icon64.png"
+  },
+
+  "page_action": {
+    "browser_style": true,
+    "default_icon": {
+      "19": "images/colour/16/other.png",
+      "38": "images/colour/32/other.png"
+    },
+    "default_title": "SixOrNot"
+  },
+
+  "browser_action": {
+    "default_icon": {
+      "16": "images/colour/16/other.png",
+      "32": "images/colour/32/other.png"
+    },
+    "default_title": "SixOrNot",
+    "default_popup": "popup.html",
+    "browser_style": true
+  },
+
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*"],
+      "js": ["content.js"]
+    }
+  ],
+
+  "options_ui": {
+      "page": "options.html"
+  }
+}
