@@ -10,6 +10,8 @@
 //
 //
 
+var wantsUpdate = false;
+var wantsNew = false;
 
 function DNSResolver (hostname) {
   // Perform DNS resolution for hostname
@@ -54,9 +56,7 @@ function Host (details) {
 
   this.hostname = url.hostname;
   this.proxyInfo = new ProxyInfo(details.proxyInfo);
-  if (details.ip || details.fromCache) {
-    this.mainIP = new IPAddress(details.ip, details.fromCache);
-  }
+  this.mainIP = new IPAddress(details.ip, details.fromCache);
   this.dnsIPs = [];
   this.connectionCount = 1;
   this.status = this.getStatus();
@@ -69,7 +69,7 @@ Host.prototype.updateFrom = function (other) {
   console.log(this.hostname);
   this.connectionCount += 1;
   this.proxyInfo = other.proxyInfo;
-  if (!this.mainIP) {
+  if (!this.mainIP || this.mainIP.type < 4) {
     this.mainIP = other.mainIP;
   }
   this.status = this.getStatus();
@@ -186,6 +186,7 @@ function Page (details) {
   }
 
   self.update = function (host) {
+    if (!host.hostname) { return; }
     // Add or update host
     if (host.hostname === self.mainHost.hostname) {
       // Update mainHost
@@ -236,6 +237,7 @@ function PageTracker () {
     if (page) {
       // Ignore requests without an associated page/preceeding onBeforeNavigate event
       page.update(host);
+      wantsUpdate = true;
     }
     //self.requestIds.delete(requestId);//TODO
   };
@@ -246,6 +248,7 @@ function PageTracker () {
     // Subsequent associate calls will use this page
     console.log(`pageTracker: onBeforeNavigate, tabId: ${details.tabId}, windowId: ${details.windowId}`);
     self.pageForTab[details.tabId] = new Page(details);
+    wantsNew = true;
   };
 
   self.removeTab = tabId => {
@@ -256,10 +259,14 @@ function PageTracker () {
 
   self.getJSON = tabId => {
     var page = self.pageForTab[tabId];
-    var send = {
-      mainHost: page.mainHost,
-      hosts: Object.values(page.hosts)
-    };
+    if (page) {
+      return {
+        mainHost: page.mainHost,
+        hosts: Object.values(page.hosts)
+      };
+    } else {
+      return {};
+    }
     return send;
   };
 
@@ -291,6 +298,7 @@ var pageTracker = new PageTracker();
 
 browser.runtime.onConnect.addListener(port => {
   console.log(`incoming connection from: ${port.name}`);
+  var timeoutId, lastTabId;
 
   function sendForTab (tabId) {
     port.postMessage({
@@ -299,10 +307,39 @@ browser.runtime.onConnect.addListener(port => {
     });
   }
 
+  function newForTab (tabId) {
+    port.postMessage({
+      action: 'new',
+      data: pageTracker.getJSON(tabId)
+    });
+  }
+
+  function updateIfNeeded () {
+    if (lastTabId) {
+      if (wantsNew) {
+        newForTab(lastTabId);
+        wantsUpdate = false;
+        wantsNew = false;
+      }
+      if (wantsUpdate) {
+        sendForTab(lastTabId);
+        wantsUpdate = false;
+      }
+    }
+    timeoutId = window.setTimeout(updateIfNeeded, 100);
+  }
+
+  updateIfNeeded();
+
+  port.onDisconnect.addListener(disconnectingPort => {
+    window.clearTimeout(timeoutId);
+  });
+
   port.onMessage.addListener(message => {
     console.log(`Background received message, action: ${message.action}`);
     if (message.action === 'requestUpdate') {
-      sendForTab(message.data.tabId);
+      lastTabId = message.data.tabId;
+      newForTab(lastTabId);
     }
   });
 });

@@ -1,52 +1,4 @@
 
-var testData = {
-  mainHost: {
-    hostname: 'sixornot.com',
-    mainIP: {
-      address: '1.1.1.1',
-      type: 4
-    },
-    status: '4pot6',
-    dnsIPs: [
-      { address: 'ff::01', type: 6 },
-      { address: 'ff::02', type: 6 }
-    ],
-    connectionCount: 2,
-    proxyInfo: {}
-  },
-  hosts: [
-    {
-      hostname: 'google.com',
-      mainIP: {
-        address: '8.8.8.8',
-        type: 4
-      },
-      status: '4only',
-      connectionCount: 20,
-      proxyInfo: {
-        host: 'localhost',
-        port: 2000,
-        type: 'socks4',
-        proxyDNS: true
-      }
-    },
-    {
-      hostname: 'mozilla.org',
-      mainIP: {
-        address: '4.3.2.1',
-        type: 4
-      },
-      status: '4only',
-      dnsIPs: [
-        { address: '192.168.2.1', type: 4 }
-      ],
-      connectionCount: 5,
-      proxyInfo: {}
-    }
-  ]
-};
-
-
 function IPViewModel (data, parent, isMainIP = false) {
   var self = this;
   self.parent = parent;
@@ -215,7 +167,7 @@ function HostViewModel (data, parent, isMainHost = false) {
 function PopUpViewModel () {
   var self = this;
 
-  self.hosts = ko.observableArray();
+  self.hosts = ko.observableArray([]);
 
   self.mainHost = ko.observable();
 
@@ -230,6 +182,7 @@ function PopUpViewModel () {
     },
     'mainHost': {
       create: options => {
+        console.log('CREATE');
         return new HostViewModel(options.data, self, isMainHost = true);
       }
     }
@@ -293,6 +246,12 @@ function PopUpViewModel () {
         if (message.action === 'update') {
           // Update viewModel
           console.log(JSON.stringify(message));
+          ko.mapping.fromJS(message.data, mapping, self);
+        } else if (message.action === 'new') {
+          // Regenerate viewModel
+          console.log(JSON.stringify(message));
+          self.hosts([]);
+          self.mainHost(false);
           ko.mapping.fromJS(message.data, mapping, self);
         }
       });
