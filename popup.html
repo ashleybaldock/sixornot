@@ -3,53 +3,45 @@
 <html>
   <head>
     <meta charset="utf-8">
+
+    <link rel="stylesheet" type="text/css" href="popup.css">
   </head>
 
 <body>
   <script type="text/html" id="ip-template">
-    <li data-bind="text: address, click: copy, visible: visible" class="ipAddress"></li>
+    <li data-bind="text: formattedAddress, click: copy, visible: visible, attr: { title: ttCopyAddress }" class="ipAddress"></li>
   </script>
   <script type="text/html" id="host-template">
-    <tr>
-      <td data-bind="css: statusClass" class="statusIcon"></td>
-      <td data-bind="text: formattedConnectionCount" class="connectionCount"></td>
-      <td data-bind="css: tlsClass, click: copyTLS" class="sslInfo"></td>
-      <td data-bind="css: proxyClass" class="proxyInfo"></td>
-      <td data-bind="text: hostname, click: copyAll" class="hostname"></td>
+    <tr data-bind="css: mainClass">
+      <td data-bind="attr: { title: ttStatus }" class="statusIcon"><img data-bind="attr: { src: statusPath }"></td>
+      <td data-bind="text: formattedConnectionCount, attr: { title: ttConnectionCount }" class="connectionCount"></td>
+      <td data-bind="attr: { title: ttProxyInfo }" class="proxyInfo"><img data-bind="attr: { src: proxyPath }"></td>
+      <td data-bind="text: hostname, click: copyAll, attr: { title: ttCopyAll }" class="hostname"></td>
       <td class="ipAddresses">
         <ul>
           <!-- ko template: { name: 'ip-template', data: mainIP } -->
           <!-- /ko -->
-          <!-- ko template: { name: 'ip-template', foreach: additionalIPs } -->
+          <!-- ko template: { name: 'ip-template', foreach: dnsIPs } -->
           <!-- /ko -->
         </ul>
       </td>
-      <td data-bind="text: togglerText, click: toggleIPs" class="ipToggle"></td>
+      <td data-bind="text: togglerText, click: toggleIPs, attr: { title: ttToggleIPs }" class="ipToggle"></td>
     </tr>
   </script>
 
   <table>
     <tr>
-      <td colspan="7" class="header">Remote</td>
+      <td colspan="6" class="header" data-bind="text: header"></td>
     </tr>
-    <!-- ko template: { name: 'host-template', data: mainHost } -->
+    <!-- ko if: mainHost -->
+      <!-- ko template: { name: 'host-template', data: mainHost } -->
+      <!-- /ko -->
     <!-- /ko -->
-    <!-- ko template: { name: 'host-template', foreach: remoteHosts } -->
+    <!-- ko template: { name: 'host-template', foreach: hosts } -->
     <!-- /ko -->
-    <!--<tr>
-      <td colspan="7" class="header">Local</td>
-    </tr>
     <tr>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td data-bind="text: localHostname" class="hostname"></td>
-      <td data-bind="text: localIPs" class="ipAddresses"></td>
-    </tr>-->
-    <tr>
-      <td colspan="7" class="header">
-        <a href="#" data-bind="click: openSettings">Open Settings</a> - <a href="#">Documentation</a>
+      <td colspan="6" class="footer">
+        <a href="#" data-bind="click: openSettings, text: settingsLinkText, attr: { title: ttSettingsLink }"></a> - <a href="#" data-bind="text: documentationLinkText, attr: { title: ttDocumentationLink, href: documentationLink }"></a>
       </td>
     </tr>
   </table>

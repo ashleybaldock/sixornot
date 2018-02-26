@@ -3,7 +3,7 @@
  */
 
 /* global gt, ipUtils, dnsResolver, util, getMessanger, unload, prefs, createLocalAddressInfo */
-Components.utils.import("resource://gre/modules/Services.jsm");
+/*Components.utils.import("resource://gre/modules/Services.jsm");
 Components.utils.import("chrome://sixornot/content/utility.jsm");
 Components.utils.import("chrome://sixornot/content/locale.jsm");
 Components.utils.import("chrome://sixornot/content/prefs.jsm");
@@ -12,14 +12,14 @@ Components.utils.import("chrome://sixornot/content/windowwatcher.jsm");
 Components.utils.import("chrome://sixornot/content/messanger.jsm");
 
 /* exported createPanel */
-var EXPORTED_SYMBOLS = ["createPanel"];
+/*var EXPORTED_SYMBOLS = ["createPanel"];
 
 /* Creates and sets up a panel to display information which can then be bound to an icon */
-var createPanel = function (win, panelId) {
+/*var createPanel = function (win, panelId) {
     var doc = win.document;
 
     /* Called by content script of active tab */
-    var updateUI = function (data) {
+ /*   var updateUI = function (data) {
         remoteAnchor.updateModel(data);
         adjustForScrollbar();
     };
@@ -35,7 +35,7 @@ var createPanel = function (win, panelId) {
         }
     };
 
-    var onPopupShowing = function () {
+/*    var onPopupShowing = function () {
         messanger.subscribeToCurrentBrowser();
         messanger.requestUpdate();
         localAnchor.panelShowing();
@@ -59,7 +59,7 @@ var createPanel = function (win, panelId) {
     };
 
     /* Panel UI */
-    var panel = doc.createElement("panel");
+    /*var panel = doc.createElement("panel");
     panel.setAttribute("type", "arrow");
     panel.setAttribute("id", panelId);
     panel.setAttribute("flip", "slide");
@@ -68,14 +68,14 @@ var createPanel = function (win, panelId) {
     panel.classList.add("sixornot-panel");
 
     /* Contains all other elements in panel */
-    var panelVbox = doc.createElement("vbox");
+    /*var panelVbox = doc.createElement("vbox");
     panelVbox.setAttribute("flex", "1");
     panelVbox.style.overflowY = "auto";
     panelVbox.style.overflowX = "hidden";
     panel.appendChild(panelVbox);
 
     /* Grid into which address entries are put */
-    var grid = doc.createElement("grid");
+    /*var grid = doc.createElement("grid");
     var gridRows = doc.createElement("rows");
     var gridCols = doc.createElement("columns");
     gridCols.appendChild(doc.createElement("column")); // icon
@@ -90,19 +90,19 @@ var createPanel = function (win, panelId) {
     panelVbox.appendChild(grid);
 
     /* Anchors are locations to insert entries into grid */
-    var remoteAnchor = createRemoteAnchor(doc, gridRows);
+   /* var remoteAnchor = createRemoteAnchor(doc, gridRows);
     var localAnchor = createLocalAnchor(doc, gridRows);
 
     /* Links at bottom of panel */
     /* Settings */
-    var settingsLink = doc.createElement("label");
+    /*var settingsLink = doc.createElement("label");
     settingsLink.setAttribute("value", gt("header_settings"));
     settingsLink.setAttribute("tooltiptext", gt("tt_open_settings"));
     util.setLink(settingsLink);
     util.setTitle(settingsLink);
 
     /* Documentation link */
-    var docLink = doc.createElement("label");
+    /*var docLink = doc.createElement("label");
     docLink.setAttribute("value", gt("sixornot_documentation"));
     util.setLink(docLink);
     util.setTitle(docLink);
@@ -119,7 +119,7 @@ var createPanel = function (win, panelId) {
     };
 
     /* Add everything to parent node */
-    var urlhbox = doc.createElement("hbox");
+    /*var urlhbox = doc.createElement("hbox");
     urlhbox.appendChild(makeSpacer());
     urlhbox.appendChild(settingsLink);
     urlhbox.appendChild(spacer);
@@ -130,7 +130,7 @@ var createPanel = function (win, panelId) {
     gridRows.appendChild(urlhbox);
 
     /* Subscribe to events */
-    settingsLink.addEventListener("click", onClickSettingsLink, false);
+    /*settingsLink.addEventListener("click", onClickSettingsLink, false);
     docLink.addEventListener("click", onClickDocLink, false);
     panel.addEventListener("popupshowing", onPopupShowing, false);
     panel.addEventListener("popuphiding", onPopupHiding, false);
@@ -153,8 +153,8 @@ var createPanel = function (win, panelId) {
     return panel;
 };
 
-var createIPEntry = function (doc, addto) {
-    var conipaddr = doc.createElement("label");
+//var createIPEntry = function (doc, addto) {
+    /*var conipaddr = doc.createElement("label");
     addto.appendChild(conipaddr);
 
     var copyText = "";
@@ -172,7 +172,7 @@ var createIPEntry = function (doc, addto) {
         hide: function () {
             conipaddr.setAttribute("hidden", true);
             return this;
-        },
+        },*/
         update: function (ip, showAsProxy) {
             if (ip.family === 6 || ip.family === 4) {
                 if (showAsProxy) {
@@ -191,16 +191,16 @@ var createIPEntry = function (doc, addto) {
                 copyText = "";
             }
             return this;
-        },
+        },/*
         remove: function () {
             conipaddr.removeEventListener("click", copyToClipboard, false);
             addto.removeChild(conipaddr);
         }
     };
-};
+};*/
 
-var createIPs = function (doc, addto) {
-    var addressBox = doc.createElement("vbox");
+//var createIPs = function (doc, addto) {
+   /* var addressBox = doc.createElement("vbox");
     addto.appendChild(addressBox);
 
     var showhide = doc.createElement("label");
@@ -221,9 +221,9 @@ var createIPs = function (doc, addto) {
             }
         });
         return count;
-    };
+    };*/
 
-    var obj = {
+    /*var obj = {
         init: function (host, initialShow) {
             showing = initialShow;
         },
@@ -300,9 +300,9 @@ var createIPs = function (doc, addto) {
     showhide.addEventListener("click", toggleDetail, false);
 
     return obj;
-};
+};*/
 
-var createIcon = function (doc, addto) {
+/*var createIcon = function (doc, addto) {
     var icon = doc.createElement("image");
     icon.setAttribute("width", "16");
     icon.setAttribute("height", "16");
@@ -318,29 +318,29 @@ var createIcon = function (doc, addto) {
     };
 };
 
-var createSSLInfo = function (doc, addto) {
+/*var createSSLInfo = function (doc, addto) {
     var sslinfo = doc.createElement("image");
     sslinfo.setAttribute("height", "16");
     addto.appendChild(sslinfo);
 
     return {
-        update: function (host) {
-            util.setSecurityClass(sslinfo, host);
+        update: function (host) {*/
+            /*util.setSecurityClass(sslinfo, host);
             if (host.security.cipherName) {
                 sslinfo.setAttribute("tooltiptext", host.security.cipherName);
                 sslinfo.setAttribute("width", "16");
             } else {
                 sslinfo.setAttribute("tooltiptext", "");
                 sslinfo.setAttribute("width", "0");
-            }
+            }/*
         },
         remove: function () {
             addto.removeChild(sslinfo);
         }
     };
-};
+};*/
 
-var createProxyInfo = function (doc, addto) {
+/*var createProxyInfo = function (doc, addto) {
     var proxyinfo = doc.createElement("image");
     proxyinfo.setAttribute("height", "16");
     addto.appendChild(proxyinfo);
@@ -385,9 +385,9 @@ var createProxyInfo = function (doc, addto) {
             addto.removeChild(proxyinfo);
         }
     };
-};
+};*/
 
-var createCount = function (doc, addto) {
+/*var createCount = function (doc, addto) {
     var count = doc.createElement("label");
     count.setAttribute("tooltiptext", gt("tt_copycount"));
     addto.appendChild(count);
@@ -404,7 +404,7 @@ var createCount = function (doc, addto) {
             addto.removeChild(count);
         }
     };
-};
+};*/
 
 var createHostname = function (doc, addto) {
     var hostname = doc.createElement("label");
@@ -448,7 +448,7 @@ var createHostname = function (doc, addto) {
    and links to that member to reflect its state
    Also takes a reference to the element to add this element after
    e.g. header or the preceeding list item */
-var createRemoteListingRow = function (doc, addafter, host, mainhost) {
+/*var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     var row = doc.createElement("row");
     row.setAttribute("align", "start");
     var icon = createIcon(doc, row);
@@ -461,7 +461,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     var ips = [];
 
     /* Update elements on create */
-    icon.update(host, ips);
+    /*icon.update(host, ips);
     hostname.update(host, mainhost, ips);
     count.update(host);
     sslinfo.update(host);
@@ -470,7 +470,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     ipAddresses.update(host, ips);
 
     /* Add this element after the last one */
-    addafter.addAfter(row);
+    /*addafter.addAfter(row);
 
     /* Do DNS lookup for host */
     var dnsCancel;
@@ -493,7 +493,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
     }
 
     /* Object representing row of entry */
-    return {
+    /*return {
         host: host.host,
         remove: function () {
             if (dnsCancel) { dnsCancel.cancel(); }
@@ -507,7 +507,7 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
         },
         addAfter: function (element) {
             /* Add the element specified immediately after this one in the DOM */
-            if (row.nextSibling) {
+/*            if (row.nextSibling) {
                 row.parentNode.insertBefore(element, row.nextSibling);
             } else {
                 row.parentNode.appendChild(element);
@@ -522,9 +522,9 @@ var createRemoteListingRow = function (doc, addafter, host, mainhost) {
             ipAddresses.update(host, ips);
         }
     };
-};
+};*/
 
-var createRemoteAnchor = function (doc, parentElement) {
+/*var createRemoteAnchor = function (doc, parentElement) {
     var model = { id: 0 };
     var entries = [];
 
@@ -581,7 +581,7 @@ var createRemoteAnchor = function (doc, parentElement) {
             }, this);
         }
     };
-};
+};*/
 
 var createLocalListingRow = function (doc, addafter) {
     var row = doc.createElement("row");
@@ -644,13 +644,13 @@ var createLocalListingRow = function (doc, addafter) {
             });
 
             // Hide additional entries
-            entries.forEach(function (item, index) {
+/*            entries.forEach(function (item, index) {
                 if (index < entriesIndex) return;
                 item.hide();
             });
         },
         /* Adds the contents of this object after the specified element */
-        addAfter: function (element) {
+/*        addAfter: function (element) {
             if (this.row.nextSibling) {
                 this.row.parentNode.insertBefore(element, this.row.nextSibling);
             } else {
@@ -661,7 +661,7 @@ var createLocalListingRow = function (doc, addafter) {
             updateRowVisibility();
         }
     };
-};
+};*/
 
 var createLocalAnchor = function (doc, parentElement) {
     var title = doc.createElement("label");
@@ -714,7 +714,7 @@ var createLocalAnchor = function (doc, parentElement) {
         }
     };
 
-    setShowhideText();
+/*    setShowhideText();
 
     var hbox = doc.createElement("hbox");
     hbox.appendChild(showhideSpacer);
@@ -735,7 +735,7 @@ var createLocalAnchor = function (doc, parentElement) {
                                .register();
 
     var localAddressInfo = createLocalAddressInfo();
-    var entries = [];
+/*    var entries = [];
     return {
         remove: function () {
             showLocalObserver.unregister();
@@ -777,5 +777,5 @@ var createLocalAnchor = function (doc, parentElement) {
             localAddressInfo.get(this.update, this);
         }
     };
-};
+};*/
 

@@ -1,8 +1,10 @@
 {
   "manifest_version": 2,
-  "name": "SixOrNot",
+  "name": "__MSG_extensionName__",
   "version": "3.0.0",
   "author": "Ashley Baldock",
+
+  "default_locale": "en",
 
   "applications": {
     "gecko": {
@@ -10,7 +12,7 @@
     }
   },
 
-  "description": "IPv6 status indicator",
+  "description": "__MSG_extensionDescription__",
 
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';",
 
@@ -18,6 +20,7 @@
     "storage",
     "clipboardWrite",
     "webRequest",
+    "webNavigation",
     "<all_urls>"
   ],
 
@@ -32,7 +35,7 @@
       "32": "images/colour/32/other.png"
     },
     "default_popup": "popup.html",
-    "default_title": "SixOrNot"
+    "default_title": "__MSG_buttonTooltip__"
   },
 
   "browser_action": {
@@ -40,7 +43,7 @@
       "16": "images/colour/16/other.png",
       "32": "images/colour/32/other.png"
     },
-    "default_title": "SixOrNot",
+    "default_title": "__MSG_buttonTooltip__",
     "default_popup": "popup.html",
     "browser_style": true
   },
