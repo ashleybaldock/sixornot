@@ -87,9 +87,12 @@ function HostViewModel (data, parent, isMainHost = false) {
       : browser.i18n.getMessage("ttShowDetail");
   });
 
+  self.greyscale = ko.observable(false)
+                     .extend({ subPersist: "option_greyscale" });
+
   self.statusPath = ko.computed(() => {
-    var iconSet = 'colour'; // TODO
-    return `images/${iconSet}/16/${self.status()}.png`;
+    var iconset = self.greyscale() ? 'grey' : 'colour';
+    return `images/16/${iconset}/${self.status()}.png`;
   });
 
   self.ttProxyInfo = ko.computed(() => {
@@ -126,10 +129,9 @@ function HostViewModel (data, parent, isMainHost = false) {
     }
   });
   self.proxyPath = ko.computed(() => {
-    var iconSet = 'colour'; // TODO
     return self.proxyInfo.type() !== 'none'
-      ? `images/${iconSet}/16/proxy_on.png`
-      : `images/${iconSet}/16/proxy_off.png`;
+      ? `images/16/proxy_on.png`
+      : `images/16/proxy_off.png`;
   });
 
   self.mainClass = ko.pureComputed(() => {
@@ -153,14 +155,13 @@ function HostViewModel (data, parent, isMainHost = false) {
 
   self.copyAll = () => {
     // TODO copy to clipboard
-  };
-
-  self.copyIPs = () => {
-    // TODO copy to clipboard
-  };
-
-  self.copyTLS = () => {
-    // TODO copy to clipboard
+    var copyText = self.hostname();
+    if (self.mainIP.address() !== '') {
+      copyText += `,${self.mainIP.address()}`;
+    }
+    self.dnsIPs().forEach(ip => {
+      copyText += `,${ip.address()}`;
+    });
   };
 }
 

@@ -8,36 +8,20 @@
     "description": "Description of what the extension does"
   },
   "buttonTooltip": {
-    "message": "Open SixOrNot panel",
+    "message": "SixOrNot öffnen",
     "description": "Tooltip displayed on mouse hover over button or address bar icon"
   },
 
-  "headerRemote": {
-    "message": "Remote",
-    "description": ""
-  },
-  "headerLocal": {
-    "message": "Local",
-    "description": ""
-  },
   "settingsLinkText": {
-    "message": "Open Settings",
+    "message": "Einstellungen",
     "description": ""
   },
   "documentationLinkText": {
-    "message": "Documentation",
+    "message": "Hilfe",
     "description": ""
   },
   "documentationLink": {
     "message": "chrome://sixornot/content/doc/en/index.html",
-    "description": ""
-  },
-  "hide": {
-    "message": "Hide",
-    "description": ""
-  },
-  "show": {
-    "message": "Show",
     "description": ""
   },
 
@@ -46,7 +30,7 @@
     "description": ""
   },
   "addrUnavailable": {
-    "message": "Address Unavailable",
+    "message": "Adresse nicht verfügbar",
     "description": ""
   },
   "addrNA": {
@@ -67,15 +51,15 @@
     "description": ""
   },
   "proxySOCKS4": {
-    "message": "SOCKS4",
+    "message": "SOCKS 4",
     "description": ""
   },
   "proxySOCKS5": {
-    "message": "SOCKS5",
+    "message": "SOCKS 5",
     "description": ""
   },
   "proxyLookupsDisabled": {
-    "message": "Note: SixOrNot DNS Lookups disabled for this host.",
+    "message": "Achtung: SixOrNot DNS Lookups sind für diesen Host deaktiviert.",
     "description": ""
   },
 
@@ -84,39 +68,31 @@
     "description": ""
   },
   "ttSettingsLink": {
-    "message": "Click to open SixOrNot settings",
+    "message": "Öffnet die Einstellungen von SixOrNot",
     "description": ""
   },
   "ttHideDetail": {
-    "message": "Hide DNS lookup information for this domain",
+    "message": "Verberge aufgelösten DNS-Namen dieser Domain",
     "description": ""
   },
   "ttShowDetail": {
-    "message": "Show DNS lookup information for this domain",
+    "message": "Zeige aufgelösten DNS-Namen dieser Domain",
     "description": ""
   },
   "ttDocumentationLink": {
-    "message": "Visit the SixOrNot website for help and information",
+    "message": "Besuche die SixOrNot-Website für Hilfe und Informationen",
     "description": ""
   },
   "ttConnectionCount": {
-    "message": "Number of connections made to this host",
+    "message": "Überträgt alle Informationen zu dieser Domain in die Zwischenablage",
     "description": ""
   },
   "ttCopyAll": {
-    "message": "Click to copy all data for this domain to clipboard",
+    "message": "Überträgt alle Informationen zu dieser Domain in die Zwischenablage",
     "description": ""
   },
   "ttCopyAddress": {
-    "message": "Click to copy this IP address to the clipboard",
-    "description": ""
-  },
-  "ttHideLocal": {
-    "message": "Hide local IP address information",
-    "description": ""
-  },
-  "ttShowLocal": {
-    "message": "Show local IP address information",
+    "message": "Überträgt diese IP-Adresse in die Zwischenablage",
     "description": ""
   },
 
@@ -130,27 +106,19 @@
   },
 
   "optionsAddressIcon": {
-    "message": "Show icon in address bar",
+    "message": "Icon in der Adressleiste anzeigen",
     "description": ""
   },
   "optionsAddressIconDesc": {
-    "message": "Enable display of the SixOrNot icon in the address bar.",
+    "message": "Aktiviert die Anzeige des SixOrNot-Icons in der Adresszeile.",
     "description": ""
   },
   "optionsGreyscale": {
-    "message": "Greyscale icons",
+    "message": "Graue Icons",
     "description": ""
   },
   "optionsGreyscaleDesc": {
-    "message": "Enable the greyscale icon set.",
-    "description": ""
-  },
-  "optionsShowAllIPs": {
-    "message": "Show all local IPs in panel",
-    "description": ""
-  },
-  "optionsShowAllIPsDesc": {
-    "message": "Enable display of non-routeable local IP addresses in the panel.",
+    "message": "Aktiviert farblose Versionen des Icons.",
     "description": ""
   }
 }

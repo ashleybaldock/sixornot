@@ -1,0 +1,134 @@
+{
+  "extensionName": {
+    "message": "SixOrNot",
+    "description": "Name of the extension."
+  },
+  "extensionDescription": {
+    "message": "Данное расширение наглядно отображает, поддерживает ли сайт, к которому вы подключаетесь, Интернет-протокол текущего поколения (IPv6) и можете ли вы подключиться к нему по этому протоколу.",
+    "description": "Description of what the extension does"
+  },
+  "buttonTooltip": {
+    "message": "Открыть панель SixOrNot",
+    "description": "Tooltip displayed on mouse hover over button or address bar icon"
+  },
+
+  "settingsLinkText": {
+    "message": "Открыть настройки",
+    "description": ""
+  },
+  "documentationLinkText": {
+    "message": "Онлайн-документация",
+    "description": ""
+  },
+  "documentationLink": {
+    "message": "chrome://sixornot/content/doc/en/index.html",
+    "description": ""
+  },
+  "hide": {
+    "message": "Скрыть",
+    "description": ""
+  },
+  "show": {
+    "message": "Показать",
+    "description": ""
+  },
+
+  "addrCached": {
+    "message": "Кеширован",
+    "description": ""
+  },
+  "addrUnavailable": {
+    "message": "Адрес недоступен",
+    "description": ""
+  },
+  "addrNA": {
+    "message": "н/д",
+    "description": ""
+  },
+
+  "proxyBase": {
+    "message": "Прокси: $1 ($2:$3)\n$4",
+    "description": ""
+  },
+  "proxyHTTP": {
+    "message": "HTTP",
+    "description": ""
+  },
+  "proxyHTTPS": {
+    "message": "HTTPS",
+    "description": ""
+  },
+  "proxySOCKS4": {
+    "message": "SOCKS 4",
+    "description": ""
+  },
+  "proxySOCKS5": {
+    "message": "SOCKS 5",
+    "description": ""
+  },
+  "proxyLookupsDisabled": {
+    "message": "Внимание: DNS-запросы SixOrNot отключены для этого узла!",
+    "description": ""
+  },
+
+  "ttStatus": {
+    "message": "",
+    "description": ""
+  },
+  "ttSettingsLink": {
+    "message": "Нажмите для открытия настроек SixOrNot.",
+    "description": ""
+  },
+  "ttHideDetail": {
+    "message": "Скрыть информацию DNS для этого домена.",
+    "description": ""
+  },
+  "ttShowDetail": {
+    "message": "Отобразить информацию DNS для этого домена.",
+    "description": ""
+  },
+  "ttDocumentationLink": {
+    "message": "Посетить веб-сайт SixOrNot для получения помощи и необходимой информации.",
+    "description": ""
+  },
+  "ttConnectionCount": {
+    "message": "Количество соединений к этому узлу.",
+    "description": ""
+  },
+  "ttCopyAll": {
+    "message": "Нажмите, чтобы скопировать все данные этого домена в буфер обмена.",
+    "description": ""
+  },
+  "ttCopyAddress": {
+    "message": "Нажмите, чтобы скопировать этот IP-адрес в буфер обмена.",
+    "description": ""
+  },
+
+  "warn6disabled": {
+    "message": "Предупреждение: в Firefox отключены IPv6 DNS-запросы!",
+    "description": ""
+  },
+  "warnIP4onlydomain": {
+    "message": "Предупреждение: домен находится в списке ipv4OnlyDomains!",
+    "description": ""
+  },
+
+  "optionsAddressIcon": {
+    "message": "Отображать значок в адресной строке",
+    "description": ""
+  },
+  "optionsAddressIconDesc": {
+    "message": "Включить отображение значка SixOrNot в адресной строке.",
+    "description": ""
+  },
+  "optionsGreyscale": {
+    "message": "Чёрно-белые значки",
+    "description": ""
+  },
+  "optionsGreyscaleDesc": {
+    "message": "Включить использование чёрно-белого набора значков.",
+    "description": ""
+  }
+}
+
+

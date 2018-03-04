@@ -10,8 +10,39 @@
 //
 //
 
+/* Send updates to popup every Xms */
+const sendTimeout = 50;
+/* Set to true if popup update needed */
 var wantsUpdate = false;
+/* Set to true if popup regeneration needed (new page) */
 var wantsNew = false;
+
+/* Represent state of settings */
+var greyscale = false;
+var addressicon = false;
+
+function subscribeToSetting (setting, callback) {
+  browser.storage.local.get(setting).then(
+    item => {
+      if (item[key]) {
+        callback(JSON.parse(item[setting]));
+      }
+    },
+    error => {
+      console.log(`subscribeToSetting: unable to retrieve setting on init: '${setting}'`);
+    }
+  );
+
+  browser.storage.onChanged.addListener(changes => {
+    var changedItems = Object.keys(changes);
+
+    for (var item of changes) {
+      if (item === setting) {
+        callback(JSON.parse(changes[item].newValue));
+      }
+    }
+  });
+}
 
 function DNSResolver (hostname) {
   // Perform DNS resolution for hostname
@@ -31,9 +62,6 @@ function IPAddress (ip, fromCache = false) {
   this.address = ip;
 }
 
-function getStatusForHost (host) {
-}
-
 function ProxyInfo (proxyInfo) {
   if (proxyInfo) {
     this.host = proxyInfo.host;
@@ -50,9 +78,6 @@ function ProxyInfo (proxyInfo) {
 
 function Host (details) {
   var url = new URL(details.url);
-
-  // details.method;
-  // details.statusCode;
 
   this.hostname = url.hostname;
   this.proxyInfo = new ProxyInfo(details.proxyInfo);
@@ -127,37 +152,33 @@ Host.prototype.getStatus = function () {
   return "other";
 };
 
-// Encompasses information about all hosts contacted to load a page
 function Page (details) {
   var self = this;
 
   self.tabId = details.tabId;
 
-  function updateButtons () {
+  self.requestIds = new Map();
+
+  self.updateButtons = function () {
     var status;
     if (!self.mainHost) {
       status = 'other';
     } else {
       status = self.mainHost.status;
     }
-    var iconSet = 'colour'; // TODO
+    var iconset = greyscale ? 'grey' : 'colour';
 
-    // Update the image URL for every tab so it's ready when switching
-    // Automatically falls back to default icon if no specific one set
-    // Could do the same thing for popup URL (add a ?tabId=X param)
-    // but not sure we can get the params from URL in popup
-    // plus it wouldn't update itself when active tab changes (or would it?)
     browser.pageAction.setIcon({
       path: {
-        16: `images/${iconSet}/16/${status}.png`,
-        32: `images/${iconSet}/32/${status}.png`
+        16: `images/16/${iconset}/${status}.png`,
+        32: `images/32/${iconset}/${status}.png`
       },
       tabId: self.tabId
     });
     browser.browserAction.setIcon({
       path: {
-        16: `images/${iconSet}/16/${status}.png`,
-        32: `images/${iconSet}/32/${status}.png`
+        16: `images/16/${iconset}/${status}.png`,
+        32: `images/32/${iconset}/${status}.png`
       },
       tabId: self.tabId
     });
@@ -194,7 +215,7 @@ function Page (details) {
       triggerDNS(dnsResult => {
         dnsIPs = dnsResult.ips;
       });
-      updateButtons();
+      self.updateButtons();
     } else if (self.hosts[host.hostname]) {
       // Update host
       self.hosts[host.hostname].updateFrom(host);
@@ -210,8 +231,7 @@ function Page (details) {
 
 function PageTracker () {
   var self = this;
-  self.pageForTab = [];
-  self.requestIds = [];
+  self.pageForTab = new Map();
 
   self.onBeforeRequest = details => {
     if (details.tabId === -1) { return; } // Ignore non-tab requests
@@ -220,26 +240,36 @@ function PageTracker () {
     //console.log(`pageTracker: onBeforeRequest, details: ${JSON.stringify(details)}`);
     if (self.pageForTab[details.tabId]) {
       // Ignore requests without an associated page/preceeding onBeforeNavigate event
-      self.requestIds[details.requestId] = self.pageForTab[details.tabId];
+      self.pageForTab[details.tabId].requestIds[details.requestId] = true;
     } else {
       //console.log(`pageTracked: onBeforeRequest tabId ${details.tabId} not in self.pageForTab`);
     }
   };
 
   self.onComplete = details => {
-    if (details.tabId === -1) { return; } // Ignore
+    if (details.tabId === -1) { return; } // Ignore non-tab requests
     //console.log(`pageTracker: onComplete, tabId: ${details.tabId}`);
     // Look up page object based on earlier association
     // Update page model with new details
     var host = new Host(details);
 
-    var page = self.requestIds[details.requestId];
-    if (page) {
-      // Ignore requests without an associated page/preceeding onBeforeNavigate event
+    var page = self.pageForTab[details.tabId];
+    // Ignore requests that aren't associated with an active tab page
+    if (page && page.requestIds.has(details.requestId)) {
       page.update(host);
       wantsUpdate = true;
+      page.requestIds.delete(details.requestId);
     }
-    //self.requestIds.delete(requestId);//TODO
+  };
+
+  self.onErrorOccurred = details => {
+    if (details.tabId === -1) { return; } // Ignore non-tab requests
+
+    var page = self.pageForTab[details.tabId];
+    // Ignore requests that aren't associated with an active tab page
+    if (page && page.requestIds.has(details.requestId)) {
+      page.requestIds.delete(details.requestId);
+    }
   };
 
   self.onBeforeNavigate = details => {
@@ -249,12 +279,6 @@ function PageTracker () {
     console.log(`pageTracker: onBeforeNavigate, tabId: ${details.tabId}, windowId: ${details.windowId}`);
     self.pageForTab[details.tabId] = new Page(details);
     wantsNew = true;
-  };
-
-  self.removeTab = tabId => {
-    console.log(`pageTracker: removeTab, id: ${tabId}`);
-    // Clean up cached data for tab
-    // TODO
   };
 
   self.getJSON = tabId => {
@@ -270,14 +294,47 @@ function PageTracker () {
     return send;
   };
 
+  // Monitor settings
+  subscribeToSetting('option_greyscale', newValue => {
+    greyscale = newValue;
+    self.pageForTab.forEach((value, key, map) => {
+      value.updateButtons();
+    });
+  });
+  subscribeToSetting('option_addressicon', newValue => {
+    addressicon = newValue;
+    browser.tabs.query({}).then(
+      tabs => {
+        tabs.forEach(tab => {
+          if (addressicon) {
+            browser.pageAction.show(tab.id);
+          } else {
+            browser.pageAction.hide(tab.id);
+          }
+        });
+      },
+      error => {
+        console.log(`option_addressicon sub, tabs query error: ${error}`);
+      }
+    );
+  });
+
   // Set up events
   browser.tabs.onCreated.addListener(tabInfo => {
-    browser.pageAction.show(tabInfo.id);
+    if (addressicon) {
+      browser.pageAction.show(tabInfo.id);
+    }
   });
-  browser.tabs.onRemoved.addListener(self.removeTab);
+
+  browser.tabs.onRemoved.addListener(tabId => {
+    console.log(`pageTracker: removeTab, id: ${tabId}`);
+    pageForTab.delete(tabId);
+  });
 
   browser.tabs.onActivated.addListener(activeInfo => {
-    browser.pageAction.show(activeInfo.tabId);
+    if (addressicon) {
+      browser.pageAction.show(activeInfo.tabId);
+    }
   });
 
   browser.webNavigation.onBeforeNavigate.addListener(self.onBeforeNavigate);
@@ -289,6 +346,11 @@ function PageTracker () {
 
   browser.webRequest.onCompleted.addListener(
     self.onComplete,
+    { urls: ["<all_urls>"] }
+  );
+
+  browser.webRequest.onErrorOccurred.addListener(
+    self.onErrorOccurred,
     { urls: ["<all_urls>"] }
   );
 };
@@ -326,7 +388,7 @@ browser.runtime.onConnect.addListener(port => {
         wantsUpdate = false;
       }
     }
-    timeoutId = window.setTimeout(updateIfNeeded, 100);
+    timeoutId = window.setTimeout(updateIfNeeded, sendTimeout);
   }
 
   updateIfNeeded();
