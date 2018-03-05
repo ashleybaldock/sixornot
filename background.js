@@ -1,14 +1,6 @@
-// Can have multiples of this
-// All run in the same context (as if in the same webpage)
-//
-// One central object to keep track of current state of addon
-//  - DNS requests in-flight
-//  - Listing of requests per-page etc.
-//
-//  Also listen to webrequest events here
-//
-//
-//
+/*
+ *
+ */
 
 /* Send updates to popup every Xms */
 const sendTimeout = 50;
@@ -24,7 +16,7 @@ var addressicon = false;
 function subscribeToSetting (setting, callback) {
   browser.storage.local.get(setting).then(
     item => {
-      if (item[key]) {
+      if (item[setting]) {
         callback(JSON.parse(item[setting]));
       }
     },
@@ -36,7 +28,7 @@ function subscribeToSetting (setting, callback) {
   browser.storage.onChanged.addListener(changes => {
     var changedItems = Object.keys(changes);
 
-    for (var item of changes) {
+    for (var item of changedItems) {
       if (item === setting) {
         callback(JSON.parse(changes[item].newValue));
       }
@@ -44,8 +36,12 @@ function subscribeToSetting (setting, callback) {
   });
 }
 
-function DNSResolver (hostname) {
-  // Perform DNS resolution for hostname
+function mapToString (map) {
+  var pairs = [];
+  map.forEach((value, key, map) => {
+    pairs.push(`${key}: ${value}`);
+  });
+  return pairs.join(', ');
 }
 
 function IPAddress (ip, fromCache = false) {
@@ -88,10 +84,10 @@ function Host (details) {
 }
 
 Host.prototype.updateFrom = function (other) {
-  console.log('updateFrom');
+  //console.log('updateFrom');
   if (other.hostname !== this.hostname) { return; }
 
-  console.log(this.hostname);
+  //console.log(this.hostname);
   this.connectionCount += 1;
   this.proxyInfo = other.proxyInfo;
   if (!this.mainIP || this.mainIP.type < 4) {
@@ -182,28 +178,30 @@ function Page (details) {
       },
       tabId: self.tabId
     });
-  }
+  };
 
   self.mainHost = new Host({ url: details.url });
   self.hosts = {};
   self.hostCount = 0;
   
-  function triggerDNS (callback) {
-    // Do DNS lookup here
-    // if (self.mainIP.type !== 1
-    //  && self.proxyInfo.type !== "http"
-    //  && self.proxyInfo.type !== "https"
-    //  && !self.proxyInfo.resolveDNS) {
-    // dnsResolver.resolve(hostname, function (ips) {
-    //   self.dnsIPs = ips;
-    //   self.status = getStatus(self);
-    //   callback();
-    // };
-    // }
-    var dnsResult = {
-      ips: []// TODO array of IPAddress objects
-    };
-    callback(dnsResult);
+  function triggerDNS (host, callback) {
+    if (browser.dns
+     && host.mainIP.type !== 1
+     && host.proxyInfo.type !== "http"
+     && host.proxyInfo.type !== "https"
+     && !host.proxyInfo.resolveDNS) {
+      browser.dns.resolve(hostname).then( // RESOLVE_BYPASS_CACHE
+        response => {
+          // TODO - convert array of IP addresses to IPAddress objects
+          callback({ status: 'done', ips: [] });
+        },
+        error => {
+          callback({ status: 'fail', ips: [] });
+        }
+      );
+    } else {
+      callback({ status: 'skip', ips: [] });
+    }
   }
 
   self.update = function (host) {
@@ -212,7 +210,7 @@ function Page (details) {
     if (host.hostname === self.mainHost.hostname) {
       // Update mainHost
       self.mainHost.updateFrom(host);
-      triggerDNS(dnsResult => {
+      triggerDNS(host, dnsResult => {
         dnsIPs = dnsResult.ips;
       });
       self.updateButtons();
@@ -222,7 +220,7 @@ function Page (details) {
     } else {
       // Add host
       self.hosts[host.hostname] = host;
-      triggerDNS(dnsResult => {
+      triggerDNS(host, dnsResult => {
         self.hosts[host.hostname].dnsIPs = dnsResult.ips;
       });
     }
@@ -233,56 +231,18 @@ function PageTracker () {
   var self = this;
   self.pageForTab = new Map();
 
-  self.onBeforeRequest = details => {
-    if (details.tabId === -1) { return; } // Ignore non-tab requests
-    // Map requestId to tab's current page object
-    // so that it'll be looked up there later on complete
-    //console.log(`pageTracker: onBeforeRequest, details: ${JSON.stringify(details)}`);
-    if (self.pageForTab[details.tabId]) {
-      // Ignore requests without an associated page/preceeding onBeforeNavigate event
-      self.pageForTab[details.tabId].requestIds[details.requestId] = true;
-    } else {
-      //console.log(`pageTracked: onBeforeRequest tabId ${details.tabId} not in self.pageForTab`);
-    }
-  };
+  function nonTabRequest (tabId) {
+    return tabId === -1;
+  }
+  function subFrame (frameId) {
+    return frameId !== 0;
+  }
 
-  self.onComplete = details => {
-    if (details.tabId === -1) { return; } // Ignore non-tab requests
-    //console.log(`pageTracker: onComplete, tabId: ${details.tabId}`);
-    // Look up page object based on earlier association
-    // Update page model with new details
-    var host = new Host(details);
-
-    var page = self.pageForTab[details.tabId];
-    // Ignore requests that aren't associated with an active tab page
-    if (page && page.requestIds.has(details.requestId)) {
-      page.update(host);
-      wantsUpdate = true;
-      page.requestIds.delete(details.requestId);
-    }
-  };
-
-  self.onErrorOccurred = details => {
-    if (details.tabId === -1) { return; } // Ignore non-tab requests
-
-    var page = self.pageForTab[details.tabId];
-    // Ignore requests that aren't associated with an active tab page
-    if (page && page.requestIds.has(details.requestId)) {
-      page.requestIds.delete(details.requestId);
-    }
-  };
-
-  self.onBeforeNavigate = details => {
-    if (details.frameId !== 0) { return; } // Ignore sub-frames
-    // Start a new page for the given tabId
-    // Subsequent associate calls will use this page
-    console.log(`pageTracker: onBeforeNavigate, tabId: ${details.tabId}, windowId: ${details.windowId}`);
-    self.pageForTab[details.tabId] = new Page(details);
-    wantsNew = true;
-  };
-
+  /*
+   * Serialise Page to send to popup
+   */
   self.getJSON = tabId => {
-    var page = self.pageForTab[tabId];
+    var page = self.pageForTab.get(tabId);
     if (page) {
       return {
         mainHost: page.mainHost,
@@ -319,41 +279,94 @@ function PageTracker () {
     );
   });
 
-  // Set up events
+  /*
+   * Clean up Page for removed tabs
+   */
+  browser.tabs.onRemoved.addListener(tabId => {
+    console.log(`pageTracker: removeTab, id: ${tabId}`);
+    self.pageForTab.delete(tabId);
+  });
+
+  /*
+   * Ensure that our pageAction is visible when creating a new tab
+   */
   browser.tabs.onCreated.addListener(tabInfo => {
     if (addressicon) {
       browser.pageAction.show(tabInfo.id);
     }
   });
 
-  browser.tabs.onRemoved.addListener(tabId => {
-    console.log(`pageTracker: removeTab, id: ${tabId}`);
-    pageForTab.delete(tabId);
-  });
-
+  /*
+   * Ensure that our pageAction is visible whenever switching tabs
+   */
   browser.tabs.onActivated.addListener(activeInfo => {
     if (addressicon) {
       browser.pageAction.show(activeInfo.tabId);
     }
   });
 
-  browser.webNavigation.onBeforeNavigate.addListener(self.onBeforeNavigate);
+  /*
+   * This event (with zero frameId) indicates a new page loaded into tab
+   * Set up a new Page for the given tabId to associated future requests with
+   */
+  browser.webNavigation.onBeforeNavigate.addListener(details => {
+    if (subFrame(details.frameId)) { return; }
 
+    //console.log(`pageTracker: onBeforeNavigate, tabId: ${details.tabId}, windowId: ${details.windowId}`);
+    self.pageForTab.set(details.tabId, new Page(details));
+    wantsNew = true;
+  });
+
+  /*
+   * Associate each request when it starts with current Page for the tab
+   */
   browser.webRequest.onBeforeRequest.addListener(
-    self.onBeforeRequest,
+    details => {
+      if (nonTabRequest(details.tabId)) { return; }
+      if (self.pageForTab.has(details.tabId)) {
+        self.pageForTab.get(details.tabId).requestIds.set(details.requestId, true);
+      }
+    },
     { urls: ["<all_urls>"] }
   );
 
+  /*
+   * Update associated Page for each completed request
+   * Ignore requests which haven't been previously associated,
+   * or are associated with a defunct Page
+   */
   browser.webRequest.onCompleted.addListener(
-    self.onComplete,
+    details => {
+      if (nonTabRequest(details.tabId)) { return; }
+
+      var page = self.pageForTab.get(details.tabId);
+      if (page && page.requestIds.has(details.requestId)) {
+        //console.log(`requestIds: '{ ${mapToString(page.requestIds)} }', requestId: '${details.requestId}'`);
+
+        page.update(new Host(details));
+        wantsUpdate = true;
+        page.requestIds.delete(details.requestId);
+      }
+    },
     { urls: ["<all_urls>"] }
   );
 
+  /*
+   * For requests that end in an error, clean up requestId
+   */
   browser.webRequest.onErrorOccurred.addListener(
-    self.onErrorOccurred,
+    details => {
+      if (nonTabRequest(details.tabId)) { return; }
+
+      var page = self.pageForTab.get(details.tabId);
+      if (page && page.requestIds.has(details.requestId)) {
+        page.requestIds.delete(details.requestId);
+      }
+    },
     { urls: ["<all_urls>"] }
   );
 };
+
 
 var pageTracker = new PageTracker();
 

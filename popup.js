@@ -1,3 +1,6 @@
+/*
+ *
+ */
 
 function IPViewModel (data, parent, isMainIP = false) {
   var self = this;
@@ -87,11 +90,8 @@ function HostViewModel (data, parent, isMainHost = false) {
       : browser.i18n.getMessage("ttShowDetail");
   });
 
-  self.greyscale = ko.observable(false)
-                     .extend({ subPersist: "option_greyscale" });
-
   self.statusPath = ko.computed(() => {
-    var iconset = self.greyscale() ? 'grey' : 'colour';
+    var iconset = parent.greyscale() ? 'grey' : 'colour';
     return `images/16/${iconset}/${self.status()}.png`;
   });
 
@@ -172,6 +172,9 @@ function PopUpViewModel () {
 
   self.mainHost = ko.observable();
 
+  self.greyscale = ko.observable(false)
+                     .extend({ subPersist: "option_greyscale" });
+
   var mapping = {
     'hosts': {
       key: data => {
@@ -246,11 +249,11 @@ function PopUpViewModel () {
         console.log(`Popup received message, action: ${message.action}`);
         if (message.action === 'update') {
           // Update viewModel
-          console.log(JSON.stringify(message));
+          //console.log(JSON.stringify(message));
           ko.mapping.fromJS(message.data, mapping, self);
         } else if (message.action === 'new') {
           // Regenerate viewModel
-          console.log(JSON.stringify(message));
+          //console.log(JSON.stringify(message));
           self.hosts([]);
           self.mainHost(false);
           ko.mapping.fromJS(message.data, mapping, self);

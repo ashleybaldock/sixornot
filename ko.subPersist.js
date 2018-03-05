@@ -1,18 +1,21 @@
 (function(ko) {
   if (typeof (browser.storage) === "undefined") { return; }
 
-  ko.extenders.persist = function (target, key) {
+  ko.extenders.subPersist = function (target, key) {
+    console.log(`subPersist, key: ${key}`);
     if (key) {
       browser.storage.local.get(key).then(
         item => {
           if (item[key]) {
+            console.log('loading key');
             target(JSON.parse(item[key]));
           } else {
+            console.log('setting default key');
             target(target());
           }
         },
         error => {
-          console.log(`ko.extenders.persist: unable to get key: '${key}' from storage`);
+          console.log(`ko.extenders.subPersist: unable to get key: '${key}' from storage`);
         }
       );
     }

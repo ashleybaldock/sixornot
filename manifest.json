@@ -8,7 +8,8 @@
 
   "applications": {
     "gecko": {
-      "id": "sixornot@entropy.me.uk"
+      "id": "sixornot@entropy.me.uk",
+      "strict_min_version": "57.0"
     }
   },
 
@@ -18,21 +19,20 @@
 
   "permissions": [
     "storage",
-    "clipboardWrite",
     "webRequest",
     "webNavigation",
     "<all_urls>"
   ],
 
   "icons": {
-    "64": "icon64.png"
+    "64": "images/sixornot_icon_64.png"
   },
 
   "page_action": {
     "browser_style": true,
     "default_icon": {
-      "16": "images/colour/16/other.png",
-      "32": "images/colour/32/other.png"
+      "16": "images/16/colour/other.png",
+      "32": "images/32/colour/other.png"
     },
     "default_popup": "popup.html",
     "default_title": "__MSG_buttonTooltip__"
@@ -40,8 +40,8 @@
 
   "browser_action": {
     "default_icon": {
-      "16": "images/colour/16/other.png",
-      "32": "images/colour/32/other.png"
+      "16": "images/16/colour/other.png",
+      "32": "images/32/colour/other.png"
     },
     "default_title": "__MSG_buttonTooltip__",
     "default_popup": "popup.html",

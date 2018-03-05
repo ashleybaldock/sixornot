@@ -1,3 +1,6 @@
+/*
+ *
+ */
 
 function SettingsViewModel () {
   var self = this;
