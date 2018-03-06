@@ -21,7 +21,7 @@ function subscribeToSetting (setting, callback) {
       }
     },
     error => {
-      console.log(`subscribeToSetting: unable to retrieve setting on init: '${setting}'`);
+      console.log(`SixOrNot:background.js - subscribeToSetting: unable to retrieve setting on init: '${setting}', error: ${error}`);
     }
   );
 
@@ -75,6 +75,11 @@ function ProxyInfo (proxyInfo) {
 function Host (details) {
   var url = new URL(details.url);
 
+  if (details.redirectUrl) {
+    var newUrl = new URL(details.redirectUrl);
+    this.newHostname = newUrl.hostname;
+  }
+
   this.hostname = url.hostname;
   this.proxyInfo = new ProxyInfo(details.proxyInfo);
   this.mainIP = new IPAddress(details.ip, details.fromCache);
@@ -86,6 +91,11 @@ function Host (details) {
 Host.prototype.updateFrom = function (other) {
   //console.log('updateFrom');
   if (other.hostname !== this.hostname) { return; }
+
+  // On redirect, update existing hostname
+  if (other.newHostname) {
+    this.hostname = other.newHostname;
+  }
 
   //console.log(this.hostname);
   this.connectionCount += 1;
@@ -164,6 +174,7 @@ function Page (details) {
     }
     var iconset = greyscale ? 'grey' : 'colour';
 
+    //console.log(`updating pageAction for tabId: ${details.tabId}`);
     browser.pageAction.setIcon({
       path: {
         16: `images/16/${iconset}/${status}.png`,
@@ -171,6 +182,13 @@ function Page (details) {
       },
       tabId: self.tabId
     });
+
+    if (addressicon) {
+      browser.pageAction.show(details.tabId);
+    } else {
+      browser.pageAction.hide(details.tabId);
+    }
+
     browser.browserAction.setIcon({
       path: {
         16: `images/16/${iconset}/${status}.png`,
@@ -183,7 +201,7 @@ function Page (details) {
   self.mainHost = new Host({ url: details.url });
   self.hosts = {};
   self.hostCount = 0;
-  
+
   function triggerDNS (host, callback) {
     if (browser.dns
      && host.mainIP.type !== 1
@@ -206,23 +224,21 @@ function Page (details) {
 
   self.update = function (host) {
     if (!host.hostname) { return; }
+
     // Add or update host
     if (host.hostname === self.mainHost.hostname) {
       // Update mainHost
       self.mainHost.updateFrom(host);
-      triggerDNS(host, dnsResult => {
-        dnsIPs = dnsResult.ips;
-      });
       self.updateButtons();
-    } else if (self.hosts[host.hostname]) {
-      // Update host
-      self.hosts[host.hostname].updateFrom(host);
-    } else {
-      // Add host
-      self.hosts[host.hostname] = host;
-      triggerDNS(host, dnsResult => {
-        self.hosts[host.hostname].dnsIPs = dnsResult.ips;
-      });
+    } else if (!host.newHostname) {
+      // Ignore redirects for non-main host for now TODO
+      if (self.hosts[host.hostname]) {
+        // Update host
+        self.hosts[host.hostname].updateFrom(host);
+      } else {
+        // Add host
+        self.hosts[host.hostname] = host;
+      }
     }
   };
 }
@@ -263,27 +279,15 @@ function PageTracker () {
   });
   subscribeToSetting('option_addressicon', newValue => {
     addressicon = newValue;
-    browser.tabs.query({}).then(
-      tabs => {
-        tabs.forEach(tab => {
-          if (addressicon) {
-            browser.pageAction.show(tab.id);
-          } else {
-            browser.pageAction.hide(tab.id);
-          }
-        });
-      },
-      error => {
-        console.log(`option_addressicon sub, tabs query error: ${error}`);
-      }
-    );
+    self.pageForTab.forEach((value, key, map) => {
+      value.updateButtons();
+    });
   });
 
   /*
    * Clean up Page for removed tabs
    */
   browser.tabs.onRemoved.addListener(tabId => {
-    console.log(`pageTracker: removeTab, id: ${tabId}`);
     self.pageForTab.delete(tabId);
   });
 
@@ -322,6 +326,7 @@ function PageTracker () {
    */
   browser.webRequest.onBeforeRequest.addListener(
     details => {
+      //console.log(`onBeforeRequest for tabId: ${details.tabId}, requestId: ${details.requestId}`);
       if (nonTabRequest(details.tabId)) { return; }
       if (self.pageForTab.has(details.tabId)) {
         self.pageForTab.get(details.tabId).requestIds.set(details.requestId, true);
@@ -337,6 +342,7 @@ function PageTracker () {
    */
   browser.webRequest.onCompleted.addListener(
     details => {
+      //console.log(`onCompleted for tabId: ${details.tabId}, requestId: ${details.requestId}, url: ${details.url}`);
       if (nonTabRequest(details.tabId)) { return; }
 
       var page = self.pageForTab.get(details.tabId);
@@ -346,6 +352,26 @@ function PageTracker () {
         page.update(new Host(details));
         wantsUpdate = true;
         page.requestIds.delete(details.requestId);
+      }
+    },
+    { urls: ["<all_urls>"] }
+  );
+
+  /*
+   * Requests can be redirected, if so the main hostname can change
+   * For now, just update mainHost name
+   * TODO - handle and show in UI details of redirections
+   * e.g. google.com -> www.google.co.uk
+   */
+  browser.webRequest.onBeforeRedirect.addListener(
+    details => {
+      //console.log(`onBeforeRedirect for tabId: ${details.tabId}, requestId: ${details.requestId}, url: ${details.url}, redirectUrl: ${details.redirectUrl}`);
+      if (nonTabRequest(details.tabId)) { return; }
+
+      var page = self.pageForTab.get(details.tabId);
+      if (page && page.requestIds.has(details.requestId)) {
+        page.update(new Host(details));
+        wantsUpdate = true;
       }
     },
     { urls: ["<all_urls>"] }
@@ -372,7 +398,7 @@ var pageTracker = new PageTracker();
 
 
 browser.runtime.onConnect.addListener(port => {
-  console.log(`incoming connection from: ${port.name}`);
+  //console.log(`incoming connection from: ${port.name}`);
   var timeoutId, lastTabId;
 
   function sendForTab (tabId) {
@@ -411,7 +437,7 @@ browser.runtime.onConnect.addListener(port => {
   });
 
   port.onMessage.addListener(message => {
-    console.log(`Background received message, action: ${message.action}`);
+    //console.log(`Background received message, action: ${message.action}`);
     if (message.action === 'requestUpdate') {
       lastTabId = message.data.tabId;
       newForTab(lastTabId);

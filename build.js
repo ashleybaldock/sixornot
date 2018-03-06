@@ -2,11 +2,12 @@
  * SixOrNot build script
  */
 
-var fs = require('fs-extra');
-var archiver = require('archiver');
+const fs = require('fs-extra');
+const archiver = require('archiver');
+const { execSync } = require('child_process');
 
-var manifest = require('./manifest.json');
-var version = manifest.version;
+const manifest = require('./manifest.json');
+const version = manifest.version;
 
 // Create build directory by version
 fs.ensureDirSync('./dist');
@@ -18,7 +19,7 @@ fs.ensureDirSync(`./dist/${version}/src`);
   'ko.persist.js',
   'ko.subPersist.js',
   'knockout-latest.debug.js',
-  'knockout-mapping.js',
+  'knockout.mapping.js',
   'licence.txt',
   'manifest.json',
   'options.css',
@@ -33,7 +34,12 @@ fs.ensureDirSync(`./dist/${version}/src`);
   fs.copySync(`./${fileOrDir}`, `./dist/${version}/src/${fileOrDir}`);
 });
 
-var output = fs.createWriteStream(`./dist/${version}/sixornot.xpi`);
+// Remove .DS_Store files from output
+let stdout = execSync(`find ./dist/${version}/ -name ".DS_Store" -delete`);
+
+console.log(stdout);
+
+var output = fs.createWriteStream(`./dist/${version}/sixornot-${version}.xpi`);
 var archive = archiver('zip', { zlib: { level: 9 } });
 
 output.on('close', () => {

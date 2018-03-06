@@ -30,7 +30,7 @@ function IPViewModel (data, parent, isMainIP = false) {
   self.ttCopyAddress = ko.observable(
     browser.i18n.getMessage("ttCopyAddress"));
   self.copy = () => {
-    console.log('ip copy click');
+    //console.log('ip copy click');
     // TODO copy to clipboard
   };
 }
@@ -186,7 +186,6 @@ function PopUpViewModel () {
     },
     'mainHost': {
       create: options => {
-        console.log('CREATE');
         return new HostViewModel(options.data, self, isMainHost = true);
       }
     }
@@ -222,7 +221,7 @@ function PopUpViewModel () {
       var port = browser.runtime.connect({ name: `popup-${windowInfo.id}` });
 
       function requestUpdate (tabId) {
-        console.log(`requestUpdate for tab: ${tabId}`);
+        //console.log(`requestUpdate for tab: ${tabId}`);
         port.postMessage({
           action: 'requestUpdate',
           data: { tabId: tabId }
@@ -237,16 +236,16 @@ function PopUpViewModel () {
 
       browser.tabs.query({ active: true, currentWindow: true}).then(
         tabs => {
-          console.log(`browser.tabs.query tabs: ${JSON.stringify(tabs)}`);
+          //console.log(`browser.tabs.query tabs: ${JSON.stringify(tabs)}`);
           requestUpdate(tabs[0].id);
         },
         error => {
-          console.log(`browser.tabs.query error: ${error}`);
+          console.log(`SixOrNot:popup.js - browser.tabs.query error: ${error}`);
         }
       );
 
       port.onMessage.addListener(message => {
-        console.log(`Popup received message, action: ${message.action}`);
+        //console.log(`Popup received message, action: ${message.action}`);
         if (message.action === 'update') {
           // Update viewModel
           //console.log(JSON.stringify(message));
@@ -261,7 +260,7 @@ function PopUpViewModel () {
       });
     },
     error => {
-      console.log('unable to get current window');
+      console.log(`SixOrNot:popup.js - unable to get current window, error: ${error}`);
     }
   );
 }
