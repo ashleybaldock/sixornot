@@ -4,10 +4,10 @@ sixornot
 IPv6 status indicator for Firefox.
 
 
-To build: run ./build.sh
+To build: ```npm run build```
 
 
-To run test suite (you'll need npm installed):
+To run test suite:
 
 npm install
 ./node_modules/mocha/bin/mocha
