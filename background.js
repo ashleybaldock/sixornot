@@ -106,6 +106,7 @@ Host.prototype.updateFrom = function (other) {
   if (other.newHostname) {
     this.hostname = other.newHostname;
     //console.log('redirect');
+    this.dnsLookup();
   }
 
   this.connectionCount += 1;
@@ -131,6 +132,7 @@ Host.prototype.dnsLookup = function (success) {
   if (this.dnsStage !== DNS_pending) { return; }
 
   if (browser.dns
+   && this.retrievedFrom.some(x => x.type === 2 || x.type === 4)
    && this.proxyInfo.type !== 'http'
    && this.proxyInfo.type !== 'https'
    && !this.proxyInfo.resolveDNS) {
