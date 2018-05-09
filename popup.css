@@ -1,0 +1,68 @@
+
+table, tr, td, ul, li, span, img {
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+table {
+  margin: 10px;
+}
+
+td {
+  vertical-align: top;
+}
+
+.header {
+  padding-bottom: 5px;
+  text-align: center;
+}
+.footer {
+  padding-top: 5px;
+  text-align: center;
+}
+
+.statusIcon {
+  padding-right: 3px;
+}
+.connectionCount {
+}
+.tlsInfo {
+}
+.trrInfo {
+  padding-top: 1px;
+  padding-right: 1px;
+}
+.proxyInfo {
+  padding-top: 1px;
+  padding-right: 1px;
+}
+.hostname {
+  padding-right: 5px;
+}
+tr.main .hostname {
+  font-weight: bold;
+}
+.ipAddress {
+  padding-right: 3px;
+}
+.ipToggle {
+}
+
+.hostname, .ipAddress, .ipToggle {
+  cursor: pointer;
+}
+
+ul {
+  padding-bottom: 3px;
+}
+li {
+  padding-top: 3px;
+}
+li:first-child {
+  padding-top: 0;
+}
+
+a {
+  font-size: smaller;
+  color: #000;
+}

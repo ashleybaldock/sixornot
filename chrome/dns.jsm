@@ -12,142 +12,7 @@ var dnsService = Components.classes["@mozilla.org/network/dns-service;1"]
 /* exported dnsResolver, ipUtils, createLocalAddressInfo */
 var EXPORTED_SYMBOLS = ["dnsResolver", "ipUtils", "createLocalAddressInfo"];
 
-var callbacks = {
-    // Set up request map, which will map async requests to their callbacks
-    // Every time a request is started its callback is added to the callback_ids
-    // When a request is completed the callback_ids can be queried to find the correct
-    // callback to call.
-
-    // callback_ids is an array of 2-item arrays - [ID <int>, callback <func>]
-    callback_ids: [],
-    next_id: 0,
-
-    // Index this.callback_ids and return required callback
-    find_by_id: function (callback_id) {
-        // Returns -1 if ID not found
-        return this.callback_ids.map(function (a) {
-            return a[0];
-        }).indexOf(callback_id);
-    },
-
-    remove: function (callback_id) {
-        var i;
-        i = this.find_by_id(callback_id);
-        if (i !== -1) {
-            // Return the callback function
-            return this.callback_ids.splice(i, 1)[0][1];
-        }
-        // If ID not found, return false
-        return false;
-    },
-
-    add: function (callback) {
-        // Use next available callback ID, return that ID
-        this.next_id = this.next_id + 1;
-        this.callback_ids.push([this.next_id, callback]);
-        return this.next_id;
-    },
-
-    make_cancel_obj: function (callback_id) {
-        return {
-            cancel : function () {
-                // Remove ID from callback_ids if it exists there
-                callbacks.remove(callback_id);
-            }
-        };
-    }
-};
-
-var reqids = {
-    shutdown: 0,        // Shut down DNS resolver, must be last request!
-    remotelookup: 1,    // Perform dns.resolve_remote lookup
-    locallookup: 2,     // Perform dns.resolve_local lookup
-    checkremote: 3,     // Check whether ctypes resolver is in use for remote lookups
-    checklocal: 4,      // Check whether ctypes resolver is in use for local lookups
-    log: 254            // A logging message (sent from worker to main thread only)
-};
-
 var dnsResolver = (function () {
-    var resolveRemoteUsingCTypes = true;
-    var resolveLocalWithCTypes = true;
-    var worker = null;
-
-    var setupWorker = function (url) {
-        worker = new ChromeWorker(url);
-
-        worker.onmessage = function (evt) {  
-            var data, callback;
-            data = JSON.parse(evt.data);
-
-            if (data.reqid === reqids.log) { // Log message from dns_worker
-                log(data.content[0], data.content[1]);
-            } else if (data.reqid === reqids.checkremote) { // checkremote, set remote ctypes status
-                resolveRemoteUsingCTypes = data.content;
-            } else if (data.reqid === reqids.checklocal) { // checklocal, set local ctypes status
-                resolveLocalWithCTypes = data.content;
-            } else if (data.reqid === reqids.remotelookup ||
-                       data.reqid === reqids.locallookup) { // remotelookup/locallookup, find correct callback and call it
-                callback = callbacks.remove(data.callbackid);
-                // Execute callback
-                if (callback) {
-                    var result = {success: true, addresses: []};
-                    if (data[0] === "FAIL") {
-                        result.success = false;
-                    } else {
-                        data.content.forEach(function (addr) {
-                            result.addresses.push(createIPAddress(addr));
-                        });
-                    }
-                    callback(result);
-                }
-            }
-        };
-
-        worker.onerror = function (err) {
-            log(err.message + ", " + err.filename + ", " + err.lineno, 1);
-        };
-    };
-
-    switch(Services.appinfo.OS.toLowerCase()) {
-    case "darwin":
-        log("dnsResolver - init darwin ctypes resolver", 1);
-        setupWorker("chrome://sixornot/content/ctypes/darwin.js");
-        break;
-
-    case "linux":
-        log("dnsResolver - init linux ctypes resolver", 1);
-        setupWorker("chrome://sixornot/content/ctypes/linux.js");
-        break;
-
-    case "winnt":
-        log("dnsResolver - init winnt ctypes resolver", 1);
-        setupWorker("chrome://sixornot/content/ctypes/winnt.js");
-        break;
-
-    default:
-        // Fallback to using Firefox DNS resolver
-        log("dnsResolver - init firefox resolver", 1);
-        resolveRemoteUsingCTypes = false;
-        resolveLocalWithCTypes = false;
-        break;
-    }
-
-    var resolveLocalCTypes = function (callback) {
-        var new_callback_id = callbacks.add(callback);
-
-        worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": reqids.locallookup, "content": null}));
-
-        return callbacks.make_cancel_obj(new_callback_id);
-    };
-
-    var resolveRemoteCTypes = function (host, callback) {
-        var new_callback_id = callbacks.add(callback);
-
-        worker.postMessage(JSON.stringify({"callbackid": new_callback_id, "reqid": reqids.remotelookup, "content": host}));
-
-        return callbacks.make_cancel_obj(new_callback_id);
-    };
-
     var resolveRemoteFirefox = function (host, callback) {
         var completeCallback = {
             onLookupComplete : function (nsrequest, dnsresponse, nsstatus) {
@@ -179,21 +44,8 @@ var dnsResolver = (function () {
     };
 
     return {
-        /* Shuts down the native dns resolver (if running) */
-        // TODO can this be an unload() call?
         shutdown: function () {
             log("dnsResolver:shutdown", 1);
-            resolveRemoteUsingCTypes = false;
-            resolveLocalWithCTypes = false;
-
-            if (worker) {
-                worker.postMessage(JSON.stringify({"reqid": reqids.shutdown, "content": null}));
-
-                // Remove worker's event listeners as added in init(), this prevents messages
-                // sent by the worker after shutdown from triggering anything
-                worker.onmessage = null;
-                worker.onerror = null;
-            }
         },
 
         getLocalHostname: function () {
@@ -201,19 +53,11 @@ var dnsResolver = (function () {
         },
 
         resolveLocal: function (callback) {
-            if (resolveLocalWithCTypes) {
-                return resolveLocalCTypes(callback);
-            } else {
-                return resolveRemoteFirefox(this.getLocalHostname(), callback);
-            }
+            return resolveRemoteFirefox(this.getLocalHostname(), callback);
         },
 
         resolveRemote: function (host, callback) {
-            if (resolveRemoteUsingCTypes) {
-                return resolveRemoteCTypes(host, callback);
-            } else {
-                return resolveRemoteFirefox(host, callback);
-            }
+            return resolveRemoteFirefox(host, callback);
         }
     };
 }());

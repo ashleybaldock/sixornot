@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+
+    <link rel="stylesheet" type="text/css" href="popup.css">
+  </head>
+
+<body>
+  <script type="text/html" id="ip-template">
+    <!--<li data-bind="text: address, click: copy, visible: visible, attr: { title: ttCopyAddress }" class="ipAddress"></li>-->
+    <li data-bind="visible: visible, text: formattedAddress" class="ipAddress"></li>
+  </script>
+  <script type="text/html" id="host-template">
+    <tr data-bind="css: mainClass">
+      <td data-bind="attr: { title: ttStatus }" class="statusIcon"><img data-bind="attr: { src: statusPath }"></td>
+      <td data-bind="text: formattedConnectionCount, attr: { title: ttConnectionCount }" class="connectionCount"></td>
+      <td data-bind="attr: { title: ttProxyInfo }" class="proxyInfo"><img data-bind="attr: { src: proxyPath }"></td>
+      <td><img data-bind="attr: { title: ttTRRInfo }, visible: trr" class="trrInfo" src="images/16/trr.png"/><td>
+      <!--<td data-bind="text: hostname, click: copyAll, attr: { title: ttCopyAll }" class="hostname"></td>-->
+      <td data-bind="text: hostname" class="hostname"></td>
+      <td class="ipAddresses">
+        <ul>
+          <li data-bind="text: from" class="ipAddress"></li>
+          <!-- ko template: { name: 'ip-template', foreach: dnsIPs } -->
+          <!-- /ko -->
+        </ul>
+      </td>
+      <td data-bind="text: togglerText, click: toggleIPs, attr: { title: ttToggleIPs }" class="ipToggle"></td>
+    </tr>
+  </script>
+
+  <table>
+    <tr>
+      <td colspan="8" class="header" data-bind="text: header"></td>
+    </tr>
+    <!-- ko if: mainHost -->
+      <!-- ko template: { name: 'host-template', data: mainHost } -->
+      <!-- /ko -->
+    <!-- /ko -->
+    <!-- ko template: { name: 'host-template', foreach: hosts } -->
+    <!-- /ko -->
+    <tr>
+      <td colspan="8" class="footer">
+        <a href="#" data-bind="click: openSettings, text: settingsLinkText, attr: { title: ttSettingsLink }"></a> - <a href="#" data-bind="text: documentationLinkText, attr: { title: ttDocumentationLink, href: documentationLink }"></a>
+      </td>
+    </tr>
+  </table>
+
+  <script src="knockout-latest.debug.js"></script>
+  <script src="knockout.mapping.js"></script>
+  <script src="ko.subPersist.js"></script>
+  <script src="popup.js"></script>
+</body>
+
+</html>

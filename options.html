@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+
+    <link rel="stylesheet" type="text/css" href="options.css">
+  </head>
+
+<body>
+  <form action="">
+    <label>
+      <span>
+        <span data-bind="text: addressiconLabel"></span>
+        <input type="checkbox" data-bind="checked: addressicon" id="addressicon" >
+      </span>
+      <span data-bind="text: addressiconDesc"></span>
+    </label>
+    <label>
+      <span>
+        <span data-bind="text: greyscaleLabel"></span>
+        <input type="checkbox" data-bind="checked: greyscale" id="greyscale" >
+      </span>
+      <span data-bind="text: greyscaleDesc"></span>
+    </label>
+  </form>
+  <script src="knockout-latest.debug.js"></script>
+  <script src="knockout.mapping.js"></script>
+  <script src="ko.persist.js"></script>
+  <script src="options.js"></script>
+</body>
+
+</html>

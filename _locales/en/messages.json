@@ -1,0 +1,151 @@
+{
+  "extensionName": {
+    "message": "SixOrNot",
+    "description": "Name of the extension."
+  },
+  "extensionDescription": {
+    "message": "IPv6 status indicator",
+    "description": "Description of what the extension does"
+  },
+  "buttonTooltip": {
+    "message": "Open SixOrNot panel",
+    "description": "Tooltip displayed on mouse hover over button or address bar icon"
+  },
+
+  "settingsLinkText": {
+    "message": "Open Settings",
+    "description": ""
+  },
+  "documentationLinkText": {
+    "message": "Documentation",
+    "description": ""
+  },
+  "documentationLink": {
+    "message": "http://ashley.baldock.me/sixornot",
+    "description": ""
+  },
+
+  "addrCached": {
+    "message": "Cache",
+    "description": ""
+  },
+  "addrUnavailable": {
+    "message": "Address Unavailable",
+    "description": ""
+  },
+  "addrUnknown": {
+    "message": "Unknown",
+    "description": ""
+  },
+  "addrNA": {
+    "message": "N/A",
+    "description": ""
+  },
+
+  "proxyBase": {
+    "message": "$1 Proxy ($2:$3)\n$4",
+    "description": ""
+  },
+  "proxyHTTP": {
+    "message": "HTTP",
+    "description": ""
+  },
+  "proxyHTTPS": {
+    "message": "HTTPS",
+    "description": ""
+  },
+  "proxySOCKS4": {
+    "message": "SOCKS4",
+    "description": ""
+  },
+  "proxySOCKS5": {
+    "message": "SOCKS5",
+    "description": ""
+  },
+  "proxyLookupsDisabled": {
+    "message": "Note: SixOrNot DNS Lookups disabled for this host.",
+    "description": ""
+  },
+
+  "ttTRRInfo": {
+    "message": "Trusted Recursive Resolver (TRR) was used to resolve IP addresses for this host",
+    "description": ""
+  },
+
+  "ttStatus": {
+    "message": "",
+    "description": ""
+  },
+  "ttSettingsLink": {
+    "message": "Click to open SixOrNot settings",
+    "description": ""
+  },
+  "ttHideDetail": {
+    "message": "Hide DNS lookup information for this domain",
+    "description": ""
+  },
+  "ttShowDetail": {
+    "message": "Show DNS lookup information for this domain",
+    "description": ""
+  },
+  "ttDocumentationLink": {
+    "message": "Visit the SixOrNot website for help and information",
+    "description": ""
+  },
+  "ttConnectionCount": {
+    "message": "Number of connections made to this host",
+    "description": ""
+  },
+  "ttCopyAll": {
+    "message": "Click to copy all data for this domain to clipboard",
+    "description": ""
+  },
+  "ttCopyAddress": {
+    "message": "Click to copy this IP address to the clipboard",
+    "description": ""
+  },
+  "ttHideLocal": {
+    "message": "Hide local IP address information",
+    "description": ""
+  },
+  "ttShowLocal": {
+    "message": "Show local IP address information",
+    "description": ""
+  },
+
+  "warn6disabled": {
+    "message": "Warning: Firefox IPv6 DNS lookups disabled",
+    "description": ""
+  },
+  "warnIP4onlydomain": {
+    "message": "Warning: Domain is in ipv4OnlyDomains list",
+    "description": ""
+  },
+
+  "optionsAddressIcon": {
+    "message": "Show icon in address bar",
+    "description": ""
+  },
+  "optionsAddressIconDesc": {
+    "message": "Enable display of the SixOrNot icon in the address bar.",
+    "description": ""
+  },
+  "optionsGreyscale": {
+    "message": "Greyscale icons",
+    "description": ""
+  },
+  "optionsGreyscaleDesc": {
+    "message": "Enable the greyscale icon set.",
+    "description": ""
+  },
+  "optionsShowAllIPs": {
+    "message": "Show all local IPs in panel",
+    "description": ""
+  },
+  "optionsShowAllIPsDesc": {
+    "message": "Enable display of non-routeable local IP addresses in the panel.",
+    "description": ""
+  }
+}
+
+

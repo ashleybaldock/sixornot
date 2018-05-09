@@ -1,0 +1,65 @@
+{
+  "manifest_version": 2,
+  "name": "__MSG_extensionName__",
+  "version": "3.1.0",
+  "author": "Ashley Baldock",
+
+  "developer": {
+    "name": "Ashley Baldock",
+    "url": "http://ashley.baldock.me/sixornot"
+  },
+
+  "default_locale": "en",
+
+  "applications": {
+    "gecko": {
+      "id": "sixornot@entropy.me.uk",
+      "strict_min_version": "60.0"
+    }
+  },
+
+  "description": "__MSG_extensionDescription__",
+
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';",
+
+  "permissions": [
+    "dns",
+    "storage",
+    "webRequest",
+    "webNavigation",
+    "<all_urls>"
+  ],
+
+  "icons": {
+    "64": "images/sixornot_icon_64.png"
+  },
+
+  "page_action": {
+    "browser_style": true,
+    "default_icon": {
+      "16": "images/16/colour/other.png",
+      "32": "images/32/colour/other.png"
+    },
+    "default_title": "__MSG_buttonTooltip__",
+    "default_popup": "popup.html"
+  },
+
+  "browser_action": {
+    "browser_style": true,
+    "default_icon": {
+      "16": "images/16/colour/other.png",
+      "32": "images/32/colour/other.png"
+    },
+    "default_title": "__MSG_buttonTooltip__",
+    "default_popup": "popup.html"
+  },
+
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  "options_ui": {
+    "page": "options.html",
+    "browser_style": true
+  }
+}
