@@ -1,5 +1,19 @@
 # TODO
 
+# 3.1.0
+Copy to clipboard
+Cope with triggering downloads from within tab (check load reason?)
+Test with proxies
+Testing with things like ublock
+Put documentation back online
+
+# 3.2.0
+Rework using react?
+
+# 3.3.0
+DNS support (release version with min_compat 60
+
+
 # 2.0.2
 
 Bugfix

@@ -7,10 +7,10 @@
       browser.storage.local.get(key).then(
         item => {
           if (item[key]) {
-            console.log('loading key');
+            //console.log('loading key');
             target(JSON.parse(item[key]));
           } else {
-            console.log('setting default key');
+            //console.log('setting default key');
             target(target());
           }
         },

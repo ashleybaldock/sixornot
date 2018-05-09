@@ -16,19 +16,19 @@ function IPViewModel (data, parent, isMainIP = false) {
 
   self.formattedAddress = ko.computed(() => {
     if (self.type() === 2) {
-      return browser.i18n.getMessage("addrCached");
+      return `${browser.i18n.getMessage('addrCached')}`;
     }
     if (self.type() === 4 || self.type() === 6) {
-      return parent.proxyInfo.type() === "http" ? `(${self.address()})` : self.address();
+      return parent.proxyInfo.type() === 'http' ? `(${self.address()})` : self.address();
     }
     if (self.type() === 0) {
-      return browser.i18n.getMessage("addrUnavailable");
+      return browser.i18n.getMessage('addrUnavailable');
     }
-    return browser.i18n.getMessage("addrNA");
+    return browser.i18n.getMessage('addrNA');
   });
 
   self.ttCopyAddress = ko.observable(
-    browser.i18n.getMessage("ttCopyAddress"));
+    browser.i18n.getMessage('ttCopyAddress'));
   self.copy = () => {
     //console.log('ip copy click');
     // TODO copy to clipboard
@@ -77,17 +77,17 @@ function HostViewModel (data, parent, isMainHost = false) {
   ko.mapping.fromJS(data, mapping, self);
 
   self.ttStatus = ko.observable(
-    browser.i18n.getMessage("ttStatus"));
+    browser.i18n.getMessage('ttStatus'));
   self.ttConnectionCount = ko.observable(
-    browser.i18n.getMessage("ttConnectionCount"));
-  self.ttTLSInfo = ko.observable("TLS Info");
+    browser.i18n.getMessage('ttConnectionCount'));
+  self.ttTLSInfo = ko.observable('TLS Info');
   self.ttCopyAll = ko.observable(
-    browser.i18n.getMessage("ttCopyAll"));
+    browser.i18n.getMessage('ttCopyAll'));
   self.ttToggleIPs = ko.computed(() => {
     var length = self.dnsIPs().length;
     return length === 0 ? '' : self.showingIPs()
-      ? browser.i18n.getMessage("ttHideDetail")
-      : browser.i18n.getMessage("ttShowDetail");
+      ? browser.i18n.getMessage('ttHideDetail')
+      : browser.i18n.getMessage('ttShowDetail');
   });
 
   self.statusPath = ko.computed(() => {
@@ -97,32 +97,32 @@ function HostViewModel (data, parent, isMainHost = false) {
 
   self.ttProxyInfo = ko.computed(() => {
     if (self.proxyInfo.type() === 'http') {
-      return browser.i18n.getMessage("proxyBase", [
-        browser.i18n.getMessage("proxyHTTP"),
+      return browser.i18n.getMessage('proxyBase', [
+        browser.i18n.getMessage('proxyHTTP'),
         self.proxyInfo.host(),
         self.proxyInfo.port(),
-        browser.i18n.getMessage("proxyLookupsDisabled")
+        browser.i18n.getMessage('proxyLookupsDisabled')
       ]);
     } else if (self.proxyInfo.type() === 'https') {
-      return browser.i18n.getMessage("proxyBase", [
-        browser.i18n.getMessage("proxyHTTPS"),
+      return browser.i18n.getMessage('proxyBase', [
+        browser.i18n.getMessage('proxyHTTPS'),
         self.proxyInfo.host(),
         self.proxyInfo.port(),
-        browser.i18n.getMessage("proxyLookupsDisabled")
+        browser.i18n.getMessage('proxyLookupsDisabled')
       ]);
     } else if (self.proxyInfo.type() === 'socks4') {
-      return browser.i18n.getMessage("proxyBase", [
-        browser.i18n.getMessage("proxySOCKS4"),
+      return browser.i18n.getMessage('proxyBase', [
+        browser.i18n.getMessage('proxySOCKS4'),
         self.proxyInfo.host(),
         self.proxyInfo.port(),
-        self.proxyInfo.proxyDNS() ? browser.i18n.getMessage("proxyLookupsDisabled") : ''
+        self.proxyInfo.proxyDNS() ? browser.i18n.getMessage('proxyLookupsDisabled') : ''
       ]);
     } else if (self.proxyInfo.type() === 'socks5') {
-      return browser.i18n.getMessage("proxyBase", [
-        browser.i18n.getMessage("proxySOCKS5"),
+      return browser.i18n.getMessage('proxyBase', [
+        browser.i18n.getMessage('proxySOCKS5'),
         self.proxyInfo.host(),
         self.proxyInfo.port(),
-        self.proxyInfo.proxyDNS() ? browser.i18n.getMessage("proxyLookupsDisabled") : ''
+        self.proxyInfo.proxyDNS() ? browser.i18n.getMessage('proxyLookupsDisabled') : ''
       ]);
     } else {
       return '';
@@ -173,7 +173,7 @@ function PopUpViewModel () {
   self.mainHost = ko.observable();
 
   self.greyscale = ko.observable(false)
-                     .extend({ subPersist: "option_greyscale" });
+                     .extend({ subPersist: 'option_greyscale' });
 
   var mapping = {
     'hosts': {
@@ -192,19 +192,19 @@ function PopUpViewModel () {
   };
 
   self.header = ko.observable(
-    browser.i18n.getMessage("extensionname"));
+    browser.i18n.getMessage('extensionname'));
 
   self.ttDocumentationLink = ko.observable(
-    browser.i18n.getMessage("ttDocumentationLink"));
+    browser.i18n.getMessage('ttDocumentationLink'));
   self.documentationLinkText = ko.observable(
-    browser.i18n.getMessage("documentationLinkText"));
+    browser.i18n.getMessage('documentationLinkText'));
   self.documentationLink = ko.observable(
-    browser.i18n.getMessage("documentationLink"));
+    browser.i18n.getMessage('documentationLink'));
 
   self.ttSettingsLink = ko.observable(
-    browser.i18n.getMessage("ttSettingsLink"));
+    browser.i18n.getMessage('ttSettingsLink'));
   self.settingsLinkText = ko.observable(
-    browser.i18n.getMessage("settingsLinkText"));
+    browser.i18n.getMessage('settingsLinkText'));
   self.openSettings = () => {
     browser.runtime.openOptionsPage()
   }

@@ -36,6 +36,8 @@ function subscribeToSetting (setting, callback) {
   });
 }
 
+console.log('startup');
+
 function mapToString (map) {
   var pairs = [];
   map.forEach((value, key, map) => {
@@ -44,7 +46,7 @@ function mapToString (map) {
   return pairs.join(', ');
 }
 
-function IPAddress (ip, fromCache = false) {
+function IPAddress (ip, fromCache = false, trr = false) {
   if (fromCache) {
     this.type = 2;
   } else if (!ip) {
@@ -55,6 +57,7 @@ function IPAddress (ip, fromCache = false) {
     this.type = 6;
   }
 
+  this.trr = trr;
   this.address = ip;
 }
 
@@ -72,8 +75,13 @@ function ProxyInfo (proxyInfo) {
   }
 }
 
+var DNS_pending = 0,
+    DNS_started = 1,
+    DNS_done = 2;
+
 function Host (details) {
   var url = new URL(details.url);
+
 
   if (details.redirectUrl) {
     var newUrl = new URL(details.redirectUrl);
@@ -86,6 +94,7 @@ function Host (details) {
   this.dnsIPs = [];
   this.connectionCount = 1;
   this.status = this.getStatus();
+  this.dnsStage = DNS_pending;
 }
 
 Host.prototype.updateFrom = function (other) {
@@ -95,6 +104,8 @@ Host.prototype.updateFrom = function (other) {
   // On redirect, update existing hostname
   if (other.newHostname) {
     this.hostname = other.newHostname;
+    console.log('redirect');
+    this.dnsLookup();
   }
 
   //console.log(this.hostname);
@@ -106,14 +117,46 @@ Host.prototype.updateFrom = function (other) {
   this.status = this.getStatus();
 };
 
+Host.prototype.dnsLookup = function () {
+  if (this.dnsStage !== DNS_pending) { return; }
+
+  if (browser.dns
+   && this.mainIP.type !== 1
+   && this.proxyInfo.type !== "http"
+   && this.proxyInfo.type !== "https"
+   && !this.proxyInfo.resolveDNS) {
+    this.dnsStage = DNS_started;
+    browser.dns.resolve(this.hostname, []).then(
+      response => {
+        console.log(`host: ${this.hostname}, addresses: ${response.addresses}, isTRR: ${response.isTRR}`);
+        this.dnsIPs = response.addresses.filter(a => a !== this.mainIP.address).map(a => new IPAddress(a, false, response.isTRR));
+
+        // If main IP also obtained via TRR, update its' flag
+        var main = response.addresses.filter(a => a === this.mainIP.address);
+        if (main.length > 0) { this.mainIP.trr = response.isTRR; }
+
+        this.status = this.getStatus();
+        wantsUpdate = true;
+        this.dnsStage = DNS_done;
+      },
+      error => {
+        console.log(`SixOrNot DNS error: ${error}`);
+        this.dnsStage = DNS_pending;
+      }
+    );
+  } else {
+    //console.log('skipping dns');
+  }
+};
+
 Host.prototype.getStatus = function () {
   if (this.proxyInfo && (this.proxyInfo.type === "http" || this.proxyInfo.type === "https")) {
       return "proxy";
   }
 
   if (this.mainIP) {
-    var hasIPv6DNS = this.dnsIPs.some(ip => ip.family === 6);
-    var hasIPv4DNS = this.dnsIPs.some(ip => ip.family === 4);
+    var hasIPv6DNS = this.dnsIPs.some(ip => ip.type === 6);
+    var hasIPv4DNS = this.dnsIPs.some(ip => ip.type === 4);
 
     if (this.mainIP.type === 6) {
       if (!hasIPv4DNS && hasIPv6DNS) {
@@ -132,7 +175,7 @@ Host.prototype.getStatus = function () {
         return "4only";
       }
     } else if (this.mainIP.type === 2) {
-      // address family 2 is cached responses
+      // address type 2 is cached responses
       if (!hasIPv6DNS) {
         if (!hasIPv4DNS) {
           // No addresses, grey cache icon
@@ -202,26 +245,6 @@ function Page (details) {
   self.hosts = {};
   self.hostCount = 0;
 
-  function triggerDNS (host, callback) {
-    if (browser.dns
-     && host.mainIP.type !== 1
-     && host.proxyInfo.type !== "http"
-     && host.proxyInfo.type !== "https"
-     && !host.proxyInfo.resolveDNS) {
-      browser.dns.resolve(hostname).then( // RESOLVE_BYPASS_CACHE
-        response => {
-          // TODO - convert array of IP addresses to IPAddress objects
-          callback({ status: 'done', ips: [] });
-        },
-        error => {
-          callback({ status: 'fail', ips: [] });
-        }
-      );
-    } else {
-      callback({ status: 'skip', ips: [] });
-    }
-  }
-
   self.update = function (host) {
     if (!host.hostname) { return; }
 
@@ -229,6 +252,7 @@ function Page (details) {
     if (host.hostname === self.mainHost.hostname) {
       // Update mainHost
       self.mainHost.updateFrom(host);
+      self.mainHost.dnsLookup();
       self.updateButtons();
     } else if (!host.newHostname) {
       // Ignore redirects for non-main host for now TODO
@@ -238,6 +262,7 @@ function Page (details) {
       } else {
         // Add host
         self.hosts[host.hostname] = host;
+        self.hosts[host.hostname].dnsLookup();
       }
     }
   };
