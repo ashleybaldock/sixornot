@@ -152,7 +152,7 @@ function HostViewModel (data, parent, isMainHost = false) {
     }
   });
   self.proxyPath = ko.computed(() => {
-    return self.proxyInfo.type() === 'none'
+    return self.proxyInfo.type() !== 'none'
       ? `images/16/proxy_on.png`
       : `images/16/proxy_off.png`;
   });
