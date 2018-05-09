@@ -42,11 +42,15 @@
   },
 
   "addrCached": {
-    "message": "Cached",
+    "message": "Cache",
     "description": ""
   },
   "addrUnavailable": {
     "message": "Address Unavailable",
+    "description": ""
+  },
+  "addrUnknown": {
+    "message": "Unknown",
     "description": ""
   },
   "addrNA": {

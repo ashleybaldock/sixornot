@@ -36,8 +36,6 @@ function subscribeToSetting (setting, callback) {
   });
 }
 
-console.log('startup');
-
 function mapToString (map) {
   var pairs = [];
   map.forEach((value, key, map) => {
@@ -47,18 +45,21 @@ function mapToString (map) {
 }
 
 function IPAddress (ip, fromCache = false, trr = false) {
+  this.trr = trr;
+
   if (fromCache) {
     this.type = 2;
+    this.address = 'cache';
   } else if (!ip) {
     this.type = 1;
-  } else if (ip.indexOf(":") === -1) {
+    this.address = 'unknown';
+  } else if (ip.indexOf(':') === -1) {
     this.type = 4;
+    this.address = ip;
   } else {
     this.type = 6;
+    this.address = ip;
   }
-
-  this.trr = trr;
-  this.address = ip;
 }
 
 function ProxyInfo (proxyInfo) {
@@ -90,7 +91,7 @@ function Host (details) {
 
   this.hostname = url.hostname;
   this.proxyInfo = new ProxyInfo(details.proxyInfo);
-  this.mainIP = new IPAddress(details.ip, details.fromCache);
+  this.retrievedFrom = [new IPAddress(details.ip, details.fromCache)];
   this.dnsIPs = [];
   this.connectionCount = 1;
   this.status = this.getStatus();
@@ -98,46 +99,52 @@ function Host (details) {
 }
 
 Host.prototype.updateFrom = function (other) {
-  //console.log('updateFrom');
   if (other.hostname !== this.hostname) { return; }
 
   // On redirect, update existing hostname
   if (other.newHostname) {
     this.hostname = other.newHostname;
     console.log('redirect');
-    this.dnsLookup();
   }
 
-  //console.log(this.hostname);
   this.connectionCount += 1;
   this.proxyInfo = other.proxyInfo;
-  if (!this.mainIP || this.mainIP.type < 4) {
-    this.mainIP = other.mainIP;
-  }
+
+  other.retrievedFrom.forEach(x => {
+    var exists = false;
+    this.retrievedFrom.forEach(y => {
+      if (x.address === y.address) {
+        exists = true;
+      }
+    });
+    if (!exists) {
+      this.retrievedFrom.push(x);
+    }
+  });
+
   this.status = this.getStatus();
 };
 
-Host.prototype.dnsLookup = function () {
+Host.prototype.dnsLookup = function (success) {
   if (this.dnsStage !== DNS_pending) { return; }
 
+  console.log(`proxyInfo: ${JSON.stringify(this.proxyInfo)}`);
+
   if (browser.dns
-   && this.mainIP.type !== 1
-   && this.proxyInfo.type !== "http"
-   && this.proxyInfo.type !== "https"
+   && this.proxyInfo.type !== 'http'
+   && this.proxyInfo.type !== 'https'
    && !this.proxyInfo.resolveDNS) {
     this.dnsStage = DNS_started;
     browser.dns.resolve(this.hostname, []).then(
       response => {
         console.log(`host: ${this.hostname}, addresses: ${response.addresses}, isTRR: ${response.isTRR}`);
-        this.dnsIPs = response.addresses.filter(a => a !== this.mainIP.address).map(a => new IPAddress(a, false, response.isTRR));
-
-        // If main IP also obtained via TRR, update its' flag
-        var main = response.addresses.filter(a => a === this.mainIP.address);
-        if (main.length > 0) { this.mainIP.trr = response.isTRR; }
+        this.dnsIPs = response.addresses.map(a => new IPAddress(a, false, response.isTRR));
 
         this.status = this.getStatus();
-        wantsUpdate = true;
         this.dnsStage = DNS_done;
+
+        wantsUpdate = true;
+        success();
       },
       error => {
         console.log(`SixOrNot DNS error: ${error}`);
@@ -150,55 +157,60 @@ Host.prototype.dnsLookup = function () {
 };
 
 Host.prototype.getStatus = function () {
-  if (this.proxyInfo && (this.proxyInfo.type === "http" || this.proxyInfo.type === "https")) {
-      return "proxy";
+  if (this.proxyInfo && (this.proxyInfo.type === 'http' || this.proxyInfo.type === 'https')) {
+      return 'proxy';
   }
 
-  if (this.mainIP) {
-    var hasIPv6DNS = this.dnsIPs.some(ip => ip.type === 6);
-    var hasIPv4DNS = this.dnsIPs.some(ip => ip.type === 4);
+  if (this.retrievedFrom.length === 0) { return 'other'; }
 
-    if (this.mainIP.type === 6) {
-      if (!hasIPv4DNS && hasIPv6DNS) {
-        // Actual is v6, DNS is v6 -> Blue
-        return "6only";
-      } else {
-        // Actual is v6, DNS is v4 + v6 (or not completed) -> Green
-        return "6and4";
-      }
-    } else if (this.mainIP.type === 4) {
-      if (hasIPv6DNS) {
-        // Actual is v4, DNS is v4 + v6 -> Orange
-        return "4pot6";
-      } else {
-        // Actual is v4, DNS is v4 (or not completed) -> Red
-        return "4only";
-      }
-    } else if (this.mainIP.type === 2) {
-      // address type 2 is cached responses
-      if (!hasIPv6DNS) {
-        if (!hasIPv4DNS) {
-          // No addresses, grey cache icon
-          return "other_cache";
-        } else {
-          // Only v4 addresses from DNS, red cache icon
-          return "4only_cache";
-        }
-      } else {
-        if (!hasIPv4DNS) {
-          // Only v6 addresses from DNS, blue cache icon
-          return "6only_cache";
-        } else {
-          // Both kinds of addresses from DNS, yellow cache icon
-          return "4pot6_cache";
-        }
-      }
-    } else if (this.mainIP.type === 0) {
-      // This indicates that no addresses were available but request is not cached
-      return "error";
+  var bestType = this.retrievedFrom.reduce((accumulator, current) => {
+    return Math.max(accumulator, current.type);
+  }, 0);
+
+  var hasIPv6DNS = this.dnsIPs.some(ip => ip.type === 6);
+  var hasIPv4DNS = this.dnsIPs.some(ip => ip.type === 4);
+
+  if (bestType === 6) {
+    if (!hasIPv4DNS && hasIPv6DNS) {
+      // Actual is v6, DNS is v6 -> Blue
+      return '6only';
+    } else {
+      // Actual is v6, DNS is v4 + v6 (or not completed) -> Green
+      return '6and4';
     }
+  } else if (bestType === 4) {
+    if (hasIPv6DNS) {
+      // Actual is v4, DNS is v4 + v6 -> Orange
+      return '4pot6';
+    } else {
+      // Actual is v4, DNS is v4 (or not completed) -> Red
+      return '4only';
+    }
+  } else if (bestType === 2) {
+    // address type 2 is cached responses
+    if (!hasIPv6DNS) {
+      if (!hasIPv4DNS) {
+        // No addresses, grey cache icon
+        return 'other_cache';
+      } else {
+        // Only v4 addresses from DNS, red cache icon
+        return '4only_cache';
+      }
+    } else {
+      if (!hasIPv4DNS) {
+        // Only v6 addresses from DNS, blue cache icon
+        return '6only_cache';
+      } else {
+        // Both kinds of addresses from DNS, yellow cache icon
+        return '4pot6_cache';
+      }
+    }
+  } else if (bestType === 1) {
+    return 'other';
+  } else if (bestType === 0) {
+    // This indicates that no addresses were available but request is not cached
+    return 'error';
   }
-  return "other";
 };
 
 function Page (details) {
@@ -252,8 +264,7 @@ function Page (details) {
     if (host.hostname === self.mainHost.hostname) {
       // Update mainHost
       self.mainHost.updateFrom(host);
-      self.mainHost.dnsLookup();
-      self.updateButtons();
+      self.mainHost.dnsLookup(self.updateButtons);
     } else if (!host.newHostname) {
       // Ignore redirects for non-main host for now TODO
       if (self.hosts[host.hostname]) {
@@ -357,7 +368,7 @@ function PageTracker () {
         self.pageForTab.get(details.tabId).requestIds.set(details.requestId, true);
       }
     },
-    { urls: ["<all_urls>"] }
+    { urls: ['<all_urls>'] }
   );
 
   /*
@@ -379,7 +390,7 @@ function PageTracker () {
         page.requestIds.delete(details.requestId);
       }
     },
-    { urls: ["<all_urls>"] }
+    { urls: ['<all_urls>'] }
   );
 
   /*
@@ -399,7 +410,7 @@ function PageTracker () {
         wantsUpdate = true;
       }
     },
-    { urls: ["<all_urls>"] }
+    { urls: ['<all_urls>'] }
   );
 
   /*
@@ -414,7 +425,7 @@ function PageTracker () {
         page.requestIds.delete(details.requestId);
       }
     },
-    { urls: ["<all_urls>"] }
+    { urls: ['<all_urls>'] }
   );
 };
 

@@ -9,10 +9,10 @@
 
 <body>
   <script type="text/html" id="ip-template">
-    <!--<li data-bind="text: formattedAddress, click: copy, visible: visible, attr: { title: ttCopyAddress }" class="ipAddress"></li>-->
+    <!--<li data-bind="text: address, click: copy, visible: visible, attr: { title: ttCopyAddress }" class="ipAddress"></li>-->
     <li data-bind="visible: visible" class="ipAddress">
       <span data-bind="text: formattedAddress" class="ipAddress"></span>
-      <img data-bind="visible: trr" src="images/16/trr.png"/>
+      <!--<img data-bind="visible: trr" src="images/16/trr.png"/>-->
     </li>
   </script>
   <script type="text/html" id="host-template">
@@ -24,8 +24,10 @@
       <td data-bind="text: hostname" class="hostname"></td>
       <td class="ipAddresses">
         <ul>
-          <!-- ko template: { name: 'ip-template', data: mainIP } -->
-          <!-- /ko -->
+          <li class="ipAddress">
+            <span data-bind="text: from" class="ipAddress"></span>
+            <img data-bind="visible: trr" src="images/16/trr.png"/>
+          </li>
           <!-- ko template: { name: 'ip-template', foreach: dnsIPs } -->
           <!-- /ko -->
         </ul>

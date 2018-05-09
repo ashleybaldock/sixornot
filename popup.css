@@ -60,10 +60,7 @@ li {
 li:first-child {
   padding-top: 0;
 }
-li span {
-  vertical-align: top;
-}
-li img {
+li span, li img {
   vertical-align: top;
 }
 

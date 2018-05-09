@@ -2,7 +2,7 @@
  *
  */
 
-function IPViewModel (data, parent, isMainIP = false) {
+function IPViewModel (data, parent) {
   var self = this;
   self.parent = parent;
 
@@ -10,25 +10,18 @@ function IPViewModel (data, parent, isMainIP = false) {
 
   ko.mapping.fromJS(data, {}, self);
 
+  this.formattedAddress = ko.computed(() => {
+    // Note: space character here needs to be a unicode nbsp!
+    return this.trr() ? `${this.address()} ⓣ` : `${this.address()}`;
+  });
+
   self.visible = ko.computed(() => {
-    return isMainIP || self.parent.showingIPs();
+    return self.parent.showingIPs() && !this.parent.retrievedFrom().some(e => {
+      return e.address() === this.address();
+    });
   });
 
-  self.formattedAddress = ko.computed(() => {
-    if (self.type() === 2) {
-      return `${browser.i18n.getMessage('addrCached')}`;
-    }
-    if (self.type() === 4 || self.type() === 6) {
-      return parent.proxyInfo.type() === 'http' ? `(${self.address()})` : self.address();
-    }
-    if (self.type() === 0) {
-      return browser.i18n.getMessage('addrUnavailable');
-    }
-    return browser.i18n.getMessage('addrNA');
-  });
-
-  self.ttCopyAddress = ko.observable(
-    browser.i18n.getMessage('ttCopyAddress'));
+  self.ttCopyAddress = ko.observable(browser.i18n.getMessage('ttCopyAddress'));
   self.copy = () => {
     //console.log('ip copy click');
     // TODO copy to clipboard
@@ -62,9 +55,12 @@ function HostViewModel (data, parent, isMainHost = false) {
         return new IPViewModel(options.data, self);
       }
     },
-    'mainIP': {
+    'retrievedFrom': {
+      key: data => {
+        ko.utils.unwrapObservable(data.address);
+      },
       create: options => {
-        return new IPViewModel(options.data, self, isMainIP = true);
+        return new IPViewModel(options.data, self);
       }
     },
     'proxyInfo': {
@@ -75,6 +71,33 @@ function HostViewModel (data, parent, isMainHost = false) {
   };
 
   ko.mapping.fromJS(data, mapping, self);
+
+  this.from = ko.computed(() => {
+    var filtered = this.retrievedFrom().filter(x => x.type() > 1);
+    if (filtered.length > 0) {
+      return filtered.sort((left, right) => {
+        return left.type() === right.type() ? 0 : (left.type() < right.type() ? 1 : -1);
+      }).map(x => {
+        if (x.type() === 2) {
+          return `${browser.i18n.getMessage('addrCached')}`;
+        } else if (x.type() === 4 || x.type() === 6) {
+          var fromDNS = this.dnsIPs().find(e => {
+            return e.address() === x.address();
+          });
+          if (fromDNS) {
+            return this.proxyInfo.type() === 'http' ? `(${fromDNS.formattedAddress()})` : fromDNS.formattedAddress();
+          } else {
+            return this.proxyInfo.type() === 'http' ? `(${x.address()})` : x.address();
+          }
+        }
+        return '';
+      }).join(' / ');
+    } else {
+      return browser.i18n.getMessage('addrUnknown');
+    }
+  });
+
+  this.trr = ko.computed(() => false); // TODO
 
   self.ttStatus = ko.observable(
     browser.i18n.getMessage('ttStatus'));
@@ -156,9 +179,9 @@ function HostViewModel (data, parent, isMainHost = false) {
   self.copyAll = () => {
     // TODO copy to clipboard
     var copyText = self.hostname();
-    if (self.mainIP.address() !== '') {
+    /*if (self.mainIP.address() !== '') {
       copyText += `,${self.mainIP.address()}`;
-    }
+    }*/
     self.dnsIPs().forEach(ip => {
       copyText += `,${ip.address()}`;
     });

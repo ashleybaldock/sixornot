@@ -2,7 +2,7 @@
   if (typeof (browser.storage) === "undefined") { return; }
 
   ko.extenders.subPersist = function (target, key) {
-    console.log(`subPersist, key: ${key}`);
+    //console.log(`subPersist, key: ${key}`);
     if (key) {
       browser.storage.local.get(key).then(
         item => {
