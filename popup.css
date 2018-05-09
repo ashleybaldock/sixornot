@@ -28,18 +28,19 @@ td {
 }
 .tlsInfo {
 }
+.trrInfo {
+  padding-top: 1px;
+  padding-right: 1px;
+}
 .proxyInfo {
   padding-top: 1px;
-  padding-right: 3px;
+  padding-right: 1px;
 }
 .hostname {
   padding-right: 5px;
 }
 tr.main .hostname {
   font-weight: bold;
-}
-.ipAddresses {
-  vertical-align: top;
 }
 .ipAddress {
   padding-right: 3px;
@@ -59,9 +60,6 @@ li {
 }
 li:first-child {
   padding-top: 0;
-}
-li span, li img {
-  vertical-align: top;
 }
 
 a {

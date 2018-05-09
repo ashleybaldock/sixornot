@@ -12,14 +12,6 @@
     "description": "Tooltip displayed on mouse hover over button or address bar icon"
   },
 
-  "headerRemote": {
-    "message": "Remote",
-    "description": ""
-  },
-  "headerLocal": {
-    "message": "Local",
-    "description": ""
-  },
   "settingsLinkText": {
     "message": "Open Settings",
     "description": ""
@@ -30,14 +22,6 @@
   },
   "documentationLink": {
     "message": "http://ashley.baldock.me/sixornot",
-    "description": ""
-  },
-  "hide": {
-    "message": "Hide",
-    "description": ""
-  },
-  "show": {
-    "message": "Show",
     "description": ""
   },
 
@@ -80,6 +64,11 @@
   },
   "proxyLookupsDisabled": {
     "message": "Note: SixOrNot DNS Lookups disabled for this host.",
+    "description": ""
+  },
+
+  "ttTRRInfo": {
+    "message": "Trusted Recursive Resolver (TRR) was used to resolve IP addresses for this host",
     "description": ""
   },
 

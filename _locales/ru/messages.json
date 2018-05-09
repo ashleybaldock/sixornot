@@ -24,14 +24,6 @@
     "message": "http://ashley.baldock.me/sixornot",
     "description": ""
   },
-  "hide": {
-    "message": "Скрыть",
-    "description": ""
-  },
-  "show": {
-    "message": "Показать",
-    "description": ""
-  },
 
   "addrCached": {
     "message": "Кеширован",
@@ -39,6 +31,10 @@
   },
   "addrUnavailable": {
     "message": "Адрес недоступен",
+    "description": ""
+  },
+  "addrUnknown": {
+    "message": "неизвестное",
     "description": ""
   },
   "addrNA": {
@@ -68,6 +64,11 @@
   },
   "proxyLookupsDisabled": {
     "message": "Внимание: DNS-запросы SixOrNot отключены для этого узла!",
+    "description": ""
+  },
+
+  "ttTRRInfo": {
+    "message": "Trusted Recursive Resolver (TRR) was used to resolve IP addresses for this host",
     "description": ""
   },
 

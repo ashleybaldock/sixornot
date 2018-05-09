@@ -93,6 +93,7 @@ function Host (details) {
   this.proxyInfo = new ProxyInfo(details.proxyInfo);
   this.retrievedFrom = [new IPAddress(details.ip, details.fromCache)];
   this.dnsIPs = [];
+  this.trr = false;
   this.connectionCount = 1;
   this.status = this.getStatus();
   this.dnsStage = DNS_pending;
@@ -104,11 +105,12 @@ Host.prototype.updateFrom = function (other) {
   // On redirect, update existing hostname
   if (other.newHostname) {
     this.hostname = other.newHostname;
-    console.log('redirect');
+    //console.log('redirect');
   }
 
   this.connectionCount += 1;
   this.proxyInfo = other.proxyInfo;
+  this.trr = other.trr;
 
   other.retrievedFrom.forEach(x => {
     var exists = false;
@@ -128,8 +130,6 @@ Host.prototype.updateFrom = function (other) {
 Host.prototype.dnsLookup = function (success) {
   if (this.dnsStage !== DNS_pending) { return; }
 
-  console.log(`proxyInfo: ${JSON.stringify(this.proxyInfo)}`);
-
   if (browser.dns
    && this.proxyInfo.type !== 'http'
    && this.proxyInfo.type !== 'https'
@@ -137,9 +137,10 @@ Host.prototype.dnsLookup = function (success) {
     this.dnsStage = DNS_started;
     browser.dns.resolve(this.hostname, []).then(
       response => {
-        console.log(`host: ${this.hostname}, addresses: ${response.addresses}, isTRR: ${response.isTRR}`);
+        //console.log(`host: ${this.hostname}, addresses: ${response.addresses}, isTRR: ${response.isTRR}`);
         this.dnsIPs = response.addresses.map(a => new IPAddress(a, false, response.isTRR));
 
+        this.trr = response.isTRR;
         this.status = this.getStatus();
         this.dnsStage = DNS_done;
 

@@ -33,6 +33,10 @@
     "message": "Adresse nicht verfügbar",
     "description": ""
   },
+  "addrUnknown": {
+    "message": "Unbekannte",
+    "description": ""
+  },
   "addrNA": {
     "message": "N/A",
     "description": ""
@@ -60,6 +64,11 @@
   },
   "proxyLookupsDisabled": {
     "message": "Achtung: SixOrNot DNS Lookups sind für diesen Host deaktiviert.",
+    "description": ""
+  },
+
+  "ttTRRInfo": {
+    "message": "Trusted Recursive Resolver (TRR) was used to resolve IP addresses for this host",
     "description": ""
   },
 

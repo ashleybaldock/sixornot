@@ -12,7 +12,8 @@ function IPViewModel (data, parent) {
 
   this.formattedAddress = ko.computed(() => {
     // Note: space character here needs to be a unicode nbsp!
-    return this.trr() ? `${this.address()} ⓣ` : `${this.address()}`;
+    //return this.trr() ? `${this.address()} ⓣ` : `${this.address()}`;
+    return this.address();
   });
 
   self.visible = ko.computed(() => {
@@ -81,14 +82,15 @@ function HostViewModel (data, parent, isMainHost = false) {
         if (x.type() === 2) {
           return `${browser.i18n.getMessage('addrCached')}`;
         } else if (x.type() === 4 || x.type() === 6) {
-          var fromDNS = this.dnsIPs().find(e => {
+          /*var fromDNS = this.dnsIPs().find(e => {
             return e.address() === x.address();
           });
           if (fromDNS) {
             return this.proxyInfo.type() === 'http' ? `(${fromDNS.formattedAddress()})` : fromDNS.formattedAddress();
           } else {
             return this.proxyInfo.type() === 'http' ? `(${x.address()})` : x.address();
-          }
+          }*/
+          return this.proxyInfo.type() === 'http' ? `(${x.address()})` : x.address();
         }
         return '';
       }).join(' / ');
@@ -96,8 +98,6 @@ function HostViewModel (data, parent, isMainHost = false) {
       return browser.i18n.getMessage('addrUnknown');
     }
   });
-
-  this.trr = ko.computed(() => false); // TODO
 
   self.ttStatus = ko.observable(
     browser.i18n.getMessage('ttStatus'));
@@ -152,9 +152,13 @@ function HostViewModel (data, parent, isMainHost = false) {
     }
   });
   self.proxyPath = ko.computed(() => {
-    return self.proxyInfo.type() !== 'none'
+    return self.proxyInfo.type() === 'none'
       ? `images/16/proxy_on.png`
       : `images/16/proxy_off.png`;
+  });
+
+  self.ttTRRInfo = ko.computed(() => {
+    return browser.i18n.getMessage('ttTRRInfo');
   });
 
   self.mainClass = ko.pureComputed(() => {
@@ -163,9 +167,11 @@ function HostViewModel (data, parent, isMainHost = false) {
 
   self.showingIPs = ko.observable(isMainHost);
 
-  self.togglerText = ko.computed(() => {
-    var length = self.dnsIPs().length;
-    return length === 0 ? '' : self.showingIPs() ? '[ - ]' : `[+${length}]`;
+  this.togglerText = ko.computed(() => {
+    var length = this.dnsIPs().filter(x => {
+      return !this.retrievedFrom().some(y => y.address() === x.address());
+    }).length;
+    return length === 0 ? '' : this.showingIPs() ? '[ - ]' : `[+${length}]`;
   });
 
   self.formattedConnectionCount = ko.computed(() => {
