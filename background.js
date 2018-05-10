@@ -132,7 +132,7 @@ Host.prototype.dnsLookup = function (success) {
   if (this.dnsStage !== DNS_pending) { return; }
 
   if (browser.dns
-   && this.retrievedFrom.some(x => x.type === 2 || x.type === 4)
+   && this.retrievedFrom.some(x => x.type === 2 || x.type === 4 || x.type === 6)
    && this.proxyInfo.type !== 'http'
    && this.proxyInfo.type !== 'https'
    && !this.proxyInfo.resolveDNS) {
@@ -150,7 +150,7 @@ Host.prototype.dnsLookup = function (success) {
         success();
       },
       error => {
-        console.log(`SixOrNot DNS error: ${error}`);
+        console.log(`SixOrNot DNS error: ${error} for lookup of hostname: ${this.hostname}`);
         this.dnsStage = DNS_pending;
       }
     );
@@ -210,7 +210,7 @@ Host.prototype.getStatus = function () {
     }
   } else if (bestType === 1) {
     return 'other';
-  } else if (bestType === 0) {
+  } else {
     // This indicates that no addresses were available but request is not cached
     return 'error';
   }
@@ -232,7 +232,7 @@ function Page (details) {
     }
     var iconset = greyscale ? 'grey' : 'colour';
 
-    //console.log(`updating pageAction for tabId: ${details.tabId}`);
+    //console.log(`updating pageAction for tabId: ${details.tabId}, status: ${status}`);
     browser.pageAction.setIcon({
       path: {
         16: `images/16/${iconset}/${status}.png`,
@@ -262,11 +262,13 @@ function Page (details) {
 
   self.update = function (host) {
     if (!host.hostname) { return; }
+    //console.log(`update host: ${host.hostname}`);
 
     // Add or update host
     if (host.hostname === self.mainHost.hostname) {
       // Update mainHost
       self.mainHost.updateFrom(host);
+      self.updateButtons();
       self.mainHost.dnsLookup(self.updateButtons);
     } else if (!host.newHostname) {
       // Ignore redirects for non-main host for now TODO
