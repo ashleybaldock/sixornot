@@ -20,12 +20,12 @@
       <td data-bind="text: hostname, click: copyAll, attr: { title: ttCopyAll }" class="hostname"></td>
       <td class="ipAddresses">
         <ul>
-          <li data-bind="text: from, click: copy, visible: visible, attr: { title: ttCopyAddress }" class="ipAddress"></li>
+          <li data-bind="text: from, click: copy, attr: { title: ttCopyAddress }" class="ipAddress"></li>
           <!-- ko template: { name: 'ip-template', foreach: dnsIPs } -->
           <!-- /ko -->
         </ul>
       </td>
-      <td data-bind="text: togglerText, click: toggleIPs, attr: { title: ttToggleIPs }" class="ipToggle"></td>
+      <td data-bind="text: togglerText, click: toggleIPs, attr: { title: ttToggleIPs }" class="ipToggle">iii</td>
     </tr>
   </script>
 
@@ -46,7 +46,7 @@
     </tr>
   </table>
 
-  <textarea id="copy-from" />
+  <textarea id="copy-from"></textarea>
 
   <script src="knockout-latest.debug.js"></script>
   <script src="knockout.mapping.js"></script>

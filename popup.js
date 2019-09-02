@@ -17,23 +17,20 @@ function IPViewModel (data, parent) {
 
   ko.mapping.fromJS(data, {}, self);
 
-  this.formattedAddress = ko.computed(() => {
+  self.formattedAddress = ko.computed(() => {
     // Note: space character here needs to be a unicode nbsp!
     //return this.trr() ? `${this.address()} ⓣ` : `${this.address()}`;
-    return this.address();
+    return self.address();
   });
 
   self.visible = ko.computed(() => {
-    return self.parent.showingIPs() && !this.parent.retrievedFrom().some(e => {
-      return e.address() === this.address();
+    return self.parent.showingIPs() && !self.parent.retrievedFrom().some(e => {
+      return e.address() === self.address();
     });
   });
 
   self.ttCopyAddress = ko.observable(browser.i18n.getMessage('ttCopyAddress'));
-  self.copy = () => {
-    console.log('ip copy click');
-    copyToClipboard(self.address());
-  };
+  self.copy = () => copyToClipboard(self.address());
 }
 
 function ProxyInfoViewModel (data, parent) {
@@ -80,8 +77,8 @@ function HostViewModel (data, parent, isMainHost = false) {
 
   ko.mapping.fromJS(data, mapping, self);
 
-  this.from = ko.computed(() => {
-    var filtered = this.retrievedFrom().filter(x => x.type() > 1);
+  self.from = ko.computed(() => {
+    var filtered = self.retrievedFrom().filter(x => x.type() > 1);
     if (filtered.length > 0) {
       return filtered.sort((left, right) => {
         return left.type() === right.type() ? 0 : (left.type() < right.type() ? 1 : -1);
@@ -97,7 +94,7 @@ function HostViewModel (data, parent, isMainHost = false) {
           } else {
             return this.proxyInfo.type() === 'http' ? `(${x.address()})` : x.address();
           }*/
-          return this.proxyInfo.type() === 'http' ? `(${x.address()})` : x.address();
+          return self.proxyInfo.type() === 'http' ? `(${x.address()})` : x.address();
         }
         return '';
       }).join(' / ');
@@ -172,11 +169,11 @@ function HostViewModel (data, parent, isMainHost = false) {
 
   self.showingIPs = ko.observable(isMainHost);
 
-  this.togglerText = ko.computed(() => {
-    var length = this.dnsIPs().filter(x => {
-      return !this.retrievedFrom().some(y => y.address() === x.address());
+  self.togglerText = ko.computed(() => {
+    var length = self.dnsIPs().filter(x => {
+      return !self.retrievedFrom().some(y => y.address() === x.address());
     }).length;
-    return length === 0 ? '' : this.showingIPs() ? '[ - ]' : `[+${length}]`;
+    return length === 0 ? '' : self.showingIPs() ? '[ - ]' : `[+${length}]`;
   });
 
   self.formattedConnectionCount = ko.computed(() => {
@@ -188,14 +185,10 @@ function HostViewModel (data, parent, isMainHost = false) {
   };
 
   self.ttCopyAddress = ko.observable(browser.i18n.getMessage('ttCopyAddress'));
-  self.copy = () => {
-    console.log('host ip copy click');
-    copyToClipboard(self.from());
-  };
+  self.copy = () => copyToClipboard(self.from());
   self.ttCopyAll = ko.observable(
     browser.i18n.getMessage('ttCopyAll'));
   self.copyAll = () => {
-    console.log('host copy click');
     var copyText = self.hostname();
     /*if (self.mainIP.address() !== '') {
       copyText += `,${self.mainIP.address()}`;

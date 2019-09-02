@@ -147,7 +147,7 @@ Host.prototype.dnsLookup = function (success) {
         this.dnsStage = DNS_done;
 
         wantsUpdate = true;
-        success();
+        success && success();
       },
       error => {
         console.log(`SixOrNot DNS error: ${error} for lookup of hostname: ${this.hostname}`);
