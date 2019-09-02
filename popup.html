@@ -9,8 +9,7 @@
 
 <body>
   <script type="text/html" id="ip-template">
-    <!--<li data-bind="text: address, click: copy, visible: visible, attr: { title: ttCopyAddress }" class="ipAddress"></li>-->
-    <li data-bind="visible: visible, text: formattedAddress" class="ipAddress"></li>
+    <li data-bind="text: formattedAddress, click: copy, visible: visible, attr: { title: ttCopyAddress }" class="ipAddress"></li>
   </script>
   <script type="text/html" id="host-template">
     <tr data-bind="css: mainClass">
@@ -18,11 +17,10 @@
       <td data-bind="text: formattedConnectionCount, attr: { title: ttConnectionCount }" class="connectionCount"></td>
       <td data-bind="attr: { title: ttProxyInfo }" class="proxyInfo"><img data-bind="attr: { src: proxyPath }"></td>
       <td><img data-bind="attr: { title: ttTRRInfo }, visible: trr" class="trrInfo" src="images/16/trr.png"/><td>
-      <!--<td data-bind="text: hostname, click: copyAll, attr: { title: ttCopyAll }" class="hostname"></td>-->
-      <td data-bind="text: hostname" class="hostname"></td>
+      <td data-bind="text: hostname, click: copyAll, attr: { title: ttCopyAll }" class="hostname"></td>
       <td class="ipAddresses">
         <ul>
-          <li data-bind="text: from" class="ipAddress"></li>
+          <li data-bind="text: from, click: copy, visible: visible, attr: { title: ttCopyAddress }" class="ipAddress"></li>
           <!-- ko template: { name: 'ip-template', foreach: dnsIPs } -->
           <!-- /ko -->
         </ul>
@@ -47,6 +45,8 @@
       </td>
     </tr>
   </table>
+
+  <textarea id="copy-from" />
 
   <script src="knockout-latest.debug.js"></script>
   <script src="knockout.mapping.js"></script>

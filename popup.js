@@ -2,6 +2,13 @@
  *
  */
 
+const copyToClipboard = text => {
+  const el = document.getElementById('copy-from');
+  el.value = text;
+  el.select();
+  document.execCommand('copy');
+};
+
 function IPViewModel (data, parent) {
   var self = this;
   self.parent = parent;
@@ -24,8 +31,8 @@ function IPViewModel (data, parent) {
 
   self.ttCopyAddress = ko.observable(browser.i18n.getMessage('ttCopyAddress'));
   self.copy = () => {
-    //console.log('ip copy click');
-    // TODO copy to clipboard
+    console.log('ip copy click');
+    copyToClipboard(self.address());
   };
 }
 
@@ -104,8 +111,6 @@ function HostViewModel (data, parent, isMainHost = false) {
   self.ttConnectionCount = ko.observable(
     browser.i18n.getMessage('ttConnectionCount'));
   self.ttTLSInfo = ko.observable('TLS Info');
-  self.ttCopyAll = ko.observable(
-    browser.i18n.getMessage('ttCopyAll'));
   self.ttToggleIPs = ko.computed(() => {
     var length = self.dnsIPs().length;
     return length === 0 ? '' : self.showingIPs()
@@ -182,8 +187,15 @@ function HostViewModel (data, parent, isMainHost = false) {
     self.showingIPs(!self.showingIPs());
   };
 
+  self.ttCopyAddress = ko.observable(browser.i18n.getMessage('ttCopyAddress'));
+  self.copy = () => {
+    console.log('host ip copy click');
+    copyToClipboard(self.from());
+  };
+  self.ttCopyAll = ko.observable(
+    browser.i18n.getMessage('ttCopyAll'));
   self.copyAll = () => {
-    // TODO copy to clipboard
+    console.log('host copy click');
     var copyText = self.hostname();
     /*if (self.mainIP.address() !== '') {
       copyText += `,${self.mainIP.address()}`;
@@ -191,6 +203,7 @@ function HostViewModel (data, parent, isMainHost = false) {
     self.dnsIPs().forEach(ip => {
       copyText += `,${ip.address()}`;
     });
+    copyToClipboard(copyText);
   };
 }
 
