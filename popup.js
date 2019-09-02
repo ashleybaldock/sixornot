@@ -45,7 +45,17 @@ function ProxyInfoViewModel (data, parent) {
   ko.mapping.fromJS(data, {}, self);
 }
 
-function HostViewModel (data, parent, isMainHost = false) {
+function SecurityInfoViewModel (data, parent) {
+  var self = this;
+  self.parent = parent;
+
+  self.isExtendedValidation = ko.observable(false);
+  self.state = ko.observable('insecure');
+
+  ko.mapping.fromJS(data, {}, self);
+}
+
+function HostViewModel (data, parent) {
   var self = this;
   self.parent = parent;
 
@@ -71,6 +81,11 @@ function HostViewModel (data, parent, isMainHost = false) {
     'proxyInfo': {
       create: options => {
         return new ProxyInfoViewModel(options.data, self);
+      }
+    },
+    'securityInfo': {
+      create: options => {
+        return new SecurityInfoViewModel(options.data, self);
       }
     }
   };
@@ -159,15 +174,26 @@ function HostViewModel (data, parent, isMainHost = false) {
       : `images/16/proxy_off.png`;
   });
 
+  self.tlsPath = ko.computed(() => {
+    return {
+      'broken': () => 'images/16/ssl_broken.png',
+      'insecure': () => 'images/16/ssl_off.png',
+      'secure': (isEv) => isEv ? 'images/16/ssl_ev.png' : 'images/16/ssl.png',
+      'weak': () => 'images/16/ssl_partial.png',
+    }[self.securityInfo.state()](self.securityInfo.isExtendedValidation())
+  });
+
   self.ttTRRInfo = ko.computed(() => {
     return browser.i18n.getMessage('ttTRRInfo');
   });
 
-  self.mainClass = ko.pureComputed(() => {
-    return isMainHost ? 'main' : '';
+  self.isMainHost = ko.computed(() => self.parent.mainHostname() === self.hostname());
+
+  self.mainClass = ko.computed(() => {
+    return self.isMainHost() ? 'main' : '';
   });
 
-  self.showingIPs = ko.observable(isMainHost);
+  self.showingIPs = ko.observable(self.isMainHost());
 
   self.togglerText = ko.computed(() => {
     var length = self.dnsIPs().filter(x => {
@@ -205,7 +231,7 @@ function PopUpViewModel () {
 
   self.hosts = ko.observableArray([]);
 
-  self.mainHost = ko.observable();
+  self.mainHostname = ko.observable('');
 
   self.greyscale = ko.observable(false)
                      .extend({ subPersist: 'option_greyscale' });
@@ -218,13 +244,12 @@ function PopUpViewModel () {
       create: options => {
         return new HostViewModel(options.data, self);
       }
-    },
-    'mainHost': {
-      create: options => {
-        return new HostViewModel(options.data, self, isMainHost = true);
-      }
     }
   };
+
+  self.filteredHosts = ko.computed(() => self.hosts().filter((host) => host.hostname() !== self.mainHostname()));
+
+  self.mainHosts = ko.computed(() => self.hosts().filter((host) => host.hostname() === self.mainHostname()));
 
   self.header = ko.observable(
     browser.i18n.getMessage('extensionname'));
@@ -280,16 +305,16 @@ function PopUpViewModel () {
       );
 
       port.onMessage.addListener(message => {
-        //console.log(`Popup received message, action: ${message.action}`);
+        // console.log(`Popup received message, action: ${message.action}`);
         if (message.action === 'update') {
           // Update viewModel
-          //console.log(JSON.stringify(message));
+          // console.log(JSON.stringify(message));
           ko.mapping.fromJS(message.data, mapping, self);
         } else if (message.action === 'new') {
           // Regenerate viewModel
-          //console.log(JSON.stringify(message));
+          // console.log(JSON.stringify(message));
           self.hosts([]);
-          self.mainHost(false);
+          self.mainHostname('');
           ko.mapping.fromJS(message.data, mapping, self);
         }
       });

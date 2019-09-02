@@ -1,9 +1,5 @@
-/*
- *
- */
-
 /* Send updates to popup every Xms */
-const sendTimeout = 50;
+const sendTimeout = 100;
 /* Set to true if popup update needed */
 var wantsUpdate = false;
 /* Set to true if popup regeneration needed (new page) */
@@ -13,7 +9,7 @@ var wantsNew = false;
 var greyscale = false;
 var addressicon = false;
 
-function subscribeToSetting (setting, callback) {
+const subscribeToSetting = (setting, callback) => {
   browser.storage.local.get(setting).then(
     item => {
       if (item[setting]) {
@@ -36,142 +32,19 @@ function subscribeToSetting (setting, callback) {
   });
 }
 
-function mapToString (map) {
-  var pairs = [];
-  map.forEach((value, key, map) => {
-    pairs.push(`${key}: ${value}`);
-  });
-  return pairs.join(', ');
-}
-
-function IPAddress (ip, fromCache = false, trr = false) {
-  this.trr = trr;
-
-  if (fromCache) {
-    this.type = 2;
-    this.address = 'cache';
-  } else if (!ip) {
-    this.type = 1;
-    this.address = 'unknown';
-  } else if (ip.indexOf(':') === -1) {
-    this.type = 4;
-    this.address = ip;
-  } else {
-    this.type = 6;
-    this.address = ip;
-  }
-}
-
-function ProxyInfo (proxyInfo) {
-  if (proxyInfo) {
-    this.host = proxyInfo.host;
-    this.port = proxyInfo.port;
-    this.type = proxyInfo.type;
-    this.proxyDNS = proxyInfo.proxyDNS;
-  } else {
-    this.host = '';
-    this.port = 0;
-    this.type = 'none';
-    this.proxyDNS = false;
-  }
-}
-
-var DNS_pending = 0,
-    DNS_started = 1,
-    DNS_done = 2;
-
-function Host (details) {
-  var url = new URL(details.url);
-
-
-  if (details.redirectUrl) {
-    var newUrl = new URL(details.redirectUrl);
-    this.newHostname = newUrl.hostname;
-  }
-
-  this.hostname = url.hostname;
-  this.proxyInfo = new ProxyInfo(details.proxyInfo);
-  this.retrievedFrom = [new IPAddress(details.ip, details.fromCache)];
-  this.dnsIPs = [];
-  this.trr = false;
-  this.connectionCount = 1;
-  this.status = this.getStatus();
-  this.dnsStage = DNS_pending;
-}
-
-Host.prototype.updateFrom = function (other) {
-  if (other.hostname !== this.hostname) { return; }
-
-  // On redirect, update existing hostname
-  if (other.newHostname) {
-    this.hostname = other.newHostname;
-    //console.log('redirect');
-    this.dnsLookup();
-  }
-
-  this.connectionCount += 1;
-  this.proxyInfo = other.proxyInfo;
-  this.trr = other.trr;
-
-  other.retrievedFrom.forEach(x => {
-    var exists = false;
-    this.retrievedFrom.forEach(y => {
-      if (x.address === y.address) {
-        exists = true;
-      }
-    });
-    if (!exists) {
-      this.retrievedFrom.push(x);
-    }
-  });
-
-  this.status = this.getStatus();
-};
-
-Host.prototype.dnsLookup = function (success) {
-  if (this.dnsStage !== DNS_pending) { return; }
-
-  if (browser.dns
-   && this.retrievedFrom.some(x => x.type === 2 || x.type === 4 || x.type === 6)
-   && this.proxyInfo.type !== 'http'
-   && this.proxyInfo.type !== 'https'
-   && !this.proxyInfo.resolveDNS) {
-    this.dnsStage = DNS_started;
-    browser.dns.resolve(this.hostname, []).then(
-      response => {
-        //console.log(`host: ${this.hostname}, addresses: ${response.addresses}, isTRR: ${response.isTRR}`);
-        this.dnsIPs = response.addresses.map(a => new IPAddress(a, false, response.isTRR));
-
-        this.trr = response.isTRR;
-        this.status = this.getStatus();
-        this.dnsStage = DNS_done;
-
-        wantsUpdate = true;
-        success && success();
-      },
-      error => {
-        console.log(`SixOrNot DNS error: ${error} for lookup of hostname: ${this.hostname}`);
-        this.dnsStage = DNS_pending;
-      }
-    );
-  } else {
-    //console.log('skipping dns');
-  }
-};
-
-Host.prototype.getStatus = function () {
-  if (this.proxyInfo && (this.proxyInfo.type === 'http' || this.proxyInfo.type === 'https')) {
+const getStatus = (proxyInfo, retrievedFrom, dnsIPs) => {
+  if (proxyInfo && (proxyInfo.type === 'http' || proxyInfo.type === 'https')) {
       return 'proxy';
   }
 
-  if (this.retrievedFrom.length === 0) { return 'other'; }
+  if (retrievedFrom.length === 0) { return 'other'; }
 
-  var bestType = this.retrievedFrom.reduce((accumulator, current) => {
+  var bestType = retrievedFrom.reduce((accumulator, current) => {
     return Math.max(accumulator, current.type);
   }, 0);
 
-  var hasIPv6DNS = this.dnsIPs.some(ip => ip.type === 6);
-  var hasIPv4DNS = this.dnsIPs.some(ip => ip.type === 4);
+  var hasIPv6DNS = dnsIPs.some(ip => ip.type === 6);
+  var hasIPv4DNS = dnsIPs.some(ip => ip.type === 4);
 
   if (bestType === 6) {
     if (!hasIPv4DNS && hasIPv6DNS) {
@@ -216,112 +89,291 @@ Host.prototype.getStatus = function () {
   }
 };
 
-function Page (details) {
-  var self = this;
-
-  self.tabId = details.tabId;
-
-  self.requestIds = new Map();
-
-  self.updateButtons = function () {
-    var status;
-    if (!self.mainHost) {
-      status = 'other';
-    } else {
-      status = self.mainHost.status;
-    }
-    var iconset = greyscale ? 'grey' : 'colour';
-
-    //console.log(`updating pageAction for tabId: ${details.tabId}, status: ${status}`);
-    browser.pageAction.setIcon({
-      path: {
-        16: `images/16/${iconset}/${status}.png`,
-        32: `images/32/${iconset}/${status}.png`
-      },
-      tabId: self.tabId
-    });
-
-    if (addressicon) {
-      browser.pageAction.show(details.tabId);
-    } else {
-      browser.pageAction.hide(details.tabId);
-    }
-
-    browser.browserAction.setIcon({
-      path: {
-        16: `images/16/${iconset}/${status}.png`,
-        32: `images/32/${iconset}/${status}.png`
-      },
-      tabId: self.tabId
-    });
+const newIPAddress = (ip, fromCache = false, trr = false) => {
+  const address = {
+    trr,
+    type: 1,
+    address: 'unknown',
   };
 
-  self.mainHost = new Host({ url: details.url });
-  self.hosts = {};
-  self.hostCount = 0;
-
-  self.update = function (host) {
-    if (!host.hostname) { return; }
-    //console.log(`update host: ${host.hostname}`);
-
-    // Add or update host
-    if (host.hostname === self.mainHost.hostname) {
-      // Update mainHost
-      self.mainHost.updateFrom(host);
-      self.updateButtons();
-      self.mainHost.dnsLookup(self.updateButtons);
-    } else if (!host.newHostname) {
-      // Ignore redirects for non-main host for now TODO
-      if (self.hosts[host.hostname]) {
-        // Update host
-        self.hosts[host.hostname].updateFrom(host);
-      } else {
-        // Add host
-        self.hosts[host.hostname] = host;
-        self.hosts[host.hostname].dnsLookup();
-      }
+  if (fromCache) {
+    address.type = 2;
+    address.address = 'cache';
+  }
+  if (ip) {
+    if (ip.indexOf(':') === -1) {
+      address.type = 4;
+      address.address = ip;
+    } else {
+      address.type = 6;
+      address.address = ip;
     }
+  }
+
+  return address;
+};
+
+const newProxyInfo = (proxyInfo) => {
+  if (proxyInfo) {
+    return {
+      host: proxyInfo.host,
+      port: proxyInfo.port,
+      type: proxyInfo.type,
+      proxyDNS: proxyInfo.proxyDNS,
+    };
+  } else {
+    return {
+      host: '',
+      port: 0,
+      type: 'none',
+      proxyDNS: false,
+    };
+  }
+};
+
+const newSecurityInfo = (securityInfo) => ({
+  certificateTransparencyStatus: undefined,
+  cipherSuite: undefined,
+  errorMessage: undefined,
+  hpkp: undefined,
+  hsts: undefined,
+  isDomainMismatch: undefined,
+  isExtendedValidation: undefined,
+  isNotValidAtThisTime: undefined,
+  isUntrusted: undefined,
+  keaGroupName: undefined,
+  protocolVersion: undefined,
+  signatureSchemeName: undefined,
+  state: undefined,
+  weaknessReasons: undefined,
+  ...securityInfo,
+  certificates: securityInfo.certificates.map((certificate) => ({
+    ...certificate,
+    fingerprint: { ...certificate.fingerprint },
+    subjectPublicKeyInfoDigest: { ...certificate.subjectPublicKeyInfoDigest },
+    validity: { ...certificate.validity },
+  })),
+});
+
+const updateButtons = (tabId, status = 'other') => {
+  const iconset = greyscale ? 'grey' : 'colour';
+
+  //console.log(`updating pageAction for tabId: ${tabId}, status: ${status}`);
+  browser.pageAction.setIcon({
+    path: {
+      16: `images/16/${iconset}/${status}.png`,
+      32: `images/32/${iconset}/${status}.png`
+    },
+    tabId
+  });
+
+  if (addressicon) {
+    browser.pageAction.show(tabId);
+  } else {
+    browser.pageAction.hide(tabId);
+  }
+
+  browser.browserAction.setIcon({
+    path: {
+      16: `images/16/${iconset}/${status}.png`,
+      32: `images/32/${iconset}/${status}.png`
+    },
+    tabId
+  });
+};
+
+const DNS_pending = 0,
+    DNS_started = 1,
+    DNS_done = 2;
+
+const newHost = (details) => {
+  let hostname = undefined;
+  let proxyInfo = undefined;
+  let securityInfo = undefined;
+  let connectionCount = -1;
+  let retrievedFrom = [];
+  let dnsIPs = [];
+  let dnsStage = DNS_pending;
+  let trr = false;
+  let status = 'other';
+
+  const toObject = () => ({
+    hostname,
+    proxyInfo,
+    securityInfo,
+    connectionCount,
+    retrievedFrom,
+    dnsIPs,
+    dnsStage,
+    trr,
+    status,
+  });
+
+  const dnsLookup = (success) => {
+    if (dnsStage !== DNS_pending
+     || !browser.dns
+     || !retrievedFrom.some(x => x.type === 2 || x.type === 4 || x.type === 6)
+     || proxyInfo.type === 'http'
+     || proxyInfo.type === 'https'
+     || proxyInfo.resolveDNS) {
+      return;
+    }
+    // console.log('performing DNS lookup');
+    dnsStage = DNS_started;
+    browser.dns.resolve(hostname, []).then(
+      response => {
+        //console.log(`host: ${hostname}, addresses: ${response.addresses}, isTRR: ${response.isTRR}`);
+        dnsIPs = response.addresses.map(a => newIPAddress(a, false, response.isTRR));
+
+        trr = response.isTRR;
+        status = getStatus(proxyInfo, retrievedFrom, dnsIPs);
+        dnsStage = DNS_done;
+
+        wantsUpdate = true;
+        success && success();
+      },
+      error => {
+        console.log(`SixOrNot DNS error: ${error} for lookup of hostname: ${hostname}`);
+        dnsStage = DNS_pending;
+      }
+    );
+  };
+
+  const updateFrom = (newDetails) => {
+    const newHostname = new URL(newDetails.url).hostname;
+    if (hostname !== undefined && newHostname !== hostname) { return; }
+    hostname = newHostname;
+    connectionCount += 1;
+    proxyInfo = newProxyInfo(newDetails.proxyInfo);
+
+    const newAddress = newIPAddress(newDetails.ip, newDetails.fromCache);
+    if (!retrievedFrom.some(({ address }) => address === newAddress.address)) {
+      retrievedFrom.push(newAddress);
+    }
+
+    status = getStatus(proxyInfo, retrievedFrom, dnsIPs);
+
+    dnsLookup();
+  };
+
+  const updateSecurityFrom = (updatedSecurityInfo) =>
+    (securityInfo) = newSecurityInfo(updatedSecurityInfo);
+
+  updateFrom(details);
+
+  return {
+    updateFrom,
+    updateSecurityFrom,
+    toObject,
+    getStatus: () => status,
+  };
+};
+
+const newPage = (details) => {
+  const tabId = details.tabId;
+  const requestIds = new Map();
+  const hosts = new Map();
+
+  let mainHostname = new URL(details.url).hostname;
+  hosts.set(mainHostname, newHost({ url: details.url }));
+
+  const addRequestToPage = (requestId, url) => {
+    const hostname = new URL(url).hostname;
+    requestIds.set(requestId, hostname);
+
+    if (!hosts.has(hostname)) {
+      hosts.set(hostname, newHost({ url }));
+    }
+  };
+
+  const updateSecurityInfo = (requestId, newSecurityInfo) => {
+    if (!requestIds.has(requestId)) { return; }
+
+    if (hosts.has(requestIds.get(requestId))) {
+      hosts.get(requestIds.get(requestId)).updateSecurityFrom(newSecurityInfo);
+      wantsUpdate = true;
+    }
+  };
+
+  const updateOnComplete = (requestId, newDetails) => {
+    if (!requestIds.has(requestId)) { return; }
+
+    const hostname = new URL(newDetails.url).hostname;
+    if (hosts.has(hostname)) {
+      // Update host
+      hosts.get(hostname).updateFrom(newDetails);
+
+      // Update button display when mainhost info changes
+      if (hostname === mainHostname) {
+        updateButtons(tabId, hosts.get(mainHostname).getStatus());
+      }
+
+      wantsUpdate = true;
+    }
+  };
+
+  const updateOnRedirect = (requestId, newDetails) => {
+    if (!requestIds.has(requestId)) { return; }
+
+    const fromHostname = new URL(newDetails.url).hostname;
+    const toHostname = new URL(newDetails.redirectUrl).hostname;
+
+    if (hosts.has(fromHostname)) {
+      // Update host
+      hosts.get(hostname).updateFrom(newDetails);
+    }
+
+    if (!hosts.has(toHostname)) {
+      hosts.set(hostname, newHost({ ...newDetails, url: newDetails.redirectUrl }));
+    }
+
+    // If hostname matches main, change main hostname
+    if (fromHostname === mainHostname) {
+      mainHostname = toHostname;
+
+      updateButtons(tabId, hosts.get(mainHostname).getStatus());
+    }
+
+    wantsUpdate = true;
+  };
+
+  const toObject = () => ({ mainHostname: mainHostname, hosts: Array.from(hosts, ([key, value]) => value.toObject()) });
+
+  return {
+    addRequestToPage,
+    updateSecurityInfo,
+    updateOnComplete,
+    updateOnRedirect,
+    updateButtons: () => updateButtons(tabId, hosts.get(mainHostname).getStatus()),
+    toObject,
   };
 }
 
-function PageTracker () {
-  var self = this;
-  self.pageForTab = new Map();
+const pageTracker = (() => {
+  const tabIdToPageMap = new Map();
 
-  function nonTabRequest (tabId) {
-    return tabId === -1;
-  }
-  function subFrame (frameId) {
-    return frameId !== 0;
-  }
+  const nonTabRequest = (tabId) => tabId === -1;
+
+  const fakeRequest = (requestId) => requestId.startsWith('fakeRequest');
+
+  const subFrame = (frameId) => frameId !== 0;
 
   /*
    * Serialise Page to send to popup
    */
-  self.getJSON = tabId => {
-    var page = self.pageForTab.get(tabId);
-    if (page) {
-      return {
-        mainHost: page.mainHost,
-        hosts: Object.values(page.hosts)
-      };
-    } else {
-      return {};
-    }
-    return send;
-  };
+  const toObject = (tabId) => tabIdToPageMap.has(tabId) ? tabIdToPageMap.get(tabId).toObject() : {}; 
 
   // Monitor settings
   subscribeToSetting('option_greyscale', newValue => {
     greyscale = newValue;
-    self.pageForTab.forEach((value, key, map) => {
-      value.updateButtons();
+    tabIdToPageMap.forEach((page) => {
+      page.updateButtons();
     });
   });
   subscribeToSetting('option_addressicon', newValue => {
     addressicon = newValue;
-    self.pageForTab.forEach((value, key, map) => {
-      value.updateButtons();
+    tabIdToPageMap.forEach((page) => {
+      page.updateButtons();
     });
   });
 
@@ -329,7 +381,7 @@ function PageTracker () {
    * Clean up Page for removed tabs
    */
   browser.tabs.onRemoved.addListener(tabId => {
-    self.pageForTab.delete(tabId);
+    tabIdToPageMap.delete(tabId);
   });
 
   /*
@@ -354,23 +406,64 @@ function PageTracker () {
    * This event (with zero frameId) indicates a new page loaded into tab
    * Set up a new Page for the given tabId to associated future requests with
    */
-  browser.webNavigation.onBeforeNavigate.addListener(details => {
-    if (subFrame(details.frameId)) { return; }
+  browser.webNavigation.onBeforeNavigate.addListener(
+    (details) => {
+      // console.log('onBeforeNavigate');
+      // console.log(details);
+      if (subFrame(details.frameId)) { return; }
 
-    //console.log(`pageTracker: onBeforeNavigate, tabId: ${details.tabId}, windowId: ${details.windowId}`);
-    self.pageForTab.set(details.tabId, new Page(details));
-    wantsNew = true;
+      // console.log(`pageTracker: onBeforeNavigate, tabId: ${details.tabId}, windowId: ${details.windowId}`);
+      tabIdToPageMap.set(details.tabId, newPage(details));
+      wantsNew = true;
   });
 
   /*
    * Associate each request when it starts with current Page for the tab
    */
   browser.webRequest.onBeforeRequest.addListener(
-    details => {
-      //console.log(`onBeforeRequest for tabId: ${details.tabId}, requestId: ${details.requestId}`);
-      if (nonTabRequest(details.tabId)) { return; }
-      if (self.pageForTab.has(details.tabId)) {
-        self.pageForTab.get(details.tabId).requestIds.set(details.requestId, true);
+    ({ tabId, requestId, url }) => {
+      if (nonTabRequest(tabId) || fakeRequest(requestId)) { return; }
+      // console.log(`onBeforeRequest for tabId: ${details.tabId}, requestId: ${details.requestId}`);
+      // console.log(details);
+      if (tabIdToPageMap.has(tabId)) {
+        // tabIdToPageMap.get(details.tabId).requestIds.set(details.requestId, true);
+        tabIdToPageMap.get(tabId).addRequestToPage(requestId, url);
+      }
+    },
+    { urls: ['<all_urls>'] }
+  );
+
+  /*
+   * Get security info for connections
+   */
+  browser.webRequest.onHeadersReceived.addListener(
+    ({ tabId, requestId }) => {
+      if (nonTabRequest(tabId) || fakeRequest(requestId)) { return; }
+
+      browser.webRequest.getSecurityInfo(requestId, {}).then((securityInfo) => {
+        // console.log(securityInfo);
+        if (tabIdToPageMap.has(tabId)) {
+          tabIdToPageMap.get(tabId).updateSecurityInfo(requestId, securityInfo);
+        }
+      }).catch((e) => console.error(e));
+    },
+    { urls: ['<all_urls>'] },
+    ['blocking']
+  );
+
+  /*
+   * Requests can be redirected, if so the main hostname can change
+   * For now, just update mainHost name
+   * TODO - handle and show in UI details of redirections
+   * e.g. google.com -> www.google.co.uk
+   */
+  browser.webRequest.onBeforeRedirect.addListener(
+    (details) => {
+      //console.log(`onBeforeRedirect for tabId: ${details.tabId}, requestId: ${details.requestId}, url: ${details.url}, redirectUrl: ${details.redirectUrl}`);
+      if (nonTabRequest(details.tabId) || fakeRequest(details.requestId)) { return; }
+
+      if (tabIdToPageMap.has(details.tabId)) {
+        tabIdToPageMap.get(details.tabId).updateOnRedirect(details.requestId, details);
       }
     },
     { urls: ['<all_urls>'] }
@@ -382,37 +475,12 @@ function PageTracker () {
    * or are associated with a defunct Page
    */
   browser.webRequest.onCompleted.addListener(
-    details => {
-      //console.log(`onCompleted for tabId: ${details.tabId}, requestId: ${details.requestId}, url: ${details.url}`);
-      if (nonTabRequest(details.tabId)) { return; }
+    (details) => {
+      if (nonTabRequest(details.tabId) || fakeRequest(details.requestId)) { return; }
+      // console.log(`onCompleted for tabId: ${details.tabId}, requestId: ${details.requestId}, url: ${details.url}`);
 
-      var page = self.pageForTab.get(details.tabId);
-      if (page && page.requestIds.has(details.requestId)) {
-        //console.log(`requestIds: '{ ${mapToString(page.requestIds)} }', requestId: '${details.requestId}'`);
-
-        page.update(new Host(details));
-        wantsUpdate = true;
-        page.requestIds.delete(details.requestId);
-      }
-    },
-    { urls: ['<all_urls>'] }
-  );
-
-  /*
-   * Requests can be redirected, if so the main hostname can change
-   * For now, just update mainHost name
-   * TODO - handle and show in UI details of redirections
-   * e.g. google.com -> www.google.co.uk
-   */
-  browser.webRequest.onBeforeRedirect.addListener(
-    details => {
-      //console.log(`onBeforeRedirect for tabId: ${details.tabId}, requestId: ${details.requestId}, url: ${details.url}, redirectUrl: ${details.redirectUrl}`);
-      if (nonTabRequest(details.tabId)) { return; }
-
-      var page = self.pageForTab.get(details.tabId);
-      if (page && page.requestIds.has(details.requestId)) {
-        page.update(new Host(details));
-        wantsUpdate = true;
+      if (tabIdToPageMap.has(details.tabId)) {
+        tabIdToPageMap.get(details.tabId).updateOnComplete(details.requestId, details);
       }
     },
     { urls: ['<all_urls>'] }
@@ -423,40 +491,37 @@ function PageTracker () {
    */
   browser.webRequest.onErrorOccurred.addListener(
     details => {
-      if (nonTabRequest(details.tabId)) { return; }
+      if (nonTabRequest(details.tabId) || fakeRequest(details.requestId)) { return; }
 
-      var page = self.pageForTab.get(details.tabId);
-      if (page && page.requestIds.has(details.requestId)) {
-        page.requestIds.delete(details.requestId);
+      if (tabIdToPageMap.has(details.tabId)) {
+        tabIdToPageMap.get(details.tabId).updateOnComplete(details.requestId, details);
       }
     },
     { urls: ['<all_urls>'] }
   );
-};
 
+  return {
+    toObject,
+  };
+})();
 
-var pageTracker = new PageTracker();
-
-
-browser.runtime.onConnect.addListener(port => {
+browser.runtime.onConnect.addListener((port) => {
   //console.log(`incoming connection from: ${port.name}`);
-  var timeoutId, lastTabId;
+  let timeoutId, lastTabId;
 
-  function sendForTab (tabId) {
+  const sendForTab = (tabId) =>
     port.postMessage({
       action: 'update',
-      data: pageTracker.getJSON(tabId)
+      data: pageTracker.toObject(tabId)
     });
-  }
 
-  function newForTab (tabId) {
+  const newForTab = (tabId) =>
     port.postMessage({
       action: 'new',
-      data: pageTracker.getJSON(tabId)
+      data: pageTracker.toObject(tabId)
     });
-  }
 
-  function updateIfNeeded () {
+  const updateIfNeeded = () => {
     if (lastTabId) {
       if (wantsNew) {
         newForTab(lastTabId);
@@ -469,15 +534,13 @@ browser.runtime.onConnect.addListener(port => {
       }
     }
     timeoutId = window.setTimeout(updateIfNeeded, sendTimeout);
-  }
+  };
 
   updateIfNeeded();
 
-  port.onDisconnect.addListener(disconnectingPort => {
-    window.clearTimeout(timeoutId);
-  });
+  port.onDisconnect.addListener((disconnectingPort) => window.clearTimeout(timeoutId));
 
-  port.onMessage.addListener(message => {
+  port.onMessage.addListener((message) => {
     //console.log(`Background received message, action: ${message.action}`);
     if (message.action === 'requestUpdate') {
       lastTabId = message.data.tabId;
