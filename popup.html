@@ -32,14 +32,14 @@
 
   <table>
     <tr>
-      <td colspan="8" class="header" data-bind="text: header"></td>
+      <td colspan="9" class="header" data-bind="text: header"></td>
     </tr>
     <!-- ko template: { name: 'host-template', foreach: mainHosts } -->
     <!-- /ko -->
     <!-- ko template: { name: 'host-template', foreach: filteredHosts } -->
     <!-- /ko -->
     <tr>
-      <td colspan="8" class="footer">
+      <td colspan="9" class="footer">
         <a href="#" data-bind="click: openSettings, text: settingsLinkText, attr: { title: ttSettingsLink }"></a> - <a href="#" data-bind="text: documentationLinkText, attr: { title: ttDocumentationLink, href: documentationLink }"></a>
       </td>
     </tr>

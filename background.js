@@ -1,13 +1,13 @@
 /* Send updates to popup every Xms */
 const sendTimeout = 100;
 /* Set to true if popup update needed */
-var wantsUpdate = false;
+let wantsUpdate = false;
 /* Set to true if popup regeneration needed (new page) */
-var wantsNew = false;
+let wantsNew = false;
 
 /* Represent state of settings */
-var greyscale = false;
-var addressicon = false;
+let greyscale = false;
+let addressicon = false;
 
 const subscribeToSetting = (setting, callback) => {
   browser.storage.local.get(setting).then(
@@ -17,14 +17,14 @@ const subscribeToSetting = (setting, callback) => {
       }
     },
     error => {
-      console.log(`SixOrNot:background.js - subscribeToSetting: unable to retrieve setting on init: '${setting}', error: ${error}`);
+      console.error(`SixOrNot:background.js - subscribeToSetting: unable to retrieve setting on init: '${setting}', error: ${error}`);
     }
   );
 
   browser.storage.onChanged.addListener(changes => {
-    var changedItems = Object.keys(changes);
+    let changedItems = Object.keys(changes);
 
-    for (var item of changedItems) {
+    for (let item of changedItems) {
       if (item === setting) {
         callback(JSON.parse(changes[item].newValue));
       }
@@ -34,17 +34,17 @@ const subscribeToSetting = (setting, callback) => {
 
 const getStatus = (proxyInfo, retrievedFrom, dnsIPs) => {
   if (proxyInfo && (proxyInfo.type === 'http' || proxyInfo.type === 'https')) {
-      return 'proxy';
+    return 'proxy';
   }
 
   if (retrievedFrom.length === 0) { return 'other'; }
 
-  var bestType = retrievedFrom.reduce((accumulator, current) => {
+  let bestType = retrievedFrom.reduce((accumulator, current) => {
     return Math.max(accumulator, current.type);
   }, 0);
 
-  var hasIPv6DNS = dnsIPs.some(ip => ip.type === 6);
-  var hasIPv4DNS = dnsIPs.some(ip => ip.type === 4);
+  let hasIPv6DNS = dnsIPs.some(ip => ip.type === 6);
+  let hasIPv4DNS = dnsIPs.some(ip => ip.type === 4);
 
   if (bestType === 6) {
     if (!hasIPv4DNS && hasIPv6DNS) {
@@ -320,11 +320,11 @@ const newPage = (details) => {
 
     if (hosts.has(fromHostname)) {
       // Update host
-      hosts.get(hostname).updateFrom(newDetails);
+      hosts.get(fromHostname).updateFrom(newDetails);
     }
 
     if (!hosts.has(toHostname)) {
-      hosts.set(hostname, newHost({ ...newDetails, url: newDetails.redirectUrl }));
+      hosts.set(toHostname, newHost({ ...newDetails, url: newDetails.redirectUrl }));
     }
 
     // If hostname matches main, change main hostname
