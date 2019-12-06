@@ -147,12 +147,12 @@ const newSecurityInfo = (securityInfo) => ({
   state: undefined,
   weaknessReasons: undefined,
   ...securityInfo,
-  certificates: securityInfo.certificates.map((certificate) => ({
+  certificates: securityInfo && securityInfo.certificates ? securityInfo.certificates.map((certificate) => ({
     ...certificate,
     fingerprint: { ...certificate.fingerprint },
     subjectPublicKeyInfoDigest: { ...certificate.subjectPublicKeyInfoDigest },
     validity: { ...certificate.validity },
-  })),
+  })) : {},
 });
 
 const updateButtons = (tabId, status = 'other') => {
