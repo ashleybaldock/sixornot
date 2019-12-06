@@ -233,6 +233,7 @@ const newHost = (details) => {
         success && success();
       },
       error => {
+        // TODO add a DNS failed status here with icon change? e.g. for Error: NS_ERROR_UNKNOWN_HOST
         console.log(`SixOrNot DNS error: ${error} for lookup of hostname: ${hostname}`);
         dnsStage = DNS_pending;
       }
