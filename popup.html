@@ -15,7 +15,7 @@
     <tr data-bind="css: mainClass">
       <td data-bind="attr: { title: ttStatus }" class="statusIcon"><img data-bind="attr: { src: statusPath }"></td>
       <td data-bind="text: formattedConnectionCount, attr: { title: ttConnectionCount }" class="connectionCount"></td>
-      <td data-bind="attr: { title: ttTLSInfo }" class="tlsInfo"><img data-bind="attr: { src: tlsPath }"></td>
+      <td data-bind="attr: { title: ttTLSInfo }, click: copyTLS" class="tlsInfo"><img data-bind="attr: { src: tlsPath }"></td>
       <td data-bind="attr: { title: ttProxyInfo }" class="proxyInfo"><img data-bind="attr: { src: proxyPath }"></td>
       <td><img data-bind="attr: { title: ttTRRInfo }, visible: trr" class="trrInfo" src="images/16/trr.png"/><td>
       <td data-bind="text: hostname, click: copyAll, attr: { title: ttCopyAll }" class="hostname"></td>

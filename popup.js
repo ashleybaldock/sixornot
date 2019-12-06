@@ -51,6 +51,7 @@ function SecurityInfoViewModel (data, parent) {
 
   self.isExtendedValidation = ko.observable(false);
   self.state = ko.observable('insecure');
+  self.datacopy = ko.observable(data);
 
   ko.mapping.fromJS(data, {}, self);
 }
@@ -122,7 +123,14 @@ function HostViewModel (data, parent) {
     browser.i18n.getMessage('ttStatus'));
   self.ttConnectionCount = ko.observable(
     browser.i18n.getMessage('ttConnectionCount'));
-  self.ttTLSInfo = ko.observable('TLS Info');
+  self.hasTLSInfo = ko.computed(() => !!(self.securityInfo && self.securityInfo.datacopy && self.securityInfo.datacopy()));
+  self.TLSInfo = ko.computed(() => 
+    self.hasTLSInfo() ? JSON.stringify(self.securityInfo.datacopy(), undefined, 2) : 'No TLS information for this host'
+  );
+  self.ttTLSInfo = ko.computed((() => {
+    return `Click to copy TLS information to clipboard\n\n${self.TLSInfo()}`;
+    })
+  );
   self.ttToggleIPs = ko.computed(() => {
     var length = self.dnsIPs().length;
     return length === 0 ? '' : self.showingIPs()
@@ -224,6 +232,7 @@ function HostViewModel (data, parent) {
     });
     copyToClipboard(copyText);
   };
+  self.copyTLS = () => copyToClipboard(self.TLSInfo());
 }
 
 function PopUpViewModel () {
