@@ -1,4 +1,4 @@
-Sixornot
+SixOrNot
 ========
 
 IPv6 status indicator for Firefox.
