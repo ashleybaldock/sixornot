@@ -1,7 +1,9 @@
-sixornot
+Sixornot
 ========
 
 IPv6 status indicator for Firefox.
+
+For more information, see addon listing: https://addons.mozilla.org/en-GB/firefox/addon/sixornot/
 
 
 To build: ```npm run build```
