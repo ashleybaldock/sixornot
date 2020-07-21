@@ -1,12 +1,12 @@
 {
   "manifest_version": 2,
   "name": "__MSG_extensionName__",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "author": "Ashley Baldock",
 
   "developer": {
     "name": "Ashley Baldock",
-    "url": "http://ashley.baldock.me/sixornot"
+    "url": "https://morepossibility.com/sixornot"
   },
 
   "default_locale": "en",
